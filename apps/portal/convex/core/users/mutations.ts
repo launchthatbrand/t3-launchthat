@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import type { FunctionReference } from "convex/server";
 
 import type { Id } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
@@ -11,7 +12,6 @@ import {
   throwNotFound,
   throwUnauthorized,
 } from "../../shared/errors";
-import { requireAdmin } from "./helpers";
 
 /**
  * Make the current authenticated user an admin
@@ -221,15 +221,91 @@ export const createOrGetUser = mutation({
   handler: async (ctx): Promise<Id<"users"> | null> => {
     console.log("--- createOrGetUser (public wrapper) CALLED ---");
     // Call the internal mutation using the internal API reference
-    const userId = await ctx.runMutation(
-      internal.core.users.mutations.internalEnsureUser,
-      {},
-    );
+    const ensureRef: FunctionReference<
+      "mutation",
+      "internal",
+      Record<string, never>,
+      Id<"users"> | null
+    > = internal.core.users.mutations.internalEnsureUser;
+    const userId = await ctx.runMutation(ensureRef, {});
     console.log(
       "--- createOrGetUser (public wrapper) FINISHED, internalEnsureUser returned: ",
       userId,
     );
     return userId; // Return the result from the internal function
+  },
+});
+
+/**
+ * Create a user record as an admin (system-wide).
+ * This is used by `/admin/users` and similar admin screens.
+ */
+export const createUserAdmin = mutation({
+  args: {
+    email: v.string(),
+    name: v.optional(v.string()),
+    username: v.optional(v.string()),
+    role: v.optional(v.string()),
+    isActive: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args): Promise<Id<"users">> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throwUnauthorized("You must be logged in to perform this action");
+    }
+
+    const me = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!me) {
+      throwNotFound("User", "with the current authentication token");
+    }
+    if (me.role !== "admin") {
+      throwForbidden("Only administrators can create users");
+    }
+
+    const email = args.email.trim().toLowerCase();
+    if (!email) {
+      throw new Error("Email is required");
+    }
+
+    const now = Date.now();
+    const status =
+      args.isActive === false ? ("suspended" as const) : ("active" as const);
+
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        name: args.name?.trim() ? args.name.trim() : existing.name,
+        username: args.username?.trim() ? args.username.trim() : existing.username,
+        role: args.role ?? existing.role,
+        status,
+        updatedAt: now,
+        lastModifiedBy: me._id,
+      });
+      return existing._id;
+    }
+
+    return await ctx.db.insert("users", {
+      email,
+      name: args.name?.trim() ? args.name.trim() : undefined,
+      username: args.username?.trim() ? args.username.trim() : undefined,
+      role: args.role ?? "user",
+      status,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: me._id,
+      lastModifiedBy: me._id,
+      tokenIdentifier: "",
+      clerkId: "",
+      externalId: "",
+      addresses: [],
+    });
   },
 });
 
@@ -243,6 +319,8 @@ export const updateUser = mutation({
       name: v.optional(v.string()),
       email: v.optional(v.string()),
       role: v.optional(v.string()), // Changed to accept any string role
+      username: v.optional(v.string()),
+      isActive: v.optional(v.boolean()),
     }),
   },
   handler: async (ctx, args) => {
@@ -282,12 +360,167 @@ export const updateUser = mutation({
     if (args.data.name !== undefined) update.name = args.data.name;
     if (args.data.email !== undefined) update.email = args.data.email;
     if (args.data.role !== undefined) update.role = args.data.role;
+    if (args.data.username !== undefined) update.username = args.data.username;
+    if (args.data.isActive !== undefined) {
+      update.status = args.data.isActive ? "active" : "suspended";
+    }
+    update.updatedAt = Date.now();
+    update.lastModifiedBy = userMakingRequest._id;
 
     // Update the user
     await ctx.db.patch(args.userId, update);
 
     // Return the updated user
     return await ctx.db.get(args.userId);
+  },
+});
+
+/**
+ * Server-side user provisioning (admin creates/updates Clerk user), authorized via `tenant_session`.
+ * This upserts the core user by Clerk user id and ensures a `userOrganizations` membership exists.
+ */
+export const upsertUserFromClerkAdminViaTenantSession = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    sessionIdHash: v.string(),
+    clerkUserId: v.string(),
+    email: v.string(),
+    name: v.optional(v.string()),
+    username: v.optional(v.string()),
+    role: v.optional(v.string()),
+    isActive: v.optional(v.boolean()),
+    isEmailVerified: v.optional(v.boolean()),
+  },
+  returns: v.object({
+    userId: v.id("users"),
+    membershipId: v.id("userOrganizations"),
+  }),
+  handler: async (ctx, args) => {
+    const session = await ctx.db
+      .query("tenantSessions")
+      .withIndex("by_sessionIdHash", (q) => q.eq("sessionIdHash", args.sessionIdHash))
+      .unique();
+    if (!session || session.revokedAt !== undefined || Date.now() >= session.expiresAt) {
+      throw new Error("Unauthorized: Invalid session");
+    }
+    if (session.organizationId !== args.organizationId) {
+      throw new Error("Unauthorized: Tenant mismatch");
+    }
+
+    const caller = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", session.clerkUserId))
+      .unique();
+    if (!caller) throw new Error("Unauthorized: User not found");
+
+    // Global admin can manage any org; otherwise require org admin/owner.
+    if (caller.role !== "admin") {
+      const membership = await ctx.db
+        .query("userOrganizations")
+        .withIndex("by_user_organization", (q) =>
+          q.eq("userId", caller._id).eq("organizationId", args.organizationId),
+        )
+        .filter((q) => q.eq(q.field("isActive"), true))
+        .unique();
+      if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
+        throwForbidden("Forbidden: Admin privileges required");
+      }
+    }
+
+    const now = Date.now();
+
+    const email = args.email.trim().toLowerCase();
+    if (!email) {
+      throw new Error("Email is required");
+    }
+
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkUserId))
+      .unique();
+
+    let userId: Id<"users">;
+    if (existing) {
+      // Status semantics:
+      // - If explicitly deactivated, force suspended.
+      // - If explicitly activated and previously suspended, restore based on verification.
+      // - Otherwise, preserve existing status.
+      const nextStatus =
+        args.isActive === false
+          ? ("suspended" as const)
+          : args.isActive === true && existing.status === "suspended"
+            ? (args.isEmailVerified ? ("active" as const) : ("pending" as const))
+            : (existing.status ?? "active");
+      await ctx.db.patch(existing._id, {
+        email,
+        name: args.name?.trim() ? args.name.trim() : existing.name,
+        username: args.username?.trim() ? args.username.trim() : existing.username,
+        role: args.role ?? existing.role,
+        status: nextStatus,
+        isEmailVerified:
+          typeof args.isEmailVerified === "boolean"
+            ? args.isEmailVerified
+            : existing.isEmailVerified,
+        updatedAt: now,
+        lastModifiedBy: caller._id,
+      });
+      userId = existing._id;
+    } else {
+      const initialStatus =
+        args.isActive === false
+          ? ("suspended" as const)
+          : (args.isEmailVerified ? ("active" as const) : ("pending" as const));
+      userId = await ctx.db.insert("users", {
+        email,
+        name: args.name?.trim() ? args.name.trim() : undefined,
+        username: args.username?.trim() ? args.username.trim() : undefined,
+        role: args.role ?? "user",
+        status: initialStatus,
+        isEmailVerified:
+          typeof args.isEmailVerified === "boolean" ? args.isEmailVerified : undefined,
+        clerkId: args.clerkUserId,
+        tokenIdentifier: "",
+        externalId: "",
+        addresses: [],
+        createdAt: now,
+        updatedAt: now,
+        createdBy: caller._id,
+        lastModifiedBy: caller._id,
+      });
+    }
+
+    const membershipRole =
+      args.role === "admin" ? ("admin" as const) : ("viewer" as const);
+
+    const existingMembership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_organization", (q) =>
+        q.eq("userId", userId).eq("organizationId", args.organizationId),
+      )
+      .unique();
+
+    let membershipId: Id<"userOrganizations">;
+    if (existingMembership) {
+      await ctx.db.patch(existingMembership._id, {
+        role: existingMembership.role === "owner" ? "owner" : membershipRole,
+        isActive: true,
+        updatedAt: now,
+      });
+      membershipId = existingMembership._id;
+    } else {
+      membershipId = await ctx.db.insert("userOrganizations", {
+        userId,
+        organizationId: args.organizationId,
+        role: membershipRole,
+        isActive: true,
+        invitedBy: caller._id,
+        invitedAt: now,
+        joinedAt: now,
+        updatedAt: now,
+      });
+    }
+
+    return { userId, membershipId };
   },
 });
 
@@ -299,8 +532,17 @@ export const deleteUser = mutation({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    // Check if user is an admin
-    await requireAdmin(ctx);
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throwForbidden("Forbidden: Admin privileges required");
+    }
+    const me = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!me || me.role !== "admin") {
+      throwForbidden("Forbidden: Admin privileges required");
+    }
 
     // Get the user to delete
     const user = await ctx.db.get(args.userId);
@@ -322,23 +564,22 @@ export const deleteUser = mutation({
 
     // Unlink CRM contact (keep contact + tags)
     try {
-      const crmContactsQueries = (components as any)?.launchthat_crm?.contacts
-        ?.queries;
-      const crmContactsMutations = (components as any)?.launchthat_crm?.contacts
-        ?.mutations;
+      // Convex components are optional and not strongly typed in this repo.
+      // Keep this integration best-effort and non-fatal.
+      /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+      const crm = (components as any)?.launchthat_crm;
+      const crmContactsQueries = crm?.contacts?.queries;
+      const crmContactsMutations = crm?.contacts?.mutations;
 
       if (crmContactsQueries?.getContactIdForUser && crmContactsMutations?.updateContact) {
-        const contactId = (await ctx.runQuery(
-          crmContactsQueries.getContactIdForUser,
-          {
-            // Prefer user.organizationId if present; otherwise fall back to global lookup
-            organizationId:
-              typeof (user as any).organizationId === "string"
-                ? ((user as any).organizationId as string)
-                : undefined,
-            userId: String(args.userId),
-          },
-        )) as string | null;
+        const contactId = (await ctx.runQuery(crmContactsQueries.getContactIdForUser, {
+          // Prefer user.organizationId if present; otherwise fall back to global lookup
+          organizationId:
+            typeof (user as any).organizationId === "string"
+              ? (user as any).organizationId
+              : undefined,
+          userId: String(args.userId),
+        })) as string | null;
 
         if (contactId) {
           await ctx.runMutation(crmContactsMutations.updateContact, {
@@ -349,6 +590,7 @@ export const deleteUser = mutation({
           });
         }
       }
+      /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
     } catch (error) {
       // Non-fatal: deleting a user should not fail due to CRM issues
       console.warn("[deleteUser] failed to unlink CRM contact", error);
@@ -369,6 +611,7 @@ export const deleteUser = mutation({
       tokenIdentifier: "",
       clerkId: "",
       externalId: "",
+      lastModifiedBy: me._id,
     });
 
     return { success: true };

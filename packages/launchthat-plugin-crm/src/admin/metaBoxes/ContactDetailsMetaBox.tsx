@@ -48,16 +48,19 @@ export function ContactDetailsMetaBox({
   const [userSelectOpen, setUserSelectOpen] = useState(false);
 
   const usersRaw = useQuery(
-    apiAny.api.core.users.queries.listUsers,
-    {},
+    apiAny.api.core.organizations.queries.getOrganizationMembers,
+    organizationId ? { organizationId } : "skip",
   ) as unknown;
   const userOptions = useMemo(() => {
-    const users = (Array.isArray(usersRaw) ? usersRaw : []) as UserRow[];
-    return users
-      .map((u) => {
-        const id = typeof u._id === "string" ? u._id : "";
-        const email = typeof u.email === "string" ? u.email : "";
-        const name = typeof u.name === "string" ? u.name : "";
+    const members = (Array.isArray(usersRaw) ? usersRaw : []) as Array<{
+      user?: { _id?: string; name?: string; email?: string } | null;
+    }>;
+    return members
+      .map((m) => {
+        const u = (m?.user ?? null) as UserRow | null;
+        const id = typeof u?._id === "string" ? u._id : "";
+        const email = typeof u?.email === "string" ? u.email : "";
+        const name = typeof u?.name === "string" ? u.name : "";
         const label =
           name && email ? `${name} (${email})` : name || email || id;
         return id ? { id, label } : null;

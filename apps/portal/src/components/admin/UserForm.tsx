@@ -1,9 +1,10 @@
 "use client";
 
-import type { Id } from "@/convex/_generated/dataModel";
+import type { Id } from "@convex-config/_generated/dataModel";
 import React, { useEffect } from "react";
-import { api } from "@/convex/_generated/api";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { api } from "@portal/convexspec";
 import { useMutation, useQuery } from "convex/react";
 import { Save, X } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -54,6 +55,8 @@ const userFormSchema = z.object({
 
 type UserFormValues = z.infer<typeof userFormSchema>;
 
+type UserFormComponent = "General" | "Role" | "Settings";
+
 export interface UserFormProps {
   userId?: Id<"users">;
   open?: boolean;
@@ -79,6 +82,8 @@ export function UserForm({
   components = ["General", "Role", "Settings"], // Default to all components
   mode = "dialog",
 }: UserFormProps) {
+  const router = useRouter();
+
   // Queries - always call hooks in the same order
   const existingUser = useQuery(
     api.core.users.queries.getUserById,
@@ -86,8 +91,7 @@ export function UserForm({
   );
 
   // Mutations
-  const createUser = useMutation(api.core.users.createOrGetUser);
-  const updateUser = useMutation(api.core.users.updateUser);
+  const updateUser = useMutation(api.core.users.mutations.updateUser);
 
   // Form setup
   const form = useForm<UserFormValues>({
@@ -106,10 +110,12 @@ export function UserForm({
     if (existingUser) {
       form.reset({
         name: existingUser.name ?? "",
-        email: existingUser.email ?? "",
+        email: existingUser.email,
         role: existingUser.role ?? "user",
         username: existingUser.username ?? "",
-        isActive: existingUser.isActive ?? true,
+        isActive:
+          existingUser.status !== "suspended" &&
+          existingUser.status !== "deleted",
       });
     }
   }, [existingUser, form]);
@@ -122,9 +128,8 @@ export function UserForm({
   }, [open, form, mode]);
 
   // Helper to check if component should be shown
-  const shouldShowComponent = (component: string) => {
-    return components.includes(component as any);
-  };
+  const shouldShowComponent = (component: UserFormComponent) =>
+    components.includes(component);
 
   // Handle form submission
   const handleSubmit = async (data: UserFormValues) => {
@@ -138,26 +143,43 @@ export function UserForm({
           name: data.name,
           email: data.email,
           role: data.role,
-          username: data.username || undefined,
+          username: data.username ?? undefined,
           isActive: data.isActive,
         };
 
         if (userId) {
           // Update existing user
-          const result: any = await updateUser({
+          await updateUser({
             userId,
             data: submitData,
           });
           toast.success("User updated successfully");
         } else {
-          // Create new user
-          const result: any = await createUser({
-            name: data.name,
-            email: data.email,
-            role: data.role as any,
-            isActive: data.isActive,
+          // Create new user in Clerk and assign to the current tenant org, then mirror to Convex.
+          const res = await fetch("/api/clerk/users/admin-upsert-and-assign", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              name: submitData.name,
+              email: submitData.email,
+              role: submitData.role,
+              username: submitData.username,
+              isActive: submitData.isActive,
+            }),
           });
+
+          const json = (await res.json().catch(() => null)) as {
+            ok?: boolean;
+            error?: string;
+          } | null;
+
+          if (!res.ok) {
+            throw new Error(json?.error ?? "Failed to create user");
+          }
+
           toast.success("User created successfully");
+          router.refresh();
         }
       }
 

@@ -19,6 +19,7 @@ export interface AdminDashboardMetaBox {
   description?: string | null;
   location: AdminDashboardMetaBoxLocation;
   priority: number;
+  defaultWidth?: "half" | "full";
   render: (ctx: AdminDashboardContext) => ReactNode;
 }
 

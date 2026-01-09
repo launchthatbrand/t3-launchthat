@@ -7,7 +7,7 @@ import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 
 import { Button } from "@acme/ui/button";
-import { Card, CardContent } from "@acme/ui/card";
+import { DashboardMetricCard } from "~/components/admin/DashboardMetricCard";
 
 interface Props {
   organizationId: string;
@@ -40,24 +40,16 @@ export const CrmDashboardMetaBox = ({ organizationId }: Props) => {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-2">
-        <Card>
-          <CardContent className="space-y-1 p-4">
-            <div className="text-sm font-medium">Marketing tags</div>
-            <div className="text-2xl font-semibold">{tagCount}</div>
-            <div className="text-muted-foreground text-xs">
-              Organization-scoped tag catalog
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="space-y-1 p-4">
-            <div className="text-sm font-medium">Contacts</div>
-            <div className="text-2xl font-semibold">{contactCount}</div>
-            <div className="text-muted-foreground text-xs">
-              Showing recent up to 50
-            </div>
-          </CardContent>
-        </Card>
+        <DashboardMetricCard
+          title="Marketing tags"
+          value={tagCount}
+          subtitle="Organization-scoped tag catalog"
+        />
+        <DashboardMetricCard
+          title="Contacts"
+          value={contactCount}
+          subtitle="Showing recent up to 50"
+        />
       </div>
 
       <div className="flex flex-wrap gap-2">

@@ -11,6 +11,8 @@
 import type * as auth_exchange from "../auth/exchange.js";
 import type * as auth_sessions from "../auth/sessions.js";
 import type * as constants from "../constants.js";
+import type * as core_adminUiLayouts_mutations from "../core/adminUiLayouts/mutations.js";
+import type * as core_adminUiLayouts_queries from "../core/adminUiLayouts/queries.js";
 import type * as core_auditLog_queries from "../core/auditLog/queries.js";
 import type * as core_categories_mutations from "../core/categories/mutations.js";
 import type * as core_categories_queries from "../core/categories/queries.js";
@@ -48,6 +50,8 @@ import type * as core_organizations_domains from "../core/organizations/domains.
 import type * as core_organizations_domainsInternal from "../core/organizations/domainsInternal.js";
 import type * as core_organizations_emailDomains from "../core/organizations/emailDomains.js";
 import type * as core_organizations_helpers from "../core/organizations/helpers.js";
+import type * as core_organizations_membershipsInternal from "../core/organizations/membershipsInternal.js";
+import type * as core_organizations_membershipsInternalQueries from "../core/organizations/membershipsInternalQueries.js";
 import type * as core_organizations_mutations from "../core/organizations/mutations.js";
 import type * as core_organizations_queries from "../core/organizations/queries.js";
 import type * as core_organizations_seed from "../core/organizations/seed.js";
@@ -218,6 +222,8 @@ declare const fullApi: ApiFromModules<{
   "auth/exchange": typeof auth_exchange;
   "auth/sessions": typeof auth_sessions;
   constants: typeof constants;
+  "core/adminUiLayouts/mutations": typeof core_adminUiLayouts_mutations;
+  "core/adminUiLayouts/queries": typeof core_adminUiLayouts_queries;
   "core/auditLog/queries": typeof core_auditLog_queries;
   "core/categories/mutations": typeof core_categories_mutations;
   "core/categories/queries": typeof core_categories_queries;
@@ -255,6 +261,8 @@ declare const fullApi: ApiFromModules<{
   "core/organizations/domainsInternal": typeof core_organizations_domainsInternal;
   "core/organizations/emailDomains": typeof core_organizations_emailDomains;
   "core/organizations/helpers": typeof core_organizations_helpers;
+  "core/organizations/membershipsInternal": typeof core_organizations_membershipsInternal;
+  "core/organizations/membershipsInternalQueries": typeof core_organizations_membershipsInternalQueries;
   "core/organizations/mutations": typeof core_organizations_mutations;
   "core/organizations/queries": typeof core_organizations_queries;
   "core/organizations/seed": typeof core_organizations_seed;

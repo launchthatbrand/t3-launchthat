@@ -1,8 +1,3 @@
- 
- 
- 
- 
- 
 import { Copy, Loader2, PenSquare } from "lucide-react";
 
 import { registerMetaBoxHook } from "@acme/admin-runtime";
@@ -47,7 +42,7 @@ const ActionsMetaBox = ({ context }: { context: AdminMetaBoxContext }) => {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-4 rounded-md border p-3">
+      <div className="space-y-4">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-muted-foreground text-xs font-semibold uppercase">

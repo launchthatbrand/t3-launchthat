@@ -147,6 +147,7 @@ export const enhanceCrmPluginDefinition = (
               description: "Contacts and marketing tags overview.",
               location: "main",
               priority: 20,
+              defaultWidth: "half",
               render: () => <CrmDashboardMetaBox organizationId={orgId} />,
             });
             return list;

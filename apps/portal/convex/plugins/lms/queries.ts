@@ -150,6 +150,67 @@ export const listCourses = query({
   },
 });
 
+export const getDashboardSummary = query({
+  args: {
+    organizationId: v.string(),
+  },
+  returns: v.object({
+    courseCount: v.number(),
+    publishedCourseCount: v.number(),
+    enrollmentCount: v.number(),
+    activeEnrollmentCount: v.number(),
+    coursesCountedForEnrollments: v.number(),
+    enrollmentsTruncated: v.boolean(),
+  }),
+  handler: async (ctx: any, args: any) => {
+    const courses = (await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getAllPosts,
+      {
+        organizationId: args.organizationId,
+        filters: { postTypeSlug: "courses", limit: 200 },
+      },
+    )) as any[];
+
+    const list = Array.isArray(courses) ? courses : [];
+    const courseCount = list.length;
+    const publishedCourseCount = list.filter(
+      (c) => (c?.status ?? "") === "published",
+    ).length;
+
+    const maxCoursesForEnrollmentCount = 50;
+    const coursesToCount = list.slice(0, maxCoursesForEnrollmentCount);
+    const enrollmentsTruncated = list.length > coursesToCount.length;
+
+    let enrollmentCount = 0;
+    let activeEnrollmentCount = 0;
+
+    for (const course of coursesToCount) {
+      const courseId = String(course?._id ?? "");
+      if (!courseId) continue;
+
+      const enrollments = (await ctx.runQuery(
+        components.launchthat_lms.enrollments.queries.listEnrollmentsForCourse,
+        { courseId },
+      )) as any[];
+
+      if (!Array.isArray(enrollments)) continue;
+      enrollmentCount += enrollments.length;
+      activeEnrollmentCount += enrollments.filter(
+        (e) => (e?.status ?? "") === "active",
+      ).length;
+    }
+
+    return {
+      courseCount,
+      publishedCourseCount,
+      enrollmentCount,
+      activeEnrollmentCount,
+      coursesCountedForEnrollments: coursesToCount.length,
+      enrollmentsTruncated,
+    };
+  },
+});
+
 export const listCertificates = query({
   args: {
     organizationId: v.optional(v.id("organizations")),

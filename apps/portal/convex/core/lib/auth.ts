@@ -18,10 +18,26 @@ export async function getAuthenticatedUserId(
       "User not authenticated. Unable to retrieve user identity.",
     );
   }
-  // Assuming the subject is the user's ID in the "users" table.
-  // If your user ID / subject comes from a different source or has a different type,
-  // adjust the return type and casting accordingly.
-  return identity.subject as Id<"users">;
+  // Prefer resolving by tokenIdentifier, but fall back to Clerk subject (clerk user id).
+  let user =
+    (await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique()) ?? null;
+  if (!user && typeof identity.subject === "string" && identity.subject.trim()) {
+    user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+  }
+
+  if (!user) {
+    throw new Error("User not found in database");
+  }
+
+  return user._id;
 }
 
 /**
@@ -49,6 +65,19 @@ export async function getOptionalAuthenticatedUserId(
   ctx: QueryCtx | MutationCtx | ActionCtx,
 ): Promise<Id<"users"> | null> {
   const identity = await ctx.auth.getUserIdentity();
-  const subject = identity?.subject;
-  return subject ? (subject as Id<"users">) : null;
+  if (!identity) return null;
+  let user =
+    (await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique()) ?? null;
+  if (!user && typeof identity.subject === "string" && identity.subject.trim()) {
+    user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+  }
+  return user?._id ?? null;
 }

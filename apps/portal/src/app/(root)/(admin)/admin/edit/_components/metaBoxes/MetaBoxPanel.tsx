@@ -18,6 +18,8 @@ export interface MetaBoxPanelProps {
   onToggle: (nextOpen: boolean) => void;
   children: ReactNode;
   variant: MetaBoxPanelVariant;
+  headerLeading?: ReactNode;
+  headerActions?: ReactNode;
 }
 
 export const MetaBoxPanel = ({
@@ -28,6 +30,8 @@ export const MetaBoxPanel = ({
   onToggle,
   children,
   variant,
+  headerLeading,
+  headerActions,
 }: MetaBoxPanelProps) => {
   const headerClassName =
     variant === "sidebar"
@@ -50,17 +54,34 @@ export const MetaBoxPanel = ({
     >
       <AccordionItem value={id} className="border-none">
         <AccordionTrigger className={cn(headerClassName, "border-b")}>
-          <div className="flex flex-col text-left">
-            <span className="text-md font-semibold">{title}</span>
-            {description ? (
-              <span
-                className={cn(
-                  "text-muted-foreground",
-                  variant === "sidebar" ? "text-xs" : "text-sm",
-                )}
+          <div className="flex w-full items-start justify-between gap-3 text-left">
+            <div className="flex items-start gap-2">
+              {headerLeading ? <div className="pt-0.5">{headerLeading}</div> : null}
+              <div className="flex flex-col">
+                <span className="text-md font-semibold">{title}</span>
+                {description ? (
+                  <span
+                    className={cn(
+                      "text-muted-foreground",
+                      variant === "sidebar" ? "text-xs" : "text-sm",
+                    )}
+                  >
+                    {description}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+            {headerActions ? (
+              <div
+                className="flex items-center gap-2"
+                onClick={(e) => {
+                  // Prevent clicking actions (e.g. resize) from toggling the accordion.
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
               >
-                {description}
-              </span>
+                {headerActions}
+              </div>
             ) : null}
           </div>
         </AccordionTrigger>

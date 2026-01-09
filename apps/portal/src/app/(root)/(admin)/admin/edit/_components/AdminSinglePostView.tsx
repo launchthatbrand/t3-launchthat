@@ -23,6 +23,10 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 
+import type { Active, DragEndEvent, DragStartEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { BuilderDndProvider, DragOverlayPreview, SortableItem } from "@acme/dnd";
+
 import type {
   MetaBoxLocation,
   RegisteredMetaBox,
@@ -313,6 +317,7 @@ export function AdminSinglePostView({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const isEditingPage = searchParams.get("editLayout") === "1";
   const createPost = useCreatePost();
   const [title, setTitle] = useState(post?.title ?? "");
   const [slugValue, setSlugValue] = useState(post?.slug ?? "");
@@ -380,6 +385,72 @@ export function AdminSinglePostView({
     [postType?.slug, slug],
   );
   const { metaBoxStates, setMetaBoxState } = useMetaBoxState();
+  const [adminUiAreas, setAdminUiAreas] = useState<{
+    main: Array<{ id: string; width: "half" | "full" }>;
+    sidebar: Array<{ id: string }>;
+  }>({ main: [], sidebar: [] });
+  const saveTimerRef = useRef<number | null>(null);
+
+  const savedAdminUiLayout = useQuery(
+    api.core.adminUiLayouts.queries.getMyAdminUiLayout,
+    organizationId
+      ? {
+          organizationId,
+          scope: "singlePost",
+          postTypeSlug: slug,
+        }
+      : "skip",
+  ) as
+    | {
+        areas: {
+          main: Array<{ id: string; width: "half" | "full" }>;
+          sidebar: Array<{ id: string }>;
+        };
+        version: number;
+        updatedAt: number;
+      }
+    | null
+    | undefined;
+
+  const upsertAdminUiLayout = useMutation(
+    api.core.adminUiLayouts.mutations.upsertMyAdminUiLayout,
+  );
+
+  useEffect(() => {
+    if (!savedAdminUiLayout?.areas) {
+      return;
+    }
+    setAdminUiAreas(savedAdminUiLayout.areas);
+  }, [savedAdminUiLayout?.updatedAt]);
+
+  const scheduleSaveAdminUiLayout = useCallback(
+    (nextAreas: {
+      main: Array<{ id: string; width: "half" | "full" }>;
+      sidebar: Array<{ id: string }>;
+    }) => {
+      if (!organizationId) return;
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+      saveTimerRef.current = window.setTimeout(() => {
+        void upsertAdminUiLayout({
+          organizationId,
+          scope: "singlePost",
+          postTypeSlug: slug,
+          areas: nextAreas,
+        });
+      }, 400);
+    },
+    [organizationId, slug, upsertAdminUiLayout],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, []);
   const defaultTab =
     pluginSingleView?.config.defaultTab ?? pluginTabs[0]?.slug ?? "edit";
   const tabParam =
@@ -1447,7 +1518,7 @@ export function AdminSinglePostView({
     ],
   );
 
-  const renderMetaBoxList = (
+  const renderMetaBoxListStatic = (
     metaBoxes: ResolvedMetaBox[],
     variant: "main" | "sidebar",
   ) => {
@@ -1481,6 +1552,331 @@ export function AdminSinglePostView({
           );
         })}
       </div>
+    );
+  };
+
+  const SortableMetaBoxArea = ({
+    area,
+    metaBoxes,
+    variant,
+  }: {
+    area: "main" | "sidebar";
+    metaBoxes: ResolvedMetaBox[];
+    variant: "main" | "sidebar";
+  }) => {
+    const [activeDragItem, setActiveDragItem] = useState<Active | null>(null);
+
+    const sortedBoxes = useMemo(() => sortMetaBoxes(metaBoxes), [metaBoxes]);
+    const boxById = useMemo(() => {
+      const map = new Map<string, ResolvedMetaBox>();
+      sortedBoxes.forEach((box) => map.set(box.id, box));
+      return map;
+    }, [sortedBoxes]);
+
+    const defaultMain = useMemo(
+      () =>
+        sortedBoxes.map((box) => ({
+          id: box.id,
+          width: "full" as const,
+        })),
+      [sortedBoxes],
+    );
+    const defaultSidebar = useMemo(
+      () => sortedBoxes.map((box) => ({ id: box.id })),
+      [sortedBoxes],
+    );
+
+    const mergedMain = useMemo(() => {
+      const available = new Set(defaultMain.map((i) => i.id));
+      const seen = new Set<string>();
+      const out: Array<{ id: string; width: "half" | "full" }> = [];
+      const base = adminUiAreas.main.length > 0 ? adminUiAreas.main : defaultMain;
+      for (const item of base) {
+        if (!available.has(item.id) || seen.has(item.id)) continue;
+        seen.add(item.id);
+        out.push({
+          id: item.id,
+          width: item.width === "half" ? "half" : "full",
+        });
+      }
+      for (const item of defaultMain) {
+        if (seen.has(item.id)) continue;
+        out.push(item);
+      }
+      return out;
+    }, [adminUiAreas.main, defaultMain]);
+
+    const mergedSidebar = useMemo(() => {
+      const available = new Set(defaultSidebar.map((i) => i.id));
+      const seen = new Set<string>();
+      const out: Array<{ id: string }> = [];
+      const base =
+        adminUiAreas.sidebar.length > 0 ? adminUiAreas.sidebar : defaultSidebar;
+      for (const item of base) {
+        if (!available.has(item.id) || seen.has(item.id)) continue;
+        seen.add(item.id);
+        out.push({ id: item.id });
+      }
+      for (const item of defaultSidebar) {
+        if (seen.has(item.id)) continue;
+        out.push(item);
+      }
+      return out;
+    }, [adminUiAreas.sidebar, defaultSidebar]);
+
+    if (!organizationId) {
+      return renderMetaBoxListStatic(metaBoxes, variant);
+    }
+
+    // When not in edit mode, keep the user's saved ordering + widths, but lock the UI:
+    // - No drag-and-drop handles
+    // - No width toggles
+    if (!isEditingPage) {
+      if (area === "sidebar") {
+        return (
+          <div className="space-y-4">
+            {mergedSidebar.map((item) => {
+              const metaBox = boxById.get(item.id);
+              if (!metaBox) return null;
+              const storageKey = `${slug}:${metaBox.id}`;
+              const shouldDefaultClosed =
+                isNewRecord &&
+                ((metaBox.id === "core-attachments" &&
+                  (attachmentsContext?.attachments?.length ?? 0) === 0) ||
+                  metaBox.id === "core-taxonomy");
+              const isOpen = metaBoxStates[storageKey] ?? !shouldDefaultClosed;
+              return (
+                <MetaBoxPanel
+                  key={metaBox.id}
+                  id={metaBox.id}
+                  title={metaBox.title}
+                  description={metaBox.description}
+                  isOpen={isOpen}
+                  onToggle={(nextOpen) => setMetaBoxState(storageKey, nextOpen)}
+                  variant="sidebar"
+                >
+                  {metaBox.render()}
+                </MetaBoxPanel>
+              );
+            })}
+          </div>
+        );
+      }
+
+      return (
+        <div className="grid gap-4 md:grid-cols-12">
+          {mergedMain.map((item) => {
+            const metaBox = boxById.get(item.id);
+            if (!metaBox) return null;
+            const storageKey = `${slug}:${metaBox.id}`;
+            const shouldDefaultClosed =
+              isNewRecord &&
+              ((metaBox.id === "core-attachments" &&
+                (attachmentsContext?.attachments?.length ?? 0) === 0) ||
+                metaBox.id === "core-taxonomy");
+            const isOpen = metaBoxStates[storageKey] ?? !shouldDefaultClosed;
+            return (
+              <div
+                key={metaBox.id}
+                className={item.width === "half" ? "md:col-span-6" : "md:col-span-12"}
+              >
+                <MetaBoxPanel
+                  id={metaBox.id}
+                  title={metaBox.title}
+                  description={metaBox.description}
+                  isOpen={isOpen}
+                  onToggle={(nextOpen) => setMetaBoxState(storageKey, nextOpen)}
+                  variant="main"
+                >
+                  {metaBox.render()}
+                </MetaBoxPanel>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (area === "sidebar") {
+      return (
+        <BuilderDndProvider
+          onDragStart={(event: DragStartEvent) => setActiveDragItem(event.active)}
+          onDragCancel={() => setActiveDragItem(null)}
+          onDragEnd={(event: DragEndEvent) => {
+            setActiveDragItem(null);
+            const { active, over } = event;
+            if (!active?.id || !over?.id || active.id === over.id) return;
+            setAdminUiAreas((prev) => {
+              const oldIndex = mergedSidebar.findIndex(
+                (item) => item.id === String(active.id),
+              );
+              const newIndex = mergedSidebar.findIndex(
+                (item) => item.id === String(over.id),
+              );
+              if (oldIndex === -1 || newIndex === -1) return prev;
+              const nextSidebar = arrayMove(mergedSidebar, oldIndex, newIndex);
+              const nextAreas = { ...prev, sidebar: nextSidebar };
+              scheduleSaveAdminUiLayout(nextAreas);
+              return nextAreas;
+            });
+          }}
+        >
+          <SortableContext
+            items={mergedSidebar.map((item) => item.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-4">
+              {mergedSidebar.map((item) => {
+                const metaBox = boxById.get(item.id);
+                if (!metaBox) return null;
+                const storageKey = `${slug}:${metaBox.id}`;
+                const shouldDefaultClosed =
+                  isNewRecord &&
+                  ((metaBox.id === "core-attachments" &&
+                    (attachmentsContext?.attachments?.length ?? 0) === 0) ||
+                    metaBox.id === "core-taxonomy");
+                const isOpen =
+                  metaBoxStates[storageKey] ?? !shouldDefaultClosed;
+                return (
+                  <SortableItem
+                    key={metaBox.id}
+                    id={metaBox.id}
+                    className="border-0 bg-transparent shadow-none items-stretch p-0"
+                    handleClassName="h-12 px-1"
+                  >
+                    <MetaBoxPanel
+                      id={metaBox.id}
+                      title={metaBox.title}
+                      description={metaBox.description}
+                      isOpen={isOpen}
+                      onToggle={(nextOpen) => setMetaBoxState(storageKey, nextOpen)}
+                      variant="sidebar"
+                    >
+                      {metaBox.render()}
+                    </MetaBoxPanel>
+                  </SortableItem>
+                );
+              })}
+            </div>
+          </SortableContext>
+          <DragOverlayPreview
+            active={activeDragItem}
+            resolveItem={(active: Active) => {
+              const box = boxById.get(String(active.id));
+              if (!box) return null;
+              return {
+                id: box.id,
+                label: box.title,
+                className: "rounded border bg-card px-3 py-2 text-sm shadow-lg",
+              };
+            }}
+          />
+        </BuilderDndProvider>
+      );
+    }
+
+    return (
+      <BuilderDndProvider
+        onDragStart={(event: DragStartEvent) => setActiveDragItem(event.active)}
+        onDragCancel={() => setActiveDragItem(null)}
+        onDragEnd={(event: DragEndEvent) => {
+          setActiveDragItem(null);
+          const { active, over } = event;
+          if (!active?.id || !over?.id || active.id === over.id) return;
+          setAdminUiAreas((prev) => {
+            const oldIndex = mergedMain.findIndex(
+              (item) => item.id === String(active.id),
+            );
+            const newIndex = mergedMain.findIndex(
+              (item) => item.id === String(over.id),
+            );
+            if (oldIndex === -1 || newIndex === -1) return prev;
+            const nextMain = arrayMove(mergedMain, oldIndex, newIndex);
+            const nextAreas = { ...prev, main: nextMain };
+            scheduleSaveAdminUiLayout(nextAreas);
+            return nextAreas;
+          });
+        }}
+      >
+        <SortableContext
+          items={mergedMain.map((item) => item.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="grid gap-4 md:grid-cols-12">
+            {mergedMain.map((item) => {
+              const metaBox = boxById.get(item.id);
+              if (!metaBox) return null;
+              const storageKey = `${slug}:${metaBox.id}`;
+              const shouldDefaultClosed =
+                isNewRecord &&
+                ((metaBox.id === "core-attachments" &&
+                  (attachmentsContext?.attachments?.length ?? 0) === 0) ||
+                  metaBox.id === "core-taxonomy");
+              const isOpen = metaBoxStates[storageKey] ?? !shouldDefaultClosed;
+
+              return (
+                <div
+                  key={metaBox.id}
+                  className={item.width === "half" ? "md:col-span-6" : "md:col-span-12"}
+                >
+                  <SortableItem
+                    id={metaBox.id}
+                    className="border-0 bg-transparent shadow-none items-stretch p-0"
+                    handleClassName="h-12 px-1"
+                  >
+                    <MetaBoxPanel
+                      id={metaBox.id}
+                      title={metaBox.title}
+                      description={metaBox.description}
+                      isOpen={isOpen}
+                      onToggle={(nextOpen) => setMetaBoxState(storageKey, nextOpen)}
+                      variant="main"
+                      headerActions={
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => {
+                            setAdminUiAreas((prev) => {
+                              const nextMain = mergedMain.map((m) =>
+                                m.id === metaBox.id
+                                  ? {
+                                      ...m,
+                                      width: m.width === "half" ? "full" : "half",
+                                    }
+                                  : m,
+                              );
+                              const nextAreas = { ...prev, main: nextMain };
+                              scheduleSaveAdminUiLayout(nextAreas);
+                              return nextAreas;
+                            });
+                          }}
+                        >
+                          {item.width === "half" ? "Full width" : "Half width"}
+                        </Button>
+                      }
+                    >
+                      {metaBox.render()}
+                    </MetaBoxPanel>
+                  </SortableItem>
+                </div>
+              );
+            })}
+          </div>
+        </SortableContext>
+        <DragOverlayPreview
+          active={activeDragItem}
+          resolveItem={(active: Active) => {
+            const box = boxById.get(String(active.id));
+            if (!box) return null;
+            return {
+              id: box.id,
+              label: box.title,
+              className: "rounded border bg-card px-3 py-2 text-sm shadow-lg",
+            };
+          }}
+        />
+      </BuilderDndProvider>
     );
   };
 
@@ -2149,7 +2545,7 @@ export function AdminSinglePostView({
     return (
       <div className="container space-y-6 py-6">
         {saveError && <p className="text-destructive text-sm">{saveError}</p>}
-        {renderMetaBoxList(resolvedMetaBoxes, "main")}
+        <SortableMetaBoxArea area="main" metaBoxes={resolvedMetaBoxes} variant="main" />
         {afterContentSlots}
       </div>
     );
@@ -2176,7 +2572,7 @@ export function AdminSinglePostView({
     return (
       <div className="container space-y-6 py-6">
         {saveError && <p className="text-destructive text-sm">{saveError}</p>}
-        {renderMetaBoxList(resolvedMetaBoxes, "main")}
+        {renderMetaBoxListStatic(resolvedMetaBoxes, "main")}
       </div>
     );
   };
@@ -2208,7 +2604,11 @@ export function AdminSinglePostView({
     return (
       <div className="space-y-4">
         {sidebarTopSlots}
-        {renderMetaBoxList(resolvedMetaBoxes, "sidebar")}
+        <SortableMetaBoxArea
+          area="sidebar"
+          metaBoxes={resolvedMetaBoxes}
+          variant="sidebar"
+        />
         {sidebarBottomSlots}
       </div>
     );

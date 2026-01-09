@@ -4,7 +4,8 @@ import "~/lib/plugins/installHooks";
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { LayoutGrid } from "lucide-react";
 
 import { applyFilters } from "@acme/admin-runtime/hooks";
 import {
@@ -26,6 +27,7 @@ import {
   navigationMenuTriggerStyle,
 } from "@acme/ui/navigation-menu";
 import { ThemeToggleButton } from "@acme/ui/theme";
+import { Button } from "@acme/ui/button";
 
 import { PortalNavUser } from "~/components/auth/PortalNavUser";
 import { NotificationIcon } from "~/components/notifications/NotificationIcon";
@@ -230,7 +232,14 @@ const _MainHeader = () => {
 
 const Breadcrumbs = () => {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const paths = pathname.split("/").filter(Boolean);
+  const isAdminDashboard = pathname === "/admin";
+  const isAdminSinglePostEdit = pathname === "/admin/edit";
+  const hasPostId = Boolean(searchParams.get("post_id"));
+  const shouldShowEditLayout = isAdminDashboard || (isAdminSinglePostEdit && hasPostId);
+  const isEditingLayout = searchParams.get("editLayout") === "1";
 
   // Create breadcrumb items from the path
   const getBreadcrumbItems = () => {
@@ -277,7 +286,31 @@ const Breadcrumbs = () => {
 
   return (
     <Breadcrumb className="bg-sidebar hidden items-center border-b px-6 py-2 shadow-sm md:flex">
-      <BreadcrumbList>{getBreadcrumbItems()}</BreadcrumbList>
+      <div className="flex w-full items-center justify-between gap-4">
+        <BreadcrumbList>{getBreadcrumbItems()}</BreadcrumbList>
+        {shouldShowEditLayout ? (
+          <Button
+            type="button"
+            size="sm"
+            variant={isEditingLayout ? "secondary" : "default"}
+            aria-pressed={isEditingLayout}
+            className="gap-2"
+            onClick={() => {
+              const next = new URLSearchParams(searchParams.toString());
+              if (isEditingLayout) {
+                next.delete("editLayout");
+              } else {
+                next.set("editLayout", "1");
+              }
+              const qs = next.toString();
+              router.replace(qs ? `${pathname}?${qs}` : pathname);
+            }}
+          >
+            <LayoutGrid className="h-4 w-4" />
+            Edit layout
+          </Button>
+        ) : null}
+      </div>
     </Breadcrumb>
   );
 };

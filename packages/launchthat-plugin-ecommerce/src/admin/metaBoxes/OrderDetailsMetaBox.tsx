@@ -77,6 +77,8 @@ export function OrderDetailsMetaBox({
 }: PluginMetaBoxRendererProps) {
   const canEdit = Boolean(context.postId) || context.isNewRecord;
   const [assignedUserSearch, setAssignedUserSearch] = useState("");
+  const organizationId =
+    typeof context.organizationId === "string" ? context.organizationId : null;
 
   const assignedUserId = useMemo(() => {
     const adminKey = asString(getValue(ORDER_ADMIN_USER_ID_KEY)).trim();
@@ -86,20 +88,27 @@ export function OrderDetailsMetaBox({
     return "";
   }, [getValue]);
 
-  const allUsers = useQuery(
-    (api.core.users.queries as any).listUsers,
-    {},
-  ) as Array<{ _id: string; email: string; name?: string }> | undefined;
+  const members = useQuery(
+    (api.core.organizations.queries as any).getOrganizationMembers,
+    organizationId ? { organizationId } : "skip",
+  ) as
+    | Array<{
+        user?: { _id?: string; email?: string; name?: string } | null;
+      }>
+    | undefined;
 
   const filteredUserOptions = useMemo(() => {
     const term = assignedUserSearch.trim().toLowerCase();
-    const list = Array.isArray(allUsers) ? allUsers : [];
+    const list = Array.isArray(members) ? members : [];
     const normalized = list
-      .map((u) => ({
-        id: String(u._id),
-        email: typeof u.email === "string" ? u.email : "",
-        name: typeof u.name === "string" ? u.name : "",
-      }))
+      .map((m) => {
+        const u = m?.user ?? null;
+        const id = typeof u?._id === "string" ? u._id : "";
+        const email = typeof u?.email === "string" ? u.email : "";
+        const name = typeof u?.name === "string" ? u.name : "";
+        return id && email ? { id, email, name } : null;
+      })
+      .filter((u): u is NonNullable<typeof u> => u !== null)
       .filter((u) => Boolean(u.id) && Boolean(u.email));
 
     const filtered = term
@@ -112,7 +121,7 @@ export function OrderDetailsMetaBox({
     return filtered
       .sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email))
       .slice(0, 50);
-  }, [allUsers, assignedUserSearch]);
+  }, [members, assignedUserSearch]);
 
   const assignedUser = useQuery(
     (api.core.users.queries as any).getUserById,

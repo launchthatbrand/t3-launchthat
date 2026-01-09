@@ -3,7 +3,7 @@ import { ConvexError, v } from "convex/values";
 
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
-import type { EmailDesignKey, EmailTemplateDefinition } from "./reactEmail";
+import type { EmailDesignKey } from "./reactEmail";
 import { internal } from "../../_generated/api";
 import {
   internalAction,
@@ -20,7 +20,10 @@ import {
 } from "./reactEmail";
 import { interpolateTemplateVariables } from "./render";
 
-type TemplateKey = string;
+// Generated `internal` typings can lag behind when adding new modules/functions.
+// Use `internalAny` to avoid type churn while still keeping runtime correctness.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
+const internalAny: any = internal;
 
 type FromMode = "portal" | "custom";
 
@@ -29,6 +32,105 @@ type TemplateDesignOverrideKey = "inherit" | "clean" | "bold" | "minimal";
 const normalizeOrgId = (orgId: Id<"organizations"> | null | undefined) =>
   orgId ?? PORTAL_TENANT_ID;
 
+const requireOrgAdminFromTenantSession = async (
+  ctx: Pick<QueryCtx, "db">,
+  args: { orgId: Id<"organizations">; sessionIdHash: string },
+) => {
+  const session = await ctx.db
+    .query("tenantSessions")
+    .withIndex("by_sessionIdHash", (q) =>
+      q.eq("sessionIdHash", args.sessionIdHash),
+    )
+    .unique();
+  if (
+    !session ||
+    session.revokedAt !== undefined ||
+    Date.now() >= session.expiresAt
+  ) {
+    throw new ConvexError("Unauthorized: Invalid session");
+  }
+  if (session.organizationId !== args.orgId) {
+    throw new ConvexError("Unauthorized: Tenant mismatch");
+  }
+
+  const caller = await ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q) => q.eq("clerkId", session.clerkUserId))
+    .unique();
+  if (!caller) {
+    throw new ConvexError("Unauthorized: User not found");
+  }
+
+  if (caller.role === "admin") return;
+
+  const membership = await ctx.db
+    .query("userOrganizations")
+    .withIndex("by_user_organization", (q) =>
+      q.eq("userId", caller._id).eq("organizationId", args.orgId),
+    )
+    .unique();
+
+  if (!membership || membership.isActive === false) {
+    throw new ConvexError("Forbidden: Admin privileges required");
+  }
+  if (membership.role !== "owner" && membership.role !== "admin") {
+    throw new ConvexError("Forbidden: Admin privileges required");
+  }
+};
+
+const computeSendMetaForOrg = async (
+  ctx: Pick<QueryCtx | MutationCtx, "db">,
+  orgId: Id<"organizations">,
+): Promise<{
+  orgId: Id<"organizations">;
+  enabled: boolean;
+  fromName: string;
+  fromEmail: string;
+  replyToEmail: string | null;
+}> => {
+  const settings: Doc<"emailSettings"> | null = await ctx.db
+    .query("emailSettings")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .first();
+  if (!settings) {
+    throw new ConvexError(
+      "Email settings not configured for this organization.",
+    );
+  }
+  if (!settings.enabled) {
+    return {
+      orgId,
+      enabled: false,
+      fromName: settings.fromName,
+      fromEmail: settings.fromEmail,
+      replyToEmail: settings.replyToEmail ?? null,
+    };
+  }
+
+  const portalDomain = getPortalSendingDomain();
+  const parsed = parseEmailAddress(settings.fromEmail);
+  const fromMode: FromMode =
+    (settings as unknown as { fromMode?: FromMode }).fromMode ??
+    (parsed?.domain === portalDomain ? "portal" : "custom");
+  const fromLocalPart: string =
+    (settings as unknown as { fromLocalPart?: string }).fromLocalPart ??
+    parsed?.localPart ??
+    "info";
+
+  const { fromEmail } = await assertSenderAllowed(ctx, {
+    orgId,
+    fromMode,
+    fromLocalPart,
+  });
+
+  return {
+    orgId,
+    enabled: true,
+    fromName: settings.fromName,
+    fromEmail,
+    replyToEmail: settings.replyToEmail ?? null,
+  };
+};
 const getPortalSendingDomain = (): string => {
   // eslint-disable-next-line turbo/no-undeclared-env-vars
   const configured = process.env.PORTAL_SENDING_DOMAIN;
@@ -215,49 +317,28 @@ export const getSendMetaForOrg = internalQuery({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const orgId = normalizeOrgId(args.orgId ?? null);
+    return await computeSendMetaForOrg(ctx, orgId);
+  },
+});
 
-    const settings: Doc<"emailSettings"> | null = await ctx.db
-      .query("emailSettings")
-      .withIndex("by_org", (q) => q.eq("orgId", orgId))
-      .first();
-    if (!settings) {
-      throw new ConvexError(
-        "Email settings not configured for this organization.",
-      );
-    }
-    if (!settings.enabled) {
-      return {
-        orgId,
-        enabled: false,
-        fromName: settings.fromName,
-        fromEmail: settings.fromEmail,
-        replyToEmail: settings.replyToEmail ?? null,
-      };
-    }
-
-    const portalDomain = getPortalSendingDomain();
-    const parsed = parseEmailAddress(settings.fromEmail);
-    const fromMode: FromMode =
-      (settings as unknown as { fromMode?: FromMode }).fromMode ??
-      (parsed?.domain === portalDomain ? "portal" : "custom");
-    const fromLocalPart: string =
-      (settings as unknown as { fromLocalPart?: string }).fromLocalPart ??
-      parsed?.localPart ??
-      "info";
-
-    const { fromEmail } = await assertSenderAllowed(ctx, {
-      orgId,
-      fromMode,
-      fromLocalPart,
+export const getSendMetaForOrgFromTenantSession = internalQuery({
+  args: {
+    orgId: v.id("organizations"),
+    sessionIdHash: v.string(),
+  },
+  returns: v.object({
+    orgId: v.id("organizations"),
+    enabled: v.boolean(),
+    fromName: v.string(),
+    fromEmail: v.string(),
+    replyToEmail: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, args) => {
+    await requireOrgAdminFromTenantSession(ctx, {
+      orgId: args.orgId,
+      sessionIdHash: args.sessionIdHash,
     });
-
-    return {
-      orgId,
-      enabled: true,
-      fromName: settings.fromName,
-      fromEmail,
-      replyToEmail: settings.replyToEmail ?? null,
-    };
+    return await computeSendMetaForOrg(ctx, args.orgId);
   },
 });
 
@@ -619,6 +700,94 @@ export const previewTemplateInputById = internalQuery({
   },
 });
 
+export const previewTemplateInputByIdFromTenantSession = internalQuery({
+  args: {
+    orgId: v.id("organizations"),
+    sessionIdHash: v.string(),
+    templateId: v.id("emailTemplates"),
+    variables: v.optional(v.record(v.string(), v.string())),
+  },
+  returns: v.object({
+    subject: v.string(),
+    subjectTemplateUsed: v.string(),
+    templateKey: v.string(),
+    variables: v.record(v.string(), v.string()),
+    copyUsed: v.record(v.string(), v.string()),
+    designKey: v.union(
+      v.literal("clean"),
+      v.literal("bold"),
+      v.literal("minimal"),
+    ),
+    warnings: v.array(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    await requireOrgAdminFromTenantSession(ctx, {
+      orgId: args.orgId,
+      sessionIdHash: args.sessionIdHash,
+    });
+
+    const doc = await ctx.db.get(args.templateId);
+    if (!doc || doc.orgId !== args.orgId) {
+      throw new ConvexError("Template not found.");
+    }
+
+    const vars: Record<string, string> = args.variables ?? {};
+    const def = getEmailTemplateDefinition(doc.templateKey);
+    if (!def) {
+      throw new ConvexError(
+        `Template "${doc.templateKey}" is not implemented in React Email.`,
+      );
+    }
+
+    const settings: Doc<"emailSettings"> | null = await ctx.db
+      .query("emailSettings")
+      .withIndex("by_org", (q) => q.eq("orgId", args.orgId))
+      .first();
+
+    const orgDesign: EmailDesignKey = (settings?.designKey ??
+      "clean") as EmailDesignKey;
+    const templateDesignOverride: TemplateDesignOverrideKey =
+      (doc.designOverrideKey ?? "inherit") as TemplateDesignOverrideKey;
+    const designKey: EmailDesignKey =
+      templateDesignOverride === "inherit"
+        ? orgDesign
+        : (templateDesignOverride as EmailDesignKey);
+
+    const subjectTemplate = doc.subjectOverride ?? def.defaultSubject;
+    const subject = interpolateTemplateVariables(subjectTemplate, vars);
+
+    const mergedCopy: Record<string, string> = {
+      ...def.defaultCopy,
+      ...(doc.copyOverrides ?? {}),
+    };
+    for (const k in mergedCopy) {
+      if (!Object.prototype.hasOwnProperty.call(mergedCopy, k)) continue;
+      mergedCopy[k] = interpolateTemplateVariables(mergedCopy[k] ?? "", vars);
+    }
+
+    const warnings: string[] = [];
+    if (def.requiredVariables && def.requiredVariables.length > 0) {
+      const missing = def.requiredVariables.filter((key) => {
+        const value = vars[key];
+        return typeof value !== "string" || value.trim().length === 0;
+      });
+      if (missing.length > 0) {
+        warnings.push(`Missing variables: ${missing.join(", ")}`);
+      }
+    }
+
+    return {
+      subject,
+      subjectTemplateUsed: subjectTemplate,
+      templateKey: doc.templateKey,
+      variables: vars,
+      copyUsed: mergedCopy,
+      designKey,
+      warnings,
+    };
+  },
+});
+
 export const previewTemplateInputByIdWithOverrides = internalQuery({
   args: {
     orgId: v.optional(v.id("organizations")),
@@ -755,6 +924,49 @@ export const ensureTemplateOverrideForKey = mutation({
       copyOverrides: {},
       designOverrideKey: "inherit",
       // legacy fields left undefined
+      createdAt: now,
+      updatedAt: now,
+      updatedBy: undefined,
+    });
+  },
+});
+
+export const ensureTemplateOverrideForKeyFromTenantSession = internalMutation({
+  args: {
+    orgId: v.id("organizations"),
+    sessionIdHash: v.string(),
+    templateKey: v.string(),
+  },
+  returns: v.id("emailTemplates"),
+  handler: async (ctx, args) => {
+    await requireOrgAdminFromTenantSession(ctx, {
+      orgId: args.orgId,
+      sessionIdHash: args.sessionIdHash,
+    });
+
+    const key = args.templateKey;
+    const def = getEmailTemplateDefinition(key);
+    if (!def) {
+      throw new ConvexError(
+        `Template "${key}" is not implemented in React Email.`,
+      );
+    }
+
+    const existing = await ctx.db
+      .query("emailTemplates")
+      .withIndex("by_org_and_key", (q) =>
+        q.eq("orgId", args.orgId).eq("templateKey", key),
+      )
+      .first();
+    if (existing) return existing._id;
+
+    const now = Date.now();
+    return await ctx.db.insert("emailTemplates", {
+      orgId: args.orgId,
+      templateKey: key,
+      subjectOverride: undefined,
+      copyOverrides: {},
+      designOverrideKey: "inherit",
       createdAt: now,
       updatedAt: now,
       updatedBy: undefined,
@@ -976,34 +1188,14 @@ export const queueRenderedEmail = internalMutation({
 
     await ctx.scheduler.runAfter(
       0,
-      internal.core.emails.service.internalSendQueuedEmail,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      internalAny.core.emails.service.internalSendQueuedEmail,
       { outboxId },
     );
 
     return outboxId;
   },
 });
-
-const resolveDesignKey = (args: {
-  orgDesignKey: EmailDesignKey;
-  templateOverrideKey?: TemplateDesignOverrideKey | null;
-}): EmailDesignKey => {
-  const override = args.templateOverrideKey ?? "inherit";
-  if (override === "inherit") return args.orgDesignKey;
-  return override;
-};
-
-const getTemplateDefOrThrow = (
-  templateKey: string,
-): EmailTemplateDefinition => {
-  const def = getEmailTemplateDefinition(templateKey);
-  if (!def) {
-    throw new ConvexError(
-      `Template "${templateKey}" is not implemented in React Email.`,
-    );
-  }
-  return def;
-};
 
 export const sendTransactionalEmail = mutation({
   args: {
@@ -1013,7 +1205,7 @@ export const sendTransactionalEmail = mutation({
     variables: v.optional(v.record(v.string(), v.string())),
   },
   returns: v.id("emailOutbox"),
-  handler: async (ctx, args) => {
+  handler: (_ctx, _args) => {
     // Rendering is performed in a Node action (React Email renderer depends on Node runtime).
     throw new ConvexError(
       "This endpoint has moved to a Node action. Use api.core.emails.reactEmailRender.sendTransactionalEmail.",
@@ -1027,7 +1219,7 @@ export const sendTestEmail = mutation({
     to: v.string(),
   },
   returns: v.id("emailOutbox"),
-  handler: async (ctx, args) => {
+  handler: (_ctx, _args) => {
     throw new ConvexError(
       "This endpoint has moved to a Node action. Use api.core.emails.reactEmailRender.sendTestEmail.",
     );
@@ -1124,7 +1316,8 @@ export const internalSendQueuedEmail = internalAction({
     const resendKey = process.env.RESEND_API_KEY;
     if (!resendKey) {
       await ctx.runMutation(
-        internal.core.emails.service.markOutboxFailedInternal,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        internalAny.core.emails.service.markOutboxFailedInternal,
         {
           outboxId: args.outboxId,
           error: "Missing RESEND_API_KEY",
@@ -1134,7 +1327,8 @@ export const internalSendQueuedEmail = internalAction({
     }
 
     const outbox: Doc<"emailOutbox"> | null = await ctx.runQuery(
-      internal.core.emails.service.getOutboxByIdInternal,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      internalAny.core.emails.service.getOutboxByIdInternal,
       { outboxId: args.outboxId },
     );
     if (!outbox) {
@@ -1169,7 +1363,8 @@ export const internalSendQueuedEmail = internalAction({
       if (!response.ok) {
         const errorText = await response.text();
         await ctx.runMutation(
-          internal.core.emails.service.markOutboxFailedInternal,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          internalAny.core.emails.service.markOutboxFailedInternal,
           {
             outboxId: outbox._id,
             error: `Resend error: ${response.status} ${errorText}`,
@@ -1180,7 +1375,8 @@ export const internalSendQueuedEmail = internalAction({
 
       const json = (await response.json()) as { id?: string } | null;
       await ctx.runMutation(
-        internal.core.emails.service.markOutboxSentInternal,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        internalAny.core.emails.service.markOutboxSentInternal,
         {
           outboxId: outbox._id,
           providerMessageId: json?.id,
@@ -1189,7 +1385,8 @@ export const internalSendQueuedEmail = internalAction({
       return null;
     } catch (err) {
       await ctx.runMutation(
-        internal.core.emails.service.markOutboxFailedInternal,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        internalAny.core.emails.service.markOutboxFailedInternal,
         {
           outboxId: outbox._id,
           error: err instanceof Error ? err.message : String(err),

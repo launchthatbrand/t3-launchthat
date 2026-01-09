@@ -1,8 +1,10 @@
 import type { Id } from "@convex-config/_generated/dataModel";
+import type { FunctionReference } from "convex/server";
 import { v } from "convex/values";
 
 import type { MutationCtx } from "../../_generated/server";
 import { mutation } from "../../_generated/server";
+import { internal } from "../../_generated/api";
 import { getAuthenticatedUserId } from "../../lib/permissions/userAuth";
 import {
   checkOrganizationLimit,
@@ -14,6 +16,51 @@ import {
   verifyOrganizationAccessWithClerkContext,
 } from "./helpers";
 
+interface MembershipsInternalBag {
+  removeUserFromClerkOrganization: unknown;
+}
+
+const membershipsInternal = (
+  internal as unknown as {
+    core: { organizations: { membershipsInternal: MembershipsInternalBag } };
+  }
+).core.organizations.membershipsInternal;
+
+type InternalActionRef = FunctionReference<"action", "internal">;
+const removeUserFromClerkOrganizationAction =
+  membershipsInternal.removeUserFromClerkOrganization as InternalActionRef;
+
+async function getAuthenticatedUserIdWithFallback(
+  ctx: MutationCtx,
+): Promise<Id<"users">> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new Error("Authentication required");
+  }
+
+  const tokenIdentifier =
+    typeof identity.tokenIdentifier === "string" ? identity.tokenIdentifier.trim() : "";
+  const byToken =
+    tokenIdentifier
+      ? await ctx.db
+          .query("users")
+          .withIndex("by_token", (q) => q.eq("tokenIdentifier", tokenIdentifier))
+          .unique()
+      : null;
+  if (byToken) return byToken._id;
+
+  const byClerkId =
+    typeof identity.subject === "string" && identity.subject.trim()
+      ? await ctx.db
+          .query("users")
+          .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+          .unique()
+      : null;
+  if (byClerkId) return byClerkId._id;
+
+  throw new Error("User not found");
+}
+
 /**
  * Create a new organization
  */
@@ -21,7 +68,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
-    // planId: v.optional(v.id("plans")), // Make planId optional for admin users
+    planId: v.optional(v.string()), // Stored as opaque string; plans are owned by ecommerce component
     isPublic: v.optional(v.boolean()),
     allowSelfRegistration: v.optional(v.boolean()),
   },
@@ -89,7 +136,7 @@ export const update = mutation({
     customDomain: v.optional(v.string()),
     isPublic: v.optional(v.boolean()),
     allowSelfRegistration: v.optional(v.boolean()),
-    // planId: v.optional(v.id("plans")),
+    planId: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -123,7 +170,7 @@ export const update = mutation({
     if (args.slug !== undefined) {
       const normalizedSlug = args.slug
         .toLowerCase()
-        .replace(/[^a-z0-9\-]/g, "-")
+        .replace(/[^a-z0-9-]/g, "-")
         .replace(/-+/g, "-")
         .replace(/^-|-$/g, "");
       if (!normalizedSlug) {
@@ -182,6 +229,51 @@ export const setClerkOrganizationId = mutation({
         "owner",
         "admin",
       ]);
+    }
+
+    const normalized = args.clerkOrganizationId.trim();
+    if (!normalized) throw new Error("Missing Clerk organization id");
+
+    await ctx.db.patch(args.organizationId, {
+      clerkOrganizationId: normalized,
+      updatedAt: Date.now(),
+    });
+
+    return null;
+  },
+});
+
+/**
+ * Store the Clerk Organization ID for a tenant organization, authorized via `tenant_session`.
+ * This is used by server-side provisioning routes that don't have a Convex auth token.
+ */
+export const setClerkOrganizationIdFromTenantSession = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    sessionIdHash: v.string(),
+    clerkOrganizationId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const session = await ctx.db
+      .query("tenantSessions")
+      .withIndex("by_sessionIdHash", (q) => q.eq("sessionIdHash", args.sessionIdHash))
+      .unique();
+    if (!session || session.revokedAt !== undefined || Date.now() >= session.expiresAt) {
+      throw new Error("Unauthorized: Invalid session");
+    }
+    if (session.organizationId !== args.organizationId) {
+      throw new Error("Unauthorized: Tenant mismatch");
+    }
+
+    const caller = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", session.clerkUserId))
+      .unique();
+    if (!caller) throw new Error("Unauthorized: User not found");
+
+    if (caller.role !== "admin") {
+      await verifyOrganizationAccess(ctx, args.organizationId, caller._id, ["owner", "admin"]);
     }
 
     const normalized = args.clerkOrganizationId.trim();
@@ -360,18 +452,14 @@ export const removeUser = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Authentication required");
-    }
-    const currentUserId = identity.subject;
+    const currentUserId = await getAuthenticatedUserIdWithFallback(ctx);
 
     // Verify admin access or self-removal
     if (currentUserId !== args.userId) {
       await verifyOrganizationAccessWithClerkContext(
         ctx,
         args.organizationId,
-        currentUserId as Id<"users">,
+        currentUserId,
         ["owner", "admin"],
       );
     }
@@ -399,6 +487,17 @@ export const removeUser = mutation({
       updatedAt: Date.now(),
     });
 
+    // Best-effort: also remove the user's Clerk org membership so Clerk stays in sync.
+    // This runs asynchronously and should not block the admin UX.
+    await ctx.scheduler.runAfter(
+      0,
+      removeUserFromClerkOrganizationAction,
+      {
+        organizationId: args.organizationId,
+        userId: args.userId,
+      },
+    );
+
     return null;
   },
 });
@@ -419,17 +518,13 @@ export const updateUserRole = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Authentication required");
-    }
-    const currentUserId = identity.subject;
+    const currentUserId = await getAuthenticatedUserIdWithFallback(ctx);
 
     // Only owners and admins can update roles
     await verifyOrganizationAccessWithClerkContext(
       ctx,
       args.organizationId,
-      currentUserId as Id<"users">,
+      currentUserId,
       ["owner", "admin"],
     );
 

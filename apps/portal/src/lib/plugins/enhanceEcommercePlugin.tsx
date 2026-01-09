@@ -32,6 +32,7 @@ export const enhanceEcommercePluginDefinition = (
               description: "Revenue and orders summary for this organization.",
               location: "main",
               priority: 10,
+              defaultWidth: "half",
               render: () => (
                 <EcommerceDashboardMetaBox organizationId={orgId as never} />
               ),

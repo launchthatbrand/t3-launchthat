@@ -6,7 +6,7 @@ import React from "react";
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { DashboardMetricCard } from "~/components/admin/DashboardMetricCard";
 
 const formatCurrency = (value: number) =>
   value.toLocaleString(undefined, {
@@ -47,32 +47,16 @@ export const EcommerceDashboardMetaBox = ({
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Last 7 days</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            <div className="text-2xl font-semibold">
-              {formatCurrency(data?.revenue7d ?? 0)}
-            </div>
-            <div className="text-muted-foreground text-sm">
-              {data?.orders7d ?? 0} orders
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Last 30 days</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1">
-            <div className="text-2xl font-semibold">
-              {formatCurrency(data?.revenue30d ?? 0)}
-            </div>
-            <div className="text-muted-foreground text-sm">
-              {data?.orders30d ?? 0} orders
-            </div>
-          </CardContent>
-        </Card>
+        <DashboardMetricCard
+          title="Last 7 days"
+          value={formatCurrency(data?.revenue7d ?? 0)}
+          subtitle={`${data?.orders7d ?? 0} orders`}
+        />
+        <DashboardMetricCard
+          title="Last 30 days"
+          value={formatCurrency(data?.revenue30d ?? 0)}
+          subtitle={`${data?.orders30d ?? 0} orders`}
+        />
       </div>
 
       <div className="space-y-2">

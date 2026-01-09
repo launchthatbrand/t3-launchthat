@@ -112,7 +112,8 @@ export default async function RootLayout(props: {
   if (
     firstSegment === "sign-in" ||
     firstSegment === "sso-callback" ||
-    firstSegment === "sign-out"
+    firstSegment === "sign-out" ||
+    firstSegment === "sign-in-token"
   ) {
     showHeader = false;
     showSidebar = false;

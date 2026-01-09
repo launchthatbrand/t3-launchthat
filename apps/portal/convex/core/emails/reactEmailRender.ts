@@ -239,6 +239,80 @@ export const sendTransactionalEmail = action({
   },
 });
 
+export const sendTransactionalEmailFromTenantSession = action({
+  args: {
+    organizationId: v.id("organizations"),
+    sessionIdHash: v.string(),
+    to: v.string(),
+    templateKey: v.string(),
+    variables: v.optional(v.record(v.string(), v.string())),
+  },
+  returns: v.id("emailOutbox"),
+  handler: async (ctx, args) => {
+    const templateId: Id<"emailTemplates"> = await ctx.runMutation(
+      internal.core.emails.service.ensureTemplateOverrideForKeyFromTenantSession,
+      {
+        orgId: args.organizationId,
+        sessionIdHash: args.sessionIdHash,
+        templateKey: args.templateKey,
+      },
+    );
+
+    const input: {
+      subject: string;
+      subjectTemplateUsed: string;
+      templateKey: string;
+      variables: Record<string, string>;
+      copyUsed: Record<string, string>;
+      designKey: "clean" | "bold" | "minimal";
+      warnings: string[];
+    } = await ctx.runQuery(
+      internal.core.emails.service.previewTemplateInputByIdFromTenantSession,
+      {
+        orgId: args.organizationId,
+        sessionIdHash: args.sessionIdHash,
+        templateId,
+        variables: args.variables,
+      },
+    );
+
+    const element = buildEmailElement({
+      templateKey: input.templateKey,
+      variables: input.variables,
+      copy: input.copyUsed,
+      designKey: input.designKey,
+    });
+
+    const htmlBody = await renderEmail(element);
+    const textBody = await renderEmail(element, { plainText: true });
+
+    const sendMeta: SendMeta = await ctx.runQuery(
+      internal.core.emails.service.getSendMetaForOrgFromTenantSession,
+      { orgId: args.organizationId, sessionIdHash: args.sessionIdHash },
+    );
+    if (!sendMeta.enabled) {
+      throw new Error("Email is not enabled for this organization.");
+    }
+
+    const outboxId: Id<"emailOutbox"> = await ctx.runMutation(
+      internal.core.emails.service.queueRenderedEmail,
+      {
+        orgId: sendMeta.orgId,
+        to: args.to,
+        templateKey: input.templateKey,
+        subject: input.subject,
+        htmlBody,
+        textBody,
+        fromName: sendMeta.fromName,
+        fromEmail: sendMeta.fromEmail,
+        replyToEmail: sendMeta.replyToEmail ?? undefined,
+      },
+    );
+
+    return outboxId;
+  },
+});
+
 export const sendTestEmail = action({
   args: {
     orgId: v.optional(v.id("organizations")),

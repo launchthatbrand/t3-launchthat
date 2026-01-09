@@ -3,7 +3,7 @@
 import type { Id } from "@/convex/_generated/dataModel";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/convex/_generated/api";
+import { api } from "@portal/convexspec";
 import { useMutation, useQuery } from "convex/react";
 import { formatDistanceToNow } from "date-fns";
 import { Check, PencilIcon, Plus, Trash, UserCog, X } from "lucide-react";
@@ -15,10 +15,6 @@ import type {
   EntityAction,
   FilterConfig,
 } from "@acme/ui/entity-list/types";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { CopyText } from "@acme/ui/copy-text";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +25,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@acme/ui/alert-dialog";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { CopyText } from "@acme/ui/copy-text";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 
 import {
   AdminLayout,
@@ -37,6 +37,9 @@ import {
   AdminLayoutMain,
 } from "~/components/admin/AdminLayout";
 import { UserForm } from "~/components/admin/UserForm";
+import { useTenant } from "~/context/TenantContext";
+import { env } from "~/env";
+import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
 
 type UserRow = Record<string, unknown> & {
   _id: Id<"users">;
@@ -59,38 +62,131 @@ type UserRow = Record<string, unknown> & {
   }[];
 };
 
+type MembershipRole = "owner" | "admin" | "editor" | "viewer" | "student";
+
+interface OrganizationMemberRow {
+  role: MembershipRole;
+  isActive: boolean;
+  joinedAt: number;
+  user: {
+    _id: Id<"users">;
+    name?: string;
+    email: string;
+    image?: string;
+  };
+}
+
 export default function ClientUsersPage() {
   const router = useRouter();
+  const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant);
 
   // State for user form
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<Id<"users"> | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // First get current user to confirm admin status
-  const me = useQuery(api.core.users.queries.getMe);
+  // First get current user to confirm access (avoid running org-scoped queries when unauthorized).
+  const me = useQuery(api.core.users.queries.getMe) as
+    | { role?: string }
+    | null
+    | undefined;
 
-  const isMeAdmin = me?.role === "admin";
+  const isMeGlobalAdmin = me?.role === "admin";
 
-  const deleteUser = useMutation(api.core.users.mutations.deleteUser);
-
-  // Fetch all users only if admin; otherwise skip
-  const allUsersResult = useQuery(
-    api.core.users.queries.listUsers,
-    isMeAdmin ? {} : "skip",
+  const removeUserFromOrganization = useMutation(
+    api.core.organizations.mutations.removeUser,
   );
 
-  const allUsers: UserRow[] = (allUsersResult ?? []) as UserRow[];
+  const myOrganizations = useQuery(
+    api.core.organizations.queries.myOrganizations,
+    me ? {} : "skip",
+  ) as { _id: Id<"organizations">; userRole?: string }[] | undefined;
+
+  const myOrgRole =
+    organizationId && myOrganizations
+      ? (myOrganizations.find((o) => o._id === organizationId)?.userRole ??
+        null)
+      : null;
+
+  const canManageUsers =
+    Boolean(me) &&
+    Boolean(organizationId) &&
+    (isMeGlobalAdmin || myOrgRole === "owner" || myOrgRole === "admin");
+
+  const membersResult = useQuery(
+    api.core.organizations.queries.getOrganizationMembers,
+    canManageUsers && organizationId ? { organizationId } : "skip",
+  ) as OrganizationMemberRow[] | undefined;
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (env.NODE_ENV === "production") return;
+    let tokenPreview: string | null = null;
+    try {
+      const raw = localStorage.getItem("convex_token");
+      tokenPreview =
+        typeof raw === "string" && raw.length > 16
+          ? `${raw.slice(0, 8)}…${raw.slice(-8)}`
+          : raw;
+    } catch {
+      tokenPreview = null;
+    }
+
+    console.info(
+      "[admin/users] auth debug",
+      JSON.stringify({
+        organizationId: organizationId ?? null,
+        tenantSlug: tenant?.slug ?? null,
+        convexTokenPresent: Boolean(tokenPreview),
+        convexTokenPreview: tokenPreview,
+        meType: me === undefined ? "loading" : me === null ? "null" : "object",
+        meRole: me?.role ?? null,
+        isMeGlobalAdmin,
+        myOrganizationsType:
+          myOrganizations === undefined ? "loading" : "loaded",
+        myOrganizationsCount: Array.isArray(myOrganizations)
+          ? myOrganizations.length
+          : null,
+        myOrgRole,
+        canManageUsers,
+        membersResultType:
+          membersResult === undefined ? "loading/skip" : "loaded",
+        membersCount: Array.isArray(membersResult)
+          ? membersResult.length
+          : null,
+      }),
+    );
+  }, [
+    canManageUsers,
+    isMeGlobalAdmin,
+    me,
+    membersResult,
+    myOrgRole,
+    myOrganizations,
+    organizationId,
+    tenant,
+  ]);
+
+  const allUsers: UserRow[] = (membersResult ?? []).map((m) => ({
+    _id: m.user._id,
+    _creationTime: m.joinedAt,
+    name: m.user.name,
+    email: m.user.email,
+    role: m.role,
+    isActive: m.isActive,
+  }));
 
   const handleFormSuccess = () => {
     setIsFormOpen(false);
+    router.refresh();
   };
 
-  if (me && !isMeAdmin) {
+  if (me && !canManageUsers) {
     return (
       <AdminLayout
         title="User Management"
-        description="Manage users and roles."
+        description="Manage users and roles for this organization."
       >
         <AdminLayoutHeader />
         <AdminLayoutContent>
@@ -100,7 +196,7 @@ export default function ClientUsersPage() {
                 <X className="text-muted-foreground mb-4 h-12 w-12" />
                 <h3 className="text-lg font-medium">Access Denied</h3>
                 <p className="text-muted-foreground">
-                  You must be an administrator to view this page.
+                  You must be an organization admin to view this page.
                 </p>
               </div>
             </div>
@@ -193,15 +289,21 @@ export default function ClientUsersPage() {
       accessorKey: "role",
       cell: (user: UserRow) => {
         const roleConfig = {
+          owner: { variant: "default" as const, label: "Owner" },
           admin: { variant: "default" as const, label: "Admin" },
-          user: { variant: "secondary" as const, label: "User" },
-          customer: { variant: "outline" as const, label: "Customer" },
+          editor: { variant: "secondary" as const, label: "Editor" },
+          viewer: { variant: "outline" as const, label: "Viewer" },
+          student: { variant: "outline" as const, label: "Student" },
         };
-        const roleKey = typeof user.role === "string" ? user.role : "user";
+        const roleKey = typeof user.role === "string" ? user.role : "viewer";
         const config =
-          roleKey === "admin" || roleKey === "user" || roleKey === "customer"
+          roleKey === "owner" ||
+          roleKey === "admin" ||
+          roleKey === "editor" ||
+          roleKey === "viewer" ||
+          roleKey === "student"
             ? roleConfig[roleKey]
-            : roleConfig.user;
+            : roleConfig.viewer;
         return <Badge variant={config.variant}>{config.label}</Badge>;
       },
     },
@@ -257,9 +359,11 @@ export default function ClientUsersPage() {
       type: "select",
       field: "role",
       options: [
+        { label: "Owner", value: "owner" },
         { label: "Admin", value: "admin" },
-        { label: "User", value: "user" },
-        { label: "Customer", value: "customer" },
+        { label: "Editor", value: "editor" },
+        { label: "Viewer", value: "viewer" },
+        { label: "Student", value: "student" },
       ],
     },
     {
@@ -288,7 +392,7 @@ export default function ClientUsersPage() {
     },
     {
       id: "delete",
-      label: "Delete",
+      label: "Remove from organization",
       icon: <Trash className="h-4 w-4" />,
       variant: "destructive",
       onClick: (user) => {
@@ -307,9 +411,9 @@ export default function ClientUsersPage() {
               data={allUsers}
               columns={columns}
               filters={filters}
-              isLoading={allUsersResult === undefined}
+              isLoading={canManageUsers && membersResult === undefined}
               title="User Management"
-              description="Manage users and their roles"
+              description="Manage users and their roles in this organization"
               actions={
                 <Button onClick={() => setIsFormOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
@@ -324,7 +428,7 @@ export default function ClientUsersPage() {
                   <UserCog className="text-muted-foreground mb-4 h-12 w-12" />
                   <h3 className="text-lg font-medium">No Users Found</h3>
                   <p className="text-muted-foreground">
-                    No users in the system yet
+                    No users in this organization yet
                   </p>
                   <Button className="mt-4" onClick={() => setIsFormOpen(true)}>
                     <Plus className="mr-2 h-4 w-4" />
@@ -353,10 +457,13 @@ export default function ClientUsersPage() {
             >
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete user?</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    Remove user from organization?
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will anonymize and disable the user in LaunchThat. It
-                    will not delete the user from Clerk.
+                    This removes the user from the current organization. It does
+                    not delete the user from Clerk and does not affect their
+                    membership in other organizations.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -366,10 +473,14 @@ export default function ClientUsersPage() {
                   <AlertDialogAction
                     onClick={async () => {
                       if (!deleteUserId) return;
+                      if (!organizationId) return;
                       setIsDeleting(true);
                       try {
-                        await deleteUser({ userId: deleteUserId });
-                        toast.success("User deleted");
+                        await removeUserFromOrganization({
+                          organizationId,
+                          userId: deleteUserId,
+                        });
+                        toast.success("User removed");
                         setDeleteUserId(null);
                         router.refresh();
                       } catch (error) {

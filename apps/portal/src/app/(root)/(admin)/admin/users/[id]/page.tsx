@@ -6,7 +6,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, Loader2, Save, Trash } from "lucide-react";
+import { ArrowLeft, Loader2, Mail, Save, Trash } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
@@ -87,6 +87,7 @@ export default function UserEditPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSendingLoginLink, setIsSendingLoginLink] = useState(false);
 
   const sectionsRaw = applyFilters(ADMIN_USER_DETAILS_SECTIONS_FILTER, [], {
     userId,
@@ -100,17 +101,31 @@ export default function UserEditPage() {
   );
 
   // Get user by ID
-  const user = useQuery(api.core.users.queries.getUserById, {
+  const getUserByIdQuery = api.core.users.queries.getUserById as unknown;
+  const user = useQuery(getUserByIdQuery as never, {
     userId: userId as Id<"users">,
-  });
-
-  console.log("user", user);
+  }) as
+    | {
+        _id: Id<"users">;
+        name?: string;
+        email: string;
+        role?: string;
+      }
+    | null
+    | undefined;
 
   // Update user mutation
-  const updateUser = useMutation(api.core.users.mutations.updateUser);
+  const updateUserMutation = api.core.users.mutations.updateUser as unknown;
+  const updateUser = useMutation(updateUserMutation as never) as (args: {
+    userId: Id<"users">;
+    data: { name?: string; email?: string; role?: string };
+  }) => Promise<unknown>;
 
   // Delete user mutation
-  const deleteUser = useMutation(api.core.users.mutations.deleteUser);
+  const deleteUserMutation = api.core.users.mutations.deleteUser as unknown;
+  const deleteUser = useMutation(deleteUserMutation as never) as (args: {
+    userId: Id<"users">;
+  }) => Promise<{ success: boolean }>;
 
   // Setup form
   const form = useForm<UserFormValues>({
@@ -125,7 +140,6 @@ export default function UserEditPage() {
   // Update form values when user data is loaded
   useEffect(() => {
     if (user) {
-      console.log("Updating form with user data:", user);
       form.reset({
         name: user.name ?? "",
         email: user.email,
@@ -192,6 +206,36 @@ export default function UserEditPage() {
     }
   };
 
+  const handleSendLoginLink = async () => {
+    if (!user?.email) return;
+    setIsSendingLoginLink(true);
+    try {
+      const res = await fetch("/api/clerk/users/send-login-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: user.email,
+          name: user.name ?? "",
+        }),
+      });
+      const json = (await res.json().catch(() => null)) as
+        | { ok?: boolean; error?: string }
+        | null;
+      if (!res.ok) {
+        throw new Error(
+          json?.error ?? `Failed to send login link (${res.status})`,
+        );
+      }
+      toast.success("Login link sent");
+    } catch (err) {
+      toast.error("Failed to send login link", {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setIsSendingLoginLink(false);
+    }
+  };
+
   // If user data is still loading
   if (user === undefined) {
     return (
@@ -253,6 +297,36 @@ export default function UserEditPage() {
           Back to Users
         </Button>
       </div>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Login link</CardTitle>
+          <CardDescription>
+            Send the user a one-click sign-in link (expires after a short time).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4">
+          <div className="text-sm">
+            <div className="font-medium">{user.email}</div>
+            <div className="text-muted-foreground">
+              This will email a sign-in link to the address above.
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isSendingLoginLink}
+            onClick={() => void handleSendLoginLink()}
+          >
+            {isSendingLoginLink ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Mail className="mr-2 h-4 w-4" />
+            )}
+            Resend login link
+          </Button>
+        </CardContent>
+      </Card>
 
       {error && (
         <Alert variant="destructive" className="mb-6">

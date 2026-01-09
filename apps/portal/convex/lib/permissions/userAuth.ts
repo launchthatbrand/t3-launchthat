@@ -19,13 +19,21 @@ export const getAuthenticatedUserId = async (
     );
   }
 
-  // Find the user in the database
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_token", (q) =>
-      q.eq("tokenIdentifier", identity.tokenIdentifier),
-    )
-    .unique();
+  // Find the user in the database.
+  // Prefer tokenIdentifier, but fall back to Clerk subject (clerk user id).
+  let user =
+    (await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique()) ?? null;
+  if (!user && typeof identity.subject === "string" && identity.subject.trim()) {
+    user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+  }
 
   if (!user) {
     throw new ConvexError("User not found in the database");
@@ -51,13 +59,20 @@ export const getAuthenticatedUser = async (
     );
   }
 
-  // Find the user in the database
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_token", (q) =>
-      q.eq("tokenIdentifier", identity.tokenIdentifier),
-    )
-    .unique();
+  // Find the user in the database.
+  let user =
+    (await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier),
+      )
+      .unique()) ?? null;
+  if (!user && typeof identity.subject === "string" && identity.subject.trim()) {
+    user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+  }
 
   if (!user) {
     throw new ConvexError("User not found in the database");

@@ -48,6 +48,56 @@ const normalizeOrgForValidator = (org: any) => ({
 });
 
 /**
+ * Used by server-side provisioning routes that authenticate via `tenant_session`.
+ * Requires caller be a global admin OR org admin/owner for the target org.
+ */
+export const getOrganizationForAdminFromTenantSession = query({
+  args: {
+    organizationId: v.id("organizations"),
+    sessionIdHash: v.string(),
+  },
+  returns: v.object({
+    name: v.string(),
+    slug: v.string(),
+    clerkOrganizationId: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const session = await ctx.db
+      .query("tenantSessions")
+      .withIndex("by_sessionIdHash", (q) => q.eq("sessionIdHash", args.sessionIdHash))
+      .unique();
+    if (!session || session.revokedAt !== undefined || Date.now() >= session.expiresAt) {
+      throw new Error("Unauthorized: Invalid session");
+    }
+    if (session.organizationId !== args.organizationId) {
+      throw new Error("Unauthorized: Tenant mismatch");
+    }
+
+    const caller = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", session.clerkUserId))
+      .unique();
+    if (!caller) {
+      throw new Error("Unauthorized: User not found");
+    }
+    if (caller.role !== "admin") {
+      await verifyOrganizationAccess(ctx, args.organizationId, caller._id, ["owner", "admin"]);
+    }
+
+    const org = await ctx.db.get(args.organizationId);
+    if (!org) {
+      throw new Error("Organization not found");
+    }
+
+    return {
+      name: org.name,
+      slug: org.slug,
+      clerkOrganizationId: org.clerkOrganizationId ?? undefined,
+    };
+  },
+});
+
+/**
  * Get all organizations the current user has access to
  */
 export const myOrganizations = query({

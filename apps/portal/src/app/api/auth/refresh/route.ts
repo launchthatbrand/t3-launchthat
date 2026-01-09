@@ -35,9 +35,21 @@ export function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/sign-in", req.nextUrl.origin));
   }
 
+  const returnToParam = (req.nextUrl.searchParams.get("return_to") ?? "").trim();
+  const returnTo = (() => {
+    if (!returnToParam) return null;
+    try {
+      const u = new URL(returnToParam);
+      if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+      return u.toString();
+    } catch {
+      return null;
+    }
+  })();
+
   const tenantSlug = (req.headers.get("x-tenant-slug") ?? "").trim();
   const signInUrl = new URL(`${proto}://${authHost}/sign-in`);
-  signInUrl.searchParams.set("return_to", req.nextUrl.toString());
+  signInUrl.searchParams.set("return_to", returnTo ?? req.nextUrl.origin);
   if (tenantSlug) signInUrl.searchParams.set("tenant", tenantSlug);
 
   return NextResponse.redirect(signInUrl);

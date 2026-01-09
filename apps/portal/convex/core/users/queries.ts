@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 
 import { query } from "../../_generated/server";
+import type { Doc } from "../../_generated/dataModel";
 import { throwForbidden } from "../../shared/errors";
-import { requireAdmin } from "./helpers";
 
 /**
  * Get the system user for automated operations
@@ -73,7 +73,7 @@ export const getUserByClerkId = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const project = (user: any) => {
+    const project = (user: Doc<"users"> | null) => {
       if (!user) return null;
       return {
         _id: user._id,
@@ -106,7 +106,7 @@ export const getUserByClerkId = query({
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .first();
-    return project(user);
+    return project(user ?? null);
   },
 });
 
@@ -116,11 +116,15 @@ export const getUserByClerkId = query({
 export const listUsers = query({
   args: {},
   handler: async (ctx) => {
-    // Check if the user has permissions to list all users
-    try {
-      await requireAdmin(ctx);
-    } catch {
-      // If not an admin, throw a proper forbidden error
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throwForbidden("Only administrators can view all users");
+    }
+    const me = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .unique();
+    if (!me || me.role !== "admin") {
       throwForbidden("Only administrators can view all users");
     }
 
@@ -141,12 +145,23 @@ export const getMe = query({
       return null;
     }
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
+    // Prefer lookup by tokenIdentifier, but fall back to Clerk subject (clerk user id).
+    // This supports non-Clerk issuers (e.g. server-minted Convex tokens) where
+    // tokenIdentifier will not match our stored Clerk tokenIdentifier.
+    let user =
+      (await ctx.db
+        .query("users")
+        .withIndex("by_token", (q) =>
+          q.eq("tokenIdentifier", identity.tokenIdentifier),
+        )
+        .unique()) ?? null;
+
+    if (!user && typeof identity.subject === "string" && identity.subject.trim()) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+        .unique();
+    }
 
     return user;
   },
@@ -188,7 +203,7 @@ export const getUserByEmail = query({
   ),
   handler: async (ctx, args) => {
     try {
-      const project = (user: any) => {
+      const project = (user: Doc<"users"> | null) => {
         if (!user) return null;
         return {
           _id: user._id,
@@ -209,7 +224,7 @@ export const getUserByEmail = query({
         .withIndex("by_email", (q) => q.eq("email", args.email))
         .first();
 
-      return project(user);
+      return project(user ?? null);
     } catch (error) {
       console.error("Error in getUserByEmail:", error);
       return null;
@@ -235,11 +250,12 @@ export const getUserById = query({
       tokenIdentifier: v.optional(v.string()),
       username: v.optional(v.string()),
       image: v.optional(v.string()),
+      status: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
     try {
-      const project = (user: any) => {
+      const project = (user: Doc<"users"> | null) => {
         if (!user) return null;
         return {
           _id: user._id,
@@ -250,6 +266,7 @@ export const getUserById = query({
           tokenIdentifier: user.tokenIdentifier ?? undefined,
           username: user.username ?? undefined,
           image: user.image ?? undefined,
+          status: user.status ?? undefined,
         };
       };
 
@@ -275,7 +292,7 @@ export const getUserById = query({
         userMakingRequest._id === args.userId
       ) {
         const user = await ctx.db.get(args.userId);
-        return project(user);
+        return project(user ?? null);
       }
       return null; // Not authorized
     } catch (error) {

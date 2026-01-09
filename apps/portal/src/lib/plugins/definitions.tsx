@@ -22,6 +22,7 @@ import { registerPluginPageTemplates } from "~/lib/pageTemplates/registerPluginP
 import { PortalSocialFeedProvider } from "~/providers/SocialFeedProvider";
 import { enhanceCrmPluginDefinition } from "./enhanceCrmPlugin";
 import { enhanceEcommercePluginDefinition } from "./enhanceEcommercePlugin";
+import { enhanceLmsPluginDefinition } from "./enhanceLmsPlugin";
 import { portalAccessControlPlugin } from "./portalAccessControlPlugin";
 import { portalNotificationsPlugin } from "./portalNotificationsPlugin";
 
@@ -45,10 +46,14 @@ const ecommercePluginEnhanced = enhanceEcommercePluginDefinition(
   }) as unknown as PluginDefinition,
 );
 
+const lmsPluginEnhanced = enhanceLmsPluginDefinition(
+  lmsPlugin as unknown as PluginDefinition,
+);
+
 export const pluginDefinitions: PluginDefinition[] = [
   portalAccessControlPlugin,
   crmPluginEnhanced,
-  lmsPlugin as unknown as PluginDefinition,
+  lmsPluginEnhanced,
   calendarPlugin as unknown as PluginDefinition,
   socialFeedPlugin as unknown as PluginDefinition,
   tasksPlugin as unknown as PluginDefinition,
