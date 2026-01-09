@@ -106,18 +106,36 @@ export const getAuthenticatedUserDocIdByToken = async (
     throw new Error("Not authenticated: No user identity found.");
   }
 
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_token", (q) =>
-      q.eq("tokenIdentifier", identity.tokenIdentifier),
-    )
-    .unique(); // Changed from .first() to .unique() as tokenIdentifier should be unique
+  // 1) Clerk-issued tokens: tokenIdentifier maps to users.tokenIdentifier
+  const tokenIdentifier =
+    typeof identity.tokenIdentifier === "string" ? identity.tokenIdentifier : null;
 
-  if (!user) {
-    throw new Error("User not found for the given token identifier.");
+  if (tokenIdentifier) {
+    const userByToken = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", tokenIdentifier))
+      .unique();
+
+    if (userByToken) {
+      return userByToken._id;
+    }
   }
 
-  return user._id;
+  // 2) Server-minted tokens (Option B): subject is Clerk user id (`user_...`)
+  const clerkId = typeof identity.subject === "string" ? identity.subject : null;
+
+  if (clerkId) {
+    const userByClerkId = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId))
+      .unique();
+
+    if (userByClerkId) {
+      return userByClerkId._id;
+    }
+  }
+
+  throw new Error("User not found for the current auth identity.");
 };
 
 /**
