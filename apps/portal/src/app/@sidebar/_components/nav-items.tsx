@@ -2,12 +2,9 @@ import type React from "react";
 import {
   BookOpen,
   HammerIcon,
-  HelpCircle,
   Settings2,
   Share2,
   TerminalSquare,
-  Twitter,
-  User,
   Users,
 } from "lucide-react";
 
