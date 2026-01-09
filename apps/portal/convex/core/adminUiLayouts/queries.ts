@@ -1,9 +1,15 @@
 import { v } from "convex/values";
 
 import { query } from "../../_generated/server";
+import { getOptionalAuthenticatedUserId } from "../lib/auth";
 import { verifyOrganizationAccessWithClerkContext } from "../organizations/helpers";
 
 const scopeValidator = v.union(v.literal("dashboard"), v.literal("singlePost"));
+
+const hiddenValidator = v.object({
+  main: v.array(v.string()),
+  sidebar: v.array(v.string()),
+});
 
 const areasValidator = v.object({
   main: v.array(
@@ -17,6 +23,7 @@ const areasValidator = v.object({
       id: v.string(),
     }),
   ),
+  hidden: v.optional(hiddenValidator),
 });
 
 export const getMyAdminUiLayout = query({
@@ -34,34 +41,21 @@ export const getMyAdminUiLayout = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity?.tokenIdentifier) {
+    const userId = await getOptionalAuthenticatedUserId(ctx);
+    if (!userId) {
       return null;
     }
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-    if (!user) {
-      return null;
-    }
-
-    await verifyOrganizationAccessWithClerkContext(
-      ctx,
-      args.organizationId,
-      user._id,
-      ["owner", "admin"],
-    );
+    // This is a per-user UI preference; allow any org member with access
+    // (and global admins via the helper's bypass).
+    await verifyOrganizationAccessWithClerkContext(ctx, args.organizationId, userId);
 
     const layout = await ctx.db
       .query("adminUiLayouts")
       .withIndex("by_org_and_user_and_scope_and_post_type", (q) =>
         q
           .eq("organizationId", args.organizationId)
-          .eq("userId", user._id)
+          .eq("userId", userId)
           .eq("scope", args.scope)
           .eq("postTypeSlug", args.postTypeSlug),
       )

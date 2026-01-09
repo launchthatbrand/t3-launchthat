@@ -20,6 +20,7 @@ import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-ki
 import { useMutation, useQuery } from "convex/react";
 import { BuilderDndProvider, DragOverlayPreview, SortableItem } from "@acme/dnd";
 import { Button } from "@acme/ui/button";
+import { Checkbox } from "@acme/ui/checkbox";
 import { MetaBoxPanel } from "./edit/_components/metaBoxes/MetaBoxPanel";
 import { useMetaBoxState } from "./edit/_state/useMetaBoxState";
 
@@ -60,9 +61,11 @@ const mergeMainLayout = (
 const DashboardMetaBoxes = ({
   location,
   tenantSlug,
+  isEditing,
 }: {
   location: AdminDashboardMetaBoxLocation;
   tenantSlug: string;
+  isEditing: boolean;
 }) => {
   const tenant = useTenant();
   const organizationId = getTenantOrganizationId(tenant);
@@ -73,10 +76,91 @@ const DashboardMetaBoxes = ({
     return { organizationId, tenantSlug };
   }, [organizationId, tenantSlug]);
 
+  // NOTE: The `api` import can be lint/TS-hostile in this repo; keep `any` usage localized.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
+  const apiAny = api as any;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+  const getMyAdminUiLayoutQuery = apiAny.core.adminUiLayouts.queries.getMyAdminUiLayout;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+  const upsertMyAdminUiLayoutMutation = apiAny.core.adminUiLayouts.mutations.upsertMyAdminUiLayout;
+
+  const savedLayout = useQuery(
+    getMyAdminUiLayoutQuery as never,
+    organizationId
+      ? {
+          organizationId,
+          scope: "dashboard",
+          postTypeSlug: null,
+        }
+      : "skip",
+  ) as
+    | {
+        areas: {
+          main: { id: string; width: Width }[];
+          sidebar: { id: string }[];
+          hidden?: { main: string[]; sidebar: string[] };
+        };
+        version: number;
+        updatedAt: number;
+      }
+    | null
+    | undefined;
+
+  const upsertLayout = useMutation(upsertMyAdminUiLayoutMutation as never) as (
+    args: {
+      organizationId: string;
+      scope: "dashboard";
+      postTypeSlug: null;
+      areas: {
+        main: { id: string; width: Width }[];
+        sidebar: { id: string }[];
+        hidden: { main: string[]; sidebar: string[] };
+      };
+    },
+  ) => Promise<null>;
+
   const metaBoxes = useMemo(() => {
     if (!ctx) return [];
     return collectDashboardMetaBoxes(location, ctx);
   }, [ctx, location]);
+
+  const hiddenSet = useMemo(() => {
+    const ids =
+      location === "sidebar"
+        ? (savedLayout?.areas.hidden?.sidebar ?? [])
+        : (savedLayout?.areas.hidden?.main ?? []);
+    return new Set(ids);
+  }, [location, savedLayout?.areas.hidden?.main, savedLayout?.areas.hidden?.sidebar]);
+
+  const setMetaBoxVisibility = useCallback(
+    (metaBoxId: string, nextVisible: boolean) => {
+      if (!organizationId) return;
+      const prevHidden = savedLayout?.areas.hidden ?? { main: [], sidebar: [] };
+      const nextHidden =
+        location === "sidebar"
+          ? {
+              ...prevHidden,
+              sidebar: nextVisible
+                ? prevHidden.sidebar.filter((id) => id !== metaBoxId)
+                : Array.from(new Set([...prevHidden.sidebar, metaBoxId])),
+            }
+          : {
+              ...prevHidden,
+              main: nextVisible
+                ? prevHidden.main.filter((id) => id !== metaBoxId)
+                : Array.from(new Set([...prevHidden.main, metaBoxId])),
+            };
+      const mainForSave = savedLayout?.areas.main ?? [];
+      const sidebarForSave = savedLayout?.areas.sidebar ?? [];
+      void upsertLayout({
+        organizationId,
+        scope: "dashboard",
+        postTypeSlug: null,
+        areas: { main: mainForSave, sidebar: sidebarForSave, hidden: nextHidden },
+      });
+    },
+    [location, organizationId, savedLayout?.areas.hidden, savedLayout?.areas.main, savedLayout?.areas.sidebar, upsertLayout],
+  );
 
   if (!organizationId || !ctx) {
     return (
@@ -97,20 +181,38 @@ const DashboardMetaBoxes = ({
   return (
     <div className="space-y-3">
       {metaBoxes.map((box) => {
+        const isHidden = hiddenSet.has(box.id);
+        if (!isEditing && isHidden) {
+          return null;
+        }
         const key = `dashboard:${tenantSlug}:${box.id}`;
         const isOpen = metaBoxStates[key] ?? true;
         return (
-          <MetaBoxPanel
-            key={box.id}
-            id={box.id}
-            title={box.title}
-            description={box.description}
-            isOpen={isOpen}
-            onToggle={(nextOpen) => setMetaBoxState(key, nextOpen)}
-            variant={location === "sidebar" ? "sidebar" : "main"}
-          >
-            {box.render(ctx)}
-          </MetaBoxPanel>
+          <div key={box.id} className={isHidden ? "opacity-60" : undefined}>
+            <MetaBoxPanel
+              id={box.id}
+              title={box.title}
+              description={box.description}
+              isOpen={isHidden ? false : isOpen}
+              onToggle={(nextOpen) => setMetaBoxState(key, nextOpen)}
+              variant={location === "sidebar" ? "sidebar" : "main"}
+              headerActions={
+                isEditing ? (
+                  <div className="flex items-center gap-2 rounded-md border bg-background px-2 py-1">
+                    <Checkbox
+                      checked={!isHidden}
+                      onCheckedChange={(checked) => {
+                        setMetaBoxVisibility(box.id, checked === true);
+                      }}
+                    />
+                    <span className="text-xs text-muted-foreground">Visible</span>
+                  </div>
+                ) : null
+              }
+            >
+              {box.render(ctx)}
+            </MetaBoxPanel>
+          </div>
         );
       })}
     </div>
@@ -128,6 +230,10 @@ const DashboardMainSortable = ({
   const organizationId = getTenantOrganizationId(tenant);
   const { metaBoxStates, setMetaBoxState } = useMetaBoxState();
   const [mainLayout, setMainLayout] = useState<LayoutItem[]>([]);
+  const [hidden, setHidden] = useState<{ main: string[]; sidebar: string[] }>({
+    main: [],
+    sidebar: [],
+  });
   const [activeDragItem, setActiveDragItem] = useState<Active | null>(null);
   const saveTimerRef = useRef<number | null>(null);
   const hasInitializedRef = useRef(false);
@@ -161,7 +267,11 @@ const DashboardMainSortable = ({
       : "skip",
   ) as
     | {
-        areas: { main: LayoutItem[]; sidebar: { id: string }[] };
+        areas: {
+          main: LayoutItem[];
+          sidebar: { id: string }[];
+          hidden?: { main: string[]; sidebar: string[] };
+        };
         version: number;
         updatedAt: number;
       }
@@ -173,7 +283,11 @@ const DashboardMainSortable = ({
       organizationId: string;
       scope: "dashboard";
       postTypeSlug: null;
-      areas: { main: LayoutItem[]; sidebar: { id: string }[] };
+      areas: {
+        main: LayoutItem[];
+        sidebar: { id: string }[];
+        hidden: { main: string[]; sidebar: string[] };
+      };
     },
   ) => Promise<null>;
 
@@ -196,6 +310,7 @@ const DashboardMainSortable = ({
     // Initialize once, and also handle newly-registered metaboxes by merging.
     if (!hasInitializedRef.current) {
       setMainLayout(mergedFromSaved);
+      setHidden(savedLayout?.areas.hidden ?? { main: [], sidebar: [] });
       hasInitializedRef.current = true;
       return;
     }
@@ -217,12 +332,14 @@ const DashboardMainSortable = ({
           areas: {
             main: nextMain,
             sidebar: sidebarForSave,
+            hidden,
           },
         });
       }, 400);
     },
     [
       defaultSidebar,
+      hidden,
       organizationId,
       savedLayout?.areas.sidebar,
       upsertLayout,
@@ -237,9 +354,11 @@ const DashboardMainSortable = ({
     };
   }, []);
 
+  const hiddenMainSet = useMemo(() => new Set(hidden.main), [hidden.main]);
   const renderBox = (box: (typeof metaBoxes)[number], width: Width) => {
     const key = `dashboard:${tenantSlug}:${box.id}`;
-    const isOpen = metaBoxStates[key] ?? true;
+    const isHidden = hiddenMainSet.has(box.id);
+    const isOpen = (metaBoxStates[key] ?? true) && !isHidden;
 
     const panel = (
       <MetaBoxPanel
@@ -251,27 +370,57 @@ const DashboardMainSortable = ({
         variant="main"
         headerActions={
           isEditing ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                setMainLayout((prev) => {
-                  const next = prev.map((item) =>
-                    item.id === box.id
-                      ? {
-                          ...item,
-                          width: item.width === "half" ? "full" : "half",
-                        }
-                      : item,
-                  );
-                  scheduleSave(next);
-                  return next;
-                });
-              }}
-            >
-              {width === "half" ? "Full width" : "Half width"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  setMainLayout((prev) => {
+                    const next = prev.map((item) =>
+                      item.id === box.id
+                        ? {
+                            ...item,
+                            width: item.width === "half" ? "full" : "half",
+                          }
+                        : item,
+                    );
+                    scheduleSave(next);
+                    return next;
+                  });
+                }}
+              >
+                {width === "half" ? "Full width" : "Half width"}
+              </Button>
+              <div className="flex items-center gap-2 rounded-md border bg-background px-2 py-1">
+                <Checkbox
+                  checked={!isHidden}
+                  onCheckedChange={(checked) => {
+                    const nextVisible = checked === true;
+                    setHidden((prev) => {
+                      const nextMain = nextVisible
+                        ? prev.main.filter((id) => id !== box.id)
+                        : Array.from(new Set([...prev.main, box.id]));
+                      const next = { ...prev, main: nextMain };
+                      const sidebarForSave = savedLayout?.areas.sidebar ?? defaultSidebar;
+                      if (!organizationId) return next;
+                      void upsertLayout({
+                        organizationId,
+                        scope: "dashboard",
+                        postTypeSlug: null,
+                        areas: {
+                          main: mainLayout,
+                          sidebar: sidebarForSave,
+                          hidden: next,
+                        },
+                      });
+                      return next;
+                    });
+                  }}
+                />
+                <span className="text-xs text-muted-foreground">Visible</span>
+              </div>
+            </div>
           ) : null
         }
       >
@@ -280,7 +429,12 @@ const DashboardMainSortable = ({
     );
 
     return (
-      <div className={width === "half" ? "md:col-span-6" : "md:col-span-12"}>
+      <div
+        className={[
+          width === "half" ? "md:col-span-6" : "md:col-span-12",
+          isHidden ? "opacity-60" : "",
+        ].join(" ")}
+      >
         {isEditing ? (
           <SortableItem
             id={box.id}
@@ -310,6 +464,7 @@ const DashboardMainSortable = ({
         {mainLayout.map((item) => {
           const box = metaBoxes.find((b) => b.id === item.id);
           if (!box) return null;
+          if (hiddenMainSet.has(box.id)) return null;
           return (
             <React.Fragment key={item.id}>
               {renderBox(box, item.width)}
@@ -380,7 +535,7 @@ export default function AdminDashboardPage() {
           <DashboardMainSortable tenantSlug={tenantSlug} isEditing={isEditing} />
         </AdminLayoutMain>
         <AdminLayoutSidebar className="space-y-4">
-          <DashboardMetaBoxes location="sidebar" tenantSlug={tenantSlug} />
+          <DashboardMetaBoxes location="sidebar" tenantSlug={tenantSlug} isEditing={isEditing} />
         </AdminLayoutSidebar>
       </AdminLayoutContent>
     </AdminLayout>

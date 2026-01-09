@@ -415,19 +415,26 @@ export const placeOrder = action({
 
     for (const productId of uniqueProductIds) {
       const meta = await getProductMeta(productId);
-      const productType = asString(readMetaValue(meta, PRODUCT_META_KEYS.type)).trim();
+      const productType = asString(
+        readMetaValue(meta, PRODUCT_META_KEYS.type),
+      ).trim();
       if (productType === "simple_subscription") {
         isSubscriptionCheckout = true;
         subscriptionProductId = productId;
-        const matchingLineItem = lineItems.find((li) => li.productId === productId);
-        subscriptionProductTitle =
-          matchingLineItem?.title?.trim() ? matchingLineItem.title.trim() : "Subscription";
+        const matchingLineItem = lineItems.find(
+          (li) => li.productId === productId,
+        );
+        subscriptionProductTitle = matchingLineItem?.title?.trim()
+          ? matchingLineItem.title.trim()
+          : "Subscription";
 
         const interval = asString(
           readMetaValue(meta, PRODUCT_META_KEYS.subscriptionInterval),
         ).trim();
         if (interval && interval !== "month") {
-          throw new Error("Unsupported subscription interval (only monthly is supported).");
+          throw new Error(
+            "Unsupported subscription interval (only monthly is supported).",
+          );
         }
 
         const amountCentsRaw = readMetaValue(
@@ -438,14 +445,18 @@ export const placeOrder = action({
           meta,
           PRODUCT_META_KEYS.subscriptionSetupFeeCents,
         );
-        const trialDaysRaw = readMetaValue(meta, PRODUCT_META_KEYS.subscriptionTrialDays);
+        const trialDaysRaw = readMetaValue(
+          meta,
+          PRODUCT_META_KEYS.subscriptionTrialDays,
+        );
 
         subscriptionAmountMonthlyCents =
           typeof amountCentsRaw === "number" && Number.isFinite(amountCentsRaw)
             ? Math.max(0, Math.floor(amountCentsRaw))
             : 0;
         subscriptionSetupFeeCents =
-          typeof setupFeeCentsRaw === "number" && Number.isFinite(setupFeeCentsRaw)
+          typeof setupFeeCentsRaw === "number" &&
+          Number.isFinite(setupFeeCentsRaw)
             ? Math.max(0, Math.floor(setupFeeCentsRaw))
             : 0;
         subscriptionTrialDays =
@@ -461,7 +472,9 @@ export const placeOrder = action({
           );
           subscriptionInitialChargeAmount = subscriptionSetupFeeCents / 100;
         } else {
-          subscriptionArbStartDateIso = toIsoDateUtc(addDaysUtc(new Date(), 30));
+          subscriptionArbStartDateIso = toIsoDateUtc(
+            addDaysUtc(new Date(), 30),
+          );
           subscriptionInitialChargeAmount =
             (subscriptionSetupFeeCents + subscriptionAmountMonthlyCents) / 100;
         }
@@ -479,7 +492,10 @@ export const placeOrder = action({
         throw new Error("Subscription product not found.");
       }
       // Keep v1 strict: only allow a single subscription item in the cart.
-      if (lineItems.length !== 1 || lineItems[0]?.productId !== subscriptionProductId) {
+      if (
+        lineItems.length !== 1 ||
+        lineItems[0]?.productId !== subscriptionProductId
+      ) {
         throw new Error(
           "Subscription checkout currently supports only a single subscription product per order.",
         );
@@ -606,7 +622,8 @@ export const placeOrder = action({
 
       const sub = asRecord(createSubResult);
       if (!sub.success) {
-        const msg = asString(sub.errorMessage) || "Unable to create subscription";
+        const msg =
+          asString(sub.errorMessage) || "Unable to create subscription";
         throw new Error(msg);
       }
       const authnetSubscriptionId = asString(sub.subscriptionId).trim();
@@ -639,18 +656,30 @@ export const placeOrder = action({
         },
       )) as string;
 
-      const subMetaEntries: Array<{ key: string; value: string | number | boolean | null }> = [
+      const subMetaEntries: Array<{
+        key: string;
+        value: string | number | boolean | null;
+      }> = [
         { key: "subscription.productId", value: subscriptionProductId },
         { key: "subscription.customerEmail", value: args.email.trim() },
         { key: "subscription.customerUserId", value: normalizedUserId || null },
         { key: "subscription.gateway", value: "authorizenet" },
-        { key: "subscription.authnet.subscriptionId", value: authnetSubscriptionId },
-        { key: "subscription.authnet.customerProfileId", value: authnetCustomerProfileId || null },
+        {
+          key: "subscription.authnet.subscriptionId",
+          value: authnetSubscriptionId,
+        },
+        {
+          key: "subscription.authnet.customerProfileId",
+          value: authnetCustomerProfileId || null,
+        },
         {
           key: "subscription.authnet.customerPaymentProfileId",
           value: authnetCustomerPaymentProfileId || null,
         },
-        { key: "subscription.amountMonthly", value: subscriptionAmountMonthlyCents },
+        {
+          key: "subscription.amountMonthly",
+          value: subscriptionAmountMonthlyCents,
+        },
         { key: "subscription.currency", value: currency },
         { key: "subscription.currentPeriodStart", value: periodStartMs },
         { key: "subscription.currentPeriodEnd", value: periodEndMs },

@@ -180,6 +180,59 @@ const createBaselineStepsForFunnel = async (ctx: any, args: {
   });
 };
 
+type SystemOwnedDocConfig = {
+  titlePrefix: string;
+  slugPrefix: string;
+  sequenceKey: string;
+  numberMetaKey: string;
+};
+
+const SYSTEM_OWNED_DOCS: Record<string, SystemOwnedDocConfig> = {
+  orders: {
+    titlePrefix: "Order",
+    slugPrefix: "order",
+    sequenceKey: "orders",
+    numberMetaKey: "order.number",
+  },
+  subscription: {
+    titlePrefix: "Subscription",
+    slugPrefix: "subscription",
+    sequenceKey: "subscription",
+    numberMetaKey: "subscription.number",
+  },
+} as const;
+
+const isSystemOwnedDocType = (postTypeSlug: string): boolean =>
+  Boolean(SYSTEM_OWNED_DOCS[postTypeSlug]);
+
+const getNextSequence = async (
+  ctx: any,
+  args: { organizationId: string; key: string },
+): Promise<number> => {
+  const now = Date.now();
+  const existing = await ctx.db
+    .query("sequences")
+    .withIndex("by_org_and_key", (q: any) =>
+      q.eq("organizationId", args.organizationId).eq("key", args.key),
+    )
+    .unique();
+
+  if (existing) {
+    const current = typeof existing.next === "number" ? existing.next : 1;
+    await ctx.db.patch(existing._id, { next: current + 1, updatedAt: now });
+    return current;
+  }
+
+  // First number = 1; persist next = 2.
+  await ctx.db.insert("sequences", {
+    organizationId: args.organizationId,
+    key: args.key,
+    next: 2,
+    updatedAt: now,
+  });
+  return 1;
+};
+
 export const createPost = mutation({
   args: {
     organizationId: v.optional(v.string()),
@@ -210,8 +263,48 @@ export const createPost = mutation({
   handler: async (ctx: any, args: any) => {
     const organizationId = args.organizationId ?? undefined;
     const postTypeSlug = args.postTypeSlug.toLowerCase();
+    const systemOwnedConfig = SYSTEM_OWNED_DOCS[postTypeSlug] ?? null;
+    const isSystemOwned = Boolean(systemOwnedConfig);
+
+    console.log("[ecommerce.posts.createPost] start", {
+      postTypeSlug,
+      organizationId: organizationId ?? null,
+      incomingTitle:
+        typeof args.title === "string" ? args.title : typeof args.title,
+      incomingSlug: typeof args.slug === "string" ? args.slug : typeof args.slug,
+      isSystemOwned,
+    });
+
+    if (isSystemOwned && !organizationId) {
+      throw new Error(
+        `organizationId is required to create ${postTypeSlug} records.`,
+      );
+    }
+
+    let derivedTitle: string = args.title;
+    let derivedSlug: string = args.slug;
+    let derivedNumber: number | null = null;
+
+    if (isSystemOwned && systemOwnedConfig && organizationId) {
+      derivedNumber = await getNextSequence(ctx, {
+        organizationId,
+        key: systemOwnedConfig.sequenceKey,
+      });
+      const padded = String(derivedNumber).padStart(6, "0");
+      derivedTitle = `${systemOwnedConfig.titlePrefix} #${padded}`;
+      derivedSlug = `${systemOwnedConfig.slugPrefix}-${padded}`;
+    }
+
+    console.log("[ecommerce.posts.createPost] derived fields", {
+      postTypeSlug,
+      organizationId: organizationId ?? null,
+      derivedNumber,
+      derivedTitle,
+      derivedSlug,
+    });
+
     const normalizedSlug =
-      sanitizeSlug(args.slug) || `${postTypeSlug}-${Date.now()}`;
+      sanitizeSlug(derivedSlug) || `${postTypeSlug}-${Date.now()}`;
     const uniqueSlug = await ensureUniqueSlug(
       ctx as any,
       normalizedSlug,
@@ -222,7 +315,7 @@ export const createPost = mutation({
     const createdAt = args.createdAt ?? now;
 
     const postId = await ctx.db.insert("posts", {
-      title: args.title,
+      title: derivedTitle,
       content: args.content,
       excerpt: args.excerpt,
       slug: uniqueSlug,
@@ -239,6 +332,11 @@ export const createPost = mutation({
 
     const metaToWrite: Record<string, unknown> =
       args.meta && typeof args.meta === "object" ? { ...(args.meta as any) } : {};
+
+    if (isSystemOwned && systemOwnedConfig && typeof derivedNumber === "number") {
+      // Store raw numeric value for easy filtering/export.
+      metaToWrite[systemOwnedConfig.numberMetaKey] = derivedNumber;
+    }
 
     if (Object.keys(metaToWrite).length > 0) {
       await upsertMetaEntries(
@@ -316,6 +414,12 @@ export const updatePost = mutation({
     if (args.featuredImageUrl !== undefined)
       updates.featuredImageUrl = args.featuredImageUrl;
     if (args.slug !== undefined) updates.slug = args.slug;
+
+    // System-owned docs: title/slug are immutable (even in admin).
+    if (isSystemOwnedDocType(String(post.postTypeSlug ?? ""))) {
+      delete updates.title;
+      delete updates.slug;
+    }
 
     if (typeof updates.featuredImage === "string") {
       updates.featuredImageUrl = updates.featuredImage;

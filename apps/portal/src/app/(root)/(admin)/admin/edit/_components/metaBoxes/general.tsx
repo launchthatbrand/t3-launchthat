@@ -17,7 +17,9 @@ const GeneralMetaBox = ({ data }: { data: GeneralMetaBoxData }) => {
   const {
     title,
     setTitle,
+    isTitleEditable,
     supportsSlugEditing,
+    isSlugEditable,
     slugValue,
     setSlugValue,
     slugPreviewUrl,
@@ -35,40 +37,50 @@ const GeneralMetaBox = ({ data }: { data: GeneralMetaBoxData }) => {
   }, [isSlugEditing]);
 
   return (
-    <>
-      <div className="space-y-2">
-        <Label htmlFor="post-title">Title</Label>
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <Label htmlFor="post-title" className="text-xs">
+          Title
+        </Label>
         <Input
           id="post-title"
           value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          placeholder="Add a descriptive title"
+          onChange={(event) => {
+            if (!isTitleEditable) return;
+            setTitle(event.target.value);
+          }}
+          placeholder={isTitleEditable ? "Title" : "Generated on save"}
+          className="h-9"
+          disabled={!isTitleEditable}
         />
       </div>
       {supportsSlugEditing && (
-        <div className="space-y-2">
+        <div className="space-y-1">
           <div className="flex items-center justify-between gap-2">
-            <Label htmlFor="post-slug">Frontend Slug</Label>
-            {!isSlugEditing && (
+            <Label htmlFor="post-slug" className="text-xs">
+              URL
+            </Label>
+            {!isSlugEditing && isSlugEditable && (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsSlugEditing(true)}
-                className="text-xs"
+                className="h-7 px-2 text-xs"
               >
-                <Pencil className="mr-2 h-3.5 w-3.5" />
+                <Pencil className="mr-1.5 h-3.5 w-3.5" />
                 Edit
               </Button>
             )}
           </div>
-          {isSlugEditing ? (
+          {isSlugEditing && isSlugEditable ? (
             <Input
               id="post-slug"
               ref={slugInputRef}
               value={slugValue}
               onChange={(event) => setSlugValue(event.target.value)}
               placeholder="friendly-url-slug"
+              className="h-9"
               onBlur={() => setIsSlugEditing(false)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -83,7 +95,7 @@ const GeneralMetaBox = ({ data }: { data: GeneralMetaBoxData }) => {
               }}
             />
           ) : (
-            <div className="border-input bg-muted/40 flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm">
+            <div className="bg-muted/40 border-input flex items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-xs">
               {slugPreviewUrl ? (
                 <a
                   className="text-primary min-w-0 flex-1 truncate font-medium hover:underline"
@@ -95,7 +107,7 @@ const GeneralMetaBox = ({ data }: { data: GeneralMetaBoxData }) => {
                 </a>
               ) : (
                 <span className="text-muted-foreground">
-                  Slug will be generated after saving.
+                  Generated after save
                 </span>
               )}
               {slugPreviewUrl ? (
@@ -106,17 +118,17 @@ const GeneralMetaBox = ({ data }: { data: GeneralMetaBoxData }) => {
                   className="text-primary hover:text-primary/80"
                   aria-label="Open public page"
                 >
-                  <ExternalLink className="h-4 w-4" />
+                  <ExternalLink className="h-3.5 w-3.5" />
                 </Link>
               ) : null}
             </div>
           )}
-          <p className="text-muted-foreground text-xs">
-            Must be unique; determines the public URL.
+          <p className="text-muted-foreground text-[11px] leading-tight">
+            Public URL; must be unique.
           </p>
         </div>
       )}
-    </>
+    </div>
   );
 };
 

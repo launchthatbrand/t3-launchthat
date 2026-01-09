@@ -769,12 +769,32 @@ const resolveFromPostType = async (
       postTypeSlug,
       orgId,
     );
-    if (!postType) return null;
+    if (!postType) {
+      console.log("[entityResolvers] postType not found; falling back to core", {
+        postTypeSlug,
+        organizationId: organizationId ?? null,
+      });
+      return null;
+    }
     const storageKind = postType.storageKind;
+    console.log("[entityResolvers] resolved postType", {
+      postTypeSlug,
+      organizationId: organizationId ?? null,
+      storageKind,
+      storageComponent: (postType as any).storageComponent ?? null,
+      storageTables: Array.isArray((postType as any).storageTables)
+        ? (postType as any).storageTables
+        : null,
+    });
     if (storageKind === "component") {
       const storageComponent =
         (postType as any).storageComponent ??
         inferStorageComponent((postType as any).storageTables);
+      console.log("[entityResolvers] component storage decision", {
+        postTypeSlug,
+        organizationId: organizationId ?? null,
+        storageComponent: storageComponent ?? null,
+      });
       if (!storageComponent) {
         return coreResolver;
       }
@@ -782,6 +802,10 @@ const resolveFromPostType = async (
     }
     return coreResolver;
   } catch {
+    console.log("[entityResolvers] resolveFromPostType failed; falling back", {
+      postTypeSlug,
+      organizationId: organizationId ?? null,
+    });
     return null;
   }
 };

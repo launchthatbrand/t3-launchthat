@@ -43,6 +43,7 @@ import {
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent } from "@acme/ui/card";
+import { Checkbox } from "@acme/ui/checkbox";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import {
@@ -365,6 +366,11 @@ export function AdminSinglePostView({
   );
 
   const normalizedSlug = slug.toLowerCase();
+  const systemOwnedTitleSlugPostTypes = useMemo(
+    () => new Set<string>(["orders", "subscription"]),
+    [],
+  );
+  const isSystemOwnedTitleSlug = systemOwnedTitleSlugPostTypes.has(normalizedSlug);
   type StorageKind = "posts" | "custom" | "component";
   const storageKind: StorageKind =
     (postType?.storageKind as StorageKind | undefined) ??
@@ -380,6 +386,8 @@ export function AdminSinglePostView({
     supportsPostsTable ||
     isComponentStorage ||
     (isCustomStorage && normalizedSlug !== "attachments");
+  const isTitleEditable = !isSystemOwnedTitleSlug;
+  const isSlugEditable = supportsSlugEditing && !isSystemOwnedTitleSlug;
   const canDuplicateRecord =
     canSaveRecord && !isNewRecord && Boolean(post?._id) && !isCustomStorage;
   const supportsAttachments =
@@ -402,9 +410,10 @@ export function AdminSinglePostView({
   );
   const { metaBoxStates, setMetaBoxState } = useMetaBoxState();
   const [adminUiAreas, setAdminUiAreas] = useState<{
-    main: Array<{ id: string; width: "half" | "full" }>;
-    sidebar: Array<{ id: string }>;
-  }>({ main: [], sidebar: [] });
+    main: { id: string; width: "half" | "full" }[];
+    sidebar: { id: string }[];
+    hidden: { main: string[]; sidebar: string[] };
+  }>({ main: [], sidebar: [], hidden: { main: [], sidebar: [] } });
   const saveTimerRef = useRef<number | null>(null);
 
   const savedAdminUiLayout = useQuery(
@@ -419,8 +428,9 @@ export function AdminSinglePostView({
   ) as
     | {
         areas: {
-          main: Array<{ id: string; width: "half" | "full" }>;
-          sidebar: Array<{ id: string }>;
+          main: { id: string; width: "half" | "full" }[];
+          sidebar: { id: string }[];
+          hidden?: { main: string[]; sidebar: string[] };
         };
         version: number;
         updatedAt: number;
@@ -436,13 +446,21 @@ export function AdminSinglePostView({
     if (!savedAdminUiLayout?.areas) {
       return;
     }
-    setAdminUiAreas(savedAdminUiLayout.areas);
+    setAdminUiAreas({
+      main: savedAdminUiLayout.areas.main,
+      sidebar: savedAdminUiLayout.areas.sidebar,
+      hidden: {
+        main: savedAdminUiLayout.areas.hidden?.main ?? [],
+        sidebar: savedAdminUiLayout.areas.hidden?.sidebar ?? [],
+      },
+    });
   }, [savedAdminUiLayout?.updatedAt]);
 
   const scheduleSaveAdminUiLayout = useCallback(
     (nextAreas: {
-      main: Array<{ id: string; width: "half" | "full" }>;
-      sidebar: Array<{ id: string }>;
+      main: { id: string; width: "half" | "full" }[];
+      sidebar: { id: string }[];
+      hidden: { main: string[]; sidebar: string[] };
     }) => {
       if (!organizationId) return;
       if (saveTimerRef.current !== null) {
@@ -458,6 +476,15 @@ export function AdminSinglePostView({
       }, 400);
     },
     [organizationId, slug, upsertAdminUiLayout],
+  );
+
+  const hiddenMainSet = useMemo(
+    () => new Set<string>(adminUiAreas.hidden.main),
+    [adminUiAreas.hidden.main],
+  );
+  const hiddenSidebarSet = useMemo(
+    () => new Set<string>(adminUiAreas.hidden.sidebar),
+    [adminUiAreas.hidden.sidebar],
   );
 
   useEffect(() => {
@@ -947,10 +974,12 @@ export function AdminSinglePostView({
       originalSlug: post?.slug ?? "",
       title,
       setTitle,
+      isTitleEditable,
       slugValue,
       setSlugValue,
       slugPreviewUrl,
       supportsSlugEditing,
+      isSlugEditable,
       editorKey,
       derivedEditorState,
       setContent,
@@ -963,6 +992,8 @@ export function AdminSinglePostView({
       editorKey,
       excerpt,
       headerLabel,
+      isSlugEditable,
+      isTitleEditable,
       organizationId,
       post?.slug,
       setContent,
@@ -1637,6 +1668,8 @@ export function AdminSinglePostView({
       return map;
     }, [sortedBoxes]);
 
+    const hiddenSet = area === "sidebar" ? hiddenSidebarSet : hiddenMainSet;
+
     const defaultMain = useMemo(
       () =>
         sortedBoxes.map((box) => ({
@@ -1653,7 +1686,7 @@ export function AdminSinglePostView({
     const mergedMain = useMemo(() => {
       const available = new Set(defaultMain.map((i) => i.id));
       const seen = new Set<string>();
-      const out: Array<{ id: string; width: "half" | "full" }> = [];
+      const out: { id: string; width: "half" | "full" }[] = [];
       const base =
         adminUiAreas.main.length > 0 ? adminUiAreas.main : defaultMain;
       for (const item of base) {
@@ -1674,7 +1707,7 @@ export function AdminSinglePostView({
     const mergedSidebar = useMemo(() => {
       const available = new Set(defaultSidebar.map((i) => i.id));
       const seen = new Set<string>();
-      const out: Array<{ id: string }> = [];
+      const out: { id: string }[] = [];
       const base =
         adminUiAreas.sidebar.length > 0 ? adminUiAreas.sidebar : defaultSidebar;
       for (const item of base) {
@@ -1764,6 +1797,25 @@ export function AdminSinglePostView({
       );
     }
 
+    const setMetaBoxVisibility = (metaBoxId: string, nextVisible: boolean) => {
+      setAdminUiAreas((prev) => {
+        const prevList =
+          area === "sidebar" ? prev.hidden.sidebar : prev.hidden.main;
+        const nextList = nextVisible
+          ? prevList.filter((id) => id !== metaBoxId)
+          : Array.from(new Set([...prevList, metaBoxId]));
+        const nextAreas = {
+          ...prev,
+          hidden:
+            area === "sidebar"
+              ? { ...prev.hidden, sidebar: nextList }
+              : { ...prev.hidden, main: nextList },
+        };
+        scheduleSaveAdminUiLayout(nextAreas);
+        return nextAreas;
+      });
+    };
+
     if (area === "sidebar") {
       return (
         <BuilderDndProvider
@@ -1799,18 +1851,24 @@ export function AdminSinglePostView({
                 const metaBox = boxById.get(item.id);
                 if (!metaBox) return null;
                 const storageKey = `${slug}:${metaBox.id}`;
+                const isHidden = hiddenSet.has(metaBox.id);
                 const shouldDefaultClosed =
                   isNewRecord &&
                   ((metaBox.id === "core-attachments" &&
                     (attachmentsContext?.attachments?.length ?? 0) === 0) ||
                     metaBox.id === "core-taxonomy");
                 const isOpen =
-                  metaBoxStates[storageKey] ?? !shouldDefaultClosed;
+                  (metaBoxStates[storageKey] ?? !shouldDefaultClosed) &&
+                  !isHidden;
                 return (
                   <SortableItem
                     key={metaBox.id}
                     id={metaBox.id}
-                    className="items-stretch border-0 bg-transparent p-0 shadow-none"
+                    className={
+                      isHidden
+                        ? "items-stretch border-0 bg-transparent p-0 opacity-60 shadow-none"
+                        : "items-stretch border-0 bg-transparent p-0 shadow-none"
+                    }
                     handleClassName="h-12 px-1"
                   >
                     <MetaBoxPanel
@@ -1822,6 +1880,24 @@ export function AdminSinglePostView({
                         setMetaBoxState(storageKey, nextOpen)
                       }
                       variant="sidebar"
+                      headerActions={
+                        <div className="flex items-center gap-2">
+                          <div className="bg-background flex items-center gap-2 rounded-md border px-2 py-1">
+                            <Checkbox
+                              checked={!isHidden}
+                              onCheckedChange={(checked) => {
+                                setMetaBoxVisibility(
+                                  metaBox.id,
+                                  checked === true,
+                                );
+                              }}
+                            />
+                            <span className="text-muted-foreground text-xs">
+                              Visible
+                            </span>
+                          </div>
+                        </div>
+                      }
                     >
                       {metaBox.render()}
                     </MetaBoxPanel>
@@ -1878,19 +1954,23 @@ export function AdminSinglePostView({
               const metaBox = boxById.get(item.id);
               if (!metaBox) return null;
               const storageKey = `${slug}:${metaBox.id}`;
+              const isHidden = hiddenSet.has(metaBox.id);
               const shouldDefaultClosed =
                 isNewRecord &&
                 ((metaBox.id === "core-attachments" &&
                   (attachmentsContext?.attachments?.length ?? 0) === 0) ||
                   metaBox.id === "core-taxonomy");
-              const isOpen = metaBoxStates[storageKey] ?? !shouldDefaultClosed;
+              const isOpen =
+                (metaBoxStates[storageKey] ?? !shouldDefaultClosed) &&
+                !isHidden;
 
               return (
                 <div
                   key={metaBox.id}
-                  className={
-                    item.width === "half" ? "md:col-span-6" : "md:col-span-12"
-                  }
+                  className={[
+                    item.width === "half" ? "md:col-span-6" : "md:col-span-12",
+                    isHidden ? "opacity-60" : "",
+                  ].join(" ")}
                 >
                   <SortableItem
                     id={metaBox.id}
@@ -1907,29 +1987,47 @@ export function AdminSinglePostView({
                       }
                       variant="main"
                       headerActions={
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => {
-                            setAdminUiAreas((prev) => {
-                              const nextMain = mergedMain.map((m) =>
-                                m.id === metaBox.id
-                                  ? {
-                                      ...m,
-                                      width:
-                                        m.width === "half" ? "full" : "half",
-                                    }
-                                  : m,
-                              );
-                              const nextAreas = { ...prev, main: nextMain };
-                              scheduleSaveAdminUiLayout(nextAreas);
-                              return nextAreas;
-                            });
-                          }}
-                        >
-                          {item.width === "half" ? "Full width" : "Half width"}
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              setAdminUiAreas((prev) => {
+                                const nextMain = mergedMain.map((m) =>
+                                  m.id === metaBox.id
+                                    ? {
+                                        ...m,
+                                        width:
+                                          m.width === "half" ? "full" : "half",
+                                      }
+                                    : m,
+                                );
+                                const nextAreas = { ...prev, main: nextMain };
+                                scheduleSaveAdminUiLayout(nextAreas);
+                                return nextAreas;
+                              });
+                            }}
+                          >
+                            {item.width === "half"
+                              ? "Full width"
+                              : "Half width"}
+                          </Button>
+                          <div className="bg-background flex items-center gap-2 rounded-md border px-2 py-1">
+                            <Checkbox
+                              checked={!isHidden}
+                              onCheckedChange={(checked) => {
+                                setMetaBoxVisibility(
+                                  metaBox.id,
+                                  checked === true,
+                                );
+                              }}
+                            />
+                            <span className="text-muted-foreground text-xs">
+                              Visible
+                            </span>
+                          </div>
+                        </div>
                       }
                     >
                       {metaBox.render()}
@@ -2193,7 +2291,7 @@ export function AdminSinglePostView({
 
     const normalizedTitle = title.trim();
     const requiresTitle = storageKind === "posts" || isComponentStorage;
-    if (requiresTitle && !normalizedTitle) {
+    if (requiresTitle && !normalizedTitle && isTitleEditable) {
       setSaveError("Title is required.");
       return;
     }
@@ -2228,7 +2326,10 @@ export function AdminSinglePostView({
           : undefined,
       });
 
-      setSlugValue(result.resolvedSlug);
+      // System-owned slugs (orders/subscriptions) are controlled by the backend.
+      if (isSlugEditable) {
+        setSlugValue(result.resolvedSlug);
+      }
       setSaveError(null);
       toast.success("Saved");
 
@@ -2254,6 +2355,8 @@ export function AdminSinglePostView({
     excerpt,
     isComponentStorage,
     isNewRecord,
+    isSlugEditable,
+    isTitleEditable,
     log,
     organizationId,
     publishDownload,
@@ -2622,6 +2725,9 @@ export function AdminSinglePostView({
 
     resolvedMetaBoxes.push(...visibleFieldMetaBoxes);
     const afterContentSlots = renderPluginSlots("afterMainContent");
+    const visibleResolvedMetaBoxes = resolvedMetaBoxes.filter(
+      (box) => !hiddenMainSet.has(box.id),
+    );
 
     return (
       <div className="container space-y-6 py-6">
@@ -2633,7 +2739,7 @@ export function AdminSinglePostView({
             variant="main"
           />
         ) : (
-          renderMetaBoxListStatic(resolvedMetaBoxes, "main")
+          renderMetaBoxListStatic(visibleResolvedMetaBoxes, "main")
         )}
         {afterContentSlots}
       </div>
@@ -2689,6 +2795,9 @@ export function AdminSinglePostView({
 
     const sidebarTopSlots = renderPluginSlots("sidebarTop");
     const sidebarBottomSlots = renderPluginSlots("sidebarBottom");
+    const visibleResolvedMetaBoxes = resolvedMetaBoxes.filter(
+      (box) => !hiddenSidebarSet.has(box.id),
+    );
 
     return (
       <div className="space-y-4">
@@ -2700,7 +2809,7 @@ export function AdminSinglePostView({
             variant="sidebar"
           />
         ) : (
-          renderMetaBoxListStatic(resolvedMetaBoxes, "sidebar")
+          renderMetaBoxListStatic(visibleResolvedMetaBoxes, "sidebar")
         )}
         {sidebarBottomSlots}
       </div>

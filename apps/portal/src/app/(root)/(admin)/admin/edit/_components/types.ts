@@ -69,10 +69,12 @@ export interface GeneralMetaBoxData {
   originalSlug: string;
   title: string;
   setTitle: (value: string) => void;
+  isTitleEditable: boolean;
   slugValue: string;
   setSlugValue: (value: string) => void;
   slugPreviewUrl: string | null;
   supportsSlugEditing: boolean;
+  isSlugEditable: boolean;
   editorKey: string;
   derivedEditorState?: SerializedEditorState;
   setContent: (value: string) => void;

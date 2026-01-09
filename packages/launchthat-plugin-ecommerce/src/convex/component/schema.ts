@@ -34,6 +34,14 @@ const postsMetaTable = defineTable({
   .index("by_post_and_key", ["postId", "key"])
   .index("by_key_and_value", ["key", "value"]);
 
+// Simple per-organization counters (e.g. order numbers).
+const sequencesTable = defineTable({
+  organizationId: v.string(),
+  key: v.string(),
+  next: v.number(),
+  updatedAt: v.number(),
+}).index("by_org_and_key", ["organizationId", "key"]);
+
 const cartItemsTable = defineTable({
   userId: v.optional(v.string()),
   guestSessionId: v.optional(v.string()),
@@ -85,6 +93,7 @@ const discountCodesTable = defineTable({
 export default defineSchema({
   posts: postsTable,
   postsMeta: postsMetaTable,
+  sequences: sequencesTable,
   cartItems: cartItemsTable,
   plans: plansTable,
   discountCodes: discountCodesTable,

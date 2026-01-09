@@ -1,9 +1,15 @@
 import { v } from "convex/values";
 
 import { mutation } from "../../_generated/server";
+import { getAuthenticatedUserId } from "../lib/auth";
 import { verifyOrganizationAccessWithClerkContext } from "../organizations/helpers";
 
 const scopeValidator = v.union(v.literal("dashboard"), v.literal("singlePost"));
+
+const hiddenValidator = v.object({
+  main: v.array(v.string()),
+  sidebar: v.array(v.string()),
+});
 
 const areasValidator = v.object({
   main: v.array(
@@ -17,6 +23,7 @@ const areasValidator = v.object({
       id: v.string(),
     }),
   ),
+  hidden: v.optional(hiddenValidator),
 });
 
 const normalizeMain = (
@@ -45,6 +52,18 @@ const normalizeSidebar = (items: Array<{ id: string }>): Array<{ id: string }> =
   return out;
 };
 
+const normalizeHiddenIds = (items: Array<string>): Array<string> => {
+  const seen = new Set<string>();
+  const out: Array<string> = [];
+  for (const item of items) {
+    const id = typeof item === "string" ? item.trim() : "";
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+};
+
 export const upsertMyAdminUiLayout = mutation({
   args: {
     organizationId: v.id("organizations"),
@@ -54,43 +73,42 @@ export const upsertMyAdminUiLayout = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity?.tokenIdentifier) {
-      throw new Error("Unauthorized");
-    }
+    const userId = await getAuthenticatedUserId(ctx);
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-    if (!user) {
-      throw new Error("Unauthorized");
-    }
-
-    await verifyOrganizationAccessWithClerkContext(
-      ctx,
-      args.organizationId,
-      user._id,
-      ["owner", "admin"],
-    );
+    // This is a per-user UI preference; allow any org member with access
+    // (and global admins via the helper's bypass).
+    await verifyOrganizationAccessWithClerkContext(ctx, args.organizationId, userId);
 
     const existing = await ctx.db
       .query("adminUiLayouts")
       .withIndex("by_org_and_user_and_scope_and_post_type", (q) =>
         q
           .eq("organizationId", args.organizationId)
-          .eq("userId", user._id)
+          .eq("userId", userId)
           .eq("scope", args.scope)
           .eq("postTypeSlug", args.postTypeSlug),
       )
       .unique();
 
     const now = Date.now();
+    // Backward compatible: if `hidden` isn't provided, preserve any existing hidden list.
+    const existingHidden = (existing?.areas as any)?.hidden as
+      | { main?: Array<string>; sidebar?: Array<string> }
+      | undefined;
+    const nextHidden = args.areas.hidden
+      ? {
+          main: normalizeHiddenIds(args.areas.hidden.main ?? []),
+          sidebar: normalizeHiddenIds(args.areas.hidden.sidebar ?? []),
+        }
+      : {
+          main: normalizeHiddenIds(existingHidden?.main ?? []),
+          sidebar: normalizeHiddenIds(existingHidden?.sidebar ?? []),
+        };
+
     const nextAreas = {
       main: normalizeMain(args.areas.main),
       sidebar: normalizeSidebar(args.areas.sidebar),
+      hidden: nextHidden,
     };
 
     if (existing) {
@@ -104,7 +122,7 @@ export const upsertMyAdminUiLayout = mutation({
 
     await ctx.db.insert("adminUiLayouts", {
       organizationId: args.organizationId,
-      userId: user._id,
+      userId: userId,
       scope: args.scope,
       postTypeSlug: args.postTypeSlug,
       areas: nextAreas,
