@@ -20,8 +20,7 @@ import { ContactMarketingTagsManager } from "./ContactMarketingTagsManager";
 
 // Avoid importing the generated Convex `api` with full types in a client component.
 // The generated api types are extremely deep and can trip TS' instantiation limit.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const apiAny = require("@convex-config/_generated/api") as any;
+import * as apiAny from "@convex-config/_generated/api";
 
 const asString = (value: unknown): string => {
   if (typeof value === "string") return value;
