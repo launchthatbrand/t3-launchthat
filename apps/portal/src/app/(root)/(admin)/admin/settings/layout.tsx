@@ -191,8 +191,16 @@ const getSettingsLayoutConfig = (
       title: "Organization",
       description: "Manage organization settings, domains, and members",
       tabs: [
-        { label: "Overview", value: "overview", href: `${baseHref}?tab=overview` },
-        { label: "Settings", value: "settings", href: `${baseHref}?tab=settings` },
+        {
+          label: "Overview",
+          value: "overview",
+          href: `${baseHref}?tab=overview`,
+        },
+        {
+          label: "Settings",
+          value: "settings",
+          href: `${baseHref}?tab=settings`,
+        },
         { label: "Domains", value: "domains", href: `${baseHref}?tab=domains` },
         { label: "Members", value: "members", href: `${baseHref}?tab=members` },
         { label: "Danger", value: "danger", href: `${baseHref}?tab=danger` },
@@ -302,9 +310,9 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
       pathname={pathname}
     >
       <AdminLayoutHeader />
-      <AdminLayoutContent>
-        <AdminLayoutMain>
-          <div className="container py-4">{children}</div>
+      <AdminLayoutContent className="flex flex-1">
+        <AdminLayoutMain className="container flex-1 space-y-6 py-6">
+          {children}
         </AdminLayoutMain>
       </AdminLayoutContent>
     </AdminLayout>

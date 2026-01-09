@@ -16,6 +16,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@acme/ui/breadcrumb";
+import { Button } from "@acme/ui/button";
 import AppHeader from "@acme/ui/layout/AppHeader";
 import {
   NavigationMenu,
@@ -27,7 +28,6 @@ import {
   navigationMenuTriggerStyle,
 } from "@acme/ui/navigation-menu";
 import { ThemeToggleButton } from "@acme/ui/theme";
-import { Button } from "@acme/ui/button";
 
 import { PortalNavUser } from "~/components/auth/PortalNavUser";
 import { NotificationIcon } from "~/components/notifications/NotificationIcon";
@@ -238,7 +238,8 @@ const Breadcrumbs = () => {
   const isAdminDashboard = pathname === "/admin";
   const isAdminSinglePostEdit = pathname === "/admin/edit";
   const hasPostId = Boolean(searchParams.get("post_id"));
-  const shouldShowEditLayout = isAdminDashboard || (isAdminSinglePostEdit && hasPostId);
+  const shouldShowEditLayout =
+    isAdminDashboard || (isAdminSinglePostEdit && hasPostId);
   const isEditingLayout = searchParams.get("editLayout") === "1";
 
   // Create breadcrumb items from the path
@@ -285,7 +286,7 @@ const Breadcrumbs = () => {
   };
 
   return (
-    <Breadcrumb className="bg-sidebar hidden items-center border-b px-6 py-2 shadow-sm md:flex">
+    <Breadcrumb className="bg-sidebar z-10 hidden items-center border-b px-6 py-2 shadow-sm md:flex">
       <div className="flex w-full items-center justify-between gap-4">
         <BreadcrumbList>{getBreadcrumbItems()}</BreadcrumbList>
         {shouldShowEditLayout ? (
