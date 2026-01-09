@@ -338,6 +338,10 @@ function TenantConvexProvider({ children }: { children: React.ReactNode }) {
   const [isTokenLoading, setIsTokenLoading] = React.useState(false);
   const pathname = usePathname();
   const disableServerMint = shouldDisableServerMintedTokensInThisEnv();
+  const tokenFetchInFlightRef = React.useRef<Promise<string | null> | null>(
+    null,
+  );
+  const lastTokenFetchMsRef = React.useRef<number>(0);
 
   // Always mount a tenant Convex client so logged-out pages can render.
   // Re-create the client when auth transitions (anon <-> authed) so websockets
@@ -485,6 +489,16 @@ function TenantConvexProvider({ children }: { children: React.ReactNode }) {
           return ls;
         }
 
+        // If we already have a token that's still valid, return it even if Convex asks to
+        // "force refresh". In practice Convex can request a refresh during websocket transitions;
+        // fetching a brand-new token on every transition causes tight loops.
+        if (token) {
+          const expMs = parseJwtExpMs(token);
+          if (!expMs || expMs - Date.now() > 60_000) {
+            return token;
+          }
+        }
+
         // Prefer server-minted tokens derived from the tenant session cookie.
         // This is same-origin and avoids redirect loops.
         if (!args.forceRefreshToken && token) {
@@ -494,59 +508,79 @@ function TenantConvexProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
+        // De-dupe concurrent fetches and add a small cooldown to avoid request storms.
+        if (tokenFetchInFlightRef.current) {
+          return await tokenFetchInFlightRef.current;
+        }
+        const nowMs = Date.now();
+        if (nowMs - lastTokenFetchMsRef.current < 2_000) {
+          return token;
+        }
+        lastTokenFetchMsRef.current = nowMs;
+
         try {
-          setIsTokenLoading(true);
-          const res = await fetch("/api/convex-token", {
-            cache: "no-store",
-            credentials: "include",
-          });
-          if (res.status === 503) {
-            // Not configured (or intentionally disabled in local dev). Fall back to any
-            // Clerk-minted Convex token stored in localStorage.
-            const ls = readConvexTokenFromLocalStorage();
-            if (ls && ls !== token) setToken(ls);
-            return ls ?? token;
-          }
-          if (res.status === 401 && shouldForceAuthForAdmin) {
-            // Immediately after login, the tenant_session cookie can lag slightly.
-            // Retry once before giving up to avoid "empty admin tables until refresh".
-            await new Promise((r) => setTimeout(r, 250));
-            const retry = await fetch("/api/convex-token", {
+          tokenFetchInFlightRef.current = (async () => {
+            setIsTokenLoading(true);
+
+            const res = await fetch("/api/convex-token", {
               cache: "no-store",
               credentials: "include",
             });
-            if (!retry.ok) {
-              setToken(null);
-              return null;
-            }
-            if (retry.status === 503) {
+
+            if (res.status === 503) {
+              // Not configured (or intentionally disabled in local dev). Fall back to any
+              // Clerk-minted Convex token stored in localStorage.
               const ls = readConvexTokenFromLocalStorage();
               if (ls && ls !== token) setToken(ls);
               return ls ?? token;
             }
-            const retryBody = (await retry.json()) as { token?: unknown };
-            const retryToken =
-              typeof retryBody.token === "string" && retryBody.token.trim()
-                ? retryBody.token.trim()
+
+            if (res.status === 401 && shouldForceAuthForAdmin) {
+              // Immediately after login, the tenant_session cookie can lag slightly.
+              // Retry once before giving up to avoid "empty admin tables until refresh".
+              await new Promise((r) => setTimeout(r, 250));
+              const retry = await fetch("/api/convex-token", {
+                cache: "no-store",
+                credentials: "include",
+              });
+              if (!retry.ok) {
+                setToken(null);
+                return null;
+              }
+              if (retry.status === 503) {
+                const ls = readConvexTokenFromLocalStorage();
+                if (ls && ls !== token) setToken(ls);
+                return ls ?? token;
+              }
+              const retryBody = (await retry.json()) as { token?: unknown };
+              const retryToken =
+                typeof retryBody.token === "string" && retryBody.token.trim()
+                  ? retryBody.token.trim()
+                  : null;
+              if (retryToken && retryToken !== token) setToken(retryToken);
+              return retryToken;
+            }
+
+            if (!res.ok) {
+              setToken(null);
+              return null;
+            }
+
+            const body = (await res.json()) as { token?: unknown };
+            const next =
+              typeof body.token === "string" && body.token.trim()
+                ? body.token.trim()
                 : null;
-            setToken(retryToken);
-            return retryToken;
-          }
-          if (!res.ok) {
-            setToken(null);
-            return null;
-          }
-          const body = (await res.json()) as { token?: unknown };
-          const next =
-            typeof body.token === "string" && body.token.trim()
-              ? body.token.trim()
-              : null;
-          setToken(next);
-          return next;
+            if (next && next !== token) setToken(next);
+            return next;
+          })();
+
+          return await tokenFetchInFlightRef.current;
         } catch {
           // Last resort: do not redirect; return whatever we have.
           return token;
         } finally {
+          tokenFetchInFlightRef.current = null;
           setIsTokenLoading(false);
         }
       },
