@@ -509,6 +509,7 @@ function AdminEditPageBody() {
         postType={hydratedPostType}
         slug={resolvedSlug}
         isNewRecord={effectiveIsNewRecord}
+        isLoading={isLoading}
         organizationId={organizationId ?? undefined}
         pluginSingleView={pluginSingleView}
         onBack={() => {

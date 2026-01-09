@@ -5,6 +5,7 @@ import "~/lib/pageTemplates";
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { AdminSaveStatus } from "@/lib/postTypes/adminSave";
+import type { Active, DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import type { SerializedEditorState } from "lexical";
 import type { ReactNode } from "react";
 import {
@@ -18,14 +19,15 @@ import {
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { generateSlugFromTitle, useCreatePost } from "@/lib/blog";
 import { saveAdminEntry } from "@/lib/postTypes/adminSave";
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { api } from "@portal/convexspec";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
-
-import type { Active, DragEndEvent, DragStartEvent } from "@dnd-kit/core";
-import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { BuilderDndProvider, DragOverlayPreview, SortableItem } from "@acme/dnd";
 
 import type {
   MetaBoxLocation,
@@ -33,6 +35,11 @@ import type {
 } from "@acme/admin-runtime/meta-boxes";
 import { collectRegisteredMetaBoxes } from "@acme/admin-runtime/meta-boxes";
 import { resolvePermalinkPreviewPath } from "@acme/admin-runtime/permalinks";
+import {
+  BuilderDndProvider,
+  DragOverlayPreview,
+  SortableItem,
+} from "@acme/dnd";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent } from "@acme/ui/card";
@@ -45,6 +52,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
+import { Skeleton } from "@acme/ui/skeleton";
 import { Switch } from "@acme/ui/switch";
 import { Textarea } from "@acme/ui/textarea";
 
@@ -291,6 +299,7 @@ export interface AdminSinglePostViewProps {
   postType: Doc<"postTypes"> | null;
   slug: string;
   isNewRecord: boolean;
+  isLoading?: boolean;
   organizationId?: Id<"organizations">;
   pluginSingleView?: PluginSingleViewInstance | null;
   onBack: () => void;
@@ -301,6 +310,7 @@ export function AdminSinglePostView({
   postType,
   slug,
   isNewRecord,
+  isLoading = false,
   organizationId,
   pluginSingleView,
   onBack,
@@ -1590,7 +1600,8 @@ export function AdminSinglePostView({
       const available = new Set(defaultMain.map((i) => i.id));
       const seen = new Set<string>();
       const out: Array<{ id: string; width: "half" | "full" }> = [];
-      const base = adminUiAreas.main.length > 0 ? adminUiAreas.main : defaultMain;
+      const base =
+        adminUiAreas.main.length > 0 ? adminUiAreas.main : defaultMain;
       for (const item of base) {
         if (!available.has(item.id) || seen.has(item.id)) continue;
         seen.add(item.id);
@@ -1678,7 +1689,9 @@ export function AdminSinglePostView({
             return (
               <div
                 key={metaBox.id}
-                className={item.width === "half" ? "md:col-span-6" : "md:col-span-12"}
+                className={
+                  item.width === "half" ? "md:col-span-6" : "md:col-span-12"
+                }
               >
                 <MetaBoxPanel
                   id={metaBox.id}
@@ -1700,7 +1713,9 @@ export function AdminSinglePostView({
     if (area === "sidebar") {
       return (
         <BuilderDndProvider
-          onDragStart={(event: DragStartEvent) => setActiveDragItem(event.active)}
+          onDragStart={(event: DragStartEvent) =>
+            setActiveDragItem(event.active)
+          }
           onDragCancel={() => setActiveDragItem(null)}
           onDragEnd={(event: DragEndEvent) => {
             setActiveDragItem(null);
@@ -1741,7 +1756,7 @@ export function AdminSinglePostView({
                   <SortableItem
                     key={metaBox.id}
                     id={metaBox.id}
-                    className="border-0 bg-transparent shadow-none items-stretch p-0"
+                    className="items-stretch border-0 bg-transparent p-0 shadow-none"
                     handleClassName="h-12 px-1"
                   >
                     <MetaBoxPanel
@@ -1749,7 +1764,9 @@ export function AdminSinglePostView({
                       title={metaBox.title}
                       description={metaBox.description}
                       isOpen={isOpen}
-                      onToggle={(nextOpen) => setMetaBoxState(storageKey, nextOpen)}
+                      onToggle={(nextOpen) =>
+                        setMetaBoxState(storageKey, nextOpen)
+                      }
                       variant="sidebar"
                     >
                       {metaBox.render()}
@@ -1817,11 +1834,13 @@ export function AdminSinglePostView({
               return (
                 <div
                   key={metaBox.id}
-                  className={item.width === "half" ? "md:col-span-6" : "md:col-span-12"}
+                  className={
+                    item.width === "half" ? "md:col-span-6" : "md:col-span-12"
+                  }
                 >
                   <SortableItem
                     id={metaBox.id}
-                    className="border-0 bg-transparent shadow-none items-stretch p-0"
+                    className="items-stretch border-0 bg-transparent p-0 shadow-none"
                     handleClassName="h-12 px-1"
                   >
                     <MetaBoxPanel
@@ -1829,7 +1848,9 @@ export function AdminSinglePostView({
                       title={metaBox.title}
                       description={metaBox.description}
                       isOpen={isOpen}
-                      onToggle={(nextOpen) => setMetaBoxState(storageKey, nextOpen)}
+                      onToggle={(nextOpen) =>
+                        setMetaBoxState(storageKey, nextOpen)
+                      }
                       variant="main"
                       headerActions={
                         <Button
@@ -1842,7 +1863,8 @@ export function AdminSinglePostView({
                                 m.id === metaBox.id
                                   ? {
                                       ...m,
-                                      width: m.width === "half" ? "full" : "half",
+                                      width:
+                                        m.width === "half" ? "full" : "half",
                                     }
                                   : m,
                               );
@@ -2545,7 +2567,11 @@ export function AdminSinglePostView({
     return (
       <div className="container space-y-6 py-6">
         {saveError && <p className="text-destructive text-sm">{saveError}</p>}
-        <SortableMetaBoxArea area="main" metaBoxes={resolvedMetaBoxes} variant="main" />
+        <SortableMetaBoxArea
+          area="main"
+          metaBoxes={resolvedMetaBoxes}
+          variant="main"
+        />
         {afterContentSlots}
       </div>
     );
@@ -2614,18 +2640,41 @@ export function AdminSinglePostView({
     );
   };
 
-  if (!isNewRecord && post === undefined) {
+  if (!isNewRecord && (isLoading || post === undefined)) {
     return (
-      <div className="text-muted-foreground flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading entry…
-      </div>
+      <AdminLayoutContent className="flex flex-1">
+        <AdminLayoutMain className="flex-1">
+          <div className="container py-6">
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-1/3" />
+                <Skeleton className="h-4 w-1/4" />
+              </div>
+              <div className="grid gap-4 md:grid-cols-12">
+                <div className="space-y-4 md:col-span-8">
+                  <Skeleton className="h-40 w-full" />
+                  <Skeleton className="h-64 w-full" />
+                </div>
+                <div className="space-y-4 md:col-span-4">
+                  <Skeleton className="h-40 w-full" />
+                  <Skeleton className="h-40 w-full" />
+                </div>
+              </div>
+              {/* <div className="text-muted-foreground flex items-center text-sm">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading entry…
+              </div> */}
+            </div>
+          </div>
+        </AdminLayoutMain>
+      </AdminLayoutContent>
     );
   }
 
-  if (!isNewRecord && post === null) {
+  if (!isNewRecord && !isLoading && post === null) {
     return (
-      <AdminLayoutContent>
-        <AdminLayoutMain>
+      <AdminLayoutContent className="flex flex-1">
+        <AdminLayoutMain className="flex-1">
           <Card>
             <CardContent className="py-12 text-center">
               <p className="text-muted-foreground mb-4">
@@ -2714,8 +2763,8 @@ export function AdminSinglePostView({
           activeTab={activeTab}
           pathname={pathname}
         >
-          <AdminLayoutContent withSidebar={showSidebar}>
-            <AdminLayoutMain>
+          <AdminLayoutContent className="flex flex-1" withSidebar={showSidebar}>
+            <AdminLayoutMain className="flex-1">
               <AdminLayoutHeader customTabs={layoutTabs} />
               <div className="">
                 {isSeoTab ? (
@@ -2789,8 +2838,8 @@ export function AdminSinglePostView({
         tabs={baseTabs}
         pathname={pathname}
       >
-        <AdminLayoutContent withSidebar>
-          <AdminLayoutMain>
+        <AdminLayoutContent className="flex flex-1" withSidebar>
+          <AdminLayoutMain className="flex-1">
             <AdminLayoutHeader />
             <div className="container py-6">
               {isSeoTab ? (
