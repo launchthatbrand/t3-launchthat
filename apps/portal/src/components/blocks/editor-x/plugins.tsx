@@ -153,6 +153,7 @@ export function Plugins({
   attachmentsContext,
   registerMetaPayloadCollectorAction,
   initialAutoThumbnailUrl,
+  autoFocus = false,
 }: {
   organizationId?: Id<"organizations">;
   postTypeSlug?: string | null;
@@ -192,6 +193,7 @@ export function Plugins({
     collector: () => Record<string, unknown> | null | undefined,
   ) => () => void;
   initialAutoThumbnailUrl?: string;
+  autoFocus?: boolean;
 }) {
   const [floatingAnchorElem, setFloatingAnchorElem] =
     useState<HTMLDivElement | null>(null);
@@ -269,7 +271,7 @@ export function Plugins({
         )}
       </ToolbarPlugin>
       <div className="relative">
-        <AutoFocusPlugin />
+        {autoFocus ? <AutoFocusPlugin /> : null}
         <RichTextPlugin
           contentEditable={
             <div className="">

@@ -11,6 +11,7 @@ interface AuthorizeNetConfig {
   transactionKey?: string;
   clientKey?: string;
   sandbox?: boolean;
+  signatureKey?: string;
 }
 
 const asString = (value: unknown): string =>
@@ -26,8 +27,216 @@ const pickConfig = (value: unknown): AuthorizeNetConfig => {
     transactionKey: asString(v.transactionKey).trim() || undefined,
     clientKey: asString(v.clientKey).trim() || undefined,
     sandbox: asBoolean(v.sandbox),
+    signatureKey: asString(v.signatureKey).trim() || undefined,
   };
 };
+
+type CreateSubscriptionResult =
+  | {
+      success: true;
+      customerProfileId: string;
+      customerPaymentProfileId: string;
+      subscriptionId: string;
+      raw?: unknown;
+    }
+  | {
+      success: false;
+      errorMessage: string;
+      errorCode?: string;
+      raw?: unknown;
+    };
+
+const toIsoDate = (d: Date): string => {
+  const pad = (v: number) => String(v).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+};
+
+export const createCimAndArbSubscription = action({
+  args: {
+    organizationId: v.optional(v.string()),
+    opaqueData: v.object({
+      dataDescriptor: v.string(),
+      dataValue: v.string(),
+    }),
+    customer: v.object({
+      email: v.string(),
+      name: v.optional(v.string()),
+      postcode: v.optional(v.string()),
+    }),
+    // Monthly amount in store currency (dollars).
+    amountMonthly: v.number(),
+    currency: v.optional(v.string()),
+    // Date string `YYYY-MM-DD` (UTC) when recurring billing begins.
+    startDate: v.optional(v.string()),
+    totalOccurrences: v.optional(v.number()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args): Promise<CreateSubscriptionResult> => {
+    const amountMonthly = Number.isFinite(args.amountMonthly) ? args.amountMonthly : 0;
+    if (amountMonthly <= 0) {
+      return { success: false, errorMessage: "Invalid monthly amount" };
+    }
+
+    const option: any = await ctx.runQuery(api.core.options.get as any, {
+      metaKey: "plugin.ecommerce.authorizenet.settings",
+      type: "site",
+      orgId: args.organizationId ?? null,
+    });
+    const config = pickConfig(option?.metaValue);
+
+    if (!config.apiLoginId || !config.transactionKey) {
+      return {
+        success: false,
+        errorMessage:
+          "Authorize.Net is not configured (missing API Login ID or Transaction Key).",
+      };
+    }
+
+    const endpoint = config.sandbox
+      ? "https://apitest.authorize.net/xml/v1/request.api"
+      : "https://api.authorize.net/xml/v1/request.api";
+
+    const name = asString(args.customer?.name).trim();
+    const postcode = asString(args.customer?.postcode).trim();
+    const firstLast = name.split(/\s+/).filter(Boolean);
+    const firstName = firstLast[0] ?? "";
+    const lastName = firstLast.slice(1).join(" ");
+
+    // Step 1: Create CIM customer profile + payment profile from Accept.js opaqueData.
+    const createProfilePayload = {
+      createCustomerProfileRequest: {
+        merchantAuthentication: {
+          name: config.apiLoginId,
+          transactionKey: config.transactionKey,
+        },
+        profile: {
+          email: asString(args.customer.email).trim(),
+          paymentProfiles: [
+            {
+              customerType: "individual",
+              payment: {
+                opaqueData: {
+                  dataDescriptor: args.opaqueData.dataDescriptor,
+                  dataValue: args.opaqueData.dataValue,
+                },
+              },
+              billTo:
+                firstName || lastName || postcode
+                  ? {
+                      ...(firstName ? { firstName } : {}),
+                      ...(lastName ? { lastName } : {}),
+                      ...(postcode ? { zip: postcode } : {}),
+                    }
+                  : undefined,
+            },
+          ],
+        },
+      },
+    };
+
+    let profileJson: any;
+    try {
+      const resp = await fetch(endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(createProfilePayload),
+      });
+      profileJson = await resp.json();
+    } catch (err: unknown) {
+      return {
+        success: false,
+        errorMessage:
+          err instanceof Error ? err.message : "Authorize.Net request failed",
+      };
+    }
+
+    const profileResultCode = asString(profileJson?.messages?.resultCode);
+    const customerProfileId = asString(profileJson?.customerProfileId);
+    const paymentProfileId =
+      asString(profileJson?.customerPaymentProfileIdList?.[0]) ||
+      asString(profileJson?.customerPaymentProfileId);
+
+    if (profileResultCode.toLowerCase() !== "ok" || !customerProfileId || !paymentProfileId) {
+      const errorText =
+        asString(profileJson?.messages?.message?.[0]?.text) ||
+        "Failed to create customer payment profile";
+      const errorCode = asString(profileJson?.messages?.message?.[0]?.code) || undefined;
+      return {
+        success: false,
+        errorMessage: errorText,
+        errorCode,
+        raw: profileJson,
+      };
+    }
+
+    // Step 2: Create ARB subscription referencing the profile.
+    const startDateRaw = asString(args.startDate).trim();
+    const startDate = startDateRaw || toIsoDate(new Date());
+    const totalOccurrences = Math.max(1, Math.floor(args.totalOccurrences ?? 9999));
+
+    const arbPayload = {
+      ARBCreateSubscriptionRequest: {
+        merchantAuthentication: {
+          name: config.apiLoginId,
+          transactionKey: config.transactionKey,
+        },
+        subscription: {
+          name: `LaunchThat subscription`,
+          paymentSchedule: {
+            interval: { length: 1, unit: "months" },
+            startDate,
+            totalOccurrences,
+          },
+          amount: amountMonthly.toFixed(2),
+          profile: {
+            customerProfileId,
+            customerPaymentProfileId: paymentProfileId,
+          },
+        },
+      },
+    };
+
+    let arbJson: any;
+    try {
+      const resp = await fetch(endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(arbPayload),
+      });
+      arbJson = await resp.json();
+    } catch (err: unknown) {
+      return {
+        success: false,
+        errorMessage:
+          err instanceof Error ? err.message : "Authorize.Net request failed",
+        raw: err,
+      };
+    }
+
+    const arbResultCode = asString(arbJson?.messages?.resultCode);
+    const subscriptionId = asString(arbJson?.subscriptionId);
+    if (arbResultCode.toLowerCase() !== "ok" || !subscriptionId) {
+      const errorText =
+        asString(arbJson?.messages?.message?.[0]?.text) ||
+        "Failed to create ARB subscription";
+      const errorCode = asString(arbJson?.messages?.message?.[0]?.code) || undefined;
+      return {
+        success: false,
+        errorMessage: errorText,
+        errorCode,
+        raw: arbJson,
+      };
+    }
+
+    return {
+      success: true,
+      customerProfileId,
+      customerPaymentProfileId: paymentProfileId,
+      subscriptionId,
+      raw: { profileJson, arbJson },
+    };
+  },
+});
 
 type ChargeResult =
   | {

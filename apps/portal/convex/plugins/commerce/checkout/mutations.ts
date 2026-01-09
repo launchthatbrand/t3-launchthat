@@ -78,6 +78,7 @@ const ORDER_META_KEYS = {
   itemsSubtotal: "order.itemsSubtotal",
   orderTotal: "order.orderTotal",
   currency: "order.currency",
+  subscriptionId: "order.subscriptionId",
   couponCode: "order.couponCode",
   orderStatus: "order.status",
   customerEmail: "order.customerEmail",

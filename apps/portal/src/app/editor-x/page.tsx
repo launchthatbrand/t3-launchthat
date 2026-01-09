@@ -41,6 +41,7 @@ export default function EditorPage() {
     <Editor
       editorSerializedState={editorState}
       onSerializedChange={(value) => setEditorState(value)}
+      autoFocus={true}
     />
   )
 }

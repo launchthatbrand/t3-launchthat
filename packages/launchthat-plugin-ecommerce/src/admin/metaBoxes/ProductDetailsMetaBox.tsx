@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { Textarea } from "@acme/ui/textarea";
 import { Switch } from "@acme/ui/switch";
 
-type ProductType = "simple" | "external" | "grouped";
+type ProductType = "simple" | "external" | "grouped" | "simple_subscription";
 type StockStatus = "instock" | "outofstock" | "onbackorder";
 
 const PRODUCT_FEATURES_KEY = "product.features";
@@ -28,6 +28,7 @@ const ADMIN_ECOMMERCE_PRODUCT_DETAILS_SECTIONS_FILTER =
 
 const PRODUCT_TYPE_OPTIONS: Array<{ label: string; value: ProductType }> = [
   { label: "Simple product", value: "simple" },
+  { label: "Simple subscription", value: "simple_subscription" },
   { label: "External / affiliate", value: "external" },
   { label: "Grouped product", value: "grouped" },
 ];
@@ -45,6 +46,20 @@ const asString = (value: unknown): string => {
 };
 
 const asBoolean = (value: unknown): boolean => value === true;
+
+const parseMoneyDollarsToCents = (value: string): number | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) return null;
+  if (parsed < 0) return null;
+  return Math.round(parsed * 100);
+};
+
+const centsToDollarsString = (value: unknown): string => {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "";
+  return (value / 100).toFixed(2);
+};
 
 const safeParseStringArray = (value: unknown): string[] => {
   if (typeof value !== "string") return [];
@@ -117,6 +132,23 @@ export function ProductDetailsMetaBox({
     [setValue],
   );
 
+  const [subscriptionAmountMonthly, setSubscriptionAmountMonthly] =
+    useState<string>("");
+  const [subscriptionSetupFee, setSubscriptionSetupFee] = useState<string>("");
+  const [subscriptionTrialDays, setSubscriptionTrialDays] = useState<string>("");
+
+  useEffect(() => {
+    if (productType !== "simple_subscription") return;
+    setSubscriptionAmountMonthly(
+      centsToDollarsString(getValue("product.subscription.amountMonthly")),
+    );
+    setSubscriptionSetupFee(
+      centsToDollarsString(getValue("product.subscription.setupFee")),
+    );
+    setSubscriptionTrialDays(asString(getValue("product.subscription.trialDays")));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productType, context.postId]);
+
   const persistedFeatures = useMemo(
     () => safeParseStringArray(getValue(PRODUCT_FEATURES_KEY)),
     [getValue],
@@ -152,9 +184,13 @@ export function ProductDetailsMetaBox({
           <Label className="text-muted-foreground text-xs">Product type</Label>
           <Select
             value={productType}
-            onValueChange={(value: string) =>
-              setValue("product.type", value as ProductType)
-            }
+            onValueChange={(value: string) => {
+              const next = value as ProductType;
+              setValue("product.type", next);
+              if (next === "simple_subscription") {
+                setValue("product.subscription.interval", "month");
+              }
+            }}
             disabled={!canEdit}
           >
             <SelectTrigger className="w-full md:w-[260px]">
@@ -271,6 +307,88 @@ export function ProductDetailsMetaBox({
               />
             </div>
           </div>
+
+          {productType === "simple_subscription" ? (
+            <div className="space-y-3 rounded-md border p-4">
+              <div>
+                <div className="text-sm font-medium">Subscription pricing</div>
+                <div className="text-muted-foreground text-xs">
+                  Prices are stored as cents for billing.
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="product-sub-amount">Monthly price ($)</Label>
+                  <Input
+                    id="product-sub-amount"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    value={subscriptionAmountMonthly}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setSubscriptionAmountMonthly(e.currentTarget.value)
+                    }
+                    onBlur={() => {
+                      setValue(
+                        "product.subscription.amountMonthly",
+                        parseMoneyDollarsToCents(subscriptionAmountMonthly),
+                      );
+                    }}
+                    disabled={!canEdit}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="product-sub-setupfee">Setup fee ($)</Label>
+                  <Input
+                    id="product-sub-setupfee"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    value={subscriptionSetupFee}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setSubscriptionSetupFee(e.currentTarget.value)
+                    }
+                    onBlur={() => {
+                      setValue(
+                        "product.subscription.setupFee",
+                        parseMoneyDollarsToCents(subscriptionSetupFee),
+                      );
+                    }}
+                    disabled={!canEdit}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="product-sub-trial">Trial days</Label>
+                  <Input
+                    id="product-sub-trial"
+                    type="number"
+                    inputMode="numeric"
+                    step="1"
+                    value={subscriptionTrialDays}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setSubscriptionTrialDays(e.currentTarget.value)
+                    }
+                    onBlur={() => {
+                      const trimmed = subscriptionTrialDays.trim();
+                      if (!trimmed) {
+                        setValue("product.subscription.trialDays", null);
+                        return;
+                      }
+                      const parsed = Number(trimmed);
+                      setValue(
+                        "product.subscription.trialDays",
+                        Number.isFinite(parsed) ? parsed : null,
+                      );
+                    }}
+                    disabled={!canEdit}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : null}
         </TabsContent>
 
         <TabsContent value="features" className="space-y-4 pt-3">

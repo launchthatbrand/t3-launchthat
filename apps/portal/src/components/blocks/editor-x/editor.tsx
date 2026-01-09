@@ -1,13 +1,11 @@
 "use client";
 
 import type { Id } from "@/convex/_generated/dataModel";
-import type {
-  InitialConfigType} from "@lexical/react/LexicalComposer";
-import {
-  LexicalComposer,
-} from "@lexical/react/LexicalComposer";
-import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
+import type { InitialConfigType } from "@lexical/react/LexicalComposer";
 import type { EditorState, SerializedEditorState } from "lexical";
+import { useEffect, useMemo, useRef } from "react";
+import { LexicalComposer } from "@lexical/react/LexicalComposer";
+import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 
 import { TooltipProvider } from "@acme/ui/tooltip";
 
@@ -40,6 +38,8 @@ export function Editor({
   attachmentsContext,
   registerMetaPayloadCollectorAction,
   initialAutoThumbnailUrl,
+  autoFocus = false,
+  debugLabel,
 }: {
   editorState?: EditorState;
   editorSerializedState?: SerializedEditorState;
@@ -81,18 +81,56 @@ export function Editor({
   };
   registerMetaPayloadCollectorAction?: RegisterMetaPayloadCollector;
   initialAutoThumbnailUrl?: string;
+  autoFocus?: boolean;
+  debugLabel?: string;
 }) {
+  // IMPORTANT:
+  // - `editorSerializedState` is "initial content" for this editor instance.
+  // - If we feed it into LexicalComposer on every render (or whenever the object identity changes),
+  //   Lexical will reinitialize/reset, which makes typing appear "stuck" until save.
+  // - We intentionally freeze the initial serialized state for the lifetime of this mount.
+  // - When the parent wants to truly reset the editor, it should change the React `key`
+  //   on <Editor /> (we do this on admin edit pages via `editorKey`).
+  const initialSerializedRef = useRef<string | null>(null);
+  if (initialSerializedRef.current === null) {
+    initialSerializedRef.current = editorSerializedState
+      ? JSON.stringify(editorSerializedState)
+      : null;
+  }
+
+  // IMPORTANT: LexicalComposer's initialConfig should be stable across renders.
+  // If it changes every render, Lexical may recreate the editor which can steal focus
+  // and make typing impossible.
+  const initialConfig = useMemo<InitialConfigType>(() => {
+    return {
+      ...editorConfig,
+      ...(editorState ? { editorState } : {}),
+      ...(!editorState && initialSerializedRef.current
+        ? { editorState: initialSerializedRef.current }
+        : {}),
+    };
+  }, [editorState]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    if (!debugLabel) return;
+    // eslint-disable-next-line no-console
+    console.info(`[editor-x debug] mount ${debugLabel}`, {
+      autoFocus,
+      organizationId,
+      postTypeSlug,
+      hasSerialized: Boolean(initialSerializedRef.current),
+      hasEditorState: Boolean(editorState),
+    });
+    return () => {
+      // eslint-disable-next-line no-console
+      console.info(`[editor-x debug] unmount ${debugLabel}`);
+    };
+  }, [autoFocus, debugLabel, editorState, organizationId, postTypeSlug]);
+
   return (
     <div className="bg-background overflow-hidden rounded-lg border shadow">
-      <LexicalComposer
-        initialConfig={{
-          ...editorConfig,
-          ...(editorState ? { editorState } : {}),
-          ...(editorSerializedState
-            ? { editorState: JSON.stringify(editorSerializedState) }
-            : {}),
-        }}
-      >
+      <LexicalComposer initialConfig={initialConfig}>
         <TooltipProvider>
           <SharedAutocompleteContext>
             <FloatingLinkContext>
@@ -100,8 +138,11 @@ export function Editor({
                 organizationId={organizationId}
                 postTypeSlug={postTypeSlug}
                 attachmentsContext={attachmentsContext}
-                registerMetaPayloadCollectorAction={registerMetaPayloadCollectorAction}
+                registerMetaPayloadCollectorAction={
+                  registerMetaPayloadCollectorAction
+                }
                 initialAutoThumbnailUrl={initialAutoThumbnailUrl}
+                autoFocus={autoFocus}
               />
 
               <OnChangePlugin

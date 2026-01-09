@@ -127,6 +127,7 @@ const ORDER_META_KEYS = {
   itemsSubtotal: "order.itemsSubtotal",
   orderTotal: "order.orderTotal",
   currency: "order.currency",
+  subscriptionId: "order.subscriptionId",
   couponCode: "order.couponCode",
   discountAmount: "order.discountAmount",
   orderStatus: "order.status",
@@ -167,6 +168,25 @@ const ORDER_META_KEYS = {
   legacyUserId: "order:userId",
   userId: "order.userId",
 } as const;
+
+const PRODUCT_META_KEYS = {
+  type: "product.type",
+  subscriptionInterval: "product.subscription.interval",
+  subscriptionAmountMonthlyCents: "product.subscription.amountMonthly",
+  subscriptionSetupFeeCents: "product.subscription.setupFee",
+  subscriptionTrialDays: "product.subscription.trialDays",
+} as const;
+
+const toIsoDateUtc = (d: Date): string => {
+  const pad = (v: number) => String(v).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+};
+
+const addDaysUtc = (d: Date, days: number): Date => {
+  const next = new Date(d.getTime());
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+};
 
 const createCheckoutToken = (): string => {
   try {
@@ -352,7 +372,7 @@ export const placeOrder = action({
       throw new Error("Cart is empty");
     }
 
-    const lineItems: LineItem[] = cartItems
+    let lineItems: LineItem[] = cartItems
       .map((row) => {
         const productId = asString(row?.productPostId);
         const title = asString(row?.product?.title) || "Product";
@@ -380,6 +400,103 @@ export const placeOrder = action({
       productMetaCache[productId] = meta;
       return meta;
     };
+
+    // Subscription product detection (Simple subscription):
+    // If the cart contains a subscription product, we create an Authorize.Net ARB subscription
+    // and then create an initial order linked to that subscription.
+    let isSubscriptionCheckout = false;
+    let subscriptionProductId: string | null = null;
+    let subscriptionProductTitle = "Subscription";
+    let subscriptionAmountMonthlyCents = 0;
+    let subscriptionSetupFeeCents = 0;
+    let subscriptionTrialDays = 0;
+    let subscriptionArbStartDateIso = toIsoDateUtc(addDaysUtc(new Date(), 30));
+    let subscriptionInitialChargeAmount = 0;
+
+    for (const productId of uniqueProductIds) {
+      const meta = await getProductMeta(productId);
+      const productType = asString(readMetaValue(meta, PRODUCT_META_KEYS.type)).trim();
+      if (productType === "simple_subscription") {
+        isSubscriptionCheckout = true;
+        subscriptionProductId = productId;
+        const matchingLineItem = lineItems.find((li) => li.productId === productId);
+        subscriptionProductTitle =
+          matchingLineItem?.title?.trim() ? matchingLineItem.title.trim() : "Subscription";
+
+        const interval = asString(
+          readMetaValue(meta, PRODUCT_META_KEYS.subscriptionInterval),
+        ).trim();
+        if (interval && interval !== "month") {
+          throw new Error("Unsupported subscription interval (only monthly is supported).");
+        }
+
+        const amountCentsRaw = readMetaValue(
+          meta,
+          PRODUCT_META_KEYS.subscriptionAmountMonthlyCents,
+        );
+        const setupFeeCentsRaw = readMetaValue(
+          meta,
+          PRODUCT_META_KEYS.subscriptionSetupFeeCents,
+        );
+        const trialDaysRaw = readMetaValue(meta, PRODUCT_META_KEYS.subscriptionTrialDays);
+
+        subscriptionAmountMonthlyCents =
+          typeof amountCentsRaw === "number" && Number.isFinite(amountCentsRaw)
+            ? Math.max(0, Math.floor(amountCentsRaw))
+            : 0;
+        subscriptionSetupFeeCents =
+          typeof setupFeeCentsRaw === "number" && Number.isFinite(setupFeeCentsRaw)
+            ? Math.max(0, Math.floor(setupFeeCentsRaw))
+            : 0;
+        subscriptionTrialDays =
+          typeof trialDaysRaw === "number" && Number.isFinite(trialDaysRaw)
+            ? Math.max(0, Math.floor(trialDaysRaw))
+            : 0;
+
+        // ARB start date: if trialDays is set, delay first recurring payment by that many days.
+        // Otherwise, we charge the first month immediately and start ARB billing ~30 days later.
+        if (subscriptionTrialDays > 0) {
+          subscriptionArbStartDateIso = toIsoDateUtc(
+            addDaysUtc(new Date(), subscriptionTrialDays),
+          );
+          subscriptionInitialChargeAmount = subscriptionSetupFeeCents / 100;
+        } else {
+          subscriptionArbStartDateIso = toIsoDateUtc(addDaysUtc(new Date(), 30));
+          subscriptionInitialChargeAmount =
+            (subscriptionSetupFeeCents + subscriptionAmountMonthlyCents) / 100;
+        }
+
+        if (subscriptionAmountMonthlyCents <= 0) {
+          throw new Error(
+            "Subscription product is missing a valid monthly price. Set Subscription pricing in the product editor.",
+          );
+        }
+      }
+    }
+
+    if (isSubscriptionCheckout) {
+      if (!subscriptionProductId) {
+        throw new Error("Subscription product not found.");
+      }
+      // Keep v1 strict: only allow a single subscription item in the cart.
+      if (lineItems.length !== 1 || lineItems[0]?.productId !== subscriptionProductId) {
+        throw new Error(
+          "Subscription checkout currently supports only a single subscription product per order.",
+        );
+      }
+      if ((lineItems[0]?.quantity ?? 1) !== 1) {
+        throw new Error("Subscription quantity must be 1.");
+      }
+      // Normalize line items to reflect the initial charge amount.
+      lineItems = [
+        {
+          productId: subscriptionProductId,
+          title: subscriptionProductTitle,
+          unitPrice: subscriptionInitialChargeAmount,
+          quantity: 1,
+        },
+      ];
+    }
 
     // Account-required products:
     // We allow guest checkout (Whop-like), but mark the resulting order as requiring
@@ -449,6 +566,106 @@ export const placeOrder = action({
     }
 
     const now = Date.now();
+
+    // Subscription checkout (Authorize.Net ARB):
+    // Create the ARB subscription first. Then persist a local `subscription` record and
+    // create the initial order linked to it.
+    let subscriptionPostId: string | null = null;
+    if (isSubscriptionCheckout) {
+      if (args.paymentMethodId !== "authorizenet") {
+        throw new Error(
+          "Subscription checkout currently supports only Authorize.Net as the payment method.",
+        );
+      }
+      const paymentData = asRecord(args.paymentData);
+      const opaqueData = asRecord(paymentData.opaqueData);
+      const opaqueDataPayload = {
+        dataDescriptor: asString(opaqueData.dataDescriptor),
+        dataValue: asString(opaqueData.dataValue),
+      };
+      if (!opaqueDataPayload.dataDescriptor || !opaqueDataPayload.dataValue) {
+        throw new Error("Missing Authorize.Net payment token (opaqueData).");
+      }
+
+      const createSubResult = await ctx.runAction(
+        apiAny.plugins.commerce.payments.authorizenet.actions
+          .createCimAndArbSubscription,
+        {
+          organizationId: args.organizationId,
+          opaqueData: opaqueDataPayload,
+          customer: {
+            email: args.email.trim(),
+            name: args.billing.name ?? undefined,
+            postcode: args.billing.postcode ?? undefined,
+          },
+          amountMonthly: subscriptionAmountMonthlyCents / 100,
+          currency,
+          startDate: subscriptionArbStartDateIso,
+        },
+      );
+
+      const sub = asRecord(createSubResult);
+      if (!sub.success) {
+        const msg = asString(sub.errorMessage) || "Unable to create subscription";
+        throw new Error(msg);
+      }
+      const authnetSubscriptionId = asString(sub.subscriptionId).trim();
+      const authnetCustomerProfileId = asString(sub.customerProfileId).trim();
+      const authnetCustomerPaymentProfileId = asString(
+        sub.customerPaymentProfileId,
+      ).trim();
+      if (!authnetSubscriptionId) {
+        throw new Error("Authorize.Net did not return a subscriptionId.");
+      }
+
+      // Create local subscription post (component-backed) now that we have the ARB id.
+      const periodStartMs = Date.now();
+      const periodEndMs =
+        subscriptionTrialDays > 0
+          ? Date.parse(`${subscriptionArbStartDateIso}T00:00:00.000Z`)
+          : addDaysUtc(new Date(), 30).getTime();
+
+      subscriptionPostId = (await ctx.runMutation(
+        commercePostsMutations.createPost as any,
+        {
+          organizationId: args.organizationId,
+          postTypeSlug: "subscription",
+          title: `Subscription - ${args.email.trim()}`,
+          slug: `sub-${authnetSubscriptionId}`,
+          content: "",
+          excerpt: "",
+          status: "active",
+          createdAt: now,
+        },
+      )) as string;
+
+      const subMetaEntries: Array<{ key: string; value: string | number | boolean | null }> = [
+        { key: "subscription.productId", value: subscriptionProductId },
+        { key: "subscription.customerEmail", value: args.email.trim() },
+        { key: "subscription.customerUserId", value: normalizedUserId || null },
+        { key: "subscription.gateway", value: "authorizenet" },
+        { key: "subscription.authnet.subscriptionId", value: authnetSubscriptionId },
+        { key: "subscription.authnet.customerProfileId", value: authnetCustomerProfileId || null },
+        {
+          key: "subscription.authnet.customerPaymentProfileId",
+          value: authnetCustomerPaymentProfileId || null,
+        },
+        { key: "subscription.amountMonthly", value: subscriptionAmountMonthlyCents },
+        { key: "subscription.currency", value: currency },
+        { key: "subscription.currentPeriodStart", value: periodStartMs },
+        { key: "subscription.currentPeriodEnd", value: periodEndMs },
+        { key: "subscription.status", value: "active" },
+      ];
+
+      for (const entry of subMetaEntries) {
+        await ctx.runMutation(commercePostsMutations.setPostMeta as any, {
+          postId: subscriptionPostId,
+          key: entry.key,
+          value: entry.value,
+        });
+      }
+    }
+
     const orderId = (await ctx.runMutation(
       commercePostsMutations.createPost as any,
       {
@@ -474,6 +691,12 @@ export const placeOrder = action({
     metaEntries.push({ key: ORDER_META_KEYS.itemsSubtotal, value: subtotal });
     metaEntries.push({ key: ORDER_META_KEYS.orderTotal, value: total });
     metaEntries.push({ key: ORDER_META_KEYS.currency, value: currency });
+    if (subscriptionPostId) {
+      metaEntries.push({
+        key: ORDER_META_KEYS.subscriptionId,
+        value: subscriptionPostId,
+      });
+    }
     if (couponCode) {
       metaEntries.push({ key: ORDER_META_KEYS.couponCode, value: couponCode });
       metaEntries.push({
@@ -695,6 +918,14 @@ export const placeOrder = action({
         postId: orderId,
         key: entry.key,
         value: entry.value,
+      });
+    }
+
+    if (subscriptionPostId) {
+      await ctx.runMutation(commercePostsMutations.setPostMeta as any, {
+        postId: subscriptionPostId,
+        key: "subscription.lastOrderId",
+        value: orderId,
       });
     }
 

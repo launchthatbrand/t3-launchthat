@@ -47,6 +47,7 @@ const ContentMetaBox = ({
           attachmentsContext={context.attachmentsContext ?? undefined}
           registerMetaPayloadCollectorAction={context.registerMetaPayloadCollector}
           initialAutoThumbnailUrl={initialAutoThumbnailUrl}
+          debugLabel={`admin:${String(context.slug)}:${String(context.postId ?? "")}`}
         />
       </div>
       <div className="space-y-2">

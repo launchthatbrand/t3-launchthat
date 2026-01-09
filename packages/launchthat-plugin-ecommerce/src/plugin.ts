@@ -6,6 +6,8 @@ import { FunnelStepsMetaBox } from "./admin/metaBoxes/FunnelStepsMetaBox";
 import { OrderDetailsMetaBox } from "./admin/metaBoxes/OrderDetailsMetaBox";
 import { OrderItemsMetaBox } from "./admin/metaBoxes/OrderItemsMetaBox";
 import { ProductDetailsMetaBox } from "./admin/metaBoxes/ProductDetailsMetaBox";
+import { SubscriptionDetailsMetaBox } from "./admin/metaBoxes/SubscriptionDetailsMetaBox";
+import { SubscriptionOrdersMetaBox } from "./admin/metaBoxes/SubscriptionOrdersMetaBox";
 import { EcommercePageSetupSettingsPage } from "./admin/settings/EcommercePageSetupSettingsPage";
 import { EcommerceSettingsPage } from "./admin/settings/EcommerceSettingsPage";
 import { EcommerceCouponsPage } from "./admin/pages/EcommerceCouponsPage";
@@ -328,6 +330,30 @@ export const createEcommercePluginDefinition = (
       description: "Payment failed or was declined.",
       postTypeSlugs: ["orders"],
     },
+    {
+      value: "active",
+      label: "Active",
+      description: "Subscription is active and billing.",
+      postTypeSlugs: ["subscription"],
+    },
+    {
+      value: "trialing",
+      label: "Trialing",
+      description: "Subscription is in a trial period.",
+      postTypeSlugs: ["subscription"],
+    },
+    {
+      value: "past_due",
+      label: "Past due",
+      description: "Subscription payment failed and is past due.",
+      postTypeSlugs: ["subscription"],
+    },
+    {
+      value: "canceled",
+      label: "Canceled",
+      description: "Subscription has been canceled.",
+      postTypeSlugs: ["subscription"],
+    },
   ],
   adminMenus: [
     {
@@ -396,6 +422,10 @@ export const createEcommercePluginDefinition = (
           fieldKeys: [
             "product.features",
             "product.requireAccount",
+            "product.subscription.interval",
+            "product.subscription.amountMonthly",
+            "product.subscription.setupFee",
+            "product.subscription.trialDays",
             "crm.marketingTagIdsJson",
           ],
           rendererKey: "ecommerce.product.details",
@@ -456,6 +486,71 @@ export const createEcommercePluginDefinition = (
       metaBoxRenderers: {
         "ecommerce.order.details": OrderDetailsMetaBox,
         "ecommerce.order.items": OrderItemsMetaBox,
+      },
+    },
+    {
+      name: "Subscriptions",
+      slug: "subscription",
+      description: "Customer subscriptions (recurring billing).",
+      isPublic: false,
+      enableApi: true,
+      includeTimestamps: true,
+      supports: {
+        title: true,
+        customFields: true,
+        postMeta: true,
+      },
+      rewrite: {
+        hasArchive: false,
+      },
+      adminMenu: {
+        enabled: true,
+        label: "Subscriptions",
+        slug: "subscription",
+        parent: "ecommerce",
+        icon: "Repeat",
+        position: 42,
+      },
+      storageKind: "component",
+      storageTables: [...ECOMMERCE_COMPONENT_TABLES],
+      storageComponent: "launchthat_ecommerce",
+      metaBoxes: [
+        {
+          id: "ecommerce-subscription-details",
+          title: "Subscription details",
+          description: "View and manage recurring billing configuration.",
+          location: "main",
+          priority: 5,
+          fieldKeys: [
+            "subscription.status",
+            "subscription.customerEmail",
+            "subscription.customerUserId",
+            "subscription.productId",
+            "subscription.gateway",
+            "subscription.amountMonthly",
+            "subscription.currency",
+            "subscription.currentPeriodStart",
+            "subscription.currentPeriodEnd",
+            "subscription.lastOrderId",
+            "subscription.authnet.subscriptionId",
+            "subscription.authnet.customerProfileId",
+            "subscription.authnet.customerPaymentProfileId",
+          ],
+          rendererKey: "ecommerce.subscription.details",
+        },
+        {
+          id: "ecommerce-subscription-orders",
+          title: "Subscription orders",
+          description: "Orders generated from this subscription.",
+          location: "main",
+          priority: 10,
+          fieldKeys: [],
+          rendererKey: "ecommerce.subscription.orders",
+        },
+      ],
+      metaBoxRenderers: {
+        "ecommerce.subscription.details": SubscriptionDetailsMetaBox,
+        "ecommerce.subscription.orders": SubscriptionOrdersMetaBox,
       },
     },
     {
@@ -576,6 +671,7 @@ export const createEcommercePluginDefinition = (
           type: "select",
           options: [
             { label: "Simple product", value: "simple" },
+            { label: "Simple subscription", value: "simple_subscription" },
             { label: "External / affiliate", value: "external" },
             { label: "Grouped product", value: "grouped" },
           ],

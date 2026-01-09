@@ -328,6 +328,12 @@ export function AdminSinglePostView({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isEditingPage = searchParams.get("editLayout") === "1";
+  const debugFocus = isDev && searchParams.get("debugFocus") === "1";
+  // Debug switch: disable the Lexical/content metabox entirely.
+  // Use `?disableContent=1` (or legacy `?disableLexical=1`) on /admin/edit pages.
+  const disableContentMetaBox =
+    searchParams.get("disableContent") === "1" ||
+    searchParams.get("disableLexical") === "1";
   const createPost = useCreatePost();
   const [title, setTitle] = useState(post?.title ?? "");
   const [slugValue, setSlugValue] = useState(post?.slug ?? "");
@@ -475,44 +481,92 @@ export function AdminSinglePostView({
       : defaultTab;
   const [activeTab, setActiveTab] = useState(normalizedTab);
   const isAiTab = activeTab === aiTabValue;
-  const derivedEditorState = useMemo<SerializedEditorState | undefined>(() => {
-    console.log("[AdminSinglePostView] deriving editor state", {
-      postId: post?._id,
-      hasContent: Boolean(post?.content),
+
+  // Debug focus + key events. Enable via `?debugFocus=1` on /admin/edit pages.
+  // This helps us identify which element is stealing focus (Lexical auto-focus, rerenders, etc).
+  useEffect(() => {
+    if (!debugFocus) return;
+
+    const describeEl = (el: EventTarget | null): string => {
+      if (!el || !(el instanceof HTMLElement)) return String(el);
+      const parts = [
+        el.tagName.toLowerCase(),
+        el.id ? `#${el.id}` : "",
+        el.getAttribute("name") ? `[name="${el.getAttribute("name")}"]` : "",
+        el.getAttribute("data-testid")
+          ? `[data-testid="${el.getAttribute("data-testid")}"]`
+          : "",
+        el.className
+          ? `.${String(el.className).split(/\s+/).filter(Boolean).slice(0, 3).join(".")}`
+          : "",
+      ].filter(Boolean);
+      return parts.join("");
+    };
+
+    const logPrefix = `[admin-edit focus debug] ${slug}:${post?._id ?? (isNewRecord ? "new" : "none")}`;
+
+    const onFocusIn = (e: FocusEvent) => {
+      // eslint-disable-next-line no-console
+      console.info(logPrefix, "focusin", describeEl(e.target), {
+        active: describeEl(document.activeElement),
+      });
+    };
+    const onFocusOut = (e: FocusEvent) => {
+      // eslint-disable-next-line no-console
+      console.info(logPrefix, "focusout", describeEl(e.target), {
+        related: describeEl(
+          (e as unknown as { relatedTarget?: EventTarget | null })
+            .relatedTarget ?? null,
+        ),
+        active: describeEl(document.activeElement),
+      });
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      // eslint-disable-next-line no-console
+      console.info(logPrefix, "keydown", e.key, {
+        target: describeEl(e.target),
+        active: describeEl(document.activeElement),
+      });
+    };
+
+    document.addEventListener("focusin", onFocusIn, true);
+    document.addEventListener("focusout", onFocusOut, true);
+    document.addEventListener("keydown", onKeyDown, true);
+    // eslint-disable-next-line no-console
+    console.info(logPrefix, "enabled", {
+      href: typeof window !== "undefined" ? window.location.href : "n/a",
+      isEditingPage,
     });
+
+    return () => {
+      document.removeEventListener("focusin", onFocusIn, true);
+      document.removeEventListener("focusout", onFocusOut, true);
+      document.removeEventListener("keydown", onKeyDown, true);
+      // eslint-disable-next-line no-console
+      console.info(logPrefix, "disabled");
+    };
+  }, [debugFocus, isEditingPage, isNewRecord, post?._id, slug]);
+  const derivedEditorState = useMemo<SerializedEditorState | undefined>(() => {
     const parsed = parseLexicalSerializedState(post?.content ?? null);
     if (parsed) {
-      console.log("[AdminSinglePostView] parsed lexical content", {
-        postId: post?._id,
-      });
       return parsed;
     }
     if (!post?.content) {
-      console.log("[AdminSinglePostView] no content to derive", {
-        postId: post?._id,
-      });
       return undefined;
     }
     const fallbackText = stripHtmlTags(post.content);
     if (!fallbackText) {
-      console.log("[AdminSinglePostView] stripped content empty", {
-        postId: post?._id,
-      });
       return undefined;
     }
-    console.log(
-      "[AdminSinglePostView] creating lexical state from plain text",
-      {
-        postId: post?._id,
-      },
-    );
     return createLexicalStateFromPlainText(fallbackText);
-  }, [post]);
+  }, [post?._id, post?.content]);
+
+  // IMPORTANT: keep the editor key stable while typing.
+  // If this key changes on every keystroke, the Lexical editor will remount and steal focus,
+  // causing inputs to blur after a single character.
   const editorKey = useMemo(() => {
-    const base = post?._id ?? (isNewRecord ? "new" : slug);
-    const contentHash = post?.content ? post.content.length : 0;
-    return `${base}-${contentHash}`;
-  }, [isNewRecord, post?._id, post?.content, slug]);
+    return String(post?._id ?? (isNewRecord ? "new" : slug));
+  }, [isNewRecord, post?._id, slug]);
 
   useEffect(() => {
     setActiveTab(normalizedTab);
@@ -2524,7 +2578,12 @@ export function AdminSinglePostView({
           contextForHooks,
         );
 
-      registeredMetaBoxes.forEach((registeredMetaBox) => {
+      const filtered =
+        disableContentMetaBox && location === "main"
+          ? registeredMetaBoxes.filter((b) => b.id !== "core-content")
+          : registeredMetaBoxes;
+
+      filtered.forEach((registeredMetaBox) => {
         target.push({
           id: registeredMetaBox.id,
           title: registeredMetaBox.title,
@@ -2535,7 +2594,7 @@ export function AdminSinglePostView({
         });
       });
     },
-    [metaBoxContext],
+    [disableContentMetaBox, metaBoxContext],
   );
 
   const renderDefaultContent = (options?: {
@@ -2567,11 +2626,15 @@ export function AdminSinglePostView({
     return (
       <div className="container space-y-6 py-6">
         {saveError && <p className="text-destructive text-sm">{saveError}</p>}
-        <SortableMetaBoxArea
-          area="main"
-          metaBoxes={resolvedMetaBoxes}
-          variant="main"
-        />
+        {isEditingPage ? (
+          <SortableMetaBoxArea
+            area="main"
+            metaBoxes={resolvedMetaBoxes}
+            variant="main"
+          />
+        ) : (
+          renderMetaBoxListStatic(resolvedMetaBoxes, "main")
+        )}
         {afterContentSlots}
       </div>
     );
@@ -2630,11 +2693,15 @@ export function AdminSinglePostView({
     return (
       <div className="space-y-4">
         {sidebarTopSlots}
-        <SortableMetaBoxArea
-          area="sidebar"
-          metaBoxes={resolvedMetaBoxes}
-          variant="sidebar"
-        />
+        {isEditingPage ? (
+          <SortableMetaBoxArea
+            area="sidebar"
+            metaBoxes={resolvedMetaBoxes}
+            variant="sidebar"
+          />
+        ) : (
+          renderMetaBoxListStatic(resolvedMetaBoxes, "sidebar")
+        )}
         {sidebarBottomSlots}
       </div>
     );

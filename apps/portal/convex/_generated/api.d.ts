@@ -140,6 +140,8 @@ import type * as plugins_commerce_orders_queries from "../plugins/commerce/order
 import type * as plugins_commerce_payments_authorizenet_actions from "../plugins/commerce/payments/authorizenet/actions.js";
 import type * as plugins_commerce_products_queries from "../plugins/commerce/products/queries.js";
 import type * as plugins_commerce_queries from "../plugins/commerce/queries.js";
+import type * as plugins_commerce_subscriptions_actions from "../plugins/commerce/subscriptions/actions.js";
+import type * as plugins_commerce_subscriptions_queries from "../plugins/commerce/subscriptions/queries.js";
 import type * as plugins_commerce from "../plugins/commerce.js";
 import type * as plugins_crm_contacts_mutations from "../plugins/crm/contacts/mutations.js";
 import type * as plugins_crm_contacts_queries from "../plugins/crm/contacts/queries.js";
@@ -351,6 +353,8 @@ declare const fullApi: ApiFromModules<{
   "plugins/commerce/payments/authorizenet/actions": typeof plugins_commerce_payments_authorizenet_actions;
   "plugins/commerce/products/queries": typeof plugins_commerce_products_queries;
   "plugins/commerce/queries": typeof plugins_commerce_queries;
+  "plugins/commerce/subscriptions/actions": typeof plugins_commerce_subscriptions_actions;
+  "plugins/commerce/subscriptions/queries": typeof plugins_commerce_subscriptions_queries;
   "plugins/commerce": typeof plugins_commerce;
   "plugins/crm/contacts/mutations": typeof plugins_crm_contacts_mutations;
   "plugins/crm/contacts/queries": typeof plugins_crm_contacts_queries;
