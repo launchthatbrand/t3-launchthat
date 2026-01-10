@@ -1061,6 +1061,9 @@ importers:
       launchthat-plugin-disclaimers:
         specifier: workspace:*
         version: link:../../packages/launchthat-plugin-disclaimers
+      launchthat-plugin-discord:
+        specifier: workspace:*
+        version: link:../../packages/launchthat-plugin-discord
       launchthat-plugin-ecommerce:
         specifier: workspace:*
         version: link:../../packages/launchthat-plugin-ecommerce
@@ -1575,7 +1578,7 @@ importers:
         version: link:../db
       '@better-auth/expo':
         specifier: 'catalog:'
-        version: 1.4.0-beta.9(cf3ac41f001822e22250f47f4aeb1ecb)
+        version: 1.4.0-beta.9(better-auth@1.4.0-beta.9(better-sqlite3@12.4.6)(next@16.0.7(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.93.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(expo-constants@18.0.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(expo-crypto@15.0.7)(expo-linking@7.1.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))(expo-secure-store@14.0.2-canary-20250304-f08e984)(expo-web-browser@14.1.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))
       '@t3-oss/env-core':
         specifier: ^0.13.8
         version: 0.13.8(typescript@5.9.3)(zod@4.1.13)
@@ -2619,6 +2622,40 @@ importers:
       react:
         specifier: catalog:react19
         version: 19.0.0
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
+  packages/launchthat-plugin-discord:
+    dependencies:
+      convex:
+        specifier: ^1.23.0
+        version: 1.23.0(@clerk/clerk-react@5.30.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      launchthat-plugin-core:
+        specifier: workspace:*
+        version: link:../launchthat-plugin-core
+      next:
+        specifier: 'catalog:'
+        version: 16.0.7(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.93.3)
+    devDependencies:
+      '@acme/eslint-config':
+        specifier: workspace:*
+        version: link:../../tooling/eslint
+      '@acme/prettier-config':
+        specifier: workspace:*
+        version: link:../../tooling/prettier
+      '@acme/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.19.1
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.1(jiti@2.6.1)
+      prettier:
+        specifier: 'catalog:'
+        version: 3.6.2
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -24917,15 +24954,15 @@ snapshots:
       nanostores: 1.1.0
       zod: 4.1.13
 
-  '@better-auth/expo@1.4.0-beta.9(cf3ac41f001822e22250f47f4aeb1ecb)':
+  '@better-auth/expo@1.4.0-beta.9(better-auth@1.4.0-beta.9(better-sqlite3@12.4.6)(next@16.0.7(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.93.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(expo-constants@18.0.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(expo-crypto@15.0.7)(expo-linking@7.1.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))(expo-secure-store@14.0.2-canary-20250304-f08e984)(expo-web-browser@14.1.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))':
     dependencies:
       '@better-fetch/fetch': 1.1.18
       better-auth: 1.4.0-beta.9(better-sqlite3@12.4.6)(next@16.0.7(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.93.3))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(svelte@5.45.2)
       expo-constants: 18.0.0-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))
       expo-crypto: 15.0.7(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))
-      expo-linking: 7.1.0-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0)
-      expo-secure-store: 14.0.2-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))
-      expo-web-browser: 14.1.0-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))
+      expo-linking: 7.1.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0)
+      expo-secure-store: 14.0.2-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))
+      expo-web-browser: 14.1.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))
       zod: 4.1.13
 
   '@better-auth/telemetry@1.4.0-beta.9(@better-auth/core@1.4.0-beta.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.0.19)(better-sqlite3@12.4.6)(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0))':
@@ -37633,7 +37670,7 @@ snapshots:
       - expo
       - supports-color
 
-  expo-linking@7.1.0-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0):
+  expo-linking@7.1.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0):
     dependencies:
       expo-constants: 18.0.0-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))
       invariant: 2.2.4
@@ -37698,10 +37735,6 @@ snapshots:
     dependencies:
       expo: 53.0.0-canary-20250304-f08e984(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0)
 
-  expo-secure-store@14.0.2-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0)):
-    dependencies:
-      expo: 53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0)
-
   expo-splash-screen@0.29.23-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0)):
     dependencies:
       '@expo/prebuild-config': 9.0.0-canary-20250304-f08e984
@@ -37724,9 +37757,8 @@ snapshots:
       expo: 53.0.0-canary-20250304-f08e984(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0)
       react-native: 0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)
 
-  expo-web-browser@14.1.0-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)):
+  expo-web-browser@14.1.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)):
     dependencies:
-      expo: 53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0)
       react-native: 0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)
 
   expo@53.0.0-canary-20250304-f08e984(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0):

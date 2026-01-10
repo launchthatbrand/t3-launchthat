@@ -15,13 +15,22 @@ import {
 // in this large orchestration function by dynamically importing and erasing types.
 let cachedApiAny: any = null;
 let apiAny: any = null;
+let internalAny: any = null;
 const getApiAny = async (): Promise<any> => {
   if (cachedApiAny) return cachedApiAny;
   const mod = (await import("../../../_generated/api")) as unknown as {
     api: unknown;
+    internal: unknown;
   };
   cachedApiAny = mod.api as any;
+  internalAny = mod.internal as any;
   return cachedApiAny;
+};
+
+const getInternalAny = async (): Promise<any> => {
+  if (internalAny) return internalAny;
+  await getApiAny();
+  return internalAny;
 };
 
 interface CommercePostsMutations {
@@ -1088,6 +1097,33 @@ export const placeOrder = action({
       });
     } else {
       throw new Error(`Unsupported payment method: ${args.paymentMethodId}`);
+    }
+
+    // Discord role sync (optional): enqueue and process a sync job (non-blocking).
+    try {
+      const purchasedProductIds = Array.isArray(lineItems)
+        ? lineItems
+            .map((item: any) => asString(item?.productId).trim())
+            .filter(Boolean)
+        : [];
+      if (normalizedUserId && purchasedProductIds.length > 0) {
+        await ctx.runMutation(
+          components.launchthat_discord.syncJobs.mutations.enqueueSyncJob as any,
+          {
+            organizationId: asString(args.organizationId).trim() || PORTAL_TENANT_SLUG,
+            userId: normalizedUserId,
+            reason: "purchase",
+            payload: { purchasedProductIds, orderId },
+          },
+        );
+        const internal = await getInternalAny();
+        await ctx.runAction(
+          internal.plugins.discord.sync.processPendingJobs as any,
+          { limit: 10 },
+        );
+      }
+    } catch (err) {
+      console.error("[checkout] Discord role sync failed (continuing)", err);
     }
 
     // CRM sync (optional): ensure contact exists and assign any product tags.

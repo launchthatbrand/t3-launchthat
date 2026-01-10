@@ -12,6 +12,16 @@ import { Dialog, DialogContent, DialogTitle } from "@acme/ui/dialog";
 import { EntityList } from "@acme/ui/entity-list";
 import { Input } from "@acme/ui/input";
 import { Textarea } from "@acme/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@acme/ui/alert-dialog";
 
 const POST_TYPE_OPTIONS = [
   "downloads",
@@ -36,6 +46,8 @@ const CategoriesPage = () => {
   const [loading, setLoading] = useState(false);
   const [deleteLoadingId, setDeleteLoadingId] =
     useState<Id<"categories"> | null>(null);
+  const [pendingDeleteCategory, setPendingDeleteCategory] =
+    useState<Doc<"categories"> | null>(null);
 
   const handleOpen = () => {
     setForm({ name: "", description: "", postTypes: [] });
@@ -55,22 +67,23 @@ const CategoriesPage = () => {
     setOpen(true);
   };
 
-  const handleDelete = async (item: Doc<"categories">) => {
-    void item;
-    if (
-      !window.confirm(`Delete category '${item.name}'? This cannot be undone.`)
-    )
-      return;
+  const deleteCategoryNow = async (item: Doc<"categories">) => {
     setDeleteLoadingId(item._id);
     try {
       throw new Error(
         "Categories are now managed under Taxonomies -> Terms (category).",
       );
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to delete category");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete category",
+      );
     } finally {
       setDeleteLoadingId(null);
     }
+  };
+
+  const handleDelete = async (item: Doc<"categories">) => {
+    setPendingDeleteCategory(item);
   };
 
   const handleChange = (
@@ -163,6 +176,41 @@ const CategoriesPage = () => {
 
   return (
     <div className="space-y-6">
+      <AlertDialog
+        open={pendingDeleteCategory != null}
+        onOpenChange={(open) =>
+          setPendingDeleteCategory(open ? pendingDeleteCategory : null)
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete category?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Delete{" "}
+              <span className="font-medium">
+                {pendingDeleteCategory?.name ?? "this category"}
+              </span>
+              ? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingDeleteCategory(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                const item = pendingDeleteCategory;
+                setPendingDeleteCategory(null);
+                if (item) void deleteCategoryNow(item);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="mb-4 rounded-md border p-3 text-sm">
         Categories are now managed under{" "}
         <span className="font-medium">Settings → Taxonomies → Categories</span>.

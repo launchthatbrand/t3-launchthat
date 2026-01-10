@@ -2328,7 +2328,7 @@ export function AdminSinglePostView({
 
       // System-owned slugs (orders/subscriptions) are controlled by the backend.
       if (isSlugEditable) {
-        setSlugValue(result.resolvedSlug);
+      setSlugValue(result.resolvedSlug);
       }
       setSaveError(null);
       toast.success("Saved");

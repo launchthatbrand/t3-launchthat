@@ -2,7 +2,7 @@
 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { ReactNode } from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useDeletePost, useGetAllPosts } from "@/lib/blog";
@@ -20,6 +20,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@acme/ui/alert-dialog";
 import { EntityList } from "@acme/ui/entity-list";
 import {
   Select,
@@ -286,15 +296,17 @@ export function GenericArchiveView({
     [slug],
   );
   const deletePost = useDeletePost();
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const pendingDeleteItemRef = useRef<ArchiveDisplayRow | null>(null);
+  const [confirmBulkDeleteOpen, setConfirmBulkDeleteOpen] = useState(false);
+  const pendingBulkDeleteRef = useRef<{
+    selectedItems: ArchiveDisplayRow[];
+    clearSelection: () => void;
+  } | null>(null);
+
   const handleDeleteRow = useCallback(
     async (item: ArchiveDisplayRow) => {
       if (item.isPlaceholder) {
-        return;
-      }
-      const confirmed = window.confirm(
-        `Delete “${item.title}”? This action cannot be undone.`,
-      );
-      if (!confirmed) {
         return;
       }
       try {
@@ -336,7 +348,8 @@ export function GenericArchiveView({
       variant: "destructive",
       isDisabled: (item) => Boolean(item.isPlaceholder),
       onClick: (item) => {
-        void handleDeleteRow(item);
+        pendingDeleteItemRef.current = item;
+        setConfirmDeleteOpen(true);
       },
     });
 
@@ -347,10 +360,6 @@ export function GenericArchiveView({
     async (selectedItems: ArchiveDisplayRow[], clearSelection: () => void) => {
       const realItems = selectedItems.filter((item) => !item.isPlaceholder);
       if (realItems.length === 0) return;
-      const confirmed = window.confirm(
-        `Delete ${realItems.length} selected item(s)? This action cannot be undone.`,
-      );
-      if (!confirmed) return;
       try {
         await Promise.all(
           realItems.map((item) =>
@@ -455,6 +464,65 @@ export function GenericArchiveView({
 
   const mainContent = (
     <div className="container space-y-6 py-6">
+      <AlertDialog
+        open={confirmDeleteOpen}
+        onOpenChange={(open) => {
+          setConfirmDeleteOpen(open);
+          if (!open) pendingDeleteItemRef.current = null;
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete item?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                const item = pendingDeleteItemRef.current;
+                if (item) void handleDeleteRow(item);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={confirmBulkDeleteOpen}
+        onOpenChange={(open) => {
+          setConfirmBulkDeleteOpen(open);
+          if (!open) pendingBulkDeleteRef.current = null;
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete selected items?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                const payload = pendingBulkDeleteRef.current;
+                if (!payload) return;
+                void bulkDeleteSelected(payload.selectedItems, payload.clearSelection);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Select value={slug} onValueChange={onPostTypeChange}>
           <SelectTrigger className="w-60">
@@ -515,9 +583,13 @@ export function GenericArchiveView({
                         type="button"
                         variant="destructive"
                         size="sm"
-                        onClick={() =>
-                          void bulkDeleteSelected(selectedItems, clearSelection)
-                        }
+                        onClick={() => {
+                          pendingBulkDeleteRef.current = {
+                            selectedItems,
+                            clearSelection,
+                          };
+                          setConfirmBulkDeleteOpen(true);
+                        }}
                         className="ml-auto"
                       >
                         Delete selected
@@ -600,9 +672,13 @@ export function GenericArchiveView({
                         type="button"
                         variant="destructive"
                         size="sm"
-                        onClick={() =>
-                          void bulkDeleteSelected(selectedItems, clearSelection)
-                        }
+                        onClick={() => {
+                          pendingBulkDeleteRef.current = {
+                            selectedItems,
+                            clearSelection,
+                          };
+                          setConfirmBulkDeleteOpen(true);
+                        }}
                         className="ml-auto"
                       >
                         Delete selected

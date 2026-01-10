@@ -28,6 +28,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@acme/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@acme/ui/alert-dialog";
 import { Textarea } from "@acme/ui/textarea";
 
 import { api } from "../../../convex/_generated/api";
@@ -62,6 +72,9 @@ export function PostCard({ post, groupId }: PostCardProps) {
   const [showComments, setShowComments] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(post.content);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [moderateDialogOpen, setModerateDialogOpen] = useState(false);
+  const [moderateReason, setModerateReason] = useState("");
 
   // Get the current user's role in the group
   const group = useQuery(api.groups.queries.getGroupById, { groupId });
@@ -109,8 +122,6 @@ export function PostCard({ post, groupId }: PostCardProps) {
 
   // Handle post deletion
   const handleDeletePost = async () => {
-    if (!confirm("Are you sure you want to delete this post?")) return;
-
     try {
       await deletePost({
         postId: post._id,
@@ -123,16 +134,17 @@ export function PostCard({ post, groupId }: PostCardProps) {
   // Handle post moderation
   const handleModeratePost = async (action: "hide" | "show") => {
     try {
-      const reason =
-        action === "hide"
-          ? prompt("Please provide a reason for hiding this post:")
-          : undefined;
+      if (action === "hide") {
+        setModerateReason("");
+        setModerateDialogOpen(true);
+        return;
+      }
 
       await moderateContent({
         contentType: "post",
         contentId: post._id,
         action,
-        reason: reason || undefined,
+        reason: undefined,
       });
     } catch (error) {
       console.error("Error moderating post:", error);
@@ -212,7 +224,63 @@ export function PostCard({ post, groupId }: PostCardProps) {
   };
 
   return (
-    <Card>
+    <>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete post?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => void handleDeletePost()}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={moderateDialogOpen}
+        onOpenChange={setModerateDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hide post</AlertDialogTitle>
+            <AlertDialogDescription>
+              Please provide a reason for hiding this post.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Textarea
+            value={moderateReason}
+            onChange={(e) => setModerateReason(e.target.value)}
+            placeholder="Reason (optional)"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                void moderateContent({
+                  contentType: "post",
+                  contentId: post._id,
+                  action: "hide",
+                  reason: moderateReason.trim() || undefined,
+                });
+                setModerateDialogOpen(false);
+              }}
+            >
+              Hide
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Card>
       <CardHeader className="flex flex-row items-start gap-4 space-y-0 pb-2">
         <Avatar>
           <AvatarImage
@@ -254,7 +322,7 @@ export function PostCard({ post, groupId }: PostCardProps) {
                     </DropdownMenuItem>
                   )}
                   {canEdit && (
-                    <DropdownMenuItem onClick={handleDeletePost}>
+                    <DropdownMenuItem onClick={() => setDeleteDialogOpen(true)}>
                       <Trash2 className="mr-2 h-4 w-4" />
                       Delete
                     </DropdownMenuItem>
@@ -341,6 +409,7 @@ export function PostCard({ post, groupId }: PostCardProps) {
           <CommentSection postId={post._id} groupId={groupId} />
         </div>
       )}
-    </Card>
+      </Card>
+    </>
   );
 }

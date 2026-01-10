@@ -30,6 +30,14 @@ export const env = createEnv({
     OPENAI_API_KEY: z.string().min(1).optional(),
     STRIPE_SECRET_KEY: z.string().min(1).optional(),
     GEOAPIFY_API_KEY: z.string().min(1).optional(),
+    // Used to encrypt per-organization Discord bot/client secrets before storing them in Convex.
+    // Optional for projects that don't enable the Discord plugin.
+    DISCORD_SECRETS_KEY: z.string().min(1).optional(),
+
+    // Global (Launchthat) Discord application + bot. Optional unless Discord plugin is enabled.
+    DISCORD_GLOBAL_CLIENT_ID: z.string().min(1).optional(),
+    DISCORD_GLOBAL_CLIENT_SECRET: z.string().min(1).optional(),
+    DISCORD_GLOBAL_BOT_TOKEN: z.string().min(1).optional(),
   },
 
   /**

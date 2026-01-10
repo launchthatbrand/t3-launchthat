@@ -2,6 +2,7 @@ import { v } from "convex/values";
 
 import { components } from "../../../_generated/api";
 import { mutation } from "../../../_generated/server";
+import { internal } from "../../../_generated/api";
 import { requireAdmin } from "../../../lib/permissions/requirePermission";
 
 const crmMarketingTagsMutations = components.launchthat_crm.marketingTags.mutations as any;
@@ -51,7 +52,7 @@ export const assignMarketingTagToUser = mutation({
     if (!contactId) {
       throw new Error("No CRM contact linked to this user");
     }
-    return await ctx.runMutation(crmMarketingTagsMutations.assignMarketingTagToUser, {
+    const result = await ctx.runMutation(crmMarketingTagsMutations.assignMarketingTagToUser, {
       organizationId: args.organizationId,
       contactId,
       marketingTagId: args.marketingTagId,
@@ -60,6 +61,28 @@ export const assignMarketingTagToUser = mutation({
       expiresAt: args.expiresAt,
       notes: args.notes,
     });
+
+    // Discord sync (optional): enqueue a tag-change job.
+    try {
+      const tags = await ctx.runQuery(crmMarketingTagsQueries.getUserMarketingTags, {
+        organizationId: args.organizationId,
+        userId: args.userId,
+      });
+      const marketingTagIds = Array.isArray(tags)
+        ? tags.map((t: any) => String(t?._id ?? t?.id ?? "")).filter(Boolean)
+        : [];
+      await ctx.runMutation(components.launchthat_discord.syncJobs.mutations.enqueueSyncJob as any, {
+        organizationId: String(args.organizationId ?? ""),
+        userId: String(args.userId),
+        reason: "tagChange",
+        payload: { marketingTagIds },
+      });
+      await ctx.scheduler.runAfter(0, internal.plugins.discord.sync.processPendingJobs as any, { limit: 10 });
+    } catch (err) {
+      console.error("[crm] Discord role sync enqueue failed (continuing)", err);
+    }
+
+    return result;
   },
 });
 
@@ -79,11 +102,33 @@ export const removeMarketingTagFromUser = mutation({
     if (!contactId) {
       throw new Error("No CRM contact linked to this user");
     }
-    return await ctx.runMutation(crmMarketingTagsMutations.removeMarketingTagFromUser, {
+    const result = await ctx.runMutation(crmMarketingTagsMutations.removeMarketingTagFromUser, {
       organizationId: args.organizationId,
       contactId,
       marketingTagId: args.marketingTagId,
     });
+
+    // Discord sync (optional): enqueue a tag-change job.
+    try {
+      const tags = await ctx.runQuery(crmMarketingTagsQueries.getUserMarketingTags, {
+        organizationId: args.organizationId,
+        userId: args.userId,
+      });
+      const marketingTagIds = Array.isArray(tags)
+        ? tags.map((t: any) => String(t?._id ?? t?.id ?? "")).filter(Boolean)
+        : [];
+      await ctx.runMutation(components.launchthat_discord.syncJobs.mutations.enqueueSyncJob as any, {
+        organizationId: String(args.organizationId ?? ""),
+        userId: String(args.userId),
+        reason: "tagChange",
+        payload: { marketingTagIds },
+      });
+      await ctx.scheduler.runAfter(0, internal.plugins.discord.sync.processPendingJobs as any, { limit: 10 });
+    } catch (err) {
+      console.error("[crm] Discord role sync enqueue failed (continuing)", err);
+    }
+
+    return result;
   },
 });
 

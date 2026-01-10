@@ -22,6 +22,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@acme/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@acme/ui/alert-dialog";
 import { Spinner } from "@acme/ui/spinner";
 import { Textarea } from "@acme/ui/textarea";
 import { NoiseBackground } from "@acme/ui/noise-background";
@@ -43,6 +53,11 @@ export function CommentSection({ postId, groupId }: CommentSectionProps) {
   const [editText, setEditText] = useState("");
   const [paginationCursor, setPaginationCursor] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [moderateDialogOpen, setModerateDialogOpen] = useState(false);
+  const [moderateReason, setModerateReason] = useState("");
+  const [pendingModerateCommentId, setPendingModerateCommentId] = useState<
+    Id<"groupComments"> | null
+  >(null);
 
   // Get comments for this post
   const commentsResult = useQuery(api.groupPosts.listPostComments, {
@@ -104,16 +119,18 @@ export function CommentSection({ postId, groupId }: CommentSectionProps) {
     action: "hide" | "show",
   ) => {
     try {
-      const reason =
-        action === "hide"
-          ? prompt("Please provide a reason for hiding this comment:")
-          : undefined;
+      if (action === "hide") {
+        setPendingModerateCommentId(commentId);
+        setModerateReason("");
+        setModerateDialogOpen(true);
+        return;
+      }
 
       await moderateContent({
         contentType: "comment",
         contentId: commentId,
         action,
-        reason: reason || undefined,
+        reason: undefined,
       });
     } catch (error) {
       console.error("Error moderating comment:", error);
@@ -138,6 +155,41 @@ export function CommentSection({ postId, groupId }: CommentSectionProps) {
 
   return (
     <div className="space-y-6">
+      <AlertDialog open={moderateDialogOpen} onOpenChange={setModerateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hide comment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Please provide a reason for hiding this comment.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Textarea
+            value={moderateReason}
+            onChange={(e) => setModerateReason(e.target.value)}
+            placeholder="Reason (optional)"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const commentId = pendingModerateCommentId;
+                if (!commentId) return;
+                void moderateContent({
+                  contentType: "comment",
+                  contentId: commentId,
+                  action: "hide",
+                  reason: moderateReason.trim() || undefined,
+                });
+                setModerateDialogOpen(false);
+                setPendingModerateCommentId(null);
+              }}
+            >
+              Hide
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* New comment form */}
       <div className="flex gap-3">
         <Avatar className="h-8 w-8">

@@ -315,6 +315,67 @@ http.route({
 });
 
 http.route({
+  path: "/discord/gateway",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const secret = process.env.DISCORD_RELAY_SECRET ?? "";
+    if (!secret) {
+      return new Response("Missing DISCORD_RELAY_SECRET env", { status: 500 });
+    }
+
+    const sigB64 = (request.headers.get("x-relay-signature") ?? "").trim();
+    if (!sigB64) return new Response("Missing signature", { status: 401 });
+
+    const bodyText = await request.text();
+
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const mac = await crypto.subtle.sign(
+      "HMAC",
+      key,
+      new TextEncoder().encode(bodyText),
+    );
+
+    const macBytes = new Uint8Array(mac);
+    const expectedB64 = btoa(String.fromCharCode(...macBytes));
+    // Constant-time-ish compare (same length enforced)
+    if (expectedB64.length !== sigB64.length) {
+      return new Response("Invalid signature", { status: 401 });
+    }
+    let mismatch = 0;
+    for (let i = 0; i < expectedB64.length; i++) {
+      mismatch |= expectedB64.charCodeAt(i) ^ sigB64.charCodeAt(i);
+    }
+    if (mismatch !== 0) {
+      return new Response("Invalid signature", { status: 401 });
+    }
+
+    let event: unknown;
+    try {
+      event = JSON.parse(bodyText);
+    } catch {
+      return new Response("Invalid JSON", { status: 400 });
+    }
+
+    await ctx.scheduler.runAfter(
+      0,
+      internalAny.plugins.discord.gateway.processGatewayEvent,
+      { event, receivedAt: Date.now() },
+    );
+
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }),
+});
+
+http.route({
   path: "/api/support/email/inbound",
   method: "POST",
   handler: supportEmailInbound,

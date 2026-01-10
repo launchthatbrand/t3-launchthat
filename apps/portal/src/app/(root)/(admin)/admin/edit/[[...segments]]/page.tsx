@@ -69,7 +69,8 @@ function AdminEditPageBody() {
   const { sections: adminMenuSections, postTypes } = useAdminMenuSections();
   const pluginParam = searchParams.get("plugin")?.toLowerCase().trim() ?? "";
   const pluginPageRaw = searchParams.get("page")?.trim() ?? "settings";
-  const pluginPage = pluginPageRaw.split("?")[0]?.toLowerCase().trim() ?? "settings";
+  const pluginPage =
+    pluginPageRaw.split("?")[0]?.toLowerCase().trim() ?? "settings";
   const tabParam = searchParams.get("tab")?.toLowerCase().trim() ?? "";
   const tabFromMalformedPageParam = (() => {
     const maybeQuery = pluginPageRaw.split("?")[1];
@@ -465,14 +466,14 @@ function AdminEditPageBody() {
         activeTab={pluginSetting.slug}
         pathname={`/admin/edit?plugin=${pluginParam}&page=${pluginSetting.slug}`}
       >
+        {renderPluginSettingsHeaderContent(
+          pluginSettingsHeaderBefore,
+          "before",
+        )}
+        <AdminLayoutHeader customTabs={pluginTabs} />
         <AdminLayoutContent className="flex flex-1">
-          <AdminLayoutMain className="flex flex-1 flex-col space-y-6">
-            {renderPluginSettingsHeaderContent(
-              pluginSettingsHeaderBefore,
-              "before",
-            )}
-            <AdminLayoutHeader customTabs={pluginTabs} />
-            <Card className="flex flex-1 flex-col border-none p-0 shadow-none">
+          <AdminLayoutMain className="flex flex-1 flex-col justify-start">
+            <Card className="flex flex-1 flex-col rounded-none border-none p-0 shadow-none">
               <CardContent className="flex flex-1 flex-col p-0">
                 {pluginSettingContent ?? (
                   <p className="text-muted-foreground text-sm">

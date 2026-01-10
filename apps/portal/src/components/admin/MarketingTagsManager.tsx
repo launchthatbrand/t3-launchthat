@@ -26,7 +26,11 @@ import { Label } from "@acme/ui/label";
 import { Textarea } from "@acme/ui/textarea";
 import { toast } from "@acme/ui/toast";
 import { useMarketingTags } from "~/hooks/useMarketingTags";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useState } from "react";
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+const apiAny: any = require("@/convex/_generated/api").api;
 
 interface CreateTagFormData {
   name: string;
@@ -37,8 +41,54 @@ interface CreateTagFormData {
 }
 
 export function MarketingTagsManager() {
-  const { marketingTags, createTag } = useMarketingTags();
+  const { marketingTags, createTag, organizationId } = useMarketingTags();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [activeDiscordTagId, setActiveDiscordTagId] = useState<string | null>(null);
+  const [discordSelectedGuildId, setDiscordSelectedGuildId] = useState<string | null>(
+    null,
+  );
+  const [discordSelectedRoleId, setDiscordSelectedRoleId] = useState<string | null>(
+    null,
+  );
+  const [discordRolesForGuild, setDiscordRolesForGuild] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [isLoadingDiscordRoles, setIsLoadingDiscordRoles] = useState(false);
+
+  const discordRoleRules = useQuery(
+    apiAny.plugins.discord.roleRules.listRoleRulesForMarketingTags,
+    organizationId && activeDiscordTagId
+      ? ({ organizationId, marketingTagIds: [activeDiscordTagId] } as any)
+      : "skip",
+  ) as
+    | Array<{
+        marketingTagId: string;
+        guildId?: string;
+        roleId: string;
+        roleName?: string;
+        enabled: boolean;
+      }>
+    | undefined;
+
+  const saveDiscordTagRoles = useMutation(
+    apiAny.plugins.discord.roleRules.replaceMarketingTagRoleRules,
+  ) as unknown as (args: {
+    organizationId: string;
+    marketingTagId: string;
+    rules: Array<{ guildId: string; roleId: string; roleName?: string }>;
+  }) => Promise<null>;
+
+  const discordGuildConnections = useQuery(
+    apiAny.plugins.discord.queries.listGuildConnectionsForOrg,
+    organizationId ? { organizationId } : "skip",
+  ) as Array<{ guildId: string; guildName?: string }> | undefined;
+
+  const listDiscordRolesForGuild = useAction(
+    apiAny.plugins.discord.actions.listRolesForGuild,
+  ) as unknown as (args: {
+    organizationId: string;
+    guildId: string;
+  }) => Promise<Array<{ id: string; name: string }>>;
 
   const [formData, setFormData] = useState<CreateTagFormData>({
     name: "",
@@ -75,6 +125,77 @@ export function MarketingTagsManager() {
 
   const handleAssignTag = async () => {
     toast.info("Assigning tags is handled on CRM contacts; use the user/contact tag manager.");
+  };
+
+  const openDiscordRolesDialog = (tagId: string) => {
+    setActiveDiscordTagId(tagId);
+    setDiscordSelectedGuildId(null);
+    setDiscordSelectedRoleId(null);
+    setDiscordRolesForGuild([]);
+  };
+
+  const selectedDiscordRules = (discordRoleRules ?? [])
+    .filter((r) => r.enabled)
+    .map((r) => ({
+      guildId: typeof r.guildId === "string" ? r.guildId : "",
+      roleId: r.roleId,
+      roleName: r.roleName,
+    }))
+    .filter((r) => r.guildId && r.roleId);
+
+  const handleSelectDiscordGuild = async (guildId: string) => {
+    if (!organizationId) return;
+    setDiscordSelectedGuildId(guildId);
+    setDiscordSelectedRoleId(null);
+    setDiscordRolesForGuild([]);
+    try {
+      setIsLoadingDiscordRoles(true);
+      const roles = await listDiscordRolesForGuild({ organizationId, guildId });
+      setDiscordRolesForGuild(
+        Array.isArray(roles)
+          ? roles.map((r) => ({ id: String(r.id), name: String(r.name) }))
+          : [],
+      );
+    } finally {
+      setIsLoadingDiscordRoles(false);
+    }
+  };
+
+  const handleAddDiscordRule = async () => {
+    if (!organizationId || !activeDiscordTagId) return;
+    if (!discordSelectedGuildId || !discordSelectedRoleId) return;
+    const role = discordRolesForGuild.find((r) => r.id === discordSelectedRoleId);
+    const key = `${discordSelectedGuildId}\\u0000${discordSelectedRoleId}`;
+    const keys = new Set(
+      selectedDiscordRules.map((r) => `${r.guildId}\\u0000${r.roleId}`),
+    );
+    if (keys.has(key)) return;
+    await saveDiscordTagRoles({
+      organizationId,
+      marketingTagId: activeDiscordTagId,
+      rules: [
+        ...selectedDiscordRules,
+        {
+          guildId: discordSelectedGuildId,
+          roleId: discordSelectedRoleId,
+          roleName: role?.name,
+        },
+      ],
+    });
+    toast.success("Discord role added");
+    setDiscordSelectedRoleId(null);
+  };
+
+  const handleRemoveDiscordRule = async (guildId: string, roleId: string) => {
+    if (!organizationId || !activeDiscordTagId) return;
+    await saveDiscordTagRoles({
+      organizationId,
+      marketingTagId: activeDiscordTagId,
+      rules: selectedDiscordRules.filter(
+        (r) => !(r.guildId === guildId && r.roleId === roleId),
+      ),
+    });
+    toast.success("Discord role removed");
   };
 
   // Auto-generate slug from name
@@ -263,9 +384,139 @@ export function MarketingTagsManager() {
                             >
                               {tag.isActive ? "Active" : "Inactive"}
                             </Badge>
-                            <Button size="sm" variant="ghost">
-                              <Settings className="h-4 w-4" />
-                            </Button>
+                            <Dialog
+                              open={activeDiscordTagId === String(tag._id)}
+                              onOpenChange={(open) =>
+                                setActiveDiscordTagId(open ? String(tag._id) : null)
+                              }
+                            >
+                              <DialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => openDiscordRolesDialog(String(tag._id))}
+                                >
+                                  <Settings className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Discord role mapping</DialogTitle>
+                                  <DialogDescription>
+                                    When this marketing tag is assigned, the user will be granted these Discord roles.
+                                  </DialogDescription>
+                                </DialogHeader>
+
+                                <div className="space-y-3">
+                                  <div className="text-sm">
+                                    <div className="font-medium">{tag.name}</div>
+                                    <div className="text-muted-foreground text-xs">{tag.slug}</div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Add role</Label>
+                                    <div className="grid gap-2 md:grid-cols-2">
+                                      <Select
+                                        value={discordSelectedGuildId ?? undefined}
+                                        onValueChange={(v) => void handleSelectDiscordGuild(v)}
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select a server…" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {(discordGuildConnections ?? []).map((g) => (
+                                            <SelectItem key={g.guildId} value={g.guildId}>
+                                              {g.guildName ? `${g.guildName} (${g.guildId})` : g.guildId}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+
+                                      <Select
+                                        value={discordSelectedRoleId ?? undefined}
+                                        onValueChange={(v) => setDiscordSelectedRoleId(v)}
+                                        disabled={!discordSelectedGuildId || isLoadingDiscordRoles}
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue
+                                            placeholder={
+                                              !discordSelectedGuildId
+                                                ? "Select a server first…"
+                                                : isLoadingDiscordRoles
+                                                  ? "Loading roles…"
+                                                  : "Select a role…"
+                                            }
+                                          />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {discordRolesForGuild.map((r) => (
+                                            <SelectItem key={r.id} value={r.id}>
+                                              {r.name} ({r.id})
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        type="button"
+                                        variant="secondary"
+                                        onClick={() => void handleAddDiscordRule()}
+                                        disabled={!discordSelectedGuildId || !discordSelectedRoleId}
+                                      >
+                                        Add
+                                      </Button>
+                                      <div className="text-xs text-muted-foreground">
+                                        Selected: {selectedDiscordRules.length}
+                                      </div>
+                                    </div>
+
+                                    <div className="max-h-44 space-y-2 overflow-auto pr-1">
+                                      {selectedDiscordRules.map((r) => (
+                                        <div
+                                          key={`${r.guildId}:${r.roleId}`}
+                                          className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm"
+                                        >
+                                          <div className="min-w-0">
+                                            <div className="truncate font-medium">
+                                              {r.roleName ? r.roleName : r.roleId}
+                                            </div>
+                                            <div className="text-muted-foreground truncate text-xs">
+                                              Guild: {r.guildId} • Role: {r.roleId}
+                                            </div>
+                                          </div>
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => void handleRemoveDiscordRule(r.guildId, r.roleId)}
+                                          >
+                                            Remove
+                                          </Button>
+                                        </div>
+                                      ))}
+                                      {selectedDiscordRules.length === 0 ? (
+                                        <div className="text-sm text-muted-foreground">
+                                          No Discord roles configured for this tag yet.
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <DialogFooter>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => setActiveDiscordTagId(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button onClick={() => setActiveDiscordTagId(null)}>
+                                    Done
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
                           </div>
                         </div>
                       ))}

@@ -1,6 +1,7 @@
 import { calendarPlugin } from "launchthat-plugin-calendar";
 import { crmPlugin } from "launchthat-plugin-crm";
 import { disclaimersPlugin } from "launchthat-plugin-disclaimers";
+import { discordPlugin } from "launchthat-plugin-discord";
 import { createEcommercePluginDefinition } from "launchthat-plugin-ecommerce";
 import { ecommerceAuthorizenetPlugin } from "launchthat-plugin-ecommerce-authorizenet";
 import { ecommerceStripePlugin } from "launchthat-plugin-ecommerce-stripe";
@@ -20,6 +21,7 @@ import { renderProductSingle } from "~/components/commerce/ProductSingleRenderer
 import { adminMenuRegistry } from "~/lib/adminMenu";
 import { registerPluginPageTemplates } from "~/lib/pageTemplates/registerPluginPageTemplates";
 import { PortalSocialFeedProvider } from "~/providers/SocialFeedProvider";
+import { enhanceDiscordPluginDefinition } from "./enhanceDiscordPlugin";
 import { enhanceCrmPluginDefinition } from "./enhanceCrmPlugin";
 import { enhanceEcommercePluginDefinition } from "./enhanceEcommercePlugin";
 import { enhanceLmsPluginDefinition } from "./enhanceLmsPlugin";
@@ -50,8 +52,13 @@ const lmsPluginEnhanced = enhanceLmsPluginDefinition(
   lmsPlugin as unknown as PluginDefinition,
 );
 
+const discordPluginEnhanced = enhanceDiscordPluginDefinition(
+  discordPlugin as unknown as PluginDefinition,
+);
+
 export const pluginDefinitions: PluginDefinition[] = [
   portalAccessControlPlugin,
+  discordPluginEnhanced,
   crmPluginEnhanced,
   lmsPluginEnhanced,
   calendarPlugin as unknown as PluginDefinition,

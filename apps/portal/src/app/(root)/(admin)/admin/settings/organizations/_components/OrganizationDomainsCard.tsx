@@ -15,6 +15,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@acme/ui/alert-dialog";
 import { Input } from "@acme/ui/input";
 
 import { rootDomain } from "~/lib/utils";
@@ -51,6 +61,7 @@ export const OrganizationDomainsCard = ({
   const [customDomainDraft, setCustomDomainDraft] = React.useState("");
   const [isStartingDomain, setIsStartingDomain] = React.useState(false);
   const [isVerifyingDomain, setIsVerifyingDomain] = React.useState(false);
+  const [removeConfirmOpen, setRemoveConfirmOpen] = React.useState(false);
   const [domainMessage, setDomainMessage] = React.useState<string | null>(null);
   const [domainError, setDomainError] = React.useState<string | null>(null);
   const [domainRecordsOverride, setDomainRecordsOverride] = React.useState<
@@ -146,17 +157,12 @@ export const OrganizationDomainsCard = ({
     }
   };
 
-  const handleRemoveDomain = async () => {
+  const removeDomainNow = async () => {
     const current = customDomainDraft.trim();
     if (!current) {
       toast.error("No domain to remove.");
       return;
     }
-    const ok = window.confirm(
-      `Remove domain "${current}" from this organization? This will unmap it and reset domain verification state.`,
-    );
-    if (!ok) return;
-
     try {
       setIsStartingDomain(true);
       setIsVerifyingDomain(true);
@@ -177,6 +183,15 @@ export const OrganizationDomainsCard = ({
       setIsStartingDomain(false);
       setIsVerifyingDomain(false);
     }
+  };
+
+  const handleRemoveDomain = async () => {
+    const current = customDomainDraft.trim();
+    if (!current) {
+      toast.error("No domain to remove.");
+      return;
+    }
+    setRemoveConfirmOpen(true);
   };
 
   if (organization === undefined) {
@@ -225,6 +240,31 @@ export const OrganizationDomainsCard = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <AlertDialog open={removeConfirmOpen} onOpenChange={setRemoveConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove domain?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Remove{" "}
+                <span className="font-medium">
+                  {customDomainDraft.trim() || "this domain"}
+                </span>{" "}
+                from this organization? This will unmap it and reset domain
+                verification state.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => void removeDomainNow()}
+              >
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <div className="text-muted-foreground text-sm">
           Status: <span className="font-mono">{status}</span>
         </div>

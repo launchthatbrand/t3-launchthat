@@ -71,6 +71,12 @@
       ],
       "launchthat-plugin-disclaimers/*": [
         "../../packages/launchthat-plugin-disclaimers/src/*"
+      ],
+      "launchthat-plugin-discord": [
+        "../../packages/launchthat-plugin-discord/src/index"
+      ],
+      "launchthat-plugin-discord/*": [
+        "../../packages/launchthat-plugin-discord/src/*"
       ]
     },
     "plugins": [{ "name": "next" }]

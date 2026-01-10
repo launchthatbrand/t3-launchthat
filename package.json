@@ -28,7 +28,8 @@
     "postinstall": "pnpm lint:ws",
     "typecheck": "turbo run typecheck",
     "ui-add": "turbo run ui-add",
-    "tcopy": "turbo gen workspace --copy"
+    "tcopy": "turbo gen workspace --copy",
+    "generate:plugin": "pnpm turbo gen portal-plugin"
   },
   "devDependencies": {
     "@acme/prettier-config": "workspace:*",

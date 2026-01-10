@@ -26,6 +26,15 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import { useMutation, useQuery } from "convex/react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@acme/ui/alert-dialog";
 
 import CreateNode from "../../../../../../test/react-flow/CreateNode";
 import { layoutTopBottom } from "../../../../../../test/react-flow/layoutUtil";
@@ -190,6 +199,10 @@ export const ScenarioGraph = ({ scenarioId }: ScenarioGraphProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
+  const [alertDialog, setAlertDialog] = useState<{
+    title: string;
+    description: string;
+  } | null>(null);
   const rf = useRef<ReactFlowInstance | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSaveRef = useRef<number>(Date.now());
@@ -905,9 +918,10 @@ export const ScenarioGraph = ({ scenarioId }: ScenarioGraphProps) => {
 
     // Check for validation errors before saving
     if (validationErrors.length > 0) {
-      alert(
-        `Cannot save graph with validation errors:\n${validationErrors.join("\n")}`,
-      );
+      setAlertDialog({
+        title: "Cannot save graph",
+        description: `Fix validation errors before saving:\n${validationErrors.join("\n")}`,
+      });
       return;
     }
 
@@ -967,7 +981,10 @@ export const ScenarioGraph = ({ scenarioId }: ScenarioGraphProps) => {
       console.log("Graph saved successfully");
     } catch (error) {
       console.error("Failed to save graph:", error);
-      alert(`Failed to save graph: ${error.message || String(error)}`);
+      setAlertDialog({
+        title: "Failed to save graph",
+        description: error instanceof Error ? error.message : String(error),
+      });
     } finally {
       setIsLoading(false);
     }
@@ -1010,6 +1027,25 @@ export const ScenarioGraph = ({ scenarioId }: ScenarioGraphProps) => {
 
   return (
     <div className="space-y-2">
+      <AlertDialog
+        open={alertDialog != null}
+        onOpenChange={() => setAlertDialog(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{alertDialog?.title ?? ""}</AlertDialogTitle>
+            <AlertDialogDescription className="whitespace-pre-wrap">
+              {alertDialog?.description ?? ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setAlertDialog(null)}>
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="flex items-center gap-2">
         <button
           className="xy-theme__button"

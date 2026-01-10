@@ -1,0 +1,12 @@
+{
+  "name": "@acme/discord-gateway-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.19.3"
+  }
+}

@@ -34,6 +34,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@acme/ui/popover'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@acme/ui/alert-dialog'
 
 const LexicalContextMenuPlugin = dynamic(
   () => import('./default/lexical-context-menu-plugin'),
@@ -58,6 +67,7 @@ export class ContextMenuOption extends MenuOption {
 export function ContextMenuPlugin(): JSX.Element {
   const [editor] = useLexicalComposerContext()
   const [isOpen, setIsOpen] = React.useState(false)
+  const [alertMessage, setAlertMessage] = React.useState<string | null>(null)
 
   const defaultOptions = useMemo(() => {
     return [
@@ -84,7 +94,7 @@ export function ContextMenuPlugin(): JSX.Element {
               name: 'clipboard-read',
             })
             if (permission.state === 'denied') {
-              alert('Not allowed to paste from clipboard.')
+              setAlertMessage('Not allowed to paste from clipboard.')
               return
             }
 
@@ -110,7 +120,7 @@ export function ContextMenuPlugin(): JSX.Element {
             })
 
             if (permission.state === 'denied') {
-              alert('Not allowed to paste from clipboard.')
+              setAlertMessage('Not allowed to paste from clipboard.')
               return
             }
 
@@ -178,57 +188,71 @@ export function ContextMenuPlugin(): JSX.Element {
   }
 
   return (
-    <LexicalContextMenuPlugin
-      options={options}
-      onSelectOption={(option, targetNode) => {
-        onSelectOption(option as ContextMenuOption, targetNode, () => {
+    <>
+      <AlertDialog open={alertMessage != null} onOpenChange={() => setAlertMessage(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clipboard permission denied</AlertDialogTitle>
+            <AlertDialogDescription>{alertMessage ?? ""}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setAlertMessage(null)}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <LexicalContextMenuPlugin
+        options={options}
+        onSelectOption={(option, targetNode) => {
+          onSelectOption(option as ContextMenuOption, targetNode, () => {
+            setIsOpen(false)
+          })
+        }}
+        onWillOpen={onWillOpen}
+        onOpen={() => {
+          setIsOpen(true)
+        }}
+        onClose={() => {
           setIsOpen(false)
-        })
-      }}
-      onWillOpen={onWillOpen}
-      onOpen={() => {
-        setIsOpen(true)
-      }}
-      onClose={() => {
-        setIsOpen(false)
-      }}
-      menuRenderFn={(
-        anchorElementRef,
-        { options: _options, selectOptionAndCleanUp },
-        { setMenuRef }
-      ) => {
-        return anchorElementRef.current ? (
-          <Popover open={isOpen} onOpenChange={setIsOpen}>
-            <PopoverPortal container={anchorElementRef.current}>
-              <div>
-                <PopoverTrigger
-                  ref={setMenuRef}
-                  style={{
-                    marginLeft: anchorElementRef.current.style.width,
-                    userSelect: 'none',
-                  }}
-                />
-                <PopoverContent className="w-[200px] p-1">
-                  <Command>
-                    <CommandList>
-                      {options.map((option) => (
-                        <CommandItem
-                          key={option.key}
-                          onSelect={() => {
-                            selectOptionAndCleanUp(option)
-                          }}
-                        >
-                          {option.title}
-                        </CommandItem>
-                      ))}
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </div>
-            </PopoverPortal>
-          </Popover>
-        ) : null
-      }}
-    />
+        }}
+        menuRenderFn={(
+          anchorElementRef,
+          { options: _options, selectOptionAndCleanUp },
+          { setMenuRef }
+        ) => {
+          return anchorElementRef.current ? (
+            <Popover open={isOpen} onOpenChange={setIsOpen}>
+              <PopoverPortal container={anchorElementRef.current}>
+                <div>
+                  <PopoverTrigger
+                    ref={setMenuRef}
+                    style={{
+                      marginLeft: anchorElementRef.current.style.width,
+                      userSelect: 'none',
+                    }}
+                  />
+                  <PopoverContent className="w-[200px] p-1">
+                    <Command>
+                      <CommandList>
+                        {options.map((option) => (
+                          <CommandItem
+                            key={option.key}
+                            onSelect={() => {
+                              selectOptionAndCleanUp(option)
+                            }}
+                          >
+                            {option.title}
+                          </CommandItem>
+                        ))}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </div>
+              </PopoverPortal>
+            </Popover>
+          ) : null
+        }}
+      />
+    </>
   )
 }

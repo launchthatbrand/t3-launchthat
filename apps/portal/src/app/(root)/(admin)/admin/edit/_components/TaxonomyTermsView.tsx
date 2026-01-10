@@ -22,6 +22,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@acme/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@acme/ui/alert-dialog";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import { MultiSelect } from "@acme/ui/multi-select";
@@ -100,6 +110,8 @@ export function TaxonomyTermsView({
   const [termDialogOpen, setTermDialogOpen] = useState(false);
   const [termSaving, setTermSaving] = useState(false);
   const [termForm, setTermForm] = useState(EMPTY_TERM_STATE);
+  const [pendingDeleteTerm, setPendingDeleteTerm] =
+    useState<TaxonomyTermRow | null>(null);
   const [editingTerm, setEditingTerm] = useState<TaxonomyTermRow | null>(null);
 
   const taxonomyDoc = taxonomy ?? null;
@@ -235,14 +247,9 @@ export function TaxonomyTermsView({
     }
   };
 
-  const handleDeleteTerm = async (term: TaxonomyTermRow) => {
+  const deleteTermNow = async (term: TaxonomyTermRow) => {
     if (!taxonomyDoc) return;
     if (!organizationId) return;
-    const confirmed = window.confirm(
-      `Delete ${term.name}? This action cannot be undone.`,
-    );
-    if (!confirmed) return;
-
     try {
       await deleteTerm({
         organizationId,
@@ -257,8 +264,45 @@ export function TaxonomyTermsView({
     }
   };
 
+  const handleDeleteTerm = async (term: TaxonomyTermRow) => {
+    setPendingDeleteTerm(term);
+  };
+
   return (
     <>
+      <AlertDialog
+        open={pendingDeleteTerm != null}
+        onOpenChange={(open) => setPendingDeleteTerm(open ? pendingDeleteTerm : null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete term?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will delete{" "}
+              <span className="font-medium">
+                {pendingDeleteTerm?.name ?? "this term"}
+              </span>
+              . This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingDeleteTerm(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                const term = pendingDeleteTerm;
+                setPendingDeleteTerm(null);
+                if (term) void deleteTermNow(term);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AdminLayout
         title={`${taxonomyDoc?.name ?? taxonomySlug} Terms`}
         description={

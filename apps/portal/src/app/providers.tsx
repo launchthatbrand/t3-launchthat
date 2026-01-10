@@ -343,6 +343,88 @@ function TenantConvexProvider({ children }: { children: React.ReactNode }) {
   );
   const lastTokenFetchMsRef = React.useRef<number>(0);
 
+  const refreshClerkTokenViaIframe = React.useCallback(
+    async (returnTo: string): Promise<string | null> => {
+      if (typeof window === "undefined") return null;
+      // If an iframe refresh is already in-flight, let it complete.
+      if (tokenFetchInFlightRef.current) {
+        return await tokenFetchInFlightRef.current;
+      }
+
+      // De-dupe refresh attempts (helps avoid storms if many Convex calls race).
+      const nowMs = Date.now();
+      if (nowMs - lastTokenFetchMsRef.current < 2_000) {
+        return readConvexTokenFromLocalStorage();
+      }
+      lastTokenFetchMsRef.current = nowMs;
+
+      tokenFetchInFlightRef.current = (async () => {
+        setIsTokenLoading(true);
+        try {
+          // Wait for the auth bounce to write a fresh convex_token.
+          const waitForToken = () =>
+            new Promise<string | null>((resolve) => {
+              const timeout = window.setTimeout(() => {
+                cleanup();
+                resolve(readConvexTokenFromLocalStorage());
+              }, 12_000);
+
+              const cleanup = () => {
+                window.clearTimeout(timeout);
+                window.removeEventListener(TOKEN_UPDATED_EVENT, onUpdated);
+                window.removeEventListener("storage", onStorage);
+              };
+
+              const onUpdated = () => {
+                const next = readConvexTokenFromLocalStorage();
+                if (next) {
+                  cleanup();
+                  resolve(next);
+                }
+              };
+
+              const onStorage = (e: StorageEvent) => {
+                if (e.key === CONVEX_TOKEN_STORAGE_KEY) {
+                  const next = readConvexTokenFromLocalStorage();
+                  if (next) {
+                    cleanup();
+                    resolve(next);
+                  }
+                }
+              };
+
+              window.addEventListener(TOKEN_UPDATED_EVENT, onUpdated as EventListener);
+              window.addEventListener("storage", onStorage);
+            });
+
+          const iframe = document.createElement("iframe");
+          iframe.style.display = "none";
+          iframe.setAttribute("aria-hidden", "true");
+          iframe.src = `/api/auth/refresh?return_to=${encodeURIComponent(returnTo)}`;
+          document.body.appendChild(iframe);
+
+          const next = await waitForToken();
+
+          // Clean up iframe ASAP to avoid loading the entire app in an embedded context.
+          try {
+            iframe.remove();
+          } catch {
+            // ignore
+          }
+
+          if (next && next !== token) setToken(next);
+          return next;
+        } finally {
+          setIsTokenLoading(false);
+          tokenFetchInFlightRef.current = null;
+        }
+      })();
+
+      return await tokenFetchInFlightRef.current;
+    },
+    [token],
+  );
+
   // Always mount a tenant Convex client so logged-out pages can render.
   // Re-create the client when auth transitions (anon <-> authed) so websockets
   // don't "stick" in an unauthenticated state.
@@ -485,6 +567,16 @@ function TenantConvexProvider({ children }: { children: React.ReactNode }) {
         // cannot be validated. Immediately fall back to Clerk-minted tokens from localStorage.
         if (disableServerMint) {
           const ls = readConvexTokenFromLocalStorage();
+          const expMs = ls ? parseJwtExpMs(ls) : null;
+          const msRemaining = expMs ? expMs - Date.now() : null;
+
+          // If missing/expired/near-expiry, refresh by bouncing through the auth host in a hidden iframe.
+          if (!ls || (msRemaining !== null && msRemaining < 120_000)) {
+            const returnTo = typeof window !== "undefined" ? window.location.href : "/";
+            const refreshed = await refreshClerkTokenViaIframe(returnTo);
+            return refreshed ?? ls;
+          }
+
           if (ls && ls !== token) setToken(ls);
           return ls;
         }

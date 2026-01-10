@@ -152,6 +152,12 @@ import type * as plugins_disclaimers_mutations from "../plugins/disclaimers/muta
 import type * as plugins_disclaimers_posts_mutations from "../plugins/disclaimers/posts/mutations.js";
 import type * as plugins_disclaimers_posts_queries from "../plugins/disclaimers/posts/queries.js";
 import type * as plugins_disclaimers_queries from "../plugins/disclaimers/queries.js";
+import type * as plugins_discord_actions from "../plugins/discord/actions.js";
+import type * as plugins_discord_gateway from "../plugins/discord/gateway.js";
+import type * as plugins_discord_permissions from "../plugins/discord/permissions.js";
+import type * as plugins_discord_queries from "../plugins/discord/queries.js";
+import type * as plugins_discord_roleRules from "../plugins/discord/roleRules.js";
+import type * as plugins_discord_sync from "../plugins/discord/sync.js";
 import type * as plugins_entity_mutations from "../plugins/entity/mutations.js";
 import type * as plugins_entity_queries from "../plugins/entity/queries.js";
 import type * as plugins_entity_resolvers from "../plugins/entity/resolvers.js";
@@ -365,6 +371,12 @@ declare const fullApi: ApiFromModules<{
   "plugins/disclaimers/posts/mutations": typeof plugins_disclaimers_posts_mutations;
   "plugins/disclaimers/posts/queries": typeof plugins_disclaimers_posts_queries;
   "plugins/disclaimers/queries": typeof plugins_disclaimers_queries;
+  "plugins/discord/actions": typeof plugins_discord_actions;
+  "plugins/discord/gateway": typeof plugins_discord_gateway;
+  "plugins/discord/permissions": typeof plugins_discord_permissions;
+  "plugins/discord/queries": typeof plugins_discord_queries;
+  "plugins/discord/roleRules": typeof plugins_discord_roleRules;
+  "plugins/discord/sync": typeof plugins_discord_sync;
   "plugins/entity/mutations": typeof plugins_entity_mutations;
   "plugins/entity/queries": typeof plugins_entity_queries;
   "plugins/entity/resolvers": typeof plugins_entity_resolvers;
@@ -6504,6 +6516,417 @@ export declare const components: {
             searchTerm: string;
           },
           any
+        >;
+      };
+    };
+  };
+  launchthat_discord: {
+    guildConnections: {
+      mutations: {
+        deleteGuildConnection: FunctionReference<
+          "mutation",
+          "internal",
+          { guildId: string; organizationId: string },
+          null
+        >;
+        upsertGuildConnection: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            botModeAtConnect: "global" | "custom";
+            connectedAt: number;
+            guildId: string;
+            guildName?: string;
+            organizationId: string;
+          },
+          null
+        >;
+      };
+      queries: {
+        getGuildConnectionByGuildId: FunctionReference<
+          "query",
+          "internal",
+          { guildId: string },
+          null | {
+            botModeAtConnect: "global" | "custom";
+            connectedAt: number;
+            guildId: string;
+            guildName?: string;
+            organizationId: string;
+          }
+        >;
+        listGuildConnectionsForOrg: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string },
+          Array<{
+            botModeAtConnect: "global" | "custom";
+            connectedAt: number;
+            guildId: string;
+            guildName?: string;
+          }>
+        >;
+      };
+    };
+    guildSettings: {
+      mutations: {
+        upsertGuildSettings: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            courseUpdatesChannelId?: string;
+            escalationConfidenceThreshold?: number;
+            escalationKeywords?: Array<string>;
+            guildId: string;
+            organizationId: string;
+            supportAiEnabled: boolean;
+            supportForumChannelId?: string;
+            supportStaffRoleId?: string;
+            threadReplyCooldownMs?: number;
+          },
+          null
+        >;
+      };
+      queries: {
+        getGuildSettings: FunctionReference<
+          "query",
+          "internal",
+          { guildId: string; organizationId: string },
+          null | {
+            courseUpdatesChannelId?: string;
+            escalationConfidenceThreshold?: number;
+            escalationKeywords?: Array<string>;
+            guildId: string;
+            organizationId: string;
+            supportAiEnabled: boolean;
+            supportForumChannelId?: string;
+            supportStaffRoleId?: string;
+            threadReplyCooldownMs?: number;
+            updatedAt: number;
+          }
+        >;
+      };
+    };
+    oauth: {
+      mutations: {
+        consumeOauthState: FunctionReference<
+          "mutation",
+          "internal",
+          { state: string },
+          {
+            codeVerifier: string;
+            kind: "org_install" | "user_link";
+            organizationId: string;
+            returnTo: string;
+            userId?: string;
+          } | null
+        >;
+        createOauthState: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            codeVerifier: string;
+            kind: "org_install" | "user_link";
+            organizationId: string;
+            returnTo: string;
+            state: string;
+            userId?: string;
+          },
+          null
+        >;
+      };
+      queries: {
+        peekOauthState: FunctionReference<
+          "query",
+          "internal",
+          { state: string },
+          {
+            codeVerifier: string;
+            createdAt: number;
+            kind: "org_install" | "user_link";
+            organizationId: string;
+            returnTo: string;
+            userId?: string;
+          } | null
+        >;
+      };
+    };
+    orgConfigs: {
+      internalQueries: {
+        getOrgConfigSecrets: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string },
+          {
+            botMode: "global" | "custom";
+            botTokenEncrypted?: string;
+            clientId?: string;
+            clientSecretEncrypted?: string;
+            customBotTokenEncrypted?: string;
+            customClientId?: string;
+            customClientSecretEncrypted?: string;
+            enabled: boolean;
+            guildId?: string;
+            organizationId: string;
+          } | null
+        >;
+      };
+      mutations: {
+        upsertOrgConfig: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            botTokenEncrypted: string;
+            clientId: string;
+            clientSecretEncrypted: string;
+            enabled: boolean;
+            guildId: string;
+            organizationId: string;
+          },
+          null
+        >;
+        upsertOrgConfigV2: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            botMode: "global" | "custom";
+            customBotTokenEncrypted?: string;
+            customClientId?: string;
+            customClientSecretEncrypted?: string;
+            enabled: boolean;
+            organizationId: string;
+          },
+          null
+        >;
+      };
+      queries: {
+        getOrgConfig: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string },
+          {
+            botMode: "global" | "custom";
+            connectedAt: number;
+            customClientId?: string;
+            enabled: boolean;
+            hasBotToken: boolean;
+            hasClientSecret: boolean;
+            lastError?: string;
+            lastValidatedAt?: number;
+            organizationId: string;
+          } | null
+        >;
+      };
+    };
+    roleRules: {
+      mutations: {
+        replaceMarketingTagRoleRules: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            marketingTagId: string;
+            organizationId: string;
+            rules: Array<{
+              guildId: string;
+              roleId: string;
+              roleName?: string;
+            }>;
+          },
+          null
+        >;
+        replaceOrgRoleRules: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            organizationId: string;
+            rules: Array<{
+              enabled: boolean;
+              guildId?: string;
+              kind: "product" | "marketingTag";
+              marketingTagId?: string;
+              productId?: string;
+              roleId: string;
+              roleName?: string;
+            }>;
+          },
+          null
+        >;
+        replaceProductRoleRules: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            organizationId: string;
+            productId: string;
+            rules: Array<{
+              guildId: string;
+              roleId: string;
+              roleName?: string;
+            }>;
+          },
+          null
+        >;
+      };
+      queries: {
+        listRoleRulesForMarketingTags: FunctionReference<
+          "query",
+          "internal",
+          { marketingTagIds: Array<string>; organizationId: string },
+          Array<{
+            enabled: boolean;
+            guildId?: string;
+            marketingTagId: string;
+            roleId: string;
+            roleName?: string;
+          }>
+        >;
+        listRoleRulesForOrgKind: FunctionReference<
+          "query",
+          "internal",
+          { kind: "product" | "marketingTag"; organizationId: string },
+          Array<{
+            enabled: boolean;
+            guildId?: string;
+            roleId: string;
+            roleName?: string;
+          }>
+        >;
+        listRoleRulesForProduct: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; productId: string },
+          Array<{
+            enabled: boolean;
+            guildId?: string;
+            roleId: string;
+            roleName?: string;
+          }>
+        >;
+      };
+    };
+    support: {
+      mutations: {
+        logDiscordApiCall: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            error?: string;
+            guildId?: string;
+            kind: string;
+            method: string;
+            organizationId?: string;
+            retryAfterMs?: number;
+            status: number;
+            url: string;
+          },
+          null
+        >;
+        recordSupportAiRun: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            answer: string;
+            confidence?: number;
+            escalated: boolean;
+            guildId: string;
+            model?: string;
+            organizationId: string;
+            promptHash: string;
+            threadId: string;
+            triggerMessageId: string;
+          },
+          null
+        >;
+        upsertSupportThreadAndMessage: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            authorDiscordUserId?: string;
+            authorIsBot?: boolean;
+            content?: string;
+            createdByDiscordUserId?: string;
+            forumChannelId?: string;
+            guildId: string;
+            messageCreatedAt?: number;
+            messageId?: string;
+            organizationId: string;
+            threadId: string;
+            threadName?: string;
+          },
+          null
+        >;
+      };
+      queries: {
+        hasAiRunForTriggerMessage: FunctionReference<
+          "query",
+          "internal",
+          { guildId: string; triggerMessageId: string },
+          boolean
+        >;
+      };
+    };
+    syncJobs: {
+      mutations: {
+        deleteJob: FunctionReference<
+          "mutation",
+          "internal",
+          { jobId: string },
+          null
+        >;
+        enqueueSyncJob: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            organizationId: string;
+            payload: any;
+            reason: "purchase" | "tagChange" | "manual";
+            userId: string;
+          },
+          null
+        >;
+        setJobStatus: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            attempts?: number;
+            jobId: string;
+            lastError?: string;
+            status: "pending" | "processing" | "done" | "failed";
+          },
+          null
+        >;
+      };
+      queries: {
+        listPendingJobs: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number },
+          Array<{
+            _id: string;
+            attempts: number;
+            createdAt: number;
+            organizationId: string;
+            payload: any;
+            reason: "purchase" | "tagChange" | "manual";
+            userId: string;
+          }>
+        >;
+      };
+    };
+    userLinks: {
+      mutations: {
+        linkUser: FunctionReference<
+          "mutation",
+          "internal",
+          { discordUserId: string; organizationId: string; userId: string },
+          null
+        >;
+      };
+      queries: {
+        getUserLink: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; userId: string },
+          { discordUserId: string; linkedAt: number } | null
         >;
       };
     };
