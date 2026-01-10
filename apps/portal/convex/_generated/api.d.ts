@@ -154,6 +154,7 @@ import type * as plugins_disclaimers_posts_queries from "../plugins/disclaimers/
 import type * as plugins_disclaimers_queries from "../plugins/disclaimers/queries.js";
 import type * as plugins_discord_actions from "../plugins/discord/actions.js";
 import type * as plugins_discord_gateway from "../plugins/discord/gateway.js";
+import type * as plugins_discord_gatewayRateLimits from "../plugins/discord/gatewayRateLimits.js";
 import type * as plugins_discord_permissions from "../plugins/discord/permissions.js";
 import type * as plugins_discord_queries from "../plugins/discord/queries.js";
 import type * as plugins_discord_roleRules from "../plugins/discord/roleRules.js";
@@ -373,6 +374,7 @@ declare const fullApi: ApiFromModules<{
   "plugins/disclaimers/queries": typeof plugins_disclaimers_queries;
   "plugins/discord/actions": typeof plugins_discord_actions;
   "plugins/discord/gateway": typeof plugins_discord_gateway;
+  "plugins/discord/gatewayRateLimits": typeof plugins_discord_gatewayRateLimits;
   "plugins/discord/permissions": typeof plugins_discord_permissions;
   "plugins/discord/queries": typeof plugins_discord_queries;
   "plugins/discord/roleRules": typeof plugins_discord_roleRules;
@@ -4307,6 +4309,140 @@ export declare const components: {
         },
         { isNew: boolean }
       >;
+    };
+  };
+  rateLimiter: {
+    lib: {
+      checkRateLimit: FunctionReference<
+        "query",
+        "internal",
+        {
+          config:
+            | {
+                capacity?: number;
+                kind: "token bucket";
+                maxReserved?: number;
+                period: number;
+                rate: number;
+                shards?: number;
+                start?: null;
+              }
+            | {
+                capacity?: number;
+                kind: "fixed window";
+                maxReserved?: number;
+                period: number;
+                rate: number;
+                shards?: number;
+                start?: number;
+              };
+          count?: number;
+          key?: string;
+          name: string;
+          reserve?: boolean;
+          throws?: boolean;
+        },
+        { ok: true; retryAfter?: number } | { ok: false; retryAfter: number }
+      >;
+      clearAll: FunctionReference<
+        "mutation",
+        "internal",
+        { before?: number },
+        null
+      >;
+      getServerTime: FunctionReference<"mutation", "internal", {}, number>;
+      getValue: FunctionReference<
+        "query",
+        "internal",
+        {
+          config:
+            | {
+                capacity?: number;
+                kind: "token bucket";
+                maxReserved?: number;
+                period: number;
+                rate: number;
+                shards?: number;
+                start?: null;
+              }
+            | {
+                capacity?: number;
+                kind: "fixed window";
+                maxReserved?: number;
+                period: number;
+                rate: number;
+                shards?: number;
+                start?: number;
+              };
+          key?: string;
+          name: string;
+          sampleShards?: number;
+        },
+        {
+          config:
+            | {
+                capacity?: number;
+                kind: "token bucket";
+                maxReserved?: number;
+                period: number;
+                rate: number;
+                shards?: number;
+                start?: null;
+              }
+            | {
+                capacity?: number;
+                kind: "fixed window";
+                maxReserved?: number;
+                period: number;
+                rate: number;
+                shards?: number;
+                start?: number;
+              };
+          shard: number;
+          ts: number;
+          value: number;
+        }
+      >;
+      rateLimit: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          config:
+            | {
+                capacity?: number;
+                kind: "token bucket";
+                maxReserved?: number;
+                period: number;
+                rate: number;
+                shards?: number;
+                start?: null;
+              }
+            | {
+                capacity?: number;
+                kind: "fixed window";
+                maxReserved?: number;
+                period: number;
+                rate: number;
+                shards?: number;
+                start?: number;
+              };
+          count?: number;
+          key?: string;
+          name: string;
+          reserve?: boolean;
+          throws?: boolean;
+        },
+        { ok: true; retryAfter?: number } | { ok: false; retryAfter: number }
+      >;
+      resetRateLimit: FunctionReference<
+        "mutation",
+        "internal",
+        { key?: string; name: string },
+        null
+      >;
+    };
+    time: {
+      getServerTime: FunctionReference<"mutation", "internal", {}, number>;
     };
   };
   launchthat_support: {

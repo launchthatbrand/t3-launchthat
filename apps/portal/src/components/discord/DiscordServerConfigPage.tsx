@@ -15,7 +15,7 @@ import { api } from "@/convex/_generated/api";
 import { useAction, useQuery } from "convex/react";
 import { toast } from "sonner";
 
-import { Settings, Unplug } from "lucide-react";
+import { Link2, Plus, Settings, Unplug } from "lucide-react";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
@@ -81,8 +81,10 @@ export const DiscordServerConfigPage = (props: { organizationId?: string | null 
   ) as GuildConnection[] | undefined;
 
   const disconnectGuild = useAction(discordActions.disconnectGuild);
+  const startBotInstall = useAction(discordActions.startBotInstall);
   const listRolesForGuild = useAction(discordActions.listRolesForGuild);
   const listGuildChannels = useAction(discordActions.listGuildChannels);
+  const createForumChannel = useAction(discordActions.createForumChannel);
   const createRole = useAction(discordActions.createRole);
   const updateRole = useAction(discordActions.updateRole);
   const deleteRole = useAction(discordActions.deleteRole);
@@ -125,6 +127,9 @@ export const DiscordServerConfigPage = (props: { organizationId?: string | null 
   const [courseUpdatesChannelIdDraft, setCourseUpdatesChannelIdDraft] =
     React.useState<string | null>(null);
 
+  const [createForumOpen, setCreateForumOpen] = React.useState(false);
+  const [createForumNameDraft, setCreateForumNameDraft] = React.useState("Support");
+
   const activeGuild = React.useMemo(() => {
     if (!guildId) return null;
     return (guildConnections ?? []).find((g) => g.guildId === guildId) ?? null;
@@ -144,6 +149,26 @@ export const DiscordServerConfigPage = (props: { organizationId?: string | null 
       // eslint-disable-next-line no-console
       console.error(e);
       toast.error(e instanceof Error ? e.message : "Failed to disconnect");
+    }
+  };
+
+  const handleReconnectBot = async () => {
+    if (!organizationId || !guildId) return;
+    try {
+      const returnTo = window.location.href;
+      const result = (await startBotInstall({
+        organizationId: String(organizationId),
+        returnTo,
+      })) as { url: string };
+      if (!result?.url) {
+        toast.error("Failed to start bot install");
+        return;
+      }
+      window.location.href = String(result.url);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Failed to start reconnect");
     }
   };
 
@@ -278,6 +303,36 @@ export const DiscordServerConfigPage = (props: { organizationId?: string | null 
     }
   };
 
+  const handleCreateForumChannel = async () => {
+    if (!organizationId || !guildId) return;
+    const name = createForumNameDraft.trim();
+    if (!name) {
+      toast.error("Forum channel name is required");
+      return;
+    }
+    try {
+      const created = (await createForumChannel({
+        organizationId: String(organizationId),
+        guildId,
+        name,
+      })) as { id: string; name: string };
+
+      await loadChannels(guildId);
+      if (created?.id) {
+        setSupportForumChannelIdDraft(created.id);
+      }
+      setCreateForumOpen(false);
+      toast.success(`Created forum: ${created?.name ?? name}`);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+      const msg =
+        e instanceof Error ? e.message : "Failed to create forum channel";
+      // Common case: bot invited without Manage Channels permission.
+      toast.error(msg);
+    }
+  };
+
   const handleCreateRole = async () => {
     if (!organizationId || !guildId) return;
     const name = newRoleName.trim();
@@ -383,6 +438,18 @@ export const DiscordServerConfigPage = (props: { organizationId?: string | null 
       variant: "outline",
     },
     {
+      id: "reconnect",
+      label: "Reconnect bot",
+      icon: <Link2 className="h-4 w-4" />,
+      onClick: (g) => {
+        router.push(
+          `/admin/edit?plugin=discord&page=serverconfig&guildId=${encodeURIComponent(g.guildId)}`,
+        );
+        setTimeout(() => void handleReconnectBot(), 0);
+      },
+      variant: "secondary",
+    },
+    {
       id: "disconnect",
       label: "Disconnect",
       icon: <Unplug className="h-4 w-4" />,
@@ -405,6 +472,18 @@ export const DiscordServerConfigPage = (props: { organizationId?: string | null 
           >
             Back to settings
           </Button>
+          {guildId ? (
+            <Button
+              variant="outline"
+              onClick={() => {
+                void handleReconnectBot();
+              }}
+              title="Re-authorize the bot with updated permissions"
+            >
+              <Link2 className="mr-2 h-4 w-4" />
+              Reconnect bot
+            </Button>
+          ) : null}
           {guildId ? (
             <Button
               variant="outline"
@@ -505,7 +584,48 @@ export const DiscordServerConfigPage = (props: { organizationId?: string | null 
 
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-1">
-                  <Label>Support forum channel</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Support forum channel</Label>
+                    <AlertDialog
+                      open={createForumOpen}
+                      onOpenChange={(open) => setCreateForumOpen(open)}
+                    >
+                      <AlertDialogTrigger asChild>
+                        <Button size="sm" variant="outline" disabled={!guildId}>
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Create forum channel</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will create a Discord <span className="font-medium">Forum</span>{" "}
+                            channel in this server using the bot.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <div className="grid gap-2">
+                          <Label>Forum name</Label>
+                          <Input
+                            value={createForumNameDraft}
+                            onChange={(e) =>
+                              setCreateForumNameDraft(e.currentTarget.value)
+                            }
+                            placeholder="Support"
+                          />
+                          <div className="text-muted-foreground text-xs">
+                            If this fails with 403, re-add the bot to the server so it has{" "}
+                            <span className="font-medium">Manage Channels</span>.
+                          </div>
+                        </div>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => void handleCreateForumChannel()}>
+                            Create
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                   <Select
                     value={supportForumChannelIdDraft ?? ""}
                     onValueChange={(v) => setSupportForumChannelIdDraft(v || null)}

@@ -1,6 +1,14 @@
-// @ts-nocheck
 "use node";
 
+/* eslint-disable
+  @typescript-eslint/no-explicit-any,
+  @typescript-eslint/no-unsafe-assignment,
+  @typescript-eslint/no-unsafe-call,
+  @typescript-eslint/no-unsafe-member-access,
+  @typescript-eslint/no-unsafe-return,
+  @typescript-eslint/prefer-nullish-coalescing,
+  turbo/no-undeclared-env-vars
+*/
 import crypto from "node:crypto";
 import { v } from "convex/values";
 
@@ -13,11 +21,11 @@ const discordOrgConfigInternalQueries = components.launchthat_discord.orgConfigs
   .internalQueries as any;
 const discordOauthMutations = components.launchthat_discord.oauth
   .mutations as any;
-const discordOauthMutationsAny = discordOauthMutations as any;
+const discordOauthMutationsAny = discordOauthMutations;
 const discordGuildConnectionMutations = components.launchthat_discord
   .guildConnections.mutations as any;
-const discordGuildSettingsMutations = components.launchthat_discord.guildSettings
-  .mutations as any;
+const discordGuildSettingsMutations = components.launchthat_discord
+  .guildSettings.mutations as any;
 
 const encryptSecret = (plaintext: string, keyMaterial: string): string => {
   const key = crypto.createHash("sha256").update(keyMaterial).digest();
@@ -54,7 +62,7 @@ const decryptSecret = (ciphertext: string, keyMaterial: string): string => {
     tagB64: string;
     dataB64: string;
   };
-  if (parsed?.alg !== "aes-256-gcm") {
+  if (parsed.alg !== "aes-256-gcm") {
     throw new Error("Unsupported ciphertext alg");
   }
   const key = crypto.createHash("sha256").update(keyMaterial).digest();
@@ -153,6 +161,13 @@ const resolveOrgDiscordCredentials = async (
   };
 };
 
+const requireOrgAdminRef = (apiAny as any).plugins.discord.permissions
+  .requireOrgAdmin as any;
+
+const requireOrgAdmin = async (ctx: any, organizationId: string) => {
+  await (ctx.runQuery as any)(requireOrgAdminRef, { organizationId });
+};
+
 export const startBotInstall = action({
   args: {
     organizationId: v.string(),
@@ -163,12 +178,7 @@ export const startBotInstall = action({
     state: v.string(),
   }),
   handler: async (ctx, args) => {
-    await ctx.runQuery(
-      (apiAny as any).plugins.discord.permissions.requireOrgAdmin,
-      {
-        organizationId: args.organizationId,
-      },
-    );
+    await requireOrgAdmin(ctx, args.organizationId);
     const { clientId } = await resolveOrgDiscordCredentials(
       ctx,
       args.organizationId,
@@ -226,12 +236,21 @@ export const startBotInstall = action({
     // NOTE: Discord's bot install flow returns `guild_id` and `permissions` on redirect.
     // Some installations also include `code`; we don't rely on it.
     const scope = encodeURIComponent("bot applications.commands");
+    // Permissions bitfield (https://discord.com/developers/docs/topics/permissions):
+    // - MANAGE_CHANNELS (16)
+    // - VIEW_CHANNEL (1024)
+    // - SEND_MESSAGES (2048)
+    // - READ_MESSAGE_HISTORY (65536)
+    // - MANAGE_THREADS (17179869184)
+    // - SEND_MESSAGES_IN_THREADS (274877906944)
+    // - MANAGE_ROLES (268435456)
+    const permissions = "292326280208";
     const url =
       `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(clientId)}` +
       `&response_type=code` +
       `&redirect_uri=${encodeURIComponent(redirectUri)}` +
       `&scope=${scope}` +
-      `&permissions=268435456` +
+      `&permissions=${permissions}` +
       `&state=${encodeURIComponent(state)}`;
 
     return { url, state };
@@ -385,7 +404,10 @@ export const listGuildChannels = action({
         organizationId: args.organizationId,
       },
     );
-    const { botToken } = await resolveOrgDiscordCredentials(ctx, args.organizationId);
+    const { botToken } = await resolveOrgDiscordCredentials(
+      ctx,
+      args.organizationId,
+    );
     const res = await fetch(
       `https://discord.com/api/v10/guilds/${args.guildId}/channels`,
       {
@@ -406,6 +428,71 @@ export const listGuildChannels = action({
         parentId: typeof ch?.parent_id === "string" ? ch.parent_id : undefined,
       }))
       .filter((ch) => ch.id && ch.name);
+  },
+});
+
+export const createForumChannel = action({
+  args: {
+    organizationId: v.string(),
+    guildId: v.string(),
+    name: v.string(),
+    parentId: v.optional(v.string()),
+  },
+  returns: v.object({
+    id: v.string(),
+    name: v.string(),
+    type: v.number(),
+    parentId: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    await ctx.runQuery(
+      (apiAny as any).plugins.discord.permissions.requireOrgAdmin,
+      { organizationId: args.organizationId },
+    );
+    const { botToken } = await resolveOrgDiscordCredentials(
+      ctx,
+      args.organizationId,
+    );
+
+    const name = args.name.trim();
+    if (!name) {
+      throw new Error("Forum channel name is required");
+    }
+
+    // Discord channel type 15 = GUILD_FORUM
+    const res = await fetch(
+      `https://discord.com/api/v10/guilds/${args.guildId}/channels`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          type: 15,
+          ...(typeof args.parentId === "string" && args.parentId.trim()
+            ? { parent_id: args.parentId.trim() }
+            : {}),
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(
+        `Discord create forum channel failed (${res.status}): ${text}`,
+      );
+    }
+
+    const json = await res.json();
+    return {
+      id: typeof json?.id === "string" ? json.id : "",
+      name: typeof json?.name === "string" ? json.name : name,
+      type: typeof json?.type === "number" ? json.type : 15,
+      parentId:
+        typeof json?.parent_id === "string" ? json.parent_id : undefined,
+    };
   },
 });
 
