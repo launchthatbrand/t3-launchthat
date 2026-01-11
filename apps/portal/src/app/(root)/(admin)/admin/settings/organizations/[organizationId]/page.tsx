@@ -97,7 +97,7 @@ export default function OrganizationDetailPage() {
   const organization = useQuery(api.core.organizations.queries.getById, {
     organizationId,
   });
-  const plans = useQuery(api.core.organizations.queries.getPlans, {});
+  const plans = useQuery(api.core.organizations.queries.getAssignableOrgPlans, {});
   const members = useQuery(
     api.core.organizations.queries.getOrganizationMembers,
     {
@@ -319,19 +319,23 @@ export default function OrganizationDetailPage() {
   }
 
   const planList: {
-    _id: Id<"plans">;
+    _id: string;
+    name?: string;
     displayName: string;
     priceMonthly: number;
   }[] = Array.isArray(plans)
     ? (plans as {
-        _id: Id<"plans">;
+        _id: string;
+        name?: string;
         displayName: string;
         priceMonthly: number;
       }[])
     : [];
   const org = organization as OrganizationMeta;
-  const currentPlan = planList.find(
-    (plan) => org.planId && plan._id === org.planId,
+  const freePlanId = planList.find((p) => p.name === "free")?._id;
+  const effectivePlanId = org.planId ?? freePlanId;
+  const currentPlan = planList.find((plan) =>
+    effectivePlanId ? plan._id === effectivePlanId : false,
   );
 
   return (

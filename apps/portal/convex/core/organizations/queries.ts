@@ -295,6 +295,23 @@ export const getPlans = query({
 });
 
 /**
+ * Plans that can be assigned to organizations (portal-root plans).
+ *
+ * - Always includes the base "free" plan (when present).
+ * - Includes active product-backed plans created by portal-root.
+ */
+export const getAssignableOrgPlans = query({
+  args: {},
+  returns: v.array(planValidator),
+  handler: async (ctx) => {
+    return (await ctx.runQuery(
+      components.launchthat_ecommerce.plans.queries.listAssignableOrgPlans as any,
+      {},
+    ));
+  },
+});
+
+/**
  * Check if current user can create a new organization
  */
 export const canCreateOrganization = query({

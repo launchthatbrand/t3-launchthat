@@ -203,6 +203,18 @@ function AdminEditPageBody() {
 
   const resolvedSlug = (postTypeSlug ?? DEFAULT_POST_TYPE).toLowerCase();
   const postIdParam = searchParams.get("post_id");
+
+  // Attachments are media uploads, not "new post" drafts. If someone lands on
+  // ?post_type=attachments&post_id=new, redirect back to the attachments archive.
+  useEffect(() => {
+    if (resolvedSlug !== "attachments") return;
+    if (postIdParam !== "new") return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("post_type", "attachments");
+    params.delete("post_id");
+    params.set("upload", "1");
+    router.replace(`/admin/edit?${params.toString()}`);
+  }, [postIdParam, resolvedSlug, router, searchParams]);
   const permalinkSettings = useMemo<PermalinkSettings>(() => {
     const rawValue = permalinkOption?.metaValue as unknown;
     if (isPermalinkSettingsValue(rawValue)) {

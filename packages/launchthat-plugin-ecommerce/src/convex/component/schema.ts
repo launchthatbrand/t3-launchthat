@@ -57,26 +57,40 @@ const cartItemsTable = defineTable({
   .index("by_guest_product", ["guestSessionId", "productPostId"]);
 
 // Subscription plans (ecommerce-owned)
+//
+// NOTE: Portal stores plan ids as opaque strings (component ids),
+// so this table is the source of truth for organization plan capabilities.
 const plansTable = defineTable({
-  name: v.union(
-    v.literal("free"),
-    v.literal("starter"),
-    v.literal("business"),
-    v.literal("agency"),
-  ),
+  // Human/stable identifier (e.g. "free", "starter", "product:abc123").
+  // Previously this was a fixed union; it's now dynamic so portal-root can
+  // create product-backed plans.
+  name: v.string(),
+  kind: v.union(v.literal("system"), v.literal("product")),
+  // If kind === "product", this points at the ecommerce component post id for the product.
+  productPostId: v.optional(v.string()),
   displayName: v.string(),
   description: v.string(),
   maxOrganizations: v.number(),
   priceMonthly: v.number(),
   priceYearly: v.optional(v.number()),
   features: v.optional(v.array(v.string())),
+  // Portal-wide feature limits / quotas (used by portal-root for multi-tenant gating).
+  limits: v.optional(
+    v.object({
+      discordAiDaily: v.optional(v.number()),
+      supportBubbleAiDaily: v.optional(v.number()),
+      crmMaxContacts: v.optional(v.number()),
+    }),
+  ),
   isActive: v.boolean(),
   sortOrder: v.number(),
   updatedAt: v.number(),
 })
   .index("by_name", ["name"])
   .index("by_active", ["isActive"])
-  .index("by_sort_order", ["sortOrder"]);
+  .index("by_sort_order", ["sortOrder"])
+  .index("by_kind", ["kind"])
+  .index("by_productPostId", ["productPostId"]);
 
 const discountCodesTable = defineTable({
   organizationId: v.union(v.string(), v.null()), // null = global code

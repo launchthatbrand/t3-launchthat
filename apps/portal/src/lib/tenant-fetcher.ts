@@ -33,7 +33,7 @@ export const isPortalTenant = (tenant?: TenantSummary | null) =>
 
 export const getTenantOrganizationId = (
   tenant?: TenantSummary | null,
-): Id<"organizations"> | undefined => tenant?._id ?? undefined;
+): Id<"organizations"> => (tenant?._id ?? PORTAL_TENANT_ID);
 
 // In dev we want tenant branding changes (name/logo) to reflect immediately.
 // In production, a short edge cache helps reduce Convex lookups.

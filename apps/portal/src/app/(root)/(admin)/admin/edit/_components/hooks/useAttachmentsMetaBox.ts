@@ -16,6 +16,7 @@ import { ATTACHMENTS_META_KEY } from "../metaBoxes/constants";
 interface ParsedAttachment {
   mediaItemId?: string;
   url?: string;
+  previewImageUrl?: string;
   title?: string;
   alt?: string;
   mimeType?: string;
@@ -50,6 +51,7 @@ const parseAttachmentValue = (
       .map((entry) => ({
         mediaItemId: entry.mediaItemId as Id<"mediaItems">,
         url: entry.url,
+        previewImageUrl: entry.previewImageUrl ?? undefined,
         title: entry.title ?? undefined,
         alt: entry.alt ?? undefined,
         mimeType: entry.mimeType ?? undefined,
@@ -111,6 +113,7 @@ export const useAttachmentsMetaBox = ({
     const entry: AttachmentEntry = {
       mediaItemId: media._id,
       url: mediaUrl,
+      previewImageUrl: media.previewImageUrl ?? undefined,
       title: media.title ?? undefined,
       alt: media.alt ?? undefined,
       mimeType: media.mimeType ?? undefined,

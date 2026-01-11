@@ -250,70 +250,12 @@ export function ProductDetailsMetaBox({
         </TabsList>
 
         <TabsContent value="general" className="space-y-4 pt-3">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="product-regular-price">Regular price ($)</Label>
-              <Input
-                id="product-regular-price"
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                value={asString(getValue("product.regularPrice"))}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  handleSetNumber("product.regularPrice", e.currentTarget.value)
-                }
-                disabled={!canEdit}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="product-sale-price">Sale price ($)</Label>
-              <Input
-                id="product-sale-price"
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                value={asString(getValue("product.salePrice"))}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  handleSetNumber("product.salePrice", e.currentTarget.value)
-                }
-                disabled={!canEdit}
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="product-sale-start">Sale schedule (start)</Label>
-              <Input
-                id="product-sale-start"
-                type="datetime-local"
-                value={asString(getValue("product.saleStartAt"))}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  handleSetString("product.saleStartAt", e.currentTarget.value)
-                }
-                disabled={!canEdit}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="product-sale-end">Sale schedule (end)</Label>
-              <Input
-                id="product-sale-end"
-                type="datetime-local"
-                value={asString(getValue("product.saleEndAt"))}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  handleSetString("product.saleEndAt", e.currentTarget.value)
-                }
-                disabled={!canEdit}
-              />
-            </div>
-          </div>
-
           {productType === "simple_subscription" ? (
-            <div className="space-y-3 rounded-md border p-4">
+            <div className="space-y-3">
               <div>
                 <div className="text-sm font-medium">Subscription pricing</div>
                 <div className="text-muted-foreground text-xs">
-                  Prices are stored as cents for billing.
+                  Stored as cents for billing. Interval is monthly.
                 </div>
               </div>
 
@@ -327,14 +269,13 @@ export function ProductDetailsMetaBox({
                     step="0.01"
                     value={subscriptionAmountMonthly}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setSubscriptionAmountMonthly(e.currentTarget.value)
+                      (() => {
+                        const next = e.currentTarget.value;
+                        setSubscriptionAmountMonthly(next);
+                        const cents = parseMoneyDollarsToCents(next);
+                        setValue("product.subscription.amountMonthly", cents);
+                      })()
                     }
-                    onBlur={() => {
-                      setValue(
-                        "product.subscription.amountMonthly",
-                        parseMoneyDollarsToCents(subscriptionAmountMonthly),
-                      );
-                    }}
                     disabled={!canEdit}
                   />
                 </div>
@@ -348,14 +289,13 @@ export function ProductDetailsMetaBox({
                     step="0.01"
                     value={subscriptionSetupFee}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setSubscriptionSetupFee(e.currentTarget.value)
+                      (() => {
+                        const next = e.currentTarget.value;
+                        setSubscriptionSetupFee(next);
+                        const cents = parseMoneyDollarsToCents(next);
+                        setValue("product.subscription.setupFee", cents);
+                      })()
                     }
-                    onBlur={() => {
-                      setValue(
-                        "product.subscription.setupFee",
-                        parseMoneyDollarsToCents(subscriptionSetupFee),
-                      );
-                    }}
                     disabled={!canEdit}
                   />
                 </div>
@@ -369,26 +309,87 @@ export function ProductDetailsMetaBox({
                     step="1"
                     value={subscriptionTrialDays}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setSubscriptionTrialDays(e.currentTarget.value)
+                      (() => {
+                        const next = e.currentTarget.value;
+                        setSubscriptionTrialDays(next);
+                        const trimmed = next.trim();
+                        if (!trimmed) {
+                          setValue("product.subscription.trialDays", null);
+                          return;
+                        }
+                        const parsed = Number(trimmed);
+                        setValue(
+                          "product.subscription.trialDays",
+                          Number.isFinite(parsed) ? parsed : null,
+                        );
+                      })()
                     }
-                    onBlur={() => {
-                      const trimmed = subscriptionTrialDays.trim();
-                      if (!trimmed) {
-                        setValue("product.subscription.trialDays", null);
-                        return;
-                      }
-                      const parsed = Number(trimmed);
-                      setValue(
-                        "product.subscription.trialDays",
-                        Number.isFinite(parsed) ? parsed : null,
-                      );
-                    }}
                     disabled={!canEdit}
                   />
                 </div>
               </div>
             </div>
-          ) : null}
+          ) : (
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="product-regular-price">Regular price ($)</Label>
+                  <Input
+                    id="product-regular-price"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    value={asString(getValue("product.regularPrice"))}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      handleSetNumber("product.regularPrice", e.currentTarget.value)
+                    }
+                    disabled={!canEdit}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="product-sale-price">Sale price ($)</Label>
+                  <Input
+                    id="product-sale-price"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    value={asString(getValue("product.salePrice"))}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      handleSetNumber("product.salePrice", e.currentTarget.value)
+                    }
+                    disabled={!canEdit}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="product-sale-start">Sale schedule (start)</Label>
+                  <Input
+                    id="product-sale-start"
+                    type="datetime-local"
+                    value={asString(getValue("product.saleStartAt"))}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      handleSetString("product.saleStartAt", e.currentTarget.value)
+                    }
+                    disabled={!canEdit}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="product-sale-end">Sale schedule (end)</Label>
+                  <Input
+                    id="product-sale-end"
+                    type="datetime-local"
+                    value={asString(getValue("product.saleEndAt"))}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      handleSetString("product.saleEndAt", e.currentTarget.value)
+                    }
+                    disabled={!canEdit}
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="features" className="space-y-4 pt-3">

@@ -86,13 +86,14 @@ const adaptEntityToPost = (
         authorId?: string | null;
         createdAt?: number | null;
         updatedAt?: number | null;
+        meta?: unknown;
       }
     | null
     | undefined,
 ): Doc<"posts"> | null | undefined => {
   if (entity === undefined) return undefined;
   if (entity === null) return null;
-  return {
+  const post = {
     _id: entity.id as Id<"posts">,
     _creationTime: entity.createdAt ?? Date.now(),
     title: entity.title ?? undefined,
@@ -109,6 +110,11 @@ const adaptEntityToPost = (
     createdAt: entity.createdAt ?? undefined,
     updatedAt: entity.updatedAt ?? undefined,
   } as unknown as Doc<"posts">;
+
+  // Preserve entity meta for admin UIs that need attachment file URLs.
+  // (Doc<"posts"> doesn't define `meta`, so this is intentionally untyped.)
+  (post as any).meta = (entity as any).meta;
+  return post;
 };
 
 /**

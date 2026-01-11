@@ -12,6 +12,7 @@ import { postsSchema } from "./posts/schema";
 import { postTypesSchema } from "./postTypes/schema";
 import { rolesSchema } from "./roles/schema";
 import { taxonomiesSchema } from "./taxonomies/schema";
+import { usageSchema } from "./usage/schema";
 
 export const coreSchema = {
   ...authSchema,
@@ -28,4 +29,5 @@ export const coreSchema = {
   ...permissionsSchema,
   ...postsSchema,
   ...rolesSchema,
+  ...usageSchema,
 };

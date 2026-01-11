@@ -4,7 +4,8 @@ import { v } from "convex/values";
 
 import type { MutationCtx } from "../../_generated/server";
 import { mutation } from "../../_generated/server";
-import { internal } from "../../_generated/api";
+import { components, internal } from "../../_generated/api";
+import { PORTAL_TENANT_ID, PORTAL_TENANT_SLUG } from "../../constants";
 import { getAuthenticatedUserId } from "../../lib/permissions/userAuth";
 import {
   checkOrganizationLimit,
@@ -90,9 +91,17 @@ export const create = mutation({
 
     const now = Date.now();
 
-    // For non-admin users, planId is required
-    if (user.role !== "admin" && !args.planId) {
-      throw new Error("Plan ID is required for non-admin users");
+    // Always default to the base "free" plan when none is provided.
+    let planId = args.planId;
+    if (!planId) {
+      const freePlan = (await ctx.runQuery(
+        components.launchthat_ecommerce.plans.queries.getPlanByName as any,
+        { name: "free" },
+      )) as { _id: string } | null;
+      if (!freePlan?._id) {
+        throw new Error('Missing base "free" plan. Run seedPlans first.');
+      }
+      planId = String(freePlan._id);
     }
 
     // Create organization
@@ -101,7 +110,7 @@ export const create = mutation({
       slug,
       description: args.description,
       ownerId: userId,
-      planId: args.planId, // Can be undefined for admin users
+      planId,
       isPublic: args.isPublic ?? false,
       allowSelfRegistration: args.allowSelfRegistration ?? false,
       subscriptionStatus: user.role === "admin" ? "active" : "trialing", // Admin orgs are immediately active
@@ -178,6 +187,12 @@ export const update = mutation({
       }
       if (normalizedSlug === "portal") {
         throw new Error('Slug "portal" is reserved');
+      }
+      if (
+        args.organizationId === PORTAL_TENANT_ID &&
+        normalizedSlug !== PORTAL_TENANT_SLUG
+      ) {
+        throw new Error("Portal root slug is fixed and cannot be changed");
       }
 
       const existing = await ctx.db
@@ -627,6 +642,10 @@ export const deleteOrganization = mutation({
     // 1. Cancel subscriptions
     // 2. Archive/soft delete instead of hard delete
     // 3. Handle data cleanup properly
+
+    if (args.organizationId === PORTAL_TENANT_ID) {
+      throw new Error("Cannot delete the portal root organization");
+    }
 
     // For now, just delete the organization
     // Note: This will cascade to delete related data due to foreign key constraints

@@ -4,22 +4,13 @@ import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useDeletePost, useGetAllPosts } from "@/lib/blog";
 import { formatDistanceToNow } from "date-fns";
 import { Eye, Info, Plus, Sparkles, Trash2 } from "lucide-react";
 
 import type { ColumnDefinition } from "@acme/ui/entity-list";
 import type { EntityAction } from "@acme/ui/entity-list/types";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@acme/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +21,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@acme/ui/alert-dialog";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@acme/ui/card";
 import { EntityList } from "@acme/ui/entity-list";
 import {
   Select,
@@ -38,7 +38,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { toast } from "@acme/ui/toast";
 
 import type { PermalinkSettings } from "./permalink";
@@ -51,17 +50,23 @@ import {
 } from "~/components/admin/AdminLayout";
 import { useApplyFilters } from "~/lib/hooks";
 import {
+  ADMIN_ARCHIVE_COLUMNS_FILTER,
   ADMIN_ARCHIVE_CONTENT_AFTER,
   ADMIN_ARCHIVE_CONTENT_BEFORE,
   ADMIN_ARCHIVE_CONTENT_SUPPRESS,
+  ADMIN_ARCHIVE_DEFAULT_VIEWMODE_FILTER,
+  ADMIN_ARCHIVE_ENTITY_ACTIONS_FILTER,
   ADMIN_ARCHIVE_HEADER_AFTER,
   ADMIN_ARCHIVE_HEADER_BEFORE,
   ADMIN_ARCHIVE_HEADER_SUPPRESS,
-  ADMIN_ATTACHMENTS_ARCHIVE_TABS_FILTER,
+  ADMIN_ARCHIVE_ITEM_RENDER_FILTER,
+  ADMIN_ARCHIVE_PRIMARY_ACTION_FILTER,
+  ADMIN_ARCHIVE_ROW_CLICK_FILTER,
 } from "~/lib/plugins/hookSlots";
 import { isBuiltInPostTypeSlug } from "~/lib/postTypes/builtIns";
 import { buildPermalink } from "./permalink";
-import { PlaceholderState } from "./PlaceholderState";
+
+// import { PlaceholderState } from "./PlaceholderState";
 
 type PostDoc = Doc<"posts">;
 type PostTypeDoc = Doc<"postTypes">;
@@ -74,6 +79,8 @@ interface ArchiveDisplayRow extends Record<string, unknown> {
   owner: string;
   updatedAt: number;
   permalink?: string;
+  previewUrl?: string;
+  fileUrl?: string;
   isPlaceholder?: boolean;
 }
 
@@ -133,78 +140,12 @@ export function GenericArchiveView({
   pluginMenus,
   organizationId,
 }: GenericArchiveViewProps) {
-  const searchParams = useSearchParams();
+  const router = useRouter();
+  // const searchParams = useSearchParams();
   const label = postType?.name ?? slug.replace(/-/g, " ");
   const description =
     postType?.description ?? "Manage structured entries for this post type.";
   const normalizedSlug = slug.toLowerCase();
-  const isAttachmentsArchive = normalizedSlug === "attachments";
-
-  interface AttachmentsArchiveTab {
-    id: string;
-    label: string;
-    order?: number;
-    condition?: (ctx: {
-      organizationId?: Id<"organizations">;
-      postTypeSlug: string;
-    }) => boolean;
-    component?: (props: { organizationId?: Id<"organizations"> }) => ReactNode;
-  }
-
-  const attachmentsHookContext = useMemo(
-    () => ({ postTypeSlug: normalizedSlug, organizationId }),
-    [normalizedSlug, organizationId],
-  );
-
-  const attachmentsTabs = useApplyFilters<AttachmentsArchiveTab[]>(
-    ADMIN_ATTACHMENTS_ARCHIVE_TABS_FILTER,
-    [
-      { id: "list", label: "Attachments", order: 0 },
-      { id: "drafts", label: "Drafts", order: 1 },
-      { id: "scheduled", label: "Scheduled", order: 2 },
-    ],
-    attachmentsHookContext,
-  );
-
-  const attachmentsTabsFinal = useMemo(() => {
-    if (attachmentsTabs.length === 0) {
-      return [
-        { id: "list", label: "Attachments", order: 0 },
-        { id: "drafts", label: "Drafts", order: 1 },
-        { id: "scheduled", label: "Scheduled", order: 2 },
-      ] satisfies AttachmentsArchiveTab[];
-    }
-
-    return [...attachmentsTabs]
-      .filter((tab) => !tab.condition || tab.condition(attachmentsHookContext))
-      .sort((a, b) => (a.order ?? 10) - (b.order ?? 10));
-  }, [attachmentsHookContext, attachmentsTabs]);
-
-  const activeAttachmentsTab = useMemo(() => {
-    const raw = searchParams.get("tab");
-    const normalized = typeof raw === "string" ? raw.toLowerCase().trim() : "";
-    if (!isAttachmentsArchive) return "list";
-    if (!normalized) return "list";
-    return attachmentsTabsFinal.some((t) => t.id === normalized)
-      ? normalized
-      : "list";
-  }, [attachmentsTabsFinal, isAttachmentsArchive, searchParams]);
-
-  const attachmentsHeaderTabs = useMemo(() => {
-    if (!isAttachmentsArchive) return undefined;
-    return attachmentsTabsFinal.map((tab) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("post_type", "attachments");
-      params.set("tab", tab.id);
-      params.delete("page");
-      return {
-        value: tab.id,
-        label: tab.label,
-        href: `/admin/edit?${params.toString()}`,
-        order: tab.order,
-      };
-    });
-  }, [attachmentsTabsFinal, isAttachmentsArchive, searchParams]);
 
   const shouldLoadPosts =
     Boolean(postType) || isBuiltInPostTypeSlug(normalizedSlug);
@@ -234,6 +175,16 @@ export function GenericArchiveView({
           owner: row.authorId ?? "—",
           updatedAt: updatedValue,
           permalink,
+          previewUrl:
+            typeof row.featuredImageUrl === "string" &&
+            row.featuredImageUrl.length > 0
+              ? row.featuredImageUrl
+              : undefined,
+          fileUrl:
+            typeof (row as any)?.meta?.url === "string" &&
+            (row as any).meta.url.length > 0
+              ? ((row as any).meta.url as string)
+              : undefined,
         };
       }
       return {
@@ -243,11 +194,35 @@ export function GenericArchiveView({
         statusVariant: row.status === "Published" ? "default" : "secondary",
         owner: row.author,
         updatedAt: row.updatedAt,
+        previewUrl: undefined,
+        fileUrl: undefined,
         isPlaceholder: true,
       };
     });
   }, [rows, permalinkSettings, postType]);
-  const columns = useMemo<ColumnDefinition<ArchiveDisplayRow>[]>(
+
+  const archiveHookContext = useMemo(
+    () => ({
+      postType: slug,
+      postTypeSlug: normalizedSlug,
+      postTypeDefinition: postType,
+      layout: renderLayout ? ("default" as const) : ("content-only" as const),
+      pluginMenus,
+      organizationId,
+      rows: displayRows,
+    }),
+    [
+      displayRows,
+      normalizedSlug,
+      organizationId,
+      pluginMenus,
+      postType,
+      renderLayout,
+      slug,
+    ],
+  );
+
+  const defaultColumns = useMemo<ColumnDefinition<ArchiveDisplayRow>[]>(
     () => [
       {
         id: "title",
@@ -295,6 +270,48 @@ export function GenericArchiveView({
     ],
     [slug],
   );
+
+  const columns = useApplyFilters<ColumnDefinition<ArchiveDisplayRow>[]>(
+    ADMIN_ARCHIVE_COLUMNS_FILTER,
+    defaultColumns,
+    archiveHookContext,
+  );
+
+  const defaultOnRowClick = useCallback(
+    (item: ArchiveDisplayRow) => {
+      if (item.isPlaceholder) return;
+      router.replace(`/admin/edit?post_type=${slug}&post_id=${item.id}`);
+    },
+    [router, slug],
+  );
+
+  const onRowClick = useApplyFilters<
+    ((item: ArchiveDisplayRow) => void) | undefined
+  >(ADMIN_ARCHIVE_ROW_CLICK_FILTER, defaultOnRowClick, archiveHookContext);
+
+  const itemRender = useApplyFilters<
+    ((item: ArchiveDisplayRow) => ReactNode) | undefined
+  >(ADMIN_ARCHIVE_ITEM_RENDER_FILTER, undefined, archiveHookContext);
+
+  const defaultViewMode = useApplyFilters<"list" | "grid">(
+    ADMIN_ARCHIVE_DEFAULT_VIEWMODE_FILTER,
+    "list",
+    archiveHookContext,
+  );
+
+  const primaryActionDefault = useMemo(() => {
+    return (
+      <Button className="gap-2" type="button" onClick={onCreate}>
+        <Plus className="h-4 w-4" /> Add New {label}
+      </Button>
+    );
+  }, [label, onCreate]);
+
+  const primaryAction = useApplyFilters<ReactNode>(
+    ADMIN_ARCHIVE_PRIMARY_ACTION_FILTER,
+    primaryActionDefault,
+    archiveHookContext,
+  );
   const deletePost = useDeletePost();
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const pendingDeleteItemRef = useRef<ArchiveDisplayRow | null>(null);
@@ -323,9 +340,11 @@ export function GenericArchiveView({
         });
       }
     },
-    [deletePost, slug],
+    [deletePost, slug, organizationId],
   );
-  const entityActions = useMemo<EntityAction<ArchiveDisplayRow>[]>(() => {
+  const defaultEntityActions = useMemo<
+    EntityAction<ArchiveDisplayRow>[]
+  >(() => {
     const actions: EntityAction<ArchiveDisplayRow>[] = [
       {
         id: "view",
@@ -354,7 +373,13 @@ export function GenericArchiveView({
     });
 
     return actions;
-  }, [handleDeleteRow]);
+  }, []);
+
+  const entityActions = useApplyFilters<EntityAction<ArchiveDisplayRow>[]>(
+    ADMIN_ARCHIVE_ENTITY_ACTIONS_FILTER,
+    defaultEntityActions,
+    archiveHookContext,
+  );
 
   const bulkDeleteSelected = useCallback(
     async (selectedItems: ArchiveDisplayRow[], clearSelection: () => void) => {
@@ -382,23 +407,6 @@ export function GenericArchiveView({
       }
     },
     [deletePost, organizationId, slug],
-  );
-
-  const archiveHookContext = useMemo<{
-    postType: string;
-    postTypeDefinition: PostTypeDoc | null;
-    layout: "default" | "content-only";
-    pluginMenus?: Record<string, PluginMenuItem[]>;
-    organizationId?: Id<"organizations">;
-  }>(
-    () => ({
-      postType: slug,
-      postTypeDefinition: postType,
-      layout: renderLayout ? "default" : "content-only",
-      pluginMenus,
-      organizationId,
-    }),
-    [pluginMenus, postType, renderLayout, slug, organizationId],
   );
 
   const headerBefore = useApplyFilters<ReactNode[]>(
@@ -514,7 +522,10 @@ export function GenericArchiveView({
               onClick={() => {
                 const payload = pendingBulkDeleteRef.current;
                 if (!payload) return;
-                void bulkDeleteSelected(payload.selectedItems, payload.clearSelection);
+                void bulkDeleteSelected(
+                  payload.selectedItems,
+                  payload.clearSelection,
+                );
               }}
             >
               Delete
@@ -536,173 +547,69 @@ export function GenericArchiveView({
             ))}
           </SelectContent>
         </Select>
-        <Button className="gap-2" type="button" onClick={onCreate}>
-          <Plus className="h-4 w-4" /> Add New {label}
-        </Button>
+        {primaryAction ? <>{primaryAction}</> : null}
       </div>
 
-      {isAttachmentsArchive ? (
-        (() => {
-          const listTab = (
-            <Card>
-              <CardHeader>
-                <CardTitle>{label} overview</CardTitle>
-                <CardDescription>
-                  WordPress-style management powered by reusable post type
-                  scaffolding.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <EntityList
-                  data={displayRows}
-                  columns={columns}
-                  entityActions={entityActions}
-                  isLoading={tableLoading}
-                  enableRowSelection
-                  enableFooter={false}
-                  viewModes={["list", "grid"]}
-                  defaultViewMode="list"
-                  enableSearch
-                  getRowId={(row: ArchiveDisplayRow) => row.id}
-                  bulkActions={({
-                    selectedItems,
-                    clearSelection,
-                  }: {
-                    selectedItems: ArchiveDisplayRow[];
-                    clearSelection: () => void;
-                  }) => (
-                    <>
-                      <div className="text-muted-foreground text-sm">
-                        {
-                          selectedItems.filter((item) => !item.isPlaceholder)
-                            .length
-                        }{" "}
-                        selected
-                      </div>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          pendingBulkDeleteRef.current = {
-                            selectedItems,
-                            clearSelection,
-                          };
-                          setConfirmBulkDeleteOpen(true);
-                        }}
-                        className="ml-auto"
-                      >
-                        Delete selected
-                      </Button>
-                    </>
-                  )}
-                  emptyState={
-                    <div className="text-muted-foreground py-8 text-center">
-                      No entries yet. Click “Add New” to get started.
-                    </div>
-                  }
-                  className="p-4"
-                />
-              </CardContent>
-            </Card>
-          );
-
-          if (activeAttachmentsTab === "drafts") {
-            return <PlaceholderState label="Drafts" />;
-          }
-          if (activeAttachmentsTab === "scheduled") {
-            return <PlaceholderState label="Scheduled" />;
-          }
-          if (activeAttachmentsTab === "list") {
-            return listTab;
-          }
-
-          const injected = attachmentsTabsFinal.find(
-            (tab) => tab.id === activeAttachmentsTab,
-          );
-          if (injected?.component) {
-            return <>{injected.component({ organizationId })}</>;
-          }
-          return <PlaceholderState label={injected?.label ?? "Tab"} />;
-        })()
-      ) : (
-        <Tabs defaultValue="list">
-          <TabsList>
-            <TabsTrigger value="list">List</TabsTrigger>
-            <TabsTrigger value="drafts">Drafts</TabsTrigger>
-            <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
-          </TabsList>
-          <TabsContent value="list">
-            <Card>
-              <CardHeader>
-                <CardTitle>{label} overview</CardTitle>
-                <CardDescription>
-                  WordPress-style management powered by reusable post type
-                  scaffolding.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <EntityList
-                  data={displayRows}
-                  columns={columns}
-                  entityActions={entityActions}
-                  isLoading={tableLoading}
-                  enableRowSelection
-                  enableFooter={false}
-                  viewModes={["list", "grid"]}
-                  defaultViewMode="list"
-                  enableSearch
-                  getRowId={(row: ArchiveDisplayRow) => row.id}
-                  bulkActions={({
-                    selectedItems,
-                    clearSelection,
-                  }: {
-                    selectedItems: ArchiveDisplayRow[];
-                    clearSelection: () => void;
-                  }) => (
-                    <>
-                      <div className="text-muted-foreground text-sm">
-                        {
-                          selectedItems.filter((item) => !item.isPlaceholder)
-                            .length
-                        }{" "}
-                        selected
-                      </div>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          pendingBulkDeleteRef.current = {
-                            selectedItems,
-                            clearSelection,
-                          };
-                          setConfirmBulkDeleteOpen(true);
-                        }}
-                        className="ml-auto"
-                      >
-                        Delete selected
-                      </Button>
-                    </>
-                  )}
-                  emptyState={
-                    <div className="text-muted-foreground py-8 text-center">
-                      No entries yet. Click “Add New” to get started.
-                    </div>
-                  }
-                  className="p-4"
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="drafts">
-            <PlaceholderState label="Drafts" />
-          </TabsContent>
-          <TabsContent value="scheduled">
-            <PlaceholderState label="Scheduled" />
-          </TabsContent>
-        </Tabs>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle>{label} overview</CardTitle>
+          <CardDescription>
+            WordPress-style management powered by reusable post type
+            scaffolding.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <EntityList
+            data={displayRows}
+            columns={columns}
+            entityActions={entityActions}
+            isLoading={tableLoading}
+            enableRowSelection
+            enableFooter={false}
+            viewModes={["list", "grid"]}
+            defaultViewMode={defaultViewMode}
+            enableSearch
+            itemRender={itemRender}
+            onRowClick={onRowClick}
+            getRowId={(row: ArchiveDisplayRow) => row.id}
+            bulkActions={({
+              selectedItems,
+              clearSelection,
+            }: {
+              selectedItems: ArchiveDisplayRow[];
+              clearSelection: () => void;
+            }) => (
+              <>
+                <div className="text-muted-foreground text-sm">
+                  {selectedItems.filter((item) => !item.isPlaceholder).length}{" "}
+                  selected
+                </div>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    pendingBulkDeleteRef.current = {
+                      selectedItems,
+                      clearSelection,
+                    };
+                    setConfirmBulkDeleteOpen(true);
+                  }}
+                  className="ml-auto"
+                >
+                  Delete selected
+                </Button>
+              </>
+            )}
+            emptyState={
+              <div className="text-muted-foreground py-8 text-center">
+                No entries yet.
+              </div>
+            }
+            className="p-4"
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 
@@ -743,9 +650,6 @@ export function GenericArchiveView({
       title={`${label} Archive`}
       description={description}
       pathname={`/admin/edit?post_type=${slug}`}
-      showTabs={isAttachmentsArchive}
-      activeTab={isAttachmentsArchive ? activeAttachmentsTab : undefined}
-      tabs={isAttachmentsArchive ? attachmentsHeaderTabs : undefined}
     >
       <AdminLayoutContent
         className="flex flex-1 flex-col"

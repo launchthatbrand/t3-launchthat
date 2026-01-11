@@ -13,6 +13,7 @@ import type { MediaItem } from "~/components/media/MediaLibrary";
 export interface AttachmentEntry {
   mediaItemId: Id<"mediaItems">;
   url: string;
+  previewImageUrl?: string;
   title?: string;
   alt?: string;
   mimeType?: string;

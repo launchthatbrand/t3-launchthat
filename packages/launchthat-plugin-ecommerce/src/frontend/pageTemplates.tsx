@@ -2,6 +2,7 @@ import React from "react";
 
 import { EcommerceCartTemplate } from "./templates/EcommerceCartTemplate";
 import { EcommerceCheckoutTemplate } from "./templates/EcommerceCheckoutTemplate";
+import { EcommerceShopTemplate } from "./templates/EcommerceShopTemplate";
 
 export type EcommercePageTemplateDefinition = {
   slug: string;
@@ -19,6 +20,14 @@ export type EcommercePageTemplateDefinition = {
 export const getEcommercePageTemplates =
   (): EcommercePageTemplateDefinition[] => {
     return [
+      {
+        slug: "ecommerce-shop",
+        label: "Ecommerce: Shop",
+        description: "Shop page (product listing rendered by the Ecommerce plugin).",
+        layout: { showHeader: true, showSidebar: true, container: "default" },
+        order: 49,
+        render: (ctx) => <EcommerceShopTemplate ctx={ctx} />,
+      },
       {
         slug: "ecommerce-cart",
         label: "Ecommerce: Cart",

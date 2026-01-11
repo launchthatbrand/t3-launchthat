@@ -14,9 +14,13 @@ export const getMediaItem = query({
     v.object({
       _id: v.id("mediaItems"),
       _creationTime: v.number(),
+      organizationId: v.optional(v.id("organizations")),
       storageId: v.optional(v.id("_storage")),
+      previewImageStorageId: v.optional(v.id("_storage")),
+      previewGeneratedAt: v.optional(v.number()),
       externalUrl: v.optional(v.string()),
       url: v.optional(v.string()),
+      previewImageUrl: v.optional(v.string()),
       title: v.optional(v.string()),
       caption: v.optional(v.string()),
       alt: v.optional(v.string()),
@@ -26,6 +30,7 @@ export const getMediaItem = query({
       mimeType: v.optional(v.string()),
       width: v.optional(v.number()),
       height: v.optional(v.number()),
+      uploadedAt: v.optional(v.number()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -36,6 +41,7 @@ export const getMediaItem = query({
 
     // Get URL for storage items
     let url: string | undefined;
+    let previewImageUrl: string | undefined;
     let mimeType: string | undefined;
     if (mediaItem.storageId) {
       url = (await ctx.storage.getUrl(mediaItem.storageId)) ?? undefined;
@@ -58,9 +64,15 @@ export const getMediaItem = query({
       url = mediaItem.externalUrl;
     }
 
+    if (mediaItem.previewImageStorageId) {
+      previewImageUrl =
+        (await ctx.storage.getUrl(mediaItem.previewImageStorageId)) ?? undefined;
+    }
+
     return {
       ...mediaItem,
       url,
+      previewImageUrl,
       mimeType: mediaItem.mimeType ?? mimeType,
       // Map legacy categories field if it exists
       taxonomyTermIds: mediaItem.taxonomyTermIds ?? [],
@@ -78,9 +90,13 @@ export const getMediaByStorageId = query({
     v.object({
       _id: v.id("mediaItems"),
       _creationTime: v.number(),
+      organizationId: v.optional(v.id("organizations")),
       storageId: v.optional(v.id("_storage")),
+      previewImageStorageId: v.optional(v.id("_storage")),
+      previewGeneratedAt: v.optional(v.number()),
       externalUrl: v.optional(v.string()),
       url: v.optional(v.string()),
+      previewImageUrl: v.optional(v.string()),
       title: v.optional(v.string()),
       caption: v.optional(v.string()),
       alt: v.optional(v.string()),
@@ -90,6 +106,7 @@ export const getMediaByStorageId = query({
       mimeType: v.optional(v.string()),
       width: v.optional(v.number()),
       height: v.optional(v.number()),
+      uploadedAt: v.optional(v.number()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -104,6 +121,7 @@ export const getMediaByStorageId = query({
 
     const url = (await ctx.storage.getUrl(args.storageId)) ?? undefined;
     let mimeType: string | undefined;
+    let previewImageUrl: string | undefined;
     try {
       const storageMeta = await ctx.db.system.get("_storage", args.storageId);
       if (storageMeta && typeof (storageMeta as any).contentType === "string") {
@@ -113,9 +131,15 @@ export const getMediaByStorageId = query({
       // ignore
     }
 
+    if (mediaItem.previewImageStorageId) {
+      previewImageUrl =
+        (await ctx.storage.getUrl(mediaItem.previewImageStorageId)) ?? undefined;
+    }
+
     return {
       ...mediaItem,
       url,
+      previewImageUrl,
       mimeType: mediaItem.mimeType ?? mimeType,
       taxonomyTermIds: mediaItem.taxonomyTermIds ?? [],
     };
@@ -144,9 +168,13 @@ export const getMediaById = query({
     v.object({
       _id: v.id("mediaItems"),
       _creationTime: v.number(),
+      organizationId: v.optional(v.id("organizations")),
       storageId: v.optional(v.id("_storage")),
+      previewImageStorageId: v.optional(v.id("_storage")),
+      previewGeneratedAt: v.optional(v.number()),
       externalUrl: v.optional(v.string()),
       url: v.optional(v.string()),
+      previewImageUrl: v.optional(v.string()),
       title: v.optional(v.string()),
       caption: v.optional(v.string()),
       alt: v.optional(v.string()),
@@ -156,6 +184,7 @@ export const getMediaById = query({
       mimeType: v.optional(v.string()),
       width: v.optional(v.number()),
       height: v.optional(v.number()),
+      uploadedAt: v.optional(v.number()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -163,6 +192,7 @@ export const getMediaById = query({
     if (!mediaItem) return null;
 
     let url: string | undefined;
+    let previewImageUrl: string | undefined;
     let mimeType: string | undefined;
     if (mediaItem.storageId) {
       url = (await ctx.storage.getUrl(mediaItem.storageId)) ?? undefined;
@@ -185,9 +215,15 @@ export const getMediaById = query({
       url = mediaItem.externalUrl;
     }
 
+    if (mediaItem.previewImageStorageId) {
+      previewImageUrl =
+        (await ctx.storage.getUrl(mediaItem.previewImageStorageId)) ?? undefined;
+    }
+
     return {
       ...mediaItem,
       url,
+      previewImageUrl,
       mimeType: mediaItem.mimeType ?? mimeType,
       taxonomyTermIds: mediaItem.taxonomyTermIds ?? [],
     };
@@ -212,8 +248,11 @@ export const listMediaItemsWithUrl = query({
         _creationTime: v.number(),
         organizationId: v.optional(v.id("organizations")),
         storageId: v.optional(v.id("_storage")),
+        previewImageStorageId: v.optional(v.id("_storage")),
+        previewGeneratedAt: v.optional(v.number()),
         externalUrl: v.optional(v.string()),
         url: v.optional(v.string()),
+        previewImageUrl: v.optional(v.string()),
         title: v.optional(v.string()),
         caption: v.optional(v.string()),
         alt: v.optional(v.string()),
@@ -276,12 +315,17 @@ export const listMediaItemsWithUrl = query({
     const enriched = await Promise.all(
       page.map(async (item) => {
         let url: string | undefined;
+        let previewImageUrl: string | undefined;
         if (item.storageId) {
           url = (await ctx.storage.getUrl(item.storageId)) ?? undefined;
         } else if (item.externalUrl) {
           url = item.externalUrl;
         }
-        return { ...item, url };
+        if (item.previewImageStorageId) {
+          previewImageUrl =
+            (await ctx.storage.getUrl(item.previewImageStorageId)) ?? undefined;
+        }
+        return { ...item, url, previewImageUrl };
       }),
     );
 
@@ -299,9 +343,13 @@ export const listMedia = query({
       v.object({
         _id: v.id("mediaItems"),
         _creationTime: v.number(),
+        organizationId: v.optional(v.id("organizations")),
         storageId: v.optional(v.id("_storage")),
+        previewImageStorageId: v.optional(v.id("_storage")),
+        previewGeneratedAt: v.optional(v.number()),
         externalUrl: v.optional(v.string()),
         url: v.optional(v.string()),
+        previewImageUrl: v.optional(v.string()),
         title: v.optional(v.string()),
         caption: v.optional(v.string()),
         alt: v.optional(v.string()),
@@ -311,6 +359,7 @@ export const listMedia = query({
         mimeType: v.optional(v.string()),
         width: v.optional(v.number()),
         height: v.optional(v.number()),
+        uploadedAt: v.optional(v.number()),
       }),
     ),
     isDone: v.boolean(),
@@ -335,9 +384,13 @@ export const listImages = query({
       v.object({
         _id: v.id("mediaItems"),
         _creationTime: v.number(),
+        organizationId: v.optional(v.id("organizations")),
         storageId: v.optional(v.id("_storage")),
+        previewImageStorageId: v.optional(v.id("_storage")),
+        previewGeneratedAt: v.optional(v.number()),
         externalUrl: v.optional(v.string()),
         url: v.optional(v.string()),
+        previewImageUrl: v.optional(v.string()),
         title: v.optional(v.string()),
         caption: v.optional(v.string()),
         alt: v.optional(v.string()),
@@ -347,6 +400,7 @@ export const listImages = query({
         mimeType: v.optional(v.string()),
         width: v.optional(v.number()),
         height: v.optional(v.number()),
+        uploadedAt: v.optional(v.number()),
       }),
     ),
     isDone: v.boolean(),
@@ -374,9 +428,13 @@ export const searchMedia = query({
     v.object({
       _id: v.id("mediaItems"),
       _creationTime: v.number(),
+      organizationId: v.optional(v.id("organizations")),
       storageId: v.optional(v.id("_storage")),
+      previewImageStorageId: v.optional(v.id("_storage")),
+      previewGeneratedAt: v.optional(v.number()),
       externalUrl: v.optional(v.string()),
       url: v.optional(v.string()),
+      previewImageUrl: v.optional(v.string()),
       title: v.optional(v.string()),
       caption: v.optional(v.string()),
       alt: v.optional(v.string()),
@@ -386,6 +444,7 @@ export const searchMedia = query({
       mimeType: v.optional(v.string()),
       width: v.optional(v.number()),
       height: v.optional(v.number()),
+      uploadedAt: v.optional(v.number()),
     }),
   ),
   handler: async (ctx, args) => {

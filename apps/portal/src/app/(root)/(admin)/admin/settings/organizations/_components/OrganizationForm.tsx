@@ -129,7 +129,7 @@ export function OrganizationForm({
     api.core.organizations.queries.getById,
     organizationId ? { organizationId } : "skip",
   );
-  const plans = useQuery(api.core.organizations.queries.getPlans, {});
+  const plans = useQuery(api.core.organizations.queries.getAssignableOrgPlans, {});
   const currentUser = useQuery(api.core.users.queries.getMe, {});
 
   // Mutations
@@ -223,6 +223,20 @@ export function OrganizationForm({
     }
   }, [existingOrganization, organizationId, form, isFormInitialized]);
 
+  // Ensure we always display a plan selection (default to "free") when the org has none.
+  useEffect(() => {
+    if (!organizationId) return;
+    if (!existingOrganization) return;
+    if (!Array.isArray(plans) || plans.length === 0) return;
+    const current = form.getValues("planId");
+    if (current && current.trim()) return;
+
+    const freePlan = (plans as any[]).find((p) => p?.name === "free") ?? plans[0];
+    if (freePlan?._id) {
+      form.setValue("planId", String(freePlan._id), { shouldDirty: false });
+    }
+  }, [organizationId, existingOrganization, plans, form]);
+
   // Reset form when dialog closes or organizationId changes
   useEffect(() => {
     if (!open && mode === "dialog") {
@@ -243,13 +257,10 @@ export function OrganizationForm({
         await onSubmit(data);
       } else {
         // Use default submit logic
-        const submitData = {
+          const submitData = {
           name: data.name,
           description: data.description ?? undefined,
-          planId:
-            data.planId && data.planId !== "__none__"
-              ? (data.planId as Id<"plans">)
-              : undefined,
+            planId: data.planId?.trim() ? data.planId.trim() : undefined,
           isPublic: data.isPublic,
           allowSelfRegistration: data.allowSelfRegistration,
         };
@@ -555,28 +566,17 @@ export function OrganizationForm({
                     <FormLabel>
                       Plan {!isAdmin && <span className="text-red-500">*</span>}
                     </FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      disabled={isAdmin ? false : !plans || plans.length === 0}
-                    >
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue
                             placeholder={
-                              isAdmin
-                                ? "Select a plan (optional for admins)"
-                                : "Select a plan"
+                              "Select a plan"
                             }
                           />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {isAdmin && (
-                          <SelectItem value="__none__">
-                            No Plan (Admin)
-                          </SelectItem>
-                        )}
                         {plans?.map((plan: any) => (
                           <SelectItem key={plan._id} value={plan._id}>
                             {plan.displayName} - $
@@ -586,9 +586,7 @@ export function OrganizationForm({
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      {isAdmin
-                        ? "Admins can create organizations without a plan"
-                        : "Choose the subscription plan for this organization"}
+                      Choose the subscription plan for this organization.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

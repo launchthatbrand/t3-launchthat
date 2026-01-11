@@ -115,6 +115,19 @@ const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
   const subdomainRaw = extractSubdomain(req);
   const host = req.headers.get("host") ?? "unknown-host";
   const hostname = host.split(":")[0]?.toLowerCase() ?? "";
+
+  // Dev ergonomics: portal root should be bare localhost (no portal-root subdomain).
+  if (hostname === "portal-root.localhost") {
+    const target = req.nextUrl.clone();
+    target.hostname = "localhost";
+    return NextResponse.redirect(target);
+  }
+  if (hostname === "portal-root.127.0.0.1") {
+    const target = req.nextUrl.clone();
+    target.hostname = "127.0.0.1";
+    return NextResponse.redirect(target);
+  }
+
   const rootDomainFormatted = rootDomain.split(":")[0]?.toLowerCase() ?? "";
   const authHost = getAuthHostForMiddleware(host, rootDomainFormatted);
   const authHostname = (authHost.split(":")[0] ?? "").toLowerCase();
@@ -254,6 +267,19 @@ async function buildTenantResponse(req: NextRequest): Promise<TenantContext> {
   const subdomainRaw = extractSubdomain(req);
   const host = req.headers.get("host") ?? "unknown-host";
   const hostname = host.split(":")[0]?.toLowerCase() ?? "";
+
+  // Dev ergonomics: portal root should be bare localhost (no portal-root subdomain).
+  if (hostname === "portal-root.localhost") {
+    const target = req.nextUrl.clone();
+    target.hostname = "localhost";
+    return { response: NextResponse.redirect(target) };
+  }
+  if (hostname === "portal-root.127.0.0.1") {
+    const target = req.nextUrl.clone();
+    target.hostname = "127.0.0.1";
+    return { response: NextResponse.redirect(target) };
+  }
+
   const rootDomainFormatted = rootDomain.split(":")[0]?.toLowerCase() ?? "";
   const authHost = getAuthHostForMiddleware(host, rootDomainFormatted);
   const authHostname = (authHost.split(":")[0] ?? "").toLowerCase();

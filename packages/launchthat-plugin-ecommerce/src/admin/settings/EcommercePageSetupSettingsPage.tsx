@@ -6,9 +6,21 @@ import type { PluginSettingComponentProps } from "launchthat-plugin-core";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { api } from "@portal/convexspec";
 import { useMutation, useQuery } from "convex/react";
+import { Plus } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@acme/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -22,15 +34,18 @@ const apiAny = api as any;
 
 const SETTINGS_META_KEY = "plugin.ecommerce.pageSetup";
 const PAGE_TEMPLATE_META_KEY = "page_template";
+const SHOP_TEMPLATE_SLUG = "ecommerce-shop";
 const CART_TEMPLATE_SLUG = "ecommerce-cart";
 const CHECKOUT_TEMPLATE_SLUG = "ecommerce-checkout";
 
 type PageSetupSettings = {
+  shopPageId: string | null;
   cartPageId: string | null;
   checkoutPageId: string | null;
 };
 
 const defaultSettings: PageSetupSettings = {
+  shopPageId: null,
   cartPageId: null,
   checkoutPageId: null,
 };
@@ -84,6 +99,10 @@ export const EcommercePageSetupSettingsPage = (
     args: any,
   ) => Promise<any>;
 
+  const createCorePost = useMutation(apiAny.core.posts.mutations.createPost) as (
+    args: any,
+  ) => Promise<any>;
+
   const pagesForOrg = useQuery(apiAny.core.posts.queries.getAllPosts, {
     organizationId: props.organizationId ?? undefined,
     filters: { postTypeSlug: "pages", limit: 200 },
@@ -104,12 +123,14 @@ export const EcommercePageSetupSettingsPage = (
   const resolved = useMemo<PageSetupSettings>(() => {
     const v = stored?.metaValue as Partial<PageSetupSettings> | undefined;
     return {
+      shopPageId: typeof v?.shopPageId === "string" ? v.shopPageId : null,
       cartPageId: typeof v?.cartPageId === "string" ? v.cartPageId : null,
       checkoutPageId:
         typeof v?.checkoutPageId === "string" ? v.checkoutPageId : null,
     };
   }, [stored]);
 
+  const [shopPageId, setShopPageId] = useState<string | null>(resolved.shopPageId);
   const [cartPageId, setCartPageId] = useState<string | null>(resolved.cartPageId);
   const [checkoutPageId, setCheckoutPageId] = useState<string | null>(
     resolved.checkoutPageId,
@@ -117,6 +138,7 @@ export const EcommercePageSetupSettingsPage = (
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
+    setShopPageId(resolved.shopPageId);
     setCartPageId(resolved.cartPageId);
     setCheckoutPageId(resolved.checkoutPageId);
   }, [resolved]);
@@ -127,17 +149,79 @@ export const EcommercePageSetupSettingsPage = (
     return map;
   }, [pages]);
 
+  const handleCreateAndLink = (kind: "shop" | "cart" | "checkout") => {
+    if (!orgId) {
+      toast.error("Missing organization context");
+      return;
+    }
+
+    const title =
+      kind === "shop" ? "Shop" : kind === "cart" ? "Cart" : "Checkout";
+    const slug =
+      kind === "shop" ? "shop" : kind === "cart" ? "cart" : "checkout";
+    const templateSlug =
+      kind === "shop"
+        ? SHOP_TEMPLATE_SLUG
+        : kind === "cart"
+          ? CART_TEMPLATE_SLUG
+          : CHECKOUT_TEMPLATE_SLUG;
+
+    startTransition(() => {
+      void createCorePost({
+        title,
+        slug,
+        status: "published",
+        postTypeSlug: "pages",
+        organizationId: props.organizationId ?? undefined,
+        meta: { [PAGE_TEMPLATE_META_KEY]: templateSlug },
+      })
+        .then((postId: unknown) => {
+          const createdId = typeof postId === "string" ? postId : String(postId);
+
+          if (kind === "shop") setShopPageId(createdId);
+          if (kind === "cart") setCartPageId(createdId);
+          if (kind === "checkout") setCheckoutPageId(createdId);
+
+          return setOption({
+            metaKey: SETTINGS_META_KEY,
+            type: "site",
+            orgId: (orgId ?? null) as any,
+            metaValue: {
+              shopPageId: kind === "shop" ? createdId : shopPageId,
+              cartPageId: kind === "cart" ? createdId : cartPageId,
+              checkoutPageId: kind === "checkout" ? createdId : checkoutPageId,
+            } satisfies PageSetupSettings,
+          });
+        })
+        .then(() => toast.success(`Created and linked ${title} page`))
+        .catch((err: unknown) =>
+          toast.error(err instanceof Error ? err.message : "Failed to create page"),
+        );
+    });
+  };
+
   const handleSave = () => {
-    if (cartPageId && checkoutPageId && cartPageId === checkoutPageId) {
-      toast.error("Cart and Checkout cannot be the same page.");
+    const selected = [shopPageId, cartPageId, checkoutPageId].filter(Boolean) as string[];
+    const unique = new Set(selected);
+    if (selected.length !== unique.size) {
+      toast.error("Shop, Cart, and Checkout must be different pages.");
       return;
     }
     startTransition(() => {
+      const prevShop = resolved.shopPageId;
       const prevCart = resolved.cartPageId;
       const prevCheckout = resolved.checkoutPageId;
 
       const mutations: Array<Promise<unknown>> = [];
 
+      if (prevShop && prevShop !== shopPageId) {
+        mutations.push(
+          updateCorePost({
+            id: prevShop,
+            meta: { [PAGE_TEMPLATE_META_KEY]: null },
+          }),
+        );
+      }
       if (prevCart && prevCart !== cartPageId) {
         mutations.push(
           updateCorePost({
@@ -151,6 +235,14 @@ export const EcommercePageSetupSettingsPage = (
           updateCorePost({
             id: prevCheckout,
             meta: { [PAGE_TEMPLATE_META_KEY]: null },
+          }),
+        );
+      }
+      if (shopPageId) {
+        mutations.push(
+          updateCorePost({
+            id: shopPageId,
+            meta: { [PAGE_TEMPLATE_META_KEY]: SHOP_TEMPLATE_SLUG },
           }),
         );
       }
@@ -178,6 +270,7 @@ export const EcommercePageSetupSettingsPage = (
             type: "site",
             orgId: (orgId ?? null) as any,
             metaValue: {
+              shopPageId,
               cartPageId,
               checkoutPageId,
             } satisfies PageSetupSettings,
@@ -198,6 +291,10 @@ export const EcommercePageSetupSettingsPage = (
     checkoutPageId && pageTitleById.get(checkoutPageId)
       ? pageTitleById.get(checkoutPageId)
       : null;
+  const shopLabel =
+    shopPageId && pageTitleById.get(shopPageId)
+      ? pageTitleById.get(shopPageId)
+      : null;
 
   return (
     <div className="space-y-4">
@@ -207,13 +304,108 @@ export const EcommercePageSetupSettingsPage = (
           <CardDescription>
             Choose which core <span className="font-medium">Pages</span> (stored in
             the portal <span className="font-medium">posts</span> table) are used for
-            cart and checkout.
+            shop, cart, and checkout.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <div className="text-sm font-medium">Cart page</div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm font-medium">Shop page</div>
+                {!shopPageId ? (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        disabled={isPending}
+                        aria-label="Create and link Shop page"
+                        title="Create and link Shop page"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Create and link Shop page?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will create a new Page named “Shop”, set its page template to
+                          Ecommerce: Shop, and select it here.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleCreateAndLink("shop")}
+                        >
+                          Create page
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                ) : null}
+              </div>
+              <Select
+                value={shopPageId ?? "__none__"}
+                onValueChange={(value: string) =>
+                  setShopPageId(value === "__none__" ? null : value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a page" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {pages.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.title}
+                      {p.status ? ` (${p.status})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="text-muted-foreground text-sm">
+                Selected: <span className="font-medium">{shopLabel ?? "None"}</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm font-medium">Cart page</div>
+                {!cartPageId ? (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        disabled={isPending}
+                        aria-label="Create and link Cart page"
+                        title="Create and link Cart page"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Create and link Cart page?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will create a new Page named “Cart”, set its page template to
+                          Ecommerce: Cart, and select it here.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleCreateAndLink("cart")}
+                        >
+                          Create page
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                ) : null}
+              </div>
               <Select
                 value={cartPageId ?? "__none__"}
                 onValueChange={(value: string) =>
@@ -239,7 +431,44 @@ export const EcommercePageSetupSettingsPage = (
             </div>
 
             <div className="space-y-2">
-              <div className="text-sm font-medium">Checkout page</div>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm font-medium">Checkout page</div>
+                {!checkoutPageId ? (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        disabled={isPending}
+                        aria-label="Create and link Checkout page"
+                        title="Create and link Checkout page"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          Create and link Checkout page?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will create a new Page named “Checkout”, set its page template to
+                          Ecommerce: Checkout, and select it here.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleCreateAndLink("checkout")}
+                        >
+                          Create page
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                ) : null}
+              </div>
               <Select
                 value={checkoutPageId ?? "__none__"}
                 onValueChange={(value: string) =>
@@ -271,6 +500,7 @@ export const EcommercePageSetupSettingsPage = (
               variant="outline"
               type="button"
               onClick={() => {
+                setShopPageId(resolved.shopPageId);
                 setCartPageId(resolved.cartPageId);
                 setCheckoutPageId(resolved.checkoutPageId);
               }}

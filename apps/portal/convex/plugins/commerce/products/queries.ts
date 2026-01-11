@@ -24,6 +24,8 @@ function getMetaValue(
   return row?.value;
 }
 
+const asString = (value: unknown): string => (typeof value === "string" ? value : "");
+
 export const listProducts = query({
   args: {
     organizationId: v.optional(v.string()),
@@ -49,14 +51,44 @@ export const listProducts = query({
         },
       )) as { key: string; value: unknown }[];
 
-      const price = getMetaValue(meta, "product:price");
-      const sku = getMetaValue(meta, "product:sku");
-      const payload = getMetaValue(meta, "product:payload");
+      const productType = asString(getMetaValue(meta, "product.type")).toLowerCase();
+      const regularPrice = getMetaValue(meta, "product.regularPrice");
+      const salePrice = getMetaValue(meta, "product.salePrice");
+      const subscriptionAmountMonthlyCents = getMetaValue(
+        meta,
+        "product.subscription.amountMonthly",
+      );
+
+      const pricingKind =
+        productType === "simple_subscription" ? "subscription_monthly" : "one_time";
+
+      const price =
+        pricingKind === "subscription_monthly"
+          ? typeof subscriptionAmountMonthlyCents === "number"
+            ? subscriptionAmountMonthlyCents / 100
+            : null
+          : typeof salePrice === "number"
+            ? salePrice
+            : typeof regularPrice === "number"
+              ? regularPrice
+              : null;
+
+      const priceText =
+        typeof price === "number"
+          ? pricingKind === "subscription_monthly"
+            ? `$${price.toFixed(2)}/mo`
+            : `$${price.toFixed(2)}`
+          : null;
+
+      const sku = getMetaValue(meta, "product.sku");
+      const payload = getMetaValue(meta, "product.payload");
 
       result.push({
         post,
         meta,
         price: typeof price === "number" ? price : null,
+        pricingKind,
+        priceText,
         sku: typeof sku === "string" ? sku : null,
         payload,
       });
@@ -85,14 +117,44 @@ export const getProductById = query({
       organizationId: args.organizationId,
     })) as { key: string; value: unknown }[];
 
-    const price = getMetaValue(meta, "product:price");
-    const sku = getMetaValue(meta, "product:sku");
-    const payload = getMetaValue(meta, "product:payload");
+    const productType = asString(getMetaValue(meta, "product.type")).toLowerCase();
+    const regularPrice = getMetaValue(meta, "product.regularPrice");
+    const salePrice = getMetaValue(meta, "product.salePrice");
+    const subscriptionAmountMonthlyCents = getMetaValue(
+      meta,
+      "product.subscription.amountMonthly",
+    );
+
+    const pricingKind =
+      productType === "simple_subscription" ? "subscription_monthly" : "one_time";
+
+    const price =
+      pricingKind === "subscription_monthly"
+        ? typeof subscriptionAmountMonthlyCents === "number"
+          ? subscriptionAmountMonthlyCents / 100
+          : null
+        : typeof salePrice === "number"
+          ? salePrice
+          : typeof regularPrice === "number"
+            ? regularPrice
+            : null;
+
+    const priceText =
+      typeof price === "number"
+        ? pricingKind === "subscription_monthly"
+          ? `$${price.toFixed(2)}/mo`
+          : `$${price.toFixed(2)}`
+        : null;
+
+    const sku = getMetaValue(meta, "product.sku");
+    const payload = getMetaValue(meta, "product.payload");
 
     return {
       post,
       meta,
       price: typeof price === "number" ? price : null,
+      pricingKind,
+      priceText,
       sku: typeof sku === "string" ? sku : null,
       payload,
     };

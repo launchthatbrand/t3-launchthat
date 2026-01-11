@@ -148,12 +148,36 @@ const adaptDownload = (record: any): EntityRecord => ({
 });
 
 const adaptAttachment = (record: any): EntityRecord => ({
+  // For attachments, use image/video URL as the "featured image" so the admin
+  // EntityList grid view can render a thumbnail/preview.
+  featuredImageUrl: (() => {
+    const preview =
+      typeof record.previewImageUrl === "string" && record.previewImageUrl.length > 0
+        ? (record.previewImageUrl as string)
+        : null;
+    if (preview) return preview;
+    const mime = typeof record.mimeType === "string" ? record.mimeType : "";
+    const url =
+      typeof record.url === "string" && record.url.length > 0
+        ? (record.url as string)
+        : null;
+    const title = typeof record.title === "string" ? record.title : "";
+    const looksLikeVideo = /\.(mp4|webm|mov|m4v|ogg)$/i.test(title);
+    const looksLikeImage = /\.(png|jpe?g|gif|webp|svg)$/i.test(title);
+    // If it's a video and we don't have a generated poster yet, fall back to the
+    // video file URL so the attachments grid can render a <video> preview.
+    if (mime.startsWith("video/") || looksLikeVideo) return url;
+    // Only treat the raw URL as an image preview if it is actually an image.
+    if (mime.startsWith("image/") || looksLikeImage) return url;
+    return null;
+  })(),
   id: record._id,
   postTypeSlug: "attachments",
   title: record.title ?? null,
   excerpt: record.caption ?? null,
   slug: record._id ?? null,
   status: normalizeStatus(record.status),
+  organizationId: record.organizationId ?? null,
   createdAt: record.uploadedAt ?? record._creationTime ?? null,
   updatedAt: record.uploadedAt ?? record._creationTime ?? null,
   meta: {
@@ -699,20 +723,36 @@ const downloadsResolver: Resolver = {
 };
 
 const attachmentsResolver: Resolver = {
-  read: async (ctx, { id }) => {
+  read: async (ctx, { id, organizationId }) => {
     const media = await ctx.runQuery(api.core.media.queries.getMediaById, {
       id: id as Id<"mediaItems">,
     });
-    return media ? adaptAttachment(media) : null;
+    if (!media) return null;
+    if (!organizationId) return null;
+    const mediaOrgId =
+      (media as any).organizationId !== undefined
+        ? ((media as any).organizationId as string | null)
+        : null;
+    if (mediaOrgId !== organizationId) return null;
+    return adaptAttachment(media);
   },
-  list: async (ctx, { filters }) => {
+  list: async (ctx, { filters, organizationId }) => {
+    // Attachments must always be org-scoped. Returning unscoped results leaks media across tenants.
+    if (!organizationId) return [];
+
     const slugFilter =
       typeof filters?.slug === "string" ? filters.slug.trim() : "";
     if (slugFilter) {
       const media = await ctx.runQuery(api.core.media.queries.getMediaById, {
         id: slugFilter as Id<"mediaItems">,
       });
-      return media ? [adaptAttachment(media)] : [];
+      if (!media) return [];
+      const mediaOrgId =
+        (media as any).organizationId !== undefined
+          ? ((media as any).organizationId as string | null)
+          : null;
+      if (mediaOrgId !== organizationId) return [];
+      return [adaptAttachment(media)];
     }
     const status =
       filters?.status === "draft" || filters?.status === "published"
@@ -723,6 +763,7 @@ const attachmentsResolver: Resolver = {
       api.core.media.queries.listMediaItemsWithUrl,
       {
         paginationOpts: { numItems: limit, cursor: null },
+        organizationId: organizationId as unknown as Id<"organizations">,
         status,
       },
     );
@@ -731,8 +772,20 @@ const attachmentsResolver: Resolver = {
   create: () => {
     throw new Error("Attachments must be created via upload.");
   },
-  update: async (ctx, { id, data }) => {
+  update: async (ctx, { id, data, organizationId }) => {
+    if (!organizationId) return null;
+
     const raw = data as unknown as Record<string, unknown>;
+    const existing = await ctx.runQuery(api.core.media.queries.getMediaById, {
+      id: id as Id<"mediaItems">,
+    });
+    if (!existing) return null;
+    const existingOrgId =
+      (existing as any).organizationId !== undefined
+        ? ((existing as any).organizationId as string | null)
+        : null;
+    if (existingOrgId !== organizationId) return null;
+
     await ctx.runMutation(api.core.media.mutations.updateMedia, {
       id: id as Id<"mediaItems">,
       title: typeof raw.title === "string" ? raw.title : undefined,
@@ -746,9 +799,26 @@ const attachmentsResolver: Resolver = {
     const media = await ctx.runQuery(api.core.media.queries.getMediaById, {
       id: id as Id<"mediaItems">,
     });
-    return media ? adaptAttachment(media) : null;
+    if (!media) return null;
+    const mediaOrgId =
+      (media as any).organizationId !== undefined
+        ? ((media as any).organizationId as string | null)
+        : null;
+    if (mediaOrgId !== organizationId) return null;
+    return adaptAttachment(media);
   },
-  remove: async (ctx, { id }) => {
+  remove: async (ctx, { id, organizationId }) => {
+    if (!organizationId) return;
+    const existing = await ctx.runQuery(api.core.media.queries.getMediaById, {
+      id: id as Id<"mediaItems">,
+    });
+    if (!existing) return;
+    const existingOrgId =
+      (existing as any).organizationId !== undefined
+        ? ((existing as any).organizationId as string | null)
+        : null;
+    if (existingOrgId !== organizationId) return;
+
     await ctx.runMutation(api.core.media.mutations.deleteMedia, {
       id: id as Id<"mediaItems">,
     });

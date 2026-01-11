@@ -679,6 +679,37 @@ export const createEcommercePluginDefinition = (
           readOnly: false,
         },
         {
+          key: "product.subscription.interval",
+          name: "Subscription interval",
+          description: "Internal. Currently only supports monthly subscriptions.",
+          type: "select",
+          options: [{ label: "Monthly", value: "month" }],
+          defaultValue: "month",
+          readOnly: false,
+        },
+        {
+          key: "product.subscription.amountMonthly",
+          name: "Subscription monthly amount (cents)",
+          description:
+            "Internal. Stored in cents. The admin UI accepts dollars and converts to cents.",
+          type: "number",
+          readOnly: false,
+        },
+        {
+          key: "product.subscription.setupFee",
+          name: "Subscription setup fee (cents)",
+          description:
+            "Internal. Stored in cents. The admin UI accepts dollars and converts to cents.",
+          type: "number",
+          readOnly: false,
+        },
+        {
+          key: "product.subscription.trialDays",
+          name: "Subscription trial days",
+          type: "number",
+          readOnly: false,
+        },
+        {
           key: "product.isVirtual",
           name: "Virtual product",
           description: "If enabled, this product does not require shipping.",

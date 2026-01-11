@@ -42,6 +42,10 @@ export const mediaSchema = {
     width: v.optional(v.number()),
     height: v.optional(v.number()),
 
+    // Generated preview image for videos (poster frame)
+    previewImageStorageId: v.optional(v.id("_storage")),
+    previewGeneratedAt: v.optional(v.number()),
+
     // Legacy field for backward compatibility
     featuredImage: v.optional(v.string()),
 

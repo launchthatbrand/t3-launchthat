@@ -6,7 +6,11 @@
 import type { Doc, Id } from "@convex-config/_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "@convex-config/_generated/server";
 
-import { isPortalOrganizationValue } from "../../../constants";
+import {
+  isPortalOrganizationValue,
+  PORTAL_TENANT_ID,
+  PORTAL_TENANT_SLUG,
+} from "../../../constants";
 import { FIELD_TYPES } from "../schema";
 
 /**
@@ -37,8 +41,19 @@ export type ConvexCtx = QueryCtx | MutationCtx;
 export const resolveScopedOrganizationId = (
   organizationId?: Id<"organizations"> | string,
 ) => {
-  if (!organizationId || isPortalOrganizationValue(organizationId)) {
+  if (!organizationId) {
     return undefined;
+  }
+  // Treat portal-root as a real org scope (especially for localhost admin UX).
+  if (organizationId === PORTAL_TENANT_SLUG) {
+    return PORTAL_TENANT_ID;
+  }
+  if (organizationId === PORTAL_TENANT_ID) {
+    return PORTAL_TENANT_ID;
+  }
+  // Back-compat: if other callers treat portal as "no scope", keep that behavior explicit.
+  if (isPortalOrganizationValue(organizationId)) {
+    return PORTAL_TENANT_ID;
   }
   return organizationId as Id<"organizations">;
 };

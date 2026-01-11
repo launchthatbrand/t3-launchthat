@@ -13,7 +13,11 @@ import { usePostTypes } from "~/app/(root)/(admin)/admin/settings/post-types/_ap
 import { useTaxonomies } from "~/app/(root)/(admin)/admin/settings/taxonomies/_api/taxonomies";
 import { useTenant } from "~/context/TenantContext";
 import { pluginDefinitions } from "~/lib/plugins/definitions";
-import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import {
+  getTenantOrganizationId,
+  PORTAL_TENANT_ID,
+  PORTAL_TENANT_SLUG,
+} from "~/lib/tenant-fetcher";
 import { ADMIN_MENU_OPTION_KEY, applyAdminMenuOverrides } from "./overrides";
 import { adminMenuRegistry } from "./registry";
 
@@ -43,6 +47,13 @@ const canAccessPostType = (
     return true;
   }
 
+  const matchesOrganizationId = (
+    stored: Id<"organizations"> | typeof PORTAL_TENANT_SLUG,
+    requested: Id<"organizations">,
+  ) =>
+    stored === requested ||
+    (stored === PORTAL_TENANT_SLUG && requested === PORTAL_TENANT_ID);
+
   const enabledIds = postType.enabledOrganizationIds;
   if (enabledIds !== undefined) {
     if (enabledIds.length === 0) {
@@ -51,11 +62,13 @@ const canAccessPostType = (
       }
       return false;
     }
-    return enabledIds.includes(organizationId);
+    return enabledIds.some((candidate) =>
+      matchesOrganizationId(candidate as any, organizationId),
+    );
   }
 
   if (postType.organizationId) {
-    return postType.organizationId === organizationId;
+    return matchesOrganizationId(postType.organizationId as any, organizationId);
   }
 
   return true;
@@ -100,10 +113,11 @@ export const useAdminMenuSections = (): UseAdminMenuSectionsResult => {
       return [];
     }
     const types = postTypesQuery.data;
-    return tenantId
-      ? types.filter((type) => canAccessPostType(type, tenantId))
+    const scopedOrganizationId = organizationId ?? tenantId;
+    return scopedOrganizationId
+      ? types.filter((type) => canAccessPostType(type, scopedOrganizationId))
       : types;
-  }, [postTypesQuery.data, tenantId]);
+  }, [postTypesQuery.data, tenantId, organizationId]);
 
   const taxonomyDefs = useMemo<TaxonomyDoc[]>(() => {
     if (!Array.isArray(taxonomiesQuery.data)) {

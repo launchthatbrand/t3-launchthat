@@ -9,7 +9,7 @@ import Link from "next/link";
 import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { formatDistanceToNow } from "date-fns";
-import { Loader2, Search, Sparkles, Upload } from "lucide-react";
+import { FileText, Loader2, Search, Sparkles, Upload, Video } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
@@ -18,6 +18,8 @@ import { Input } from "@acme/ui/input";
 import { Separator } from "@acme/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { toast } from "@acme/ui/toast";
+
+import { renderPdfFirstPageToPngBlob } from "~/lib/media/pdfPreview.client";
 
 import type { OEmbedPayload } from "~/components/editor/utils/oembed";
 import type { PluginArchiveViewInstance } from "~/lib/plugins/helpers";
@@ -34,7 +36,10 @@ import {
   wrapWithPluginProviders,
 } from "~/lib/plugins/helpers";
 
-type MediaItemWithUrl = Doc<"mediaItems"> & { url?: string | null };
+type MediaItemWithUrl = Doc<"mediaItems"> & {
+  url?: string | null;
+  previewImageUrl?: string | null;
+};
 type AttachmentSelection = Extract<
   PluginMediaSelection,
   { kind: "attachment" }
@@ -282,6 +287,9 @@ function MediaPickerLibraryPanel({
     api.core.media.mutations.generateUploadUrl,
   );
   const saveMedia = useMutation(api.core.media.mutations.saveMedia);
+  const setMediaPreviewImage = useMutation(
+    api.core.media.mutations.setMediaPreviewImage,
+  );
 
   const mediaQueryArgs = useMemo(
     () =>
@@ -305,6 +313,19 @@ function MediaPickerLibraryPanel({
 
   const mediaItems: MediaItemWithUrl[] = mediaResponse?.page ?? [];
   const isLoading = mediaResponse === undefined;
+
+  const inferMediaKind = (item: MediaItemWithUrl) => {
+    const mime = item.mimeType ?? "";
+    const title = item.title ?? "";
+    const url = item.url ?? "";
+    const looksLikeImage = /\.(png|jpe?g|gif|webp|svg)$/i.test(title) || /\.(png|jpe?g|gif|webp|svg)$/i.test(url);
+    const looksLikeVideo = /\.(mp4|webm|mov|m4v|ogg)$/i.test(title) || /\.(mp4|webm|mov|m4v|ogg)$/i.test(url);
+    const looksLikePdf = /\.pdf$/i.test(title) || /\.pdf$/i.test(url);
+    const isImage = mime.startsWith("image/") || looksLikeImage;
+    const isVideo = mime.startsWith("video/") || looksLikeVideo;
+    const isPdf = mime === "application/pdf" || looksLikePdf;
+    return { isImage, isVideo, isPdf };
+  };
 
   const handleUploadClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -331,12 +352,42 @@ function MediaPickerLibraryPanel({
           const { storageId } = (await uploadResponse.json()) as {
             storageId: string;
           };
-          await saveMedia({
+          const saved = await saveMedia({
             storageId: storageId as Id<"_storage">,
             title: file.name,
+            mimeType: file.type || undefined,
             status: "published",
             organizationId,
           });
+
+          const isPdf =
+            file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+          if (isPdf) {
+            try {
+              const pngBlob = await renderPdfFirstPageToPngBlob(
+                await file.arrayBuffer(),
+              );
+              const thumbUploadUrl = await generateUploadUrl();
+              const thumbRes = await fetch(thumbUploadUrl, {
+                method: "POST",
+                headers: { "Content-Type": "image/png" },
+                body: pngBlob,
+              });
+              if (thumbRes.ok) {
+                const uploadedJson = (await thumbRes.json()) as {
+                  storageId?: Id<"_storage">;
+                };
+                if (uploadedJson.storageId) {
+                  await setMediaPreviewImage({
+                    mediaItemId: (saved as unknown as { _id: Id<"mediaItems"> })._id,
+                    previewImageStorageId: uploadedJson.storageId,
+                  });
+                }
+              }
+            } catch {
+              // ignore
+            }
+          }
         }
         toast.success("Upload complete");
       } catch (error) {
@@ -350,7 +401,7 @@ function MediaPickerLibraryPanel({
         }
       }
     },
-    [generateUploadUrl, organizationId, saveMedia],
+    [generateUploadUrl, organizationId, saveMedia, setMediaPreviewImage],
   );
 
   const handleSelectAttachment = useCallback(
@@ -424,19 +475,103 @@ function MediaPickerLibraryPanel({
             <Card key={item._id}>
               <CardContent className="space-y-3 p-4">
                 <div className="bg-muted relative aspect-video overflow-hidden rounded-md">
-                  {item.url ? (
-                    <Image
-                      src={item.url}
-                      alt={item.title ?? "Attachment"}
-                      fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                      className="object-cover"
-                    />
-                  ) : (
+                  {(() => {
+                    const { isImage, isVideo, isPdf } = inferMediaKind(item);
+                    const fileUrl = item.url ?? null;
+                    const posterUrl =
+                      isVideo && item.previewImageUrl && item.previewImageUrl !== fileUrl
+                        ? item.previewImageUrl
+                        : null;
+                    const pdfThumbUrl =
+                      isPdf && item.previewImageUrl && item.previewImageUrl !== fileUrl
+                        ? item.previewImageUrl
+                        : null;
+
+                    if (isImage && fileUrl) {
+                      return (
+                        <Image
+                          src={fileUrl}
+                          alt={item.title ?? "Attachment"}
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                          className="object-cover"
+                        />
+                      );
+                    }
+
+                    if (isVideo && posterUrl) {
+                      return (
+                        <Image
+                          src={posterUrl}
+                          alt={item.title ?? "Video thumbnail"}
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                          className="object-cover"
+                        />
+                      );
+                    }
+
+                    if (isVideo && fileUrl) {
+                      return (
+                        <video
+                          src={fileUrl}
+                          className="h-full w-full object-cover"
+                          preload="metadata"
+                          muted
+                          playsInline
+                        />
+                      );
+                    }
+
+                    if (isPdf && fileUrl) {
+                      return (
+                        <div className="relative h-full w-full">
+                          {pdfThumbUrl ? (
+                            <Image
+                              src={pdfThumbUrl}
+                              alt={item.title ?? "PDF preview"}
+                              fill
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                              className="object-cover"
+                            />
+                          ) : (
+                            <iframe
+                              title={item.title ?? "PDF preview"}
+                              src={`${fileUrl}#page=1&view=FitH`}
+                              className="h-full w-full"
+                            />
+                          )}
+                          <div className="absolute top-2 right-2 flex items-center gap-2">
+                            <Badge variant="secondary" className="gap-1">
+                              <FileText className="h-3.5 w-3.5" />
+                              PDF
+                            </Badge>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (fileUrl) {
+                      return (
+                        <div className="flex h-full items-center justify-center text-xs">
+                          <a
+                            href={fileUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-primary underline"
+                          >
+                            Open
+                          </a>
+                        </div>
+                      );
+                    }
+
+                    return (
                     <div className="text-muted-foreground flex h-full items-center justify-center text-xs">
                       No preview
                     </div>
-                  )}
+                    );
+                  })()}
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center justify-between gap-2">

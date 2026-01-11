@@ -201,7 +201,7 @@ export const processGatewayEvent = internalAction({
       if (!authorId) return null;
       await ctx.runMutation(
         internal.plugins.discord.gatewayRateLimits.enforceDiscordSupportRateLimits,
-        { guildId, threadId, authorId },
+        { organizationId, guildId, threadId, authorId },
       );
     } catch (err: any) {
       const data = err?.data;

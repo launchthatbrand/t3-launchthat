@@ -2,7 +2,6 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
- 
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
   useCallback,
@@ -44,7 +43,6 @@ import {
   CardTitle,
 } from "@acme/ui/card";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
-import { Separator } from "@acme/ui/separator";
 
 import type {
   PluginDefinition,
@@ -55,17 +53,29 @@ import {
   AdminLayoutContent,
   AdminLayoutHeader,
   AdminLayoutMain,
-  AdminLayoutSidebar,
 } from "~/components/admin/AdminLayout";
 import { useTenant } from "~/context/TenantContext";
 import { pluginDefinitions } from "~/lib/plugins/definitions";
-import { getTenantOrganizationId } from "~/lib/tenant-fetcher";
+import {
+  getTenantOrganizationId,
+  PORTAL_TENANT_ID,
+  PORTAL_TENANT_SLUG,
+} from "~/lib/tenant-fetcher";
 import {
   useCreatePostType,
   useDisablePostTypeAccess,
   useEnsurePostTypeAccess,
   usePostTypes,
 } from "../settings/post-types/_api/postTypes";
+
+const matchesOrganizationId = (
+  stored: Id<"organizations"> | typeof PORTAL_TENANT_SLUG,
+  requested: Id<"organizations">,
+) =>
+  stored === requested ||
+  (stored === PORTAL_TENANT_SLUG && requested === PORTAL_TENANT_ID);
+
+type EnabledOrgId = Id<"organizations"> | typeof PORTAL_TENANT_SLUG;
 
 const isPostTypeEnabledForTenant = (
   postType: Doc<"postTypes">,
@@ -78,11 +88,16 @@ const isPostTypeEnabledForTenant = (
     if (enabledIds.length === 0) {
       return false;
     }
-    return enabledIds.includes(organizationId);
+    return enabledIds.some((candidate) =>
+      matchesOrganizationId(candidate as EnabledOrgId, organizationId),
+    );
   }
 
   if (postType.organizationId) {
-    return postType.organizationId === organizationId;
+    return matchesOrganizationId(
+      postType.organizationId as EnabledOrgId,
+      organizationId,
+    );
   }
 
   return true;
@@ -124,14 +139,37 @@ export default function PluginsPage() {
   const tenant = useTenant();
   const tenantId = tenant?._id;
   const organizationId = getTenantOrganizationId(tenant);
+  const scopedOrganizationId = organizationId ?? tenantId;
 
   const plugins = useMemo<PluginDefinition[]>(() => pluginDefinitions, []);
 
-  const portalAwareOrgId = organizationId ?? tenantId;
+  const portalAwareOrgId = scopedOrganizationId;
   const pluginOptions = useQuery(
     api.core.options.getByType,
     portalAwareOrgId ? { orgId: portalAwareOrgId, type: "site" } : "skip",
   );
+
+  useEffect(() => {
+    console.log("[plugins][debug] tenant context", {
+      locationHost:
+        typeof window !== "undefined" ? window.location.host : "server",
+      tenant,
+      tenantId,
+      organizationId,
+      scopedOrganizationId,
+      portalAwareOrgId,
+      postTypeSlugs: Array.isArray(postTypes)
+        ? postTypes.map((t) => t.slug)
+        : [],
+    });
+  }, [
+    tenant,
+    tenantId,
+    organizationId,
+    scopedOrganizationId,
+    portalAwareOrgId,
+    postTypes,
+  ]);
 
   const pluginOptionMap = useMemo(() => {
     if (!Array.isArray(pluginOptions)) {
@@ -165,14 +203,16 @@ export default function PluginsPage() {
 
   const pluginStatus = useMemo(() => {
     console.log("[plugins] recompute status", {
-      tenantId,
+      tenantId: scopedOrganizationId,
       postTypeCount: postTypes.length,
       postTypes,
     });
     const availability = new Set(
       postTypes
         .filter((type: Doc<"postTypes">) =>
-          isPostTypeEnabledForTenant(type, tenantId),
+          scopedOrganizationId
+            ? isPostTypeEnabledForTenant(type, scopedOrganizationId)
+            : true,
         )
         .map((postType: Doc<"postTypes">) => postType.slug),
     );
@@ -181,7 +221,7 @@ export default function PluginsPage() {
         (type: PluginPostTypeConfig) => !availability.has(type.slug),
       );
       console.log("[plugins] plugin availability", {
-        tenantId,
+        tenantId: scopedOrganizationId,
         pluginId: plugin.id,
         missingSlugs: missing.map((type) => type.slug),
       });
@@ -193,17 +233,17 @@ export default function PluginsPage() {
         activationEnabled,
       };
     });
-  }, [postTypes, plugins, tenantId, isActivationEnabled]);
+  }, [postTypes, plugins, scopedOrganizationId, isActivationEnabled]);
 
   const handleEnablePlugin = useCallback(
     (plugin: PluginDefinition) => {
-      if (!tenantId) {
+      if (!scopedOrganizationId) {
         toast.error("Select an organization before enabling plugins.");
         return;
       }
 
       console.log("[plugins] enable start", {
-        tenantId,
+        tenantId: scopedOrganizationId,
         pluginId: plugin.id,
       });
 
@@ -249,11 +289,11 @@ export default function PluginsPage() {
             const optionResult = await setOption({
               metaKey: plugin.activation.optionKey,
               metaValue: true,
-              orgId: tenantId,
+              orgId: scopedOrganizationId,
               type: plugin.activation.optionType ?? "site",
             });
             console.log("[plugins] set option", {
-              tenantId,
+              tenantId: scopedOrganizationId,
               pluginId: plugin.id,
               optionKey: plugin.activation.optionKey,
               optionResult,
@@ -273,7 +313,7 @@ export default function PluginsPage() {
           }
           toast.success(`${plugin.name} plugin enabled`);
           console.log("[plugins] enable success", {
-            tenantId,
+            tenantId: scopedOrganizationId,
             pluginId: plugin.id,
           });
         } catch (cause: unknown) {
@@ -286,7 +326,7 @@ export default function PluginsPage() {
       });
     },
     [
-      tenantId,
+      scopedOrganizationId,
       startTransition,
       ensurePostTypeAccess,
       createPostType,
@@ -299,13 +339,13 @@ export default function PluginsPage() {
 
   const handleDisablePlugin = useCallback(
     (plugin: PluginDefinition) => {
-      if (!tenantId) {
+      if (!scopedOrganizationId) {
         toast.error("Select an organization before disabling plugins.");
         return;
       }
 
       console.log("[plugins] disable start", {
-        tenantId,
+        tenantId: scopedOrganizationId,
         pluginId: plugin.id,
       });
 
@@ -318,13 +358,13 @@ export default function PluginsPage() {
             await setOption({
               metaKey: plugin.activation.optionKey,
               metaValue: false,
-              orgId: tenantId,
+              orgId: scopedOrganizationId,
               type: plugin.activation.optionType ?? "site",
             });
           }
           toast.success(`${plugin.name} plugin disabled`);
           console.log("[plugins] disable success", {
-            tenantId,
+            tenantId: scopedOrganizationId,
             pluginId: plugin.id,
           });
         } catch (cause: unknown) {
@@ -336,7 +376,7 @@ export default function PluginsPage() {
         }
       });
     },
-    [tenantId, startTransition, disablePostTypeAccess, setOption],
+    [scopedOrganizationId, startTransition, disablePostTypeAccess, setOption],
   );
 
   const pluginRows = useMemo<PluginRow[]>(() => {

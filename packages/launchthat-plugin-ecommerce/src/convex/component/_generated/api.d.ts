@@ -313,6 +313,12 @@ export type Mounts = {
   };
   plans: {
     mutations: {
+      deactivateProductPlan: FunctionReference<
+        "mutation",
+        "public",
+        { productPostId: string },
+        null
+      >;
       seedPlans: FunctionReference<"mutation", "public", {}, Array<string>>;
       updatePlan: FunctionReference<
         "mutation",
@@ -322,6 +328,11 @@ export type Mounts = {
           displayName?: string;
           features?: Array<string>;
           isActive?: boolean;
+          limits?: {
+            crmMaxContacts?: number;
+            discordAiDaily?: number;
+            supportBubbleAiDaily?: number;
+          };
           maxOrganizations?: number;
           planId: string;
           priceMonthly?: number;
@@ -329,6 +340,27 @@ export type Mounts = {
           sortOrder?: number;
         },
         null
+      >;
+      upsertProductPlan: FunctionReference<
+        "mutation",
+        "public",
+        {
+          description?: string;
+          displayName?: string;
+          features?: Array<string>;
+          isActive: boolean;
+          limits?: {
+            crmMaxContacts?: number;
+            discordAiDaily?: number;
+            supportBubbleAiDaily?: number;
+          };
+          maxOrganizations?: number;
+          priceMonthly?: number;
+          priceYearly?: number;
+          productPostId: string;
+          sortOrder?: number;
+        },
+        string
       >;
     };
     queries: {
@@ -343,10 +375,17 @@ export type Mounts = {
           displayName: string;
           features?: Array<string>;
           isActive: boolean;
+          kind: "system" | "product";
+          limits?: {
+            crmMaxContacts?: number;
+            discordAiDaily?: number;
+            supportBubbleAiDaily?: number;
+          };
           maxOrganizations: number;
-          name: "free" | "starter" | "business" | "agency";
+          name: string;
           priceMonthly: number;
           priceYearly?: number;
+          productPostId?: string;
           sortOrder: number;
           updatedAt: number;
         }
@@ -354,7 +393,7 @@ export type Mounts = {
       getPlanByName: FunctionReference<
         "query",
         "public",
-        { name: "free" | "starter" | "business" | "agency" },
+        { name: string },
         null | {
           _creationTime: number;
           _id: string;
@@ -362,10 +401,43 @@ export type Mounts = {
           displayName: string;
           features?: Array<string>;
           isActive: boolean;
+          kind: "system" | "product";
+          limits?: {
+            crmMaxContacts?: number;
+            discordAiDaily?: number;
+            supportBubbleAiDaily?: number;
+          };
           maxOrganizations: number;
-          name: "free" | "starter" | "business" | "agency";
+          name: string;
           priceMonthly: number;
           priceYearly?: number;
+          productPostId?: string;
+          sortOrder: number;
+          updatedAt: number;
+        }
+      >;
+      getPlanByProductPostId: FunctionReference<
+        "query",
+        "public",
+        { productPostId: string },
+        null | {
+          _creationTime: number;
+          _id: string;
+          description: string;
+          displayName: string;
+          features?: Array<string>;
+          isActive: boolean;
+          kind: "system" | "product";
+          limits?: {
+            crmMaxContacts?: number;
+            discordAiDaily?: number;
+            supportBubbleAiDaily?: number;
+          };
+          maxOrganizations: number;
+          name: string;
+          priceMonthly: number;
+          priceYearly?: number;
+          productPostId?: string;
           sortOrder: number;
           updatedAt: number;
         }
@@ -381,10 +453,43 @@ export type Mounts = {
           displayName: string;
           features?: Array<string>;
           isActive: boolean;
+          kind: "system" | "product";
+          limits?: {
+            crmMaxContacts?: number;
+            discordAiDaily?: number;
+            supportBubbleAiDaily?: number;
+          };
           maxOrganizations: number;
-          name: "free" | "starter" | "business" | "agency";
+          name: string;
           priceMonthly: number;
           priceYearly?: number;
+          productPostId?: string;
+          sortOrder: number;
+          updatedAt: number;
+        }>
+      >;
+      listAssignableOrgPlans: FunctionReference<
+        "query",
+        "public",
+        {},
+        Array<{
+          _creationTime: number;
+          _id: string;
+          description: string;
+          displayName: string;
+          features?: Array<string>;
+          isActive: boolean;
+          kind: "system" | "product";
+          limits?: {
+            crmMaxContacts?: number;
+            discordAiDaily?: number;
+            supportBubbleAiDaily?: number;
+          };
+          maxOrganizations: number;
+          name: string;
+          priceMonthly: number;
+          priceYearly?: number;
+          productPostId?: string;
           sortOrder: number;
           updatedAt: number;
         }>

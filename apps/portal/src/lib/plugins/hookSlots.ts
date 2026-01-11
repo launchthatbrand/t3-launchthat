@@ -5,6 +5,19 @@ export const ADMIN_ARCHIVE_CONTENT_BEFORE = "admin.archive.content.before";
 export const ADMIN_ARCHIVE_CONTENT_AFTER = "admin.archive.content.after";
 export const ADMIN_ARCHIVE_CONTENT_SUPPRESS = "admin.archive.content.suppress";
 
+// Admin archive behavior extension points (WordPress-style).
+// These allow core + plugins to override archive rendering without adding per-post-type branches.
+export const ADMIN_ARCHIVE_PRIMARY_ACTION_FILTER =
+  "admin.archive.primaryAction.filter";
+export const ADMIN_ARCHIVE_COLUMNS_FILTER = "admin.archive.columns.filter";
+export const ADMIN_ARCHIVE_DEFAULT_VIEWMODE_FILTER =
+  "admin.archive.defaultViewMode.filter";
+export const ADMIN_ARCHIVE_ITEM_RENDER_FILTER =
+  "admin.archive.itemRender.filter";
+export const ADMIN_ARCHIVE_ROW_CLICK_FILTER = "admin.archive.rowClick.filter";
+export const ADMIN_ARCHIVE_ENTITY_ACTIONS_FILTER =
+  "admin.archive.entityActions.filter";
+
 export const ADMIN_PLUGIN_SETTINGS_HEADER_BEFORE =
   "admin.plugin.settings.header.before";
 export const ADMIN_PLUGIN_SETTINGS_HEADER_AFTER =
@@ -72,7 +85,8 @@ export const ADMIN_ECOMMERCE_PRODUCT_DETAILS_SECTIONS_FILTER =
 
 // Admin (portal) user details extension point.
 // Plugins can contribute additional UI sections (e.g. CRM “linked contact + tags”) to the User page.
-export const ADMIN_USER_DETAILS_SECTIONS_FILTER = "admin.users.details.sections";
+export const ADMIN_USER_DETAILS_SECTIONS_FILTER =
+  "admin.users.details.sections";
 
 // Admin dashboard metabox extension point.
 // Plugins can contribute metabox widgets to /admin (WordPress-like dashboard widgets).

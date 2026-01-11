@@ -28,6 +28,7 @@ import type * as core_emails_service from "../core/emails/service.js";
 import type * as core_lib_auth from "../core/lib/auth.js";
 import type * as core_lib_index from "../core/lib/index.js";
 import type * as core_lib_permissions from "../core/lib/permissions.js";
+import type * as core_media_actions from "../core/media/actions.js";
 import type * as core_media_http from "../core/media/http.js";
 import type * as core_media_integration from "../core/media/integration.js";
 import type * as core_media_meta from "../core/media/meta.js";
@@ -77,6 +78,7 @@ import type * as core_users_mutations from "../core/users/mutations.js";
 import type * as core_users_queries from "../core/users/queries.js";
 import type * as core_users_types from "../core/users/types.js";
 import type * as core_users from "../core/users.js";
+import type * as dev_ffmpeg from "../dev/ffmpeg.js";
 import type * as env from "../env.js";
 import type * as http from "../http.js";
 import type * as integrations_connections_actions from "../integrations/connections/actions.js";
@@ -137,6 +139,7 @@ import type * as plugins_commerce_mutations from "../plugins/commerce/mutations.
 import type * as plugins_commerce_orders_mutations from "../plugins/commerce/orders/mutations.js";
 import type * as plugins_commerce_orders_notes from "../plugins/commerce/orders/notes.js";
 import type * as plugins_commerce_orders_queries from "../plugins/commerce/orders/queries.js";
+import type * as plugins_commerce_orgPlans from "../plugins/commerce/orgPlans.js";
 import type * as plugins_commerce_payments_authorizenet_actions from "../plugins/commerce/payments/authorizenet/actions.js";
 import type * as plugins_commerce_products_queries from "../plugins/commerce/products/queries.js";
 import type * as plugins_commerce_queries from "../plugins/commerce/queries.js";
@@ -248,6 +251,7 @@ declare const fullApi: ApiFromModules<{
   "core/lib/auth": typeof core_lib_auth;
   "core/lib/index": typeof core_lib_index;
   "core/lib/permissions": typeof core_lib_permissions;
+  "core/media/actions": typeof core_media_actions;
   "core/media/http": typeof core_media_http;
   "core/media/integration": typeof core_media_integration;
   "core/media/meta": typeof core_media_meta;
@@ -297,6 +301,7 @@ declare const fullApi: ApiFromModules<{
   "core/users/queries": typeof core_users_queries;
   "core/users/types": typeof core_users_types;
   "core/users": typeof core_users;
+  "dev/ffmpeg": typeof dev_ffmpeg;
   env: typeof env;
   http: typeof http;
   "integrations/connections/actions": typeof integrations_connections_actions;
@@ -357,6 +362,7 @@ declare const fullApi: ApiFromModules<{
   "plugins/commerce/orders/mutations": typeof plugins_commerce_orders_mutations;
   "plugins/commerce/orders/notes": typeof plugins_commerce_orders_notes;
   "plugins/commerce/orders/queries": typeof plugins_commerce_orders_queries;
+  "plugins/commerce/orgPlans": typeof plugins_commerce_orgPlans;
   "plugins/commerce/payments/authorizenet/actions": typeof plugins_commerce_payments_authorizenet_actions;
   "plugins/commerce/products/queries": typeof plugins_commerce_products_queries;
   "plugins/commerce/queries": typeof plugins_commerce_queries;
@@ -6416,6 +6422,12 @@ export declare const components: {
     };
     plans: {
       mutations: {
+        deactivateProductPlan: FunctionReference<
+          "mutation",
+          "internal",
+          { productPostId: string },
+          null
+        >;
         seedPlans: FunctionReference<"mutation", "internal", {}, Array<string>>;
         updatePlan: FunctionReference<
           "mutation",
@@ -6425,6 +6437,11 @@ export declare const components: {
             displayName?: string;
             features?: Array<string>;
             isActive?: boolean;
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
             maxOrganizations?: number;
             planId: string;
             priceMonthly?: number;
@@ -6432,6 +6449,27 @@ export declare const components: {
             sortOrder?: number;
           },
           null
+        >;
+        upsertProductPlan: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            description?: string;
+            displayName?: string;
+            features?: Array<string>;
+            isActive: boolean;
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
+            maxOrganizations?: number;
+            priceMonthly?: number;
+            priceYearly?: number;
+            productPostId: string;
+            sortOrder?: number;
+          },
+          string
         >;
       };
       queries: {
@@ -6446,10 +6484,17 @@ export declare const components: {
             displayName: string;
             features?: Array<string>;
             isActive: boolean;
+            kind: "system" | "product";
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
             maxOrganizations: number;
-            name: "free" | "starter" | "business" | "agency";
+            name: string;
             priceMonthly: number;
             priceYearly?: number;
+            productPostId?: string;
             sortOrder: number;
             updatedAt: number;
           }
@@ -6457,7 +6502,7 @@ export declare const components: {
         getPlanByName: FunctionReference<
           "query",
           "internal",
-          { name: "free" | "starter" | "business" | "agency" },
+          { name: string },
           null | {
             _creationTime: number;
             _id: string;
@@ -6465,10 +6510,43 @@ export declare const components: {
             displayName: string;
             features?: Array<string>;
             isActive: boolean;
+            kind: "system" | "product";
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
             maxOrganizations: number;
-            name: "free" | "starter" | "business" | "agency";
+            name: string;
             priceMonthly: number;
             priceYearly?: number;
+            productPostId?: string;
+            sortOrder: number;
+            updatedAt: number;
+          }
+        >;
+        getPlanByProductPostId: FunctionReference<
+          "query",
+          "internal",
+          { productPostId: string },
+          null | {
+            _creationTime: number;
+            _id: string;
+            description: string;
+            displayName: string;
+            features?: Array<string>;
+            isActive: boolean;
+            kind: "system" | "product";
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
+            maxOrganizations: number;
+            name: string;
+            priceMonthly: number;
+            priceYearly?: number;
+            productPostId?: string;
             sortOrder: number;
             updatedAt: number;
           }
@@ -6484,10 +6562,43 @@ export declare const components: {
             displayName: string;
             features?: Array<string>;
             isActive: boolean;
+            kind: "system" | "product";
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
             maxOrganizations: number;
-            name: "free" | "starter" | "business" | "agency";
+            name: string;
             priceMonthly: number;
             priceYearly?: number;
+            productPostId?: string;
+            sortOrder: number;
+            updatedAt: number;
+          }>
+        >;
+        listAssignableOrgPlans: FunctionReference<
+          "query",
+          "internal",
+          {},
+          Array<{
+            _creationTime: number;
+            _id: string;
+            description: string;
+            displayName: string;
+            features?: Array<string>;
+            isActive: boolean;
+            kind: "system" | "product";
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
+            maxOrganizations: number;
+            name: string;
+            priceMonthly: number;
+            priceYearly?: number;
+            productPostId?: string;
             sortOrder: number;
             updatedAt: number;
           }>

@@ -10,18 +10,22 @@ import { v } from "convex/values";
 export const planValidator = v.object({
   _id: v.string(),
   _creationTime: v.number(),
-  name: v.union(
-    v.literal("free"),
-    v.literal("starter"),
-    v.literal("business"),
-    v.literal("agency"),
-  ),
+  name: v.string(),
+  kind: v.union(v.literal("system"), v.literal("product")),
+  productPostId: v.optional(v.string()),
   displayName: v.string(),
   description: v.string(),
   maxOrganizations: v.number(),
   priceMonthly: v.number(),
   priceYearly: v.optional(v.number()),
   features: v.optional(v.array(v.string())),
+  limits: v.optional(
+    v.object({
+      discordAiDaily: v.optional(v.number()),
+      supportBubbleAiDaily: v.optional(v.number()),
+      crmMaxContacts: v.optional(v.number()),
+    }),
+  ),
   isActive: v.boolean(),
   sortOrder: v.number(),
   updatedAt: v.number(),

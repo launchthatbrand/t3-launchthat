@@ -2,6 +2,7 @@ import { RateLimiter } from "@convex-dev/rate-limiter";
 import { ConvexError, v } from "convex/values";
 import { components } from "../../_generated/api";
 import { internalMutation } from "../../_generated/server";
+import type { Id } from "../../_generated/dataModel";
 
 const rateLimiter = new RateLimiter(components.rateLimiter, {
   // Anti-abuse: limit how often a single Discord user can trigger AI replies in a single thread.
@@ -28,8 +29,13 @@ const rateLimiter = new RateLimiter(components.rateLimiter, {
   },
 });
 
+const DAY_MS = 86_400_000;
+
+const startOfUtcDayMs = (nowMs: number) => Math.floor(nowMs / DAY_MS) * DAY_MS;
+
 export const enforceDiscordSupportRateLimits = internalMutation({
   args: {
+    organizationId: v.string(),
     guildId: v.string(),
     threadId: v.string(),
     authorId: v.string(),
@@ -58,6 +64,65 @@ export const enforceDiscordSupportRateLimits = internalMutation({
         kind: "RateLimited",
         name: "discordSupportThread",
         retryAt: thread.retryAt,
+      });
+    }
+
+    // Cost control: cap total AI replies per organization per day using the organization's plan limit.
+    const organization = await ctx.db.get(args.organizationId as Id<"organizations">);
+    if (!organization) {
+      throw new Error("Organization not found");
+    }
+
+    const planId = organization.planId;
+    const plan =
+      planId
+        ? ((await ctx.runQuery(
+            components.launchthat_ecommerce.plans.queries.getPlanById as any,
+            { planId: String(planId) },
+          )) as any)
+        : ((await ctx.runQuery(
+            components.launchthat_ecommerce.plans.queries.getPlanByName as any,
+            { name: "free" },
+          )) as any);
+
+    const discordAiDailyLimit =
+      typeof plan?.limits?.discordAiDaily === "number"
+        ? plan.limits.discordAiDaily
+        : 200;
+
+    const now = Date.now();
+    const windowStartMs = startOfUtcDayMs(now);
+    const scope = null;
+    const existing = await ctx.db
+      .query("orgUsageCounters")
+      .withIndex("by_org_kind_scope_window", (q) =>
+        q
+          .eq("organizationId", organization._id)
+          .eq("kind", "discordAiDaily")
+          .eq("scope", scope)
+          .eq("windowStartMs", windowStartMs),
+      )
+      .unique();
+
+    const nextCount = (existing?.count ?? 0) + 1;
+    if (nextCount > discordAiDailyLimit) {
+      throw new ConvexError({
+        kind: "RateLimited",
+        name: "discordSupportOrgDaily",
+        retryAt: windowStartMs + DAY_MS,
+      });
+    }
+
+    if (existing?._id) {
+      await ctx.db.patch(existing._id, { count: nextCount, updatedAt: now });
+    } else {
+      await ctx.db.insert("orgUsageCounters", {
+        organizationId: organization._id,
+        kind: "discordAiDaily",
+        scope,
+        windowStartMs,
+        count: nextCount,
+        updatedAt: now,
       });
     }
 

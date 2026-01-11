@@ -108,8 +108,14 @@ const computeTenantOrigin = (args: {
       authHostname === "127.0.0.1" || authHostname.endsWith(".127.0.0.1")
         ? "127.0.0.1"
         : "localhost";
-    expectedHosts.add(`${args.tenantSlug}.${base}`);
-    if (authPort) expectedHosts.add(`${args.tenantSlug}.${base}:${authPort}`);
+    // Portal root should be reachable on bare localhost, not a subdomain.
+    if (args.tenantSlug === PORTAL_TENANT_SLUG) {
+      expectedHosts.add(base);
+      if (authPort) expectedHosts.add(`${base}:${authPort}`);
+    } else {
+      expectedHosts.add(`${args.tenantSlug}.${base}`);
+      if (authPort) expectedHosts.add(`${args.tenantSlug}.${base}:${authPort}`);
+    }
   }
 
   const shouldRewrite =
@@ -132,7 +138,12 @@ const computeTenantOrigin = (args: {
       authHostname === "127.0.0.1" || authHostname.endsWith(".127.0.0.1")
         ? "127.0.0.1"
         : "localhost";
-    tenantOrigin = `http://${args.tenantSlug}.${base}${authPort ? `:${authPort}` : ""}`;
+    // Portal root should be served from bare localhost (no tenant subdomain).
+    if (args.tenantSlug === PORTAL_TENANT_SLUG) {
+      tenantOrigin = `http://${base}${authPort ? `:${authPort}` : ""}`;
+    } else {
+      tenantOrigin = `http://${args.tenantSlug}.${base}${authPort ? `:${authPort}` : ""}`;
+    }
   } else {
     tenantOrigin = `https://${args.tenantSlug}.${rootHost}`;
   }

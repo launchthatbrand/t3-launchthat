@@ -63,15 +63,26 @@ export const getCart = query({
 
       const regularPrice = getMetaValue(productMeta, metaKey("product.regularPrice"));
       const salePrice = getMetaValue(productMeta, metaKey("product.salePrice"));
+      const productTypeRaw = getMetaValue(productMeta, metaKey("product.type"));
+      const productType =
+        typeof productTypeRaw === "string" ? productTypeRaw.toLowerCase() : "";
+      const subscriptionAmountMonthlyCents = getMetaValue(
+        productMeta,
+        metaKey("product.subscription.amountMonthly"),
+      );
       const isVirtual = getMetaValue(productMeta, metaKey("product.isVirtual")) === true;
       const featuresRaw = getMetaValue(productMeta, metaKey("product.features"));
       const features = safeParseStringArray(featuresRaw);
       const resolvedPrice =
-        typeof salePrice === "number"
-          ? salePrice
-          : typeof regularPrice === "number"
-            ? regularPrice
-            : null;
+        productType === "simple_subscription"
+          ? typeof subscriptionAmountMonthlyCents === "number"
+            ? subscriptionAmountMonthlyCents / 100
+            : null
+          : typeof salePrice === "number"
+            ? salePrice
+            : typeof regularPrice === "number"
+              ? regularPrice
+              : null;
 
       enrichedItems.push({
         _id: row._id,

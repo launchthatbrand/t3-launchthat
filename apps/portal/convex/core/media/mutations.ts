@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 
 import { mutation } from "../../_generated/server";
+import { internal } from "../../_generated/api";
 
 /**
  * Generate upload URL for media files
@@ -29,6 +30,7 @@ export const saveMedia = mutation({
     organizationId: v.optional(v.id("organizations")),
     storageId: v.id("_storage"),
     title: v.optional(v.string()),
+    mimeType: v.optional(v.string()),
     caption: v.optional(v.string()),
     alt: v.optional(v.string()),
     taxonomyTermIds: v.optional(v.array(v.id("taxonomyTerms"))),
@@ -53,6 +55,20 @@ export const saveMedia = mutation({
       throw new Error("Failed to get URL for uploaded file");
     }
 
+    const looksLikeVideo = /\.(mp4|webm|mov|m4v|ogg)$/i.test(args.title ?? "");
+    // const looksLikePdf = /\.pdf$/i.test(args.title ?? "");
+
+    // Best-effort content type detection for storage uploads
+    let mimeType: string | undefined = args.mimeType;
+    try {
+      const storageMeta = await ctx.db.system.get("_storage", args.storageId);
+      if (storageMeta && typeof (storageMeta as any).contentType === "string") {
+        mimeType = mimeType ?? ((storageMeta as any).contentType as string);
+      }
+    } catch {
+      // ignore
+    }
+
     // Save metadata to mediaItems table
     const uploadedAt = Date.now();
     const mediaId = await ctx.db.insert("mediaItems", {
@@ -65,7 +81,24 @@ export const saveMedia = mutation({
       categories: args.categories,
       status: args.status ?? "draft",
       uploadedAt,
+      mimeType,
     });
+
+    // Auto-generate a preview image for videos (best-effort, async)
+    if (mimeType?.startsWith("video/") || looksLikeVideo) {
+      await ctx.scheduler.runAfter(
+        0,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (internal as any).core.media.actions.generateVideoPreviewImage,
+        {
+          mediaItemId: mediaId,
+          force: false,
+        },
+      );
+    }
+
+    // NOTE: PDF previews are generated client-side (using pdfjs-dist) to avoid
+    // Convex Node deploy size limits. See admin media UI for implementation.
 
     return {
       _id: mediaId,
@@ -80,6 +113,47 @@ export const saveMedia = mutation({
     };
   },
 });
+
+export const setMediaPreviewImage = mutation({
+  args: {
+    mediaItemId: v.id("mediaItems"),
+    previewImageStorageId: v.id("_storage"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.mediaItemId, {
+      previewImageStorageId: args.previewImageStorageId,
+      previewGeneratedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const requestGenerateVideoPreviewImage = mutation({
+  args: {
+    mediaItemId: v.id("mediaItems"),
+    force: v.optional(v.boolean()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    await ctx.scheduler.runAfter(
+      0,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (internal as any).core.media.actions.generateVideoPreviewImage,
+      {
+        mediaItemId: args.mediaItemId,
+        force: args.force ?? false,
+      },
+    );
+    return null;
+  },
+});
+
 
 /**
  * Update existing media metadata
