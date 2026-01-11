@@ -142,6 +142,8 @@ export type Mounts = {
           escalationKeywords?: Array<string>;
           guildId: string;
           organizationId: string;
+          supportAiDisabledMessageEnabled?: boolean;
+          supportAiDisabledMessageText?: string;
           supportAiEnabled: boolean;
           supportForumChannelId?: string;
           supportStaffRoleId?: string;
@@ -161,6 +163,8 @@ export type Mounts = {
           escalationKeywords?: Array<string>;
           guildId: string;
           organizationId: string;
+          supportAiDisabledMessageEnabled?: boolean;
+          supportAiDisabledMessageText?: string;
           supportAiEnabled: boolean;
           supportForumChannelId?: string;
           supportStaffRoleId?: string;

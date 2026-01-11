@@ -1,8 +1,17 @@
+/* eslint-disable
+  @typescript-eslint/no-explicit-any,
+  @typescript-eslint/no-unsafe-assignment,
+  @typescript-eslint/no-unsafe-member-access,
+  @typescript-eslint/no-unsafe-call,
+  @typescript-eslint/no-unsafe-argument,
+  turbo/no-undeclared-env-vars
+*/
 "use node";
 
 import crypto from "node:crypto";
 import { v } from "convex/values";
-import { components, api, internal } from "../../_generated/api";
+
+import { api, components, internal } from "../../_generated/api";
 import { internalAction } from "../../_generated/server";
 
 type GatewayEvent =
@@ -27,12 +36,14 @@ type GatewayEvent =
       createdAt: number;
     };
 
-const discordGuildConnectionsQuery = components.launchthat_discord.guildConnections
-  .queries as any;
+const discordGuildConnectionsQuery = components.launchthat_discord
+  .guildConnections.queries as any;
 const discordGuildSettingsQuery = components.launchthat_discord.guildSettings
   .queries as any;
-const discordSupportMutations = components.launchthat_discord.support.mutations as any;
-const discordSupportQueries = components.launchthat_discord.support.queries as any;
+const discordSupportMutations = components.launchthat_discord.support
+  .mutations as any;
+const discordSupportQueries = components.launchthat_discord.support
+  .queries as any;
 
 const inferConfidence = (answer: string): number => {
   const text = answer.toLowerCase();
@@ -87,9 +98,13 @@ export const processGatewayEvent = internalAction({
       typeof settings?.supportStaffRoleId === "string"
         ? settings.supportStaffRoleId
         : null;
-    const escalationKeywords: string[] = Array.isArray(settings?.escalationKeywords)
+    const escalationKeywords: string[] = Array.isArray(
+      settings?.escalationKeywords,
+    )
       ? settings.escalationKeywords
-          .map((s: any) => (typeof s === "string" ? s.trim().toLowerCase() : ""))
+          .map((s: any) =>
+            typeof s === "string" ? s.trim().toLowerCase() : "",
+          )
           .filter((s: string) => s.length > 0)
           .slice(0, 50)
       : [];
@@ -102,22 +117,25 @@ export const processGatewayEvent = internalAction({
     if (event.type === "thread_create") {
       const threadId = String((event as any).threadId ?? "");
       if (!threadId) return null;
-      await ctx.runMutation(discordSupportMutations.upsertSupportThreadAndMessage, {
-        organizationId,
-        guildId,
-        threadId,
-        forumChannelId: (event as any).forumChannelId
-          ? String((event as any).forumChannelId)
-          : undefined,
-        threadName:
-          typeof (event as any).threadName === "string"
-            ? (event as any).threadName
+      await ctx.runMutation(
+        discordSupportMutations.upsertSupportThreadAndMessage,
+        {
+          organizationId,
+          guildId,
+          threadId,
+          forumChannelId: (event as any).forumChannelId
+            ? String((event as any).forumChannelId)
             : undefined,
-        createdByDiscordUserId:
-          typeof (event as any).createdByDiscordUserId === "string"
-            ? (event as any).createdByDiscordUserId
-            : undefined,
-      });
+          threadName:
+            typeof (event as any).threadName === "string"
+              ? (event as any).threadName
+              : undefined,
+          createdByDiscordUserId:
+            typeof (event as any).createdByDiscordUserId === "string"
+              ? (event as any).createdByDiscordUserId
+              : undefined,
+        },
+      );
       return null;
     }
 
@@ -136,23 +154,24 @@ export const processGatewayEvent = internalAction({
     );
     if (alreadyProcessed) return null;
 
-    await ctx.runMutation(discordSupportMutations.upsertSupportThreadAndMessage, {
-      organizationId,
-      guildId,
-      threadId,
-      messageId,
-      authorDiscordUserId: String((event as any).authorId ?? ""),
-      authorIsBot,
-      content,
-      messageCreatedAt: Number((event as any).createdAt ?? args.receivedAt),
-      forumChannelId:
-        typeof (event as any).forumChannelId === "string"
-          ? String((event as any).forumChannelId)
-          : undefined,
-    });
+    await ctx.runMutation(
+      discordSupportMutations.upsertSupportThreadAndMessage,
+      {
+        organizationId,
+        guildId,
+        threadId,
+        messageId,
+        authorDiscordUserId: String((event as any).authorId ?? ""),
+        authorIsBot,
+        content,
+        messageCreatedAt: Number((event as any).createdAt ?? args.receivedAt),
+        forumChannelId:
+          typeof (event as any).forumChannelId === "string"
+            ? String((event as any).forumChannelId)
+            : undefined,
+      },
+    );
 
-    // Only respond to non-bot messages in configured support forum threads.
-    if (!supportAiEnabled) return null;
     if (!forumChannelId) return null;
     if (authorIsBot) return null;
 
@@ -164,6 +183,21 @@ export const processGatewayEvent = internalAction({
     if (incomingForum !== forumChannelId) {
       return null;
     }
+
+    const disabledMessageEnabled = Boolean(
+      settings?.supportAiDisabledMessageEnabled,
+    );
+    const disabledMessageTextRaw =
+      typeof settings?.supportAiDisabledMessageText === "string"
+        ? settings.supportAiDisabledMessageText.trim()
+        : "";
+    const disabledMessageText =
+      disabledMessageTextRaw.length > 0
+        ? disabledMessageTextRaw
+        : "AI Support is currently disabled for this server.";
+
+    // Only do Discord posting work if AI is enabled OR we want to post a disabled message.
+    if (!supportAiEnabled && !disabledMessageEnabled) return null;
 
     // Post response to Discord using the global bot token (BYOB support worker not enabled in this phase).
     // We define this early so we can also post a backoff notice when rate-limited.
@@ -182,7 +216,9 @@ export const processGatewayEvent = internalAction({
         body: JSON.stringify(payload),
       });
       const retryAfter = res.headers.get("retry-after");
-      const retryAfterMs = retryAfter ? Math.round(Number(retryAfter) * 1000) : undefined;
+      const retryAfterMs = retryAfter
+        ? Math.round(Number(retryAfter) * 1000)
+        : undefined;
       await ctx.runMutation(discordSupportMutations.logDiscordApiCall, {
         organizationId,
         guildId,
@@ -191,16 +227,58 @@ export const processGatewayEvent = internalAction({
         url,
         status: res.status,
         retryAfterMs,
-        error: res.ok ? undefined : await res.text().catch(() => "request failed"),
+        error: res.ok
+          ? undefined
+          : await res.text().catch(() => "request failed"),
       });
       return res;
     };
+
+    // If AI is disabled, optionally post a short message so users aren’t confused.
+    if (!supportAiEnabled) {
+      const shouldNotify = await ctx.runMutation(
+        internal.plugins.discord.gatewayRateLimits
+          .shouldPostDiscordSupportDisabledNotice,
+        { guildId, threadId },
+      );
+
+      if (shouldNotify) {
+        await postJson(
+          "support_ai_disabled",
+          `https://discord.com/api/v10/channels/${encodeURIComponent(threadId)}/messages`,
+          {
+            content: disabledMessageText.slice(0, 1900),
+            allowed_mentions: { parse: [] },
+          },
+        );
+      }
+
+      // Record as “processed” so StrictMode/dedup doesn’t double-handle the same message.
+      const promptHash = crypto
+        .createHash("sha256")
+        .update(content, "utf8")
+        .digest("hex");
+      await ctx.runMutation(discordSupportMutations.recordSupportAiRun, {
+        organizationId,
+        guildId,
+        threadId,
+        triggerMessageId: messageId,
+        promptHash,
+        model: "system:disabled",
+        confidence: 1,
+        escalated: false,
+        answer: disabledMessageText,
+      });
+
+      return null;
+    }
 
     // Rate limit *before* calling the AI or posting anything.
     try {
       if (!authorId) return null;
       await ctx.runMutation(
-        internal.plugins.discord.gatewayRateLimits.enforceDiscordSupportRateLimits,
+        internal.plugins.discord.gatewayRateLimits
+          .enforceDiscordSupportRateLimits,
         { organizationId, guildId, threadId, authorId },
       );
     } catch (err: any) {
@@ -211,7 +289,8 @@ export const processGatewayEvent = internalAction({
         const retryAfterMs = Math.max(0, retryAt - Date.now());
 
         const shouldNotify = await ctx.runMutation(
-          internal.plugins.discord.gatewayRateLimits.shouldPostDiscordSupportRateLimitNotice,
+          internal.plugins.discord.gatewayRateLimits
+            .shouldPostDiscordSupportRateLimitNotice,
           { guildId, threadId },
         );
 
@@ -236,31 +315,39 @@ export const processGatewayEvent = internalAction({
     // IMPORTANT: Support message storage expects a real Convex Id<"threads">.
     // We create/reuse a support thread by using a stable clientSessionId derived from the Discord thread id.
     const sessionId = `discord:${guildId}:${threadId}`;
-    const created = await ctx.runMutation(api.plugins.support.mutations.createThread, {
-      organizationId,
-      clientSessionId: sessionId,
-      mode: "agent",
-    });
+    const created = await ctx.runMutation(
+      api.plugins.support.mutations.createThread,
+      {
+        organizationId,
+        clientSessionId: sessionId,
+        mode: "agent",
+      },
+    );
     const supportThreadId = String((created as any)?.threadId ?? "");
     if (!supportThreadId) {
       throw new Error("Failed to create support thread");
     }
 
-    const reply = await ctx.runAction(api.plugins.support.agent.generateAgentReply, {
-      organizationId,
-      threadId: supportThreadId,
-      prompt: content,
-      contactId: undefined,
-      contactEmail: undefined,
-      contactName: undefined,
-      contextTags: ["discord:support"],
-    });
+    const reply = await ctx.runAction(
+      api.plugins.support.agent.generateAgentReply,
+      {
+        organizationId,
+        threadId: supportThreadId,
+        prompt: content,
+        contactId: undefined,
+        contactEmail: undefined,
+        contactName: undefined,
+        contextTags: ["discord:support"],
+      },
+    );
 
     const text = String(reply?.text ?? "").trim();
     if (!text) return null;
 
     const confidence = inferConfidence(text);
-    const keywordHit = escalationKeywords.some((kw) => kw && content.toLowerCase().includes(kw));
+    const keywordHit = escalationKeywords.some(
+      (kw) => kw && content.toLowerCase().includes(kw),
+    );
     const shouldEscalate = keywordHit || confidence < confidenceThreshold;
 
     if (shouldEscalate && staffRoleId) {
@@ -281,7 +368,10 @@ export const processGatewayEvent = internalAction({
     );
 
     // Record AI run.
-    const promptHash = crypto.createHash("sha256").update(content, "utf8").digest("hex");
+    const promptHash = crypto
+      .createHash("sha256")
+      .update(content, "utf8")
+      .digest("hex");
     await ctx.runMutation(discordSupportMutations.recordSupportAiRun, {
       organizationId,
       guildId,
@@ -297,5 +387,3 @@ export const processGatewayEvent = internalAction({
     return null;
   },
 });
-
-

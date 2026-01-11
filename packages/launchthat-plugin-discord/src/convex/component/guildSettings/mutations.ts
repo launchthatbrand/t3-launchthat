@@ -12,6 +12,8 @@ export const upsertGuildSettings = mutation({
     escalationKeywords: v.optional(v.array(v.string())),
     escalationConfidenceThreshold: v.optional(v.number()),
     threadReplyCooldownMs: v.optional(v.number()),
+    supportAiDisabledMessageEnabled: v.optional(v.boolean()),
+    supportAiDisabledMessageText: v.optional(v.string()),
     courseUpdatesChannelId: v.optional(v.string()),
   },
   returns: v.null(),
@@ -33,6 +35,8 @@ export const upsertGuildSettings = mutation({
       escalationKeywords: args.escalationKeywords,
       escalationConfidenceThreshold: args.escalationConfidenceThreshold,
       threadReplyCooldownMs: args.threadReplyCooldownMs,
+      supportAiDisabledMessageEnabled: args.supportAiDisabledMessageEnabled,
+      supportAiDisabledMessageText: args.supportAiDisabledMessageText,
       courseUpdatesChannelId: args.courseUpdatesChannelId,
       updatedAt: now,
     };

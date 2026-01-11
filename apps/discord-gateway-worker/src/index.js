@@ -60,6 +60,12 @@ const postEvent = async (event) => {
     const text = await res.text().catch(() => "");
     // eslint-disable-next-line no-console
     console.warn("[relay] failed", res.status, text);
+    return { ok: false };
+  }
+  try {
+    return await res.json();
+  } catch {
+    return { ok: true };
   }
 };
 
@@ -152,10 +158,7 @@ client.on("messageCreate", async (message) => {
       return;
     }
 
-    // Show typing indicator while we wait for the AI response.
-    startTyping(thread);
-
-    await postEvent({
+    const relayResult = await postEvent({
       type: "message_create",
       guildId,
       threadId: thread.id,
@@ -166,6 +169,13 @@ client.on("messageCreate", async (message) => {
       content: message.content ?? "",
       createdAt: message.createdTimestamp ?? Date.now(),
     });
+
+    // Only show typing indicator if the relay tells us this message is eligible for an AI reply.
+    if (relayResult?.shouldType) {
+      startTyping(thread);
+    } else {
+      stopTyping(thread.id);
+    }
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn("[messageCreate] error", err);

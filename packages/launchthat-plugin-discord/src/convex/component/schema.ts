@@ -54,6 +54,8 @@ export default defineSchema({
     escalationKeywords: v.optional(v.array(v.string())),
     escalationConfidenceThreshold: v.optional(v.number()),
     threadReplyCooldownMs: v.optional(v.number()),
+    supportAiDisabledMessageEnabled: v.optional(v.boolean()),
+    supportAiDisabledMessageText: v.optional(v.string()),
 
     // Announcements settings
     courseUpdatesChannelId: v.optional(v.string()),
@@ -206,5 +208,3 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_status_and_createdAt", ["status", "createdAt"]),
 });
-
-

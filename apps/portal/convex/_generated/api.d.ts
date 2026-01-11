@@ -6826,6 +6826,8 @@ export declare const components: {
             escalationKeywords?: Array<string>;
             guildId: string;
             organizationId: string;
+            supportAiDisabledMessageEnabled?: boolean;
+            supportAiDisabledMessageText?: string;
             supportAiEnabled: boolean;
             supportForumChannelId?: string;
             supportStaffRoleId?: string;
@@ -6845,6 +6847,8 @@ export declare const components: {
             escalationKeywords?: Array<string>;
             guildId: string;
             organizationId: string;
+            supportAiDisabledMessageEnabled?: boolean;
+            supportAiDisabledMessageText?: string;
             supportAiEnabled: boolean;
             supportForumChannelId?: string;
             supportStaffRoleId?: string;

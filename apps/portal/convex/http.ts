@@ -8,10 +8,14 @@ import type { Id } from "./_generated/dataModel";
 import { httpAction } from "./_generated/server";
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/require-await */
 import { httpRouter } from "convex/server";
-import { internal } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import { supportEmailInbound } from "./plugins/support/http";
 
 const internalAny = internal as Record<string, any>;
+const discordGuildConnectionsQuery = components.launchthat_discord.guildConnections
+  .queries as any;
+const discordGuildSettingsQuery = components.launchthat_discord.guildSettings
+  .queries as any;
 
 /**
  * Request body structure expected by the createAuthNetTransaction endpoint.
@@ -362,13 +366,56 @@ http.route({
       return new Response("Invalid JSON", { status: 400 });
     }
 
+    // Let the worker know whether it should show typing indicators for this event.
+    // This is a best-effort hint; the real source of truth is `processGatewayEvent`.
+    let shouldType = false;
+    try {
+      const guildId =
+        event && typeof event === "object" && typeof (event as any).guildId === "string"
+          ? String((event as any).guildId)
+          : "";
+      if (guildId) {
+        const guildConn = await ctx.runQuery(
+          (discordGuildConnectionsQuery as any).getGuildConnectionByGuildId,
+          { guildId },
+        );
+        const organizationId = String(guildConn?.organizationId ?? "");
+        if (organizationId) {
+          const settings = await ctx.runQuery(
+            (discordGuildSettingsQuery as any).getGuildSettings,
+            { organizationId, guildId },
+          );
+          const supportAiEnabled = Boolean(settings?.supportAiEnabled);
+          const forumChannelId =
+            typeof settings?.supportForumChannelId === "string"
+              ? settings.supportForumChannelId
+              : null;
+          const isMessageCreate = (event as any).type === "message_create";
+          const authorIsBot = Boolean((event as any).authorIsBot);
+          const incomingForum =
+            typeof (event as any).forumChannelId === "string"
+              ? String((event as any).forumChannelId)
+              : null;
+
+          shouldType =
+            Boolean(supportAiEnabled) &&
+            Boolean(forumChannelId) &&
+            !authorIsBot &&
+            isMessageCreate &&
+            incomingForum === forumChannelId;
+        }
+      }
+    } catch {
+      shouldType = false;
+    }
+
     await ctx.scheduler.runAfter(
       0,
       internalAny.plugins.discord.gateway.processGatewayEvent,
       { event, receivedAt: Date.now() },
     );
 
-    return new Response(JSON.stringify({ ok: true }), {
+    return new Response(JSON.stringify({ ok: true, shouldType }), {
       status: 200,
       headers: { "content-type": "application/json" },
     });

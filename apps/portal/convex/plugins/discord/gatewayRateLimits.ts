@@ -1,8 +1,16 @@
+/* eslint-disable
+  @typescript-eslint/no-explicit-any,
+  @typescript-eslint/no-unsafe-assignment,
+  @typescript-eslint/no-unsafe-member-access,
+  @typescript-eslint/no-unsafe-call,
+  @typescript-eslint/no-unsafe-argument
+*/
 import { RateLimiter } from "@convex-dev/rate-limiter";
 import { ConvexError, v } from "convex/values";
+
+import type { Id } from "../../_generated/dataModel";
 import { components } from "../../_generated/api";
 import { internalMutation } from "../../_generated/server";
-import type { Id } from "../../_generated/dataModel";
 
 const rateLimiter = new RateLimiter(components.rateLimiter, {
   // Anti-abuse: limit how often a single Discord user can trigger AI replies in a single thread.
@@ -27,6 +35,13 @@ const rateLimiter = new RateLimiter(components.rateLimiter, {
     period: 30_000,
     capacity: 1,
   },
+  // UX: suppress repeated “Support AI disabled” notices.
+  discordSupportDisabledNotice: {
+    kind: "token bucket",
+    rate: 1,
+    period: 30_000,
+    capacity: 1,
+  },
 });
 
 const DAY_MS = 86_400_000;
@@ -45,14 +60,19 @@ export const enforceDiscordSupportRateLimits = internalMutation({
     const userThreadKey = `${args.guildId}:${args.threadId}:${args.authorId}`;
     const threadKey = `${args.guildId}:${args.threadId}`;
 
-    const userThread = await rateLimiter.limit(ctx, "discordSupportUserThread", {
-      key: userThreadKey,
-    });
+    const userThread = await rateLimiter.limit(
+      ctx,
+      "discordSupportUserThread",
+      {
+        key: userThreadKey,
+      },
+    );
     if (!userThread.ok) {
+      const retryAt = Date.now() + userThread.retryAfter;
       throw new ConvexError({
         kind: "RateLimited",
         name: "discordSupportUserThread",
-        retryAt: userThread.retryAt,
+        retryAt,
       });
     }
 
@@ -60,30 +80,32 @@ export const enforceDiscordSupportRateLimits = internalMutation({
       key: threadKey,
     });
     if (!thread.ok) {
+      const retryAt = Date.now() + thread.retryAfter;
       throw new ConvexError({
         kind: "RateLimited",
         name: "discordSupportThread",
-        retryAt: thread.retryAt,
+        retryAt,
       });
     }
 
     // Cost control: cap total AI replies per organization per day using the organization's plan limit.
-    const organization = await ctx.db.get(args.organizationId as Id<"organizations">);
+    const organization = await ctx.db.get(
+      args.organizationId as Id<"organizations">,
+    );
     if (!organization) {
       throw new Error("Organization not found");
     }
 
     const planId = organization.planId;
-    const plan =
-      planId
-        ? ((await ctx.runQuery(
-            components.launchthat_ecommerce.plans.queries.getPlanById as any,
-            { planId: String(planId) },
-          )) as any)
-        : ((await ctx.runQuery(
-            components.launchthat_ecommerce.plans.queries.getPlanByName as any,
-            { name: "free" },
-          )) as any);
+    const plan = planId
+      ? ((await ctx.runQuery(
+          components.launchthat_ecommerce.plans.queries.getPlanById as any,
+          { planId: String(planId) },
+        )) as any)
+      : ((await ctx.runQuery(
+          components.launchthat_ecommerce.plans.queries.getPlanByName as any,
+          { name: "free" },
+        )) as any);
 
     const discordAiDailyLimit =
       typeof plan?.limits?.discordAiDaily === "number"
@@ -138,11 +160,32 @@ export const shouldPostDiscordSupportRateLimitNotice = internalMutation({
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const key = `${args.guildId}:${args.threadId}`;
-    const notice = await rateLimiter.limit(ctx, "discordSupportRateLimitNotice", {
-      key,
-    });
+    const notice = await rateLimiter.limit(
+      ctx,
+      "discordSupportRateLimitNotice",
+      {
+        key,
+      },
+    );
     return notice.ok;
   },
 });
 
-
+export const shouldPostDiscordSupportDisabledNotice = internalMutation({
+  args: {
+    guildId: v.string(),
+    threadId: v.string(),
+  },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const key = `${args.guildId}:${args.threadId}`;
+    const notice = await rateLimiter.limit(
+      ctx,
+      "discordSupportDisabledNotice",
+      {
+        key,
+      },
+    );
+    return notice.ok;
+  },
+});

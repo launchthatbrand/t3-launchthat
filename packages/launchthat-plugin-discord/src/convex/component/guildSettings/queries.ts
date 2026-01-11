@@ -15,6 +15,8 @@ export const getGuildSettings = query({
       escalationKeywords: v.optional(v.array(v.string())),
       escalationConfidenceThreshold: v.optional(v.number()),
       threadReplyCooldownMs: v.optional(v.number()),
+      supportAiDisabledMessageEnabled: v.optional(v.boolean()),
+      supportAiDisabledMessageText: v.optional(v.string()),
       courseUpdatesChannelId: v.optional(v.string()),
       updatedAt: v.number(),
     }),
@@ -51,6 +53,14 @@ export const getGuildSettings = query({
       threadReplyCooldownMs:
         typeof (row as any).threadReplyCooldownMs === "number"
           ? ((row as any).threadReplyCooldownMs as number)
+          : undefined,
+      supportAiDisabledMessageEnabled:
+        typeof (row as any).supportAiDisabledMessageEnabled === "boolean"
+          ? ((row as any).supportAiDisabledMessageEnabled as boolean)
+          : undefined,
+      supportAiDisabledMessageText:
+        typeof (row as any).supportAiDisabledMessageText === "string"
+          ? ((row as any).supportAiDisabledMessageText as string)
           : undefined,
       courseUpdatesChannelId:
         typeof (row as any).courseUpdatesChannelId === "string"

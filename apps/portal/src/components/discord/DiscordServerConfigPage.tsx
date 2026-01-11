@@ -132,6 +132,14 @@ export const DiscordServerConfigPage = (props: {
     React.useState("0.65");
   const [threadReplyCooldownMsDraft, setThreadReplyCooldownMsDraft] =
     React.useState("15000");
+  const [
+    supportAiDisabledMessageEnabledDraft,
+    setSupportAiDisabledMessageEnabledDraft,
+  ] = React.useState(true);
+  const [
+    supportAiDisabledMessageTextDraft,
+    setSupportAiDisabledMessageTextDraft,
+  ] = React.useState("AI Support is currently disabled for this server.");
   const [courseUpdatesChannelIdDraft, setCourseUpdatesChannelIdDraft] =
     React.useState<string | null>(null);
 
@@ -174,7 +182,7 @@ export const DiscordServerConfigPage = (props: {
         organizationId: String(organizationId),
         returnTo,
       })) as { url: string };
-      if (!result?.url) {
+      if (!result.url) {
         toast.error("Failed to start bot install");
         return;
       }
@@ -273,6 +281,18 @@ export const DiscordServerConfigPage = (props: {
         ? String(guildSettings.threadReplyCooldownMs)
         : "15000";
     setThreadReplyCooldownMsDraft(cooldown);
+
+    setSupportAiDisabledMessageEnabledDraft(
+      typeof guildSettings.supportAiDisabledMessageEnabled === "boolean"
+        ? Boolean(guildSettings.supportAiDisabledMessageEnabled)
+        : true,
+    );
+    setSupportAiDisabledMessageTextDraft(
+      typeof guildSettings.supportAiDisabledMessageText === "string" &&
+        guildSettings.supportAiDisabledMessageText.trim().length > 0
+        ? String(guildSettings.supportAiDisabledMessageText)
+        : "AI Support is currently disabled for this server.",
+    );
   }, [guildId, guildSettings]);
 
   const handleSaveGuildSettings = async () => {
@@ -306,6 +326,14 @@ export const DiscordServerConfigPage = (props: {
         threadReplyCooldownMs: Number.isFinite(cooldownMs)
           ? cooldownMs
           : undefined,
+        supportAiDisabledMessageEnabled: Boolean(
+          supportAiDisabledMessageEnabledDraft,
+        ),
+        supportAiDisabledMessageText:
+          supportAiDisabledMessageTextDraft &&
+          supportAiDisabledMessageTextDraft.trim()
+            ? supportAiDisabledMessageTextDraft.trim()
+            : "AI Support is currently disabled for this server.",
         courseUpdatesChannelId:
           courseUpdatesChannelIdDraft && courseUpdatesChannelIdDraft.trim()
             ? courseUpdatesChannelIdDraft.trim()
@@ -414,7 +442,7 @@ export const DiscordServerConfigPage = (props: {
       id: "guildName",
       header: "Server",
       accessorKey: "guildName",
-      cell: (g) => (
+      cell: (g: GuildConnection) => (
         <div className="min-w-0">
           <div className="truncate font-medium">
             {g.guildName ?? "Discord server"}
@@ -429,7 +457,7 @@ export const DiscordServerConfigPage = (props: {
       id: "botModeAtConnect",
       header: "Bot",
       accessorKey: "botModeAtConnect",
-      cell: (g) => (
+      cell: (g: GuildConnection) => (
         <Badge variant="outline">
           {g.botModeAtConnect === "custom" ? "Custom" : "Global"}
         </Badge>
@@ -439,7 +467,7 @@ export const DiscordServerConfigPage = (props: {
       id: "connectedAt",
       header: "Connected",
       accessorKey: "connectedAt",
-      cell: (g) => (
+      cell: (g: GuildConnection) => (
         <div className="text-muted-foreground text-sm">
           {typeof g.connectedAt === "number" && g.connectedAt > 0
             ? new Date(g.connectedAt).toLocaleString()
@@ -757,6 +785,47 @@ export const DiscordServerConfigPage = (props: {
                     </div>
                   </div>
                 </div>
+
+                {!supportAiEnabledDraft ? (
+                  <div className="mt-3 rounded-md border p-3">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-medium">
+                          Disabled behavior
+                        </div>
+                        <div className="text-muted-foreground text-xs">
+                          Optional message to post in support threads when
+                          Support AI is disabled.
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm">Post message</Label>
+                        <Switch
+                          checked={supportAiDisabledMessageEnabledDraft}
+                          onCheckedChange={(checked) =>
+                            setSupportAiDisabledMessageEnabledDraft(
+                              Boolean(checked),
+                            )
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Disabled message</Label>
+                      <Input
+                        value={supportAiDisabledMessageTextDraft}
+                        onChange={(e) =>
+                          setSupportAiDisabledMessageTextDraft(e.target.value)
+                        }
+                        placeholder="AI Support is currently disabled for this server."
+                        disabled={!supportAiDisabledMessageEnabledDraft}
+                      />
+                      <div className="text-muted-foreground text-xs">
+                        We rate-limit this message per thread to avoid spam.
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="mt-3 flex items-center gap-2">
                   <Button
