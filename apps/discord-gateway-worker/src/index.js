@@ -63,6 +63,45 @@ const postEvent = async (event) => {
   }
 };
 
+// Typing indicator support
+// Discord's typing indicator expires quickly, so we refresh it on an interval.
+const TYPING_INTERVAL_MS = Number(
+  process.env.DISCORD_TYPING_INTERVAL_MS || "7000",
+);
+const TYPING_MAX_MS = Number(process.env.DISCORD_TYPING_MAX_MS || "60000");
+const typingByThreadId = new Map();
+
+const stopTyping = (threadId) => {
+  const state = typingByThreadId.get(threadId);
+  if (!state) return;
+  clearInterval(state.intervalId);
+  clearTimeout(state.timeoutId);
+  typingByThreadId.delete(threadId);
+};
+
+const startTyping = (thread) => {
+  const threadId = thread?.id;
+  if (!threadId) return;
+
+  const existing = typingByThreadId.get(threadId);
+  if (existing) {
+    // Extend max timeout window for ongoing conversation.
+    clearTimeout(existing.timeoutId);
+    existing.timeoutId = setTimeout(() => stopTyping(threadId), TYPING_MAX_MS);
+    return;
+  }
+
+  // Fire immediately for snappy feedback.
+  thread.sendTyping().catch(() => {});
+
+  const intervalId = setInterval(() => {
+    thread.sendTyping().catch(() => {});
+  }, TYPING_INTERVAL_MS);
+
+  const timeoutId = setTimeout(() => stopTyping(threadId), TYPING_MAX_MS);
+  typingByThreadId.set(threadId, { intervalId, timeoutId });
+};
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -106,8 +145,15 @@ client.on("messageCreate", async (message) => {
     const thread = message.channel;
     const forumChannelId = thread.parentId ?? null;
 
-    // Ignore our own bot messages to avoid loops.
-    if (message.author?.id && message.author.id === client.user?.id) return;
+    // Stop typing when our bot posts a message in the thread (best-effort signal
+    // that the AI finished responding).
+    if (message.author?.id && message.author.id === client.user?.id) {
+      stopTyping(thread.id);
+      return;
+    }
+
+    // Show typing indicator while we wait for the AI response.
+    startTyping(thread);
 
     await postEvent({
       type: "message_create",
@@ -131,6 +177,9 @@ await client.login(DISCORD_BOT_TOKEN);
 const shutdown = (signal) => {
   // eslint-disable-next-line no-console
   console.log(`[discord-worker] shutting down (${signal})`);
+  for (const threadId of typingByThreadId.keys()) {
+    stopTyping(threadId);
+  }
   try {
     healthServer.close(() => {});
   } catch {
