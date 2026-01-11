@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import http from "node:http";
 import process from "node:process";
 import { Client, GatewayIntentBits, Partials } from "discord.js";
 
@@ -13,6 +14,30 @@ const requiredEnv = (key) => {
 const DISCORD_BOT_TOKEN = requiredEnv("DISCORD_BOT_TOKEN");
 const DISCORD_RELAY_URL = requiredEnv("DISCORD_RELAY_URL");
 const DISCORD_RELAY_SECRET = requiredEnv("DISCORD_RELAY_SECRET");
+
+// DigitalOcean App Platform health checks expect the process to listen on $PORT
+// (commonly 8080) and respond to HTTP requests. The worker is primarily a long-
+// running Discord Gateway client, so we expose a tiny health server.
+const HEALTH_PORT = Number(process.env.PORT || "8080");
+const HEALTH_HOST = "0.0.0.0";
+
+const healthServer = http.createServer((req, res) => {
+  const url = req.url || "/";
+  if (url === "/" || url === "/health") {
+    res.writeHead(200, { "content-type": "text/plain" });
+    res.end("ok");
+    return;
+  }
+  res.writeHead(404, { "content-type": "text/plain" });
+  res.end("not found");
+});
+
+healthServer.listen(HEALTH_PORT, HEALTH_HOST, () => {
+  // eslint-disable-next-line no-console
+  console.log(
+    `[discord-worker] health server listening on http://${HEALTH_HOST}:${HEALTH_PORT}`,
+  );
+});
 
 const signBody = (bodyText) =>
   crypto
@@ -102,3 +127,22 @@ client.on("messageCreate", async (message) => {
 });
 
 await client.login(DISCORD_BOT_TOKEN);
+
+const shutdown = (signal) => {
+  // eslint-disable-next-line no-console
+  console.log(`[discord-worker] shutting down (${signal})`);
+  try {
+    healthServer.close(() => {});
+  } catch {
+    // ignore
+  }
+  try {
+    client.destroy();
+  } catch {
+    // ignore
+  }
+  process.exit(0);
+};
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
