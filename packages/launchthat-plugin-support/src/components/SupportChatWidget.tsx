@@ -47,10 +47,66 @@ const stripFormattedPayload = (rawContent: string) => {
     return rawContent;
   }
   try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (parsed && typeof parsed === "object") {
+      const kind = (parsed as any).kind;
+      if (kind === "assistant_response_v1") {
+        const text =
+          typeof (parsed as any).text === "string" ? (parsed as any).text : "";
+        return text || rawContent;
+      }
+    }
     return parseLexicalRichText(trimmed);
   } catch (error) {
     console.warn("[support-chat] failed to parse rich text content", error);
     return rawContent;
+  }
+};
+
+const parseAssistantSources = (rawContent: string) => {
+  const trimmed = (rawContent ?? "").trim();
+  if (!trimmed.startsWith("{")) return [];
+  try {
+    const parsed = JSON.parse(trimmed) as any;
+    if (!parsed || typeof parsed !== "object") return [];
+    if (parsed.kind !== "assistant_response_v1") return [];
+    const sources = Array.isArray(parsed.sources) ? parsed.sources : [];
+    const used = Array.isArray(parsed.usedSourceIndexes)
+      ? parsed.usedSourceIndexes
+          .map((v: any) => (typeof v === "number" ? v : Number(v)))
+          .filter((v: number) => Number.isInteger(v))
+      : null;
+
+    const normalized = sources
+      .map((s: unknown) => {
+        const src = s as Record<string, unknown> | null;
+        return {
+          title: typeof src?.title === "string" ? src.title : "Source",
+          url: typeof src?.url === "string" ? src.url : "",
+          source: typeof src?.source === "string" ? src.source : undefined,
+          slug: typeof src?.slug === "string" ? src.slug : undefined,
+        };
+      })
+      .filter(
+        (s: { url: string }) => typeof s.url === "string" && s.url.length > 0,
+      )
+      .slice(0, 10);
+
+    if (used) {
+      const maxIndex = normalized.length - 1;
+      const selected = Array.from(
+        new Set(
+          used.filter((i: number) => i >= 0 && i <= maxIndex).slice(0, 10),
+        ),
+      );
+      return selected
+        .map((i) => (typeof i === "number" ? normalized[i] : undefined))
+        .filter(Boolean);
+    }
+
+    return normalized;
+  } catch {
+    return [];
   }
 };
 
@@ -504,6 +560,10 @@ function ChatSurface({
             id: message.id,
             role: message.role,
             content: stripFormattedPayload(rawText),
+            sources:
+              message.role === "assistant"
+                ? parseAssistantSources(rawText)
+                : [],
           };
         }),
     [messages],

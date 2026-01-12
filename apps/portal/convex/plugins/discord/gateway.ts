@@ -3,7 +3,6 @@
   @typescript-eslint/no-unsafe-assignment,
   @typescript-eslint/no-unsafe-member-access,
   @typescript-eslint/no-unsafe-call,
-  @typescript-eslint/no-unsafe-argument,
   turbo/no-undeclared-env-vars
 */
 "use node";
@@ -11,6 +10,7 @@
 import crypto from "node:crypto";
 import { v } from "convex/values";
 
+import type { Id } from "../../_generated/dataModel";
 import { api, components, internal } from "../../_generated/api";
 import { internalAction } from "../../_generated/server";
 
@@ -60,6 +60,58 @@ const inferConfidence = (answer: string): number => {
   return weakSignals.some((s) => text.includes(s)) ? 0.4 : 0.85;
 };
 
+const buildOrgPublicOrigin = async (ctx: any, organizationId: string) => {
+  const fallback = process.env.CLIENT_ORIGIN ?? "http://localhost:3024";
+  const orgInfo = await ctx.runQuery(
+    (internal as any).core.organizations.membershipsInternalQueries
+      .getOrganizationHostInfo,
+    { organizationId: organizationId as Id<"organizations"> },
+  );
+  if (!orgInfo) return fallback;
+
+  const customDomain =
+    typeof orgInfo.customDomain === "string" &&
+    orgInfo.customDomain.trim().length > 0
+      ? orgInfo.customDomain.trim()
+      : null;
+  if (customDomain) {
+    const protocol = customDomain.includes("localhost") ? "http" : "https";
+    return `${protocol}://${customDomain}`;
+  }
+
+  const slug = typeof orgInfo.slug === "string" ? orgInfo.slug.trim() : "";
+  let rootDomain =
+    typeof process.env.NEXT_PUBLIC_ROOT_DOMAIN === "string"
+      ? process.env.NEXT_PUBLIC_ROOT_DOMAIN.trim()
+      : "";
+  // Convex env doesn’t automatically mirror Next.js env vars.
+  // In local dev, default to `.localhost` if not set so we can build tenant URLs.
+  if (!rootDomain && slug) {
+    rootDomain = "localhost";
+  }
+  if (!slug || !rootDomain) return fallback;
+
+  const isLocal = rootDomain.includes("localhost");
+  const protocol = isLocal ? "http" : "https";
+  const port = isLocal ? ":3024" : "";
+
+  if (slug === "portal-root" && isLocal) {
+    return `${protocol}://localhost${port}`;
+  }
+
+  return `${protocol}://${slug}.${rootDomain}${port}`;
+};
+
+const absolutizeUrl = (origin: string, url: string) => {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  try {
+    return new URL(url, origin).toString();
+  } catch {
+    return url;
+  }
+};
+
 export const processGatewayEvent = internalAction({
   args: {
     event: v.any(),
@@ -68,24 +120,20 @@ export const processGatewayEvent = internalAction({
   returns: v.null(),
   handler: async (ctx, args) => {
     const event = args.event as GatewayEvent;
-    if (!event || typeof event !== "object") return null;
-
-    if (event.type !== "thread_create" && event.type !== "message_create") {
-      return null;
-    }
+    if (typeof event !== "object") return null;
 
     const guildId = String((event as any).guildId ?? "");
     if (!guildId) return null;
 
     const guildConn = await ctx.runQuery(
-      (discordGuildConnectionsQuery as any).getGuildConnectionByGuildId,
+      discordGuildConnectionsQuery.getGuildConnectionByGuildId,
       { guildId },
     );
     const organizationId = String(guildConn?.organizationId ?? "");
     if (!organizationId) return null;
 
     const settings = await ctx.runQuery(
-      (discordGuildSettingsQuery as any).getGuildSettings,
+      discordGuildSettingsQuery.getGuildSettings,
       { organizationId, guildId },
     );
 
@@ -344,6 +392,19 @@ export const processGatewayEvent = internalAction({
     const text = String(reply?.text ?? "").trim();
     if (!text) return null;
 
+    const sources: { title?: string; url?: string }[] = Array.isArray(
+      (reply as any)?.sources,
+    )
+      ? (reply as any).sources
+      : [];
+    const usedSourceIndexes: number[] = Array.isArray(
+      (reply as any)?.usedSourceIndexes,
+    )
+      ? (reply as any).usedSourceIndexes
+          .map((v: any) => (typeof v === "number" ? v : Number(v)))
+          .filter((v: number) => Number.isInteger(v))
+      : [];
+
     const confidence = inferConfidence(text);
     const keywordHit = escalationKeywords.some(
       (kw) => kw && content.toLowerCase().includes(kw),
@@ -361,10 +422,37 @@ export const processGatewayEvent = internalAction({
       );
     }
 
+    const origin = await buildOrgPublicOrigin(ctx, organizationId);
+    // Only render embeds for sources the model explicitly says it used.
+    // This prevents low-signal prompts like "Hi" from showing random sources.
+    const sourcesForEmbeds =
+      usedSourceIndexes.length > 0
+        ? usedSourceIndexes
+            .map((i) => sources[i])
+            .filter((s): s is { title?: string; url?: string } => Boolean(s))
+        : [];
+    const embeds = sourcesForEmbeds
+      .filter(
+        (s) =>
+          typeof s.title === "string" &&
+          s.title.length > 0 &&
+          typeof s.url === "string" &&
+          s.url.length > 0,
+      )
+      .slice(0, 5)
+      .map((s) => ({
+        title: String(s.title).slice(0, 256),
+        url: absolutizeUrl(origin, String(s.url)),
+      }));
+
     await postJson(
       "support_reply",
       `https://discord.com/api/v10/channels/${encodeURIComponent(threadId)}/messages`,
-      { content: text.slice(0, 1900) },
+      {
+        content: text.slice(0, 1900),
+        embeds,
+        allowed_mentions: { parse: [] },
+      },
     );
 
     // Record AI run.

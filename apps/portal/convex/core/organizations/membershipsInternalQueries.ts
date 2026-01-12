@@ -20,4 +20,19 @@ export const getUserClerkId = internalQuery({
   },
 });
 
+export const getOrganizationHostInfo = internalQuery({
+  args: { organizationId: v.id("organizations") },
+  returns: v.object({
+    slug: v.union(v.string(), v.null()),
+    customDomain: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, args) => {
+    const org = await ctx.db.get(args.organizationId);
+    return {
+      slug: org?.slug ?? null,
+      customDomain: org?.customDomain ?? null,
+    };
+  },
+});
+
 

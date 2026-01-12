@@ -14,8 +14,6 @@ import {
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
- 
- 
 
 interface SupportMessage {
   id?: string;
@@ -195,7 +193,7 @@ export async function POST(req: Request) {
             retryAfterMs: sessionLimit.retryAfterMs,
           }),
         );
-      return NextResponse.json(
+        return NextResponse.json(
           { error: "Rate limited" },
           {
             status: 429,
@@ -205,23 +203,25 @@ export async function POST(req: Request) {
               ),
             },
           },
-      );
+        );
       }
     }
+    // NOTE: This route can hit extremely deep Convex client types; keep this
+    // handle intentionally loosely typed to avoid TS "excessively deep" errors.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supportApi: any = (api as any).plugins.support;
+
     const threadId =
       parsed.threadId ??
       (
-        await convex.mutation(
-          (api as any).plugins.support.mutations.createThread,
-          {
-        organizationId,
-            clientSessionId: parsed.clientSessionId,
-        contactId: parsed.contactId ?? undefined,
-        contactEmail: parsed.contactEmail ?? undefined,
-        contactName: parsed.contactName ?? undefined,
-        mode: undefined,
-          },
-        )
+        await convex.mutation(supportApi.mutations.createThread, {
+          organizationId,
+          clientSessionId: parsed.clientSessionId,
+          contactId: parsed.contactId ?? undefined,
+          contactEmail: parsed.contactEmail ?? undefined,
+          contactName: parsed.contactName ?? undefined,
+          mode: undefined,
+        })
       ).threadId;
     const contactId = parsed.contactId ?? undefined;
     const contactEmail = parsed.contactEmail;
@@ -236,7 +236,7 @@ export async function POST(req: Request) {
     const latestUserMessage = userMessages.at(-1)?.content ?? "";
 
     const conversationMode = await convex.query(
-      api.plugins.support.queries.getConversationMode,
+      supportApi.queries.getConversationMode,
       {
         organizationId,
         threadId,
@@ -248,7 +248,7 @@ export async function POST(req: Request) {
     if (isManualMode) {
       const fallbackMessage =
         "Support assistant is not fully configured yet (missing API key).";
-      await convex.mutation(api.plugins.support.mutations.recordMessage, {
+      await convex.mutation(supportApi.mutations.recordMessage, {
         organizationId,
         threadId,
         role: "assistant",
@@ -282,7 +282,7 @@ export async function POST(req: Request) {
     // TODO: add component-native helpdesk matching; currently skip to agent reply.
     const agentStart = Date.now();
     const agentResult = await convex.action(
-      api.plugins.support.agent.generateAgentReply,
+      supportApi.agent.generateAgentReply,
       {
         organizationId,
         threadId,
@@ -302,7 +302,28 @@ export async function POST(req: Request) {
       }),
     );
 
-    return streamTextResponse(agentResult.text ?? "");
+    // Stream a structured payload so the UI can render sources/cards.
+    // (The UI strips this down to text for display, and uses sources separately.)
+    const sources = Array.isArray(
+      (agentResult as unknown as { sources?: unknown[] }).sources,
+    )
+      ? (agentResult as unknown as { sources: unknown[] }).sources
+      : [];
+    const usedSourceIndexes = Array.isArray(
+      (agentResult as unknown as { usedSourceIndexes?: unknown[] })
+        .usedSourceIndexes,
+    )
+      ? (agentResult as unknown as { usedSourceIndexes: unknown[] })
+          .usedSourceIndexes
+      : [];
+    return streamTextResponse(
+      JSON.stringify({
+        kind: "assistant_response_v1",
+        text: agentResult.text,
+        sources,
+        usedSourceIndexes,
+      }),
+    );
   } catch (error) {
     if (error instanceof SupportChatBadRequestError) {
       return NextResponse.json(
@@ -434,7 +455,7 @@ export async function GET(req: NextRequest) {
 }
 
 function streamTextResponse(content = "") {
-  const normalized = content ?? "";
+  const normalized = content;
   const textPartId = crypto.randomUUID();
 
   const stream = createUIMessageStream({

@@ -67,9 +67,10 @@ const namespaceForOrganization = (organizationId: Id<"organizations">) =>
 
 const extractMetadata = (
   value: Record<string, Value> | undefined,
-): { slug?: string; source?: string } => ({
+): { slug?: string; source?: string; urlPath?: string } => ({
   slug: typeof value?.slug === "string" ? value.slug : undefined,
   source: typeof value?.source === "string" ? value.source : undefined,
+  urlPath: typeof value?.urlPath === "string" ? value.urlPath : undefined,
 });
 
 const ensureApiKey = () => {
@@ -362,6 +363,7 @@ export const searchKnowledge = action({
       content: v.string(),
       slug: v.optional(v.string()),
       source: v.optional(v.string()),
+      urlPath: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -396,6 +398,7 @@ export const searchKnowledge = action({
         content: entry.text ?? "",
         slug: metadata.slug,
         source: resolvedSource,
+        urlPath: metadata.urlPath,
       };
     });
   },
@@ -414,6 +417,7 @@ export const searchKnowledgeForContext = action({
       content: v.string(),
       slug: v.optional(v.string()),
       source: v.optional(v.string()),
+      urlPath: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -457,6 +461,7 @@ export const searchKnowledgeForContext = action({
         content: entry.text ?? "",
         slug: metadata.slug,
         source: resolvedSource,
+        urlPath: metadata.urlPath,
       };
     });
   },
@@ -555,6 +560,13 @@ export const ingestPostIfConfigured = internalAction({
     };
     if (typeof post.slug === "string") {
       metadata.slug = post.slug;
+      const normalizedPostTypeSlug = String(post.postTypeSlug ?? "")
+        .trim()
+        .toLowerCase();
+      // Public helpdesk routes use `/helpdesk/:slug`.
+      if (normalizedPostTypeSlug === "helpdeskarticles") {
+        metadata.urlPath = `/helpdesk/${post.slug}`;
+      }
     }
 
     const addResult = await supportRag.add(ctx, {
@@ -679,6 +691,20 @@ export const ingestLmsPostIfConfigured = internalAction({
       { postId: args.id },
     )) as { key?: unknown; value?: unknown }[];
 
+    const metaMap = new Map<string, string>();
+    for (const entry of lmsMeta) {
+      const key = typeof entry.key === "string" ? entry.key : null;
+      if (!key) continue;
+      const value = entry.value;
+      if (
+        typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "boolean"
+      ) {
+        metaMap.set(key, String(value));
+      }
+    }
+
     const text = await buildLmsPostText({
       lmsPost,
       lmsMeta,
@@ -711,6 +737,32 @@ export const ingestLmsPostIfConfigured = internalAction({
     };
     if (typeof lmsPost.slug === "string") {
       metadata.slug = lmsPost.slug;
+    }
+
+    // Best-effort: attach a canonical public path so UIs can render correct sources.
+    // Example lesson route: /course/:courseSlug/lesson/:lessonSlug
+    const lmsSlug =
+      typeof lmsPost.slug === "string" && lmsPost.slug.trim().length > 0
+        ? lmsPost.slug.trim()
+        : args.id;
+    if (normalizedPostTypeSlug === "courses") {
+      metadata.urlPath = `/course/${lmsSlug}`;
+    } else if (normalizedPostTypeSlug === "lessons") {
+      const courseId =
+        metaMap.get("courseId") ?? metaMap.get("course_id") ?? null;
+      if (courseId) {
+        const coursePost = (await ctx.runQuery(
+          (components.launchthat_lms.posts.queries.getPostByIdInternal as unknown as any),
+          { id: courseId },
+        )) as { slug?: unknown } | null;
+        const courseSlug =
+          typeof coursePost?.slug === "string" && coursePost.slug.trim().length > 0
+            ? coursePost.slug.trim()
+            : String(courseId);
+        metadata.urlPath = `/course/${courseSlug}/lesson/${lmsSlug}`;
+      } else {
+        metadata.urlPath = `/lesson/${lmsSlug}`;
+      }
     }
 
     const addResult = await supportRag.add(ctx, {

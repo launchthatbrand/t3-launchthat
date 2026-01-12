@@ -228,20 +228,59 @@ export const ChatWidgetContent = ({
               message.role === "user" ? "justify-end" : "justify-start",
             )}
           >
-            <div
-              className={cn(
-                "max-w-[80%] rounded-2xl px-3 py-2 text-sm",
-                message.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-foreground",
-              )}
-            >
-              {message.role === "assistant" && assistantName ? (
-                <p className="text-muted-foreground mb-1 text-[11px] font-semibold">
-                  {assistantName}
-                </p>
+            <div className="max-w-[80%]">
+              <div
+                className={cn(
+                  "rounded-2xl px-3 py-2 text-sm",
+                  message.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-foreground",
+                )}
+              >
+                {message.role === "assistant" && assistantName ? (
+                  <p className="text-muted-foreground mb-1 text-[11px] font-semibold">
+                    {assistantName}
+                  </p>
+                ) : null}
+                {message.content}
+              </div>
+
+              {message.role === "assistant" &&
+              Array.isArray((message as any).sources) &&
+              (message as any).sources.length > 0 ? (
+                <div className="mt-2 space-y-2">
+                  <p className="text-muted-foreground text-[11px] font-semibold">
+                    Sources
+                  </p>
+                  <div className="grid gap-2">
+                    {(message as any).sources.map(
+                      (source: {
+                        title: string;
+                        url: string;
+                        source?: string;
+                      }) => (
+                        <button
+                          key={`${source.title}-${source.url}`}
+                          type="button"
+                          className="bg-muted/40 hover:border-primary/60 hover:bg-muted/70 focus-visible:ring-primary/70 rounded-lg border p-2 text-left text-xs transition focus-visible:ring-2 focus-visible:outline-none"
+                          onClick={() => {
+                            if (source.url) {
+                              window.open(source.url, "_blank", "noopener,noreferrer");
+                            }
+                          }}
+                        >
+                          <p className="font-semibold">{source.title}</p>
+                          {source.source ? (
+                            <p className="text-muted-foreground text-[11px]">
+                              {source.source}
+                            </p>
+                          ) : null}
+                        </button>
+                      ),
+                    )}
+                  </div>
+                </div>
               ) : null}
-              {message.content}
             </div>
           </div>
         );

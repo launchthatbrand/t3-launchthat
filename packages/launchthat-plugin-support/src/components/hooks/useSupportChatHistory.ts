@@ -6,6 +6,7 @@ export interface ChatHistoryMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  sources?: { title: string; url: string; source?: string; slug?: string }[];
 }
 
 interface UseSupportChatHistoryResult {
