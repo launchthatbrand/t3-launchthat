@@ -142,6 +142,10 @@ export const DiscordServerConfigPage = (props: {
   ] = React.useState("AI Support is currently disabled for this server.");
   const [courseUpdatesChannelIdDraft, setCourseUpdatesChannelIdDraft] =
     React.useState<string | null>(null);
+  const [announcementChannelIdDraft, setAnnouncementChannelIdDraft] =
+    React.useState<string | null>(null);
+  const [announcementEventKeysDraft, setAnnouncementEventKeysDraft] =
+    React.useState<string[]>([]);
 
   const [createForumOpen, setCreateForumOpen] = React.useState(false);
   const [createForumNameDraft, setCreateForumNameDraft] =
@@ -262,6 +266,30 @@ export const DiscordServerConfigPage = (props: {
         ? guildSettings.courseUpdatesChannelId
         : null,
     );
+    setAnnouncementChannelIdDraft(
+      typeof (guildSettings as any).announcementChannelId === "string"
+        ? String((guildSettings as any).announcementChannelId)
+        : typeof guildSettings.courseUpdatesChannelId === "string"
+          ? guildSettings.courseUpdatesChannelId
+          : null,
+    );
+    const announcementKeys = Array.isArray((guildSettings as any).announcementEventKeys)
+      ? ((guildSettings as any).announcementEventKeys as unknown[])
+          .filter((v) => typeof v === "string" && v.trim().length > 0)
+          .map((v) => String(v).trim())
+      : null;
+    setAnnouncementEventKeysDraft(
+      announcementKeys && announcementKeys.length > 0
+        ? announcementKeys
+        : // Backward compat: if a channel is set but no allowlist exists yet,
+          // default to LMS course step updates.
+          (typeof guildSettings.courseUpdatesChannelId === "string" &&
+            guildSettings.courseUpdatesChannelId.trim().length > 0) ||
+            (typeof (guildSettings as any).announcementChannelId === "string" &&
+              String((guildSettings as any).announcementChannelId).trim().length > 0)
+          ? ["lms.course.stepAdded"]
+          : [],
+    );
 
     const kws = Array.isArray(guildSettings.escalationKeywords)
       ? (guildSettings.escalationKeywords as unknown[])
@@ -335,8 +363,18 @@ export const DiscordServerConfigPage = (props: {
             ? supportAiDisabledMessageTextDraft.trim()
             : "AI Support is currently disabled for this server.",
         courseUpdatesChannelId:
-          courseUpdatesChannelIdDraft && courseUpdatesChannelIdDraft.trim()
-            ? courseUpdatesChannelIdDraft.trim()
+          announcementChannelIdDraft &&
+          announcementChannelIdDraft.trim() &&
+          announcementEventKeysDraft.includes("lms.course.stepAdded")
+            ? announcementChannelIdDraft.trim()
+            : undefined,
+        announcementChannelId:
+          announcementChannelIdDraft && announcementChannelIdDraft.trim()
+            ? announcementChannelIdDraft.trim()
+            : undefined,
+        announcementEventKeys:
+          announcementEventKeysDraft.length > 0
+            ? announcementEventKeysDraft
             : undefined,
       });
       toast.success("Guild settings saved");
@@ -845,11 +883,11 @@ export const DiscordServerConfigPage = (props: {
                 <div className="mb-2 text-sm font-medium">Announcements</div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="space-y-1">
-                    <Label>Course updates channel</Label>
+                    <Label>Announcement channel</Label>
                     <Select
-                      value={courseUpdatesChannelIdDraft ?? ""}
+                      value={announcementChannelIdDraft ?? ""}
                       onValueChange={(v) =>
-                        setCourseUpdatesChannelIdDraft(v || null)
+                        setAnnouncementChannelIdDraft(v || null)
                       }
                     >
                       <SelectTrigger disabled={isLoadingChannels}>
@@ -865,6 +903,40 @@ export const DiscordServerConfigPage = (props: {
                           ))}
                       </SelectContent>
                     </Select>
+                    <div className="text-muted-foreground text-xs">
+                      This is where selected notification events will be posted
+                      (one message per event).
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Post events</div>
+                    <div className="flex items-center justify-between gap-3 rounded-md border p-2">
+                      <div className="min-w-0">
+                        <div className="text-sm">New course step added</div>
+                        <div className="text-muted-foreground text-xs">
+                          Event: <span className="font-mono">lms.course.stepAdded</span>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={announcementEventKeysDraft.includes(
+                          "lms.course.stepAdded",
+                        )}
+                        onCheckedChange={(checked) => {
+                          setAnnouncementEventKeysDraft((prev) => {
+                            const key = "lms.course.stepAdded";
+                            if (checked) {
+                              return prev.includes(key) ? prev : [...prev, key];
+                            }
+                            return prev.filter((k) => k !== key);
+                          });
+                        }}
+                        disabled={!announcementChannelIdDraft}
+                      />
+                    </div>
+                    <div className="text-muted-foreground text-xs">
+                      Add more event types later. This section is intentionally
+                      org-wide (not per user).
+                    </div>
                   </div>
                 </div>
                 <div className="mt-3">

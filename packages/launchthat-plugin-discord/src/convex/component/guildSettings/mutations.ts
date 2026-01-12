@@ -15,6 +15,8 @@ export const upsertGuildSettings = mutation({
     supportAiDisabledMessageEnabled: v.optional(v.boolean()),
     supportAiDisabledMessageText: v.optional(v.string()),
     courseUpdatesChannelId: v.optional(v.string()),
+    announcementChannelId: v.optional(v.string()),
+    announcementEventKeys: v.optional(v.array(v.string())),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -38,6 +40,8 @@ export const upsertGuildSettings = mutation({
       supportAiDisabledMessageEnabled: args.supportAiDisabledMessageEnabled,
       supportAiDisabledMessageText: args.supportAiDisabledMessageText,
       courseUpdatesChannelId: args.courseUpdatesChannelId,
+      announcementChannelId: args.announcementChannelId,
+      announcementEventKeys: args.announcementEventKeys,
       updatedAt: now,
     };
 

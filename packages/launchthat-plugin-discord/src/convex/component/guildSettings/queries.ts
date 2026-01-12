@@ -18,6 +18,8 @@ export const getGuildSettings = query({
       supportAiDisabledMessageEnabled: v.optional(v.boolean()),
       supportAiDisabledMessageText: v.optional(v.string()),
       courseUpdatesChannelId: v.optional(v.string()),
+      announcementChannelId: v.optional(v.string()),
+      announcementEventKeys: v.optional(v.array(v.string())),
       updatedAt: v.number(),
     }),
   ),
@@ -66,6 +68,15 @@ export const getGuildSettings = query({
         typeof (row as any).courseUpdatesChannelId === "string"
           ? ((row as any).courseUpdatesChannelId as string)
           : undefined,
+      announcementChannelId:
+        typeof (row as any).announcementChannelId === "string"
+          ? ((row as any).announcementChannelId as string)
+          : undefined,
+      announcementEventKeys: Array.isArray((row as any).announcementEventKeys)
+        ? ((row as any).announcementEventKeys as unknown[]).filter(
+            (v) => typeof v === "string",
+          ) as string[]
+        : undefined,
       updatedAt: Number((row as any).updatedAt ?? 0),
     };
   },

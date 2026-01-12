@@ -58,7 +58,11 @@ export default defineSchema({
     supportAiDisabledMessageText: v.optional(v.string()),
 
     // Announcements settings
+    // Legacy single-purpose channel (kept for backward compat)
     courseUpdatesChannelId: v.optional(v.string()),
+    // New: one announcements channel per guild + event allowlist (notification event keys)
+    announcementChannelId: v.optional(v.string()),
+    announcementEventKeys: v.optional(v.array(v.string())),
 
     updatedAt: v.number(),
   })

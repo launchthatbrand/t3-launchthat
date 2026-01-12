@@ -53,6 +53,118 @@ export interface EmailTemplateDefinition {
 
 export const EMAIL_TEMPLATE_REGISTRY: Record<string, EmailTemplateDefinition> =
   {
+    "core.notification.event": {
+      templateKey: "core.notification.event",
+      title: "Notification event",
+      defaultSubject: "{{title}}",
+      previewText: "{{title}}",
+      requiredVariables: ["title", "content", "actionUrl", "eventKey"],
+      copySchema: [
+        {
+          key: "headline",
+          label: "Headline",
+          placeholder: "{{title}}",
+          kind: "singleLine",
+          maxLength: 140,
+        },
+        {
+          key: "body",
+          label: "Body",
+          multiline: true,
+          placeholder: "{{content}}",
+          kind: "multiLine",
+          maxLength: 4000,
+        },
+        {
+          key: "ctaLabel",
+          label: "CTA label",
+          placeholder: "View",
+          kind: "singleLine",
+          maxLength: 60,
+        },
+        {
+          key: "footer",
+          label: "Footer",
+          multiline: true,
+          placeholder:
+            "You received this because you enabled this notification.\nEvent: {{eventKey}}",
+          kind: "multiLine",
+          maxLength: 1000,
+        },
+      ],
+      defaultCopy: {
+        headline: "{{title}}",
+        body: "{{content}}",
+        ctaLabel: "View",
+        footer:
+          "You received this because you enabled this notification.\nEvent: {{eventKey}}",
+      },
+      render: ({ variables, copy }) => {
+        const title = copy.headline ?? variables.title ?? "Notification";
+        const body = copy.body ?? variables.content ?? "";
+        const actionUrl = variables.actionUrl ?? "";
+        const ctaLabel = copy.ctaLabel ?? "View";
+        const footer = copy.footer ?? "";
+
+        return React.createElement(
+          React.Fragment,
+          null,
+          React.createElement(
+            TextEl,
+            {
+              style: { fontSize: "18px", fontWeight: 700, margin: "0 0 12px" },
+            },
+            title,
+          ),
+          body
+            ? React.createElement(
+                TextEl,
+                { style: { color: "#4b5563", margin: "0 0 16px" } },
+                body,
+              )
+            : null,
+          actionUrl
+            ? React.createElement(
+                SectionEl,
+                { style: { margin: "16px 0 0" } },
+                React.createElement(
+                  ButtonEl,
+                  {
+                    href: actionUrl,
+                    style: {
+                      backgroundColor: "#111827",
+                      color: "#ffffff",
+                      borderRadius: "8px",
+                      padding: "10px 16px",
+                      textDecoration: "none",
+                      display: "inline-block",
+                    },
+                  },
+                  ctaLabel,
+                ),
+              )
+            : null,
+          footer
+            ? React.createElement(
+                React.Fragment,
+                null,
+                React.createElement(HrEl, { style: { margin: "16px 0" } }),
+                React.createElement(
+                  TextEl,
+                  {
+                    style: {
+                      whiteSpace: "pre-line",
+                      color: "#111827",
+                      margin: 0,
+                    },
+                  },
+                  footer,
+                ),
+              )
+            : null,
+        );
+      },
+    },
     "core.email.test": {
       templateKey: "core.email.test",
       title: "Test email",

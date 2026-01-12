@@ -137,6 +137,8 @@ export type Mounts = {
         "mutation",
         "public",
         {
+          announcementChannelId?: string;
+          announcementEventKeys?: Array<string>;
           courseUpdatesChannelId?: string;
           escalationConfidenceThreshold?: number;
           escalationKeywords?: Array<string>;
@@ -158,6 +160,8 @@ export type Mounts = {
         "public",
         { guildId: string; organizationId: string },
         null | {
+          announcementChannelId?: string;
+          announcementEventKeys?: Array<string>;
           courseUpdatesChannelId?: string;
           escalationConfidenceThreshold?: number;
           escalationKeywords?: Array<string>;

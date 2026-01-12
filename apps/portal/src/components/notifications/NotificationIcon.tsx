@@ -15,10 +15,10 @@ import { NotificationDropdown } from "./NotificationDropdown";
 
 export function NotificationIcon() {
   const { user } = useConvexUser();
-  const clerkId =
-    user && typeof (user as { clerkId?: unknown }).clerkId === "string"
-      ? (user as { clerkId: string }).clerkId
-      : null;
+  // `useConvexUser()` intentionally does NOT project `clerkId`, and on tenant hosts we may not
+  // have Clerk available at all. For notifications queries, we can pass a placeholder clerkId
+  // because the backend prefers the authenticated Convex identity (tokenIdentifier) anyway.
+  const clerkId = user ? "__self__" : null;
   const tenant = useTenant();
   const orgId = tenant?._id;
   const [isOpen, setIsOpen] = useState(false);
@@ -26,7 +26,7 @@ export function NotificationIcon() {
 
   const notificationsPluginOption = useQuery(
     api.core.options.get,
-    clerkId && orgId
+    user && orgId
       ? {
           metaKey: "plugin.notifications.enabled",
           type: "site",

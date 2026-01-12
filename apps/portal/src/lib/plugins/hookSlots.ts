@@ -73,6 +73,14 @@ export const FRONTEND_ACCESS_DENIED_ACTIONS_FILTER =
 // Plugins can contribute additional notification tabs/groupings to the header dropdown + notifications page.
 export const FRONTEND_NOTIFICATIONS_TABS_FILTER = "frontend.notifications.tabs";
 
+// Portal (frontend) account notifications settings extension points
+// - channels: which delivery channels are user-configurable (default: inApp + email)
+// - event definitions: which events to render rows for (default: derived from known event keys)
+export const FRONTEND_NOTIFICATION_CHANNELS_FILTER =
+  "frontend.account.notifications.channels";
+export const FRONTEND_NOTIFICATION_EVENT_DEFINITIONS_FILTER =
+  "frontend.account.notifications.eventDefinitions";
+
 // Admin edit meta box extension point for content access UI.
 // Plugins can contribute additional UI sections (e.g. CRM marketing tags) to the core Content Access metabox.
 export const ADMIN_CONTENT_ACCESS_SECTIONS_FILTER =

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 
 import type { Id } from "../../../_generated/dataModel";
+import { internal } from "../../../_generated/api";
 import { internalMutation } from "../../../_generated/server";
 import { throwInvalidInput } from "../../../shared/errors";
 
@@ -11,8 +12,8 @@ import { throwInvalidInput } from "../../../shared/errors";
  * - exact (orgId,eventKey,scopeKind,scopeId)
  * - any-scope (orgId,eventKey,scopeKind,scopeId=null)
  *
- * Delivery is in-app only for this iteration. `notificationUserEventPrefs` and
- * `notificationOrgDefaults` are applied as toggles.
+ * Delivery is in-app + pluggable sinks (e.g. email, discord). `notificationUserEventPrefs`
+ * and `notificationOrgDefaults` are applied as toggles for in-app/email.
  */
 export const dispatchEvent = internalMutation({
   args: {
@@ -82,11 +83,6 @@ export const dispatchEvent = internalMutation({
       if (sub.enabled) recipientIds.add(sub.userId);
     }
 
-    if (recipientIds.size === 0) {
-      console.log("[notifications.internal.dispatchEvent] no recipients");
-      return null;
-    }
-
     const orgDefaults = await ctx.db
       .query("notificationOrgDefaults")
       .withIndex("by_org", (q) => q.eq("orgId", args.orgId))
@@ -98,6 +94,9 @@ export const dispatchEvent = internalMutation({
       hasOrgDefaults: !!orgDefaults,
     });
 
+    const emailRecipients: { userId: Id<"users">; email: string }[] = [];
+    const createdAt = Date.now();
+
     for (const userId of recipientIds) {
       const userPrefs = await ctx.db
         .query("notificationUserEventPrefs")
@@ -106,45 +105,75 @@ export const dispatchEvent = internalMutation({
         )
         .first();
 
-      const userOverride = userPrefs?.inAppEnabled?.[args.eventKey];
-      const orgDefault = orgDefaults?.inAppDefaults?.[args.eventKey];
+      const userInAppOverride = userPrefs?.inAppEnabled?.[args.eventKey];
+      const orgInAppDefault = orgDefaults?.inAppDefaults?.[args.eventKey];
 
-      const enabled =
-        typeof userOverride === "boolean"
-          ? userOverride
-          : typeof orgDefault === "boolean"
-            ? orgDefault
+      const inAppEnabled =
+        typeof userInAppOverride === "boolean"
+          ? userInAppOverride
+          : typeof orgInAppDefault === "boolean"
+            ? orgInAppDefault
             : true;
 
-      if (!enabled) {
-        console.log(
-          "[notifications.internal.dispatchEvent] skipped (disabled)",
-          {
-            userId,
-            userOverride,
-            orgDefault,
-          },
-        );
-        continue;
+      const userEmailOverride = userPrefs?.emailEnabled?.[args.eventKey];
+      const orgEmailDefault = orgDefaults?.emailDefaults?.[args.eventKey];
+      // Email is opt-in by default.
+      const emailEnabled =
+        typeof userEmailOverride === "boolean"
+          ? userEmailOverride
+          : typeof orgEmailDefault === "boolean"
+            ? orgEmailDefault
+            : false;
+
+      if (emailEnabled) {
+        const user = await ctx.db.get(userId);
+        if (user?.email) {
+          emailRecipients.push({ userId, email: user.email });
+        }
       }
 
-      await ctx.db.insert("notifications", {
-        userId,
-        orgId: args.orgId,
-        eventKey: args.eventKey,
-        tabKey,
-        scopeKind,
-        scopeId: scopeId || undefined,
-        title: args.title,
-        content: args.content,
-        read: false,
-        actionUrl: args.actionUrl,
-        actionData: args.actionData,
-        sourceUserId: args.sourceUserId,
-        expiresAt: args.expiresAt,
-        createdAt: Date.now(),
-      });
+      if (inAppEnabled) {
+        await ctx.db.insert("notifications", {
+          userId,
+          orgId: args.orgId,
+          eventKey: args.eventKey,
+          tabKey,
+          scopeKind,
+          scopeId: scopeId || undefined,
+          title: args.title,
+          content: args.content,
+          read: false,
+          actionUrl: args.actionUrl,
+          actionData: args.actionData,
+          sourceUserId: args.sourceUserId,
+          expiresAt: args.expiresAt,
+          createdAt,
+        });
+      }
     }
+
+    // Always run sinks (e.g. Discord announcements) even if there are no in-app recipients.
+    await ctx.scheduler.runAfter(
+      0,
+      internal.core.notifications.delivery.runSinks.runSinks,
+      {
+        payload: {
+          orgId: args.orgId,
+          eventKey: args.eventKey,
+          tabKey,
+          scopeKind,
+          scopeId: scopeId || null,
+          title: args.title,
+          content: args.content ?? null,
+          actionUrl: args.actionUrl ?? null,
+          actionData: args.actionData ?? null,
+          sourceUserId: args.sourceUserId ?? null,
+          expiresAt: args.expiresAt ?? null,
+          createdAt,
+          emailRecipients,
+        },
+      },
+    );
 
     console.log("[notifications.internal.dispatchEvent] done");
     return null;

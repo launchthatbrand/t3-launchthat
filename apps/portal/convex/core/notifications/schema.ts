@@ -38,12 +38,14 @@ export const notificationPreferencesTable = defineTable({
 export const notificationOrgDefaultsTable = defineTable({
   orgId: v.id("organizations"),
   inAppDefaults: v.optional(v.record(v.string(), v.boolean())),
+  emailDefaults: v.optional(v.record(v.string(), v.boolean())),
 }).index("by_org", ["orgId"]);
 
 export const notificationUserEventPrefsTable = defineTable({
   userId: v.id("users"),
   orgId: v.id("organizations"),
   inAppEnabled: v.optional(v.record(v.string(), v.boolean())),
+  emailEnabled: v.optional(v.record(v.string(), v.boolean())),
 }).index("by_user_org", ["userId", "orgId"]);
 
 export const notificationSubscriptionsTable = defineTable({
@@ -65,6 +67,57 @@ export const notificationSubscriptionsTable = defineTable({
   ])
   .index("by_org_event_scope", ["orgId", "eventKey", "scopeKind", "scopeId"]);
 
+export const manualNotificationBroadcastsTable = defineTable({
+  orgId: v.id("organizations"),
+  createdByUserId: v.id("users"),
+
+  // Content
+  title: v.string(),
+  content: v.optional(v.string()),
+  actionUrl: v.optional(v.string()),
+
+  // Selected sinks, e.g. ["inApp", "email", "discord.announcements"]
+  sinkIds: v.array(v.string()),
+
+  // Status + progress
+  status: v.union(
+    v.literal("scheduled"),
+    v.literal("running"),
+    v.literal("complete"),
+    v.literal("failed"),
+  ),
+  cursor: v.optional(v.union(v.string(), v.null())),
+
+  // Aggregate counts (best-effort)
+  totalMembers: v.optional(v.number()),
+  inAppSent: v.optional(v.number()),
+  emailSent: v.optional(v.number()),
+
+  // Per-sink statuses (best-effort)
+  sinkStatus: v.optional(
+    v.record(
+      v.string(),
+      v.object({
+        status: v.union(
+          v.literal("scheduled"),
+          v.literal("running"),
+          v.literal("complete"),
+          v.literal("failed"),
+        ),
+        error: v.optional(v.string()),
+        sent: v.optional(v.number()),
+      }),
+    ),
+  ),
+
+  startedAt: v.optional(v.number()),
+  completedAt: v.optional(v.number()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_org_createdAt", ["orgId", "createdAt"])
+  .index("by_org_status_createdAt", ["orgId", "status", "createdAt"]);
+
 // Export schema aggregate for main schema composition
 export const notificationsSchema = {
   notifications: notificationsTable,
@@ -72,4 +125,5 @@ export const notificationsSchema = {
   notificationOrgDefaults: notificationOrgDefaultsTable,
   notificationUserEventPrefs: notificationUserEventPrefsTable,
   notificationSubscriptions: notificationSubscriptionsTable,
+  manualNotificationBroadcasts: manualNotificationBroadcastsTable,
 };

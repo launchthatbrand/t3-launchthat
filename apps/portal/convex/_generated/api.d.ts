@@ -36,8 +36,15 @@ import type * as core_media_mutations from "../core/media/mutations.js";
 import type * as core_media_queries from "../core/media/queries.js";
 import type * as core_menus_mutations from "../core/menus/mutations.js";
 import type * as core_menus_queries from "../core/menus/queries.js";
+import type * as core_notifications_broadcasts from "../core/notifications/broadcasts.js";
+import type * as core_notifications_delivery_registerSinks from "../core/notifications/delivery/registerSinks.js";
+import type * as core_notifications_delivery_registry from "../core/notifications/delivery/registry.js";
+import type * as core_notifications_delivery_runSinks from "../core/notifications/delivery/runSinks.js";
+import type * as core_notifications_delivery_sinks_emailSink from "../core/notifications/delivery/sinks/emailSink.js";
+import type * as core_notifications_delivery_types from "../core/notifications/delivery/types.js";
 import type * as core_notifications_helpers from "../core/notifications/helpers.js";
 import type * as core_notifications_internal_dispatch from "../core/notifications/internal/dispatch.js";
+import type * as core_notifications_internal_testHelpers from "../core/notifications/internal/testHelpers.js";
 import type * as core_notifications_lib_formatters from "../core/notifications/lib/formatters.js";
 import type * as core_notifications_lib_index from "../core/notifications/lib/index.js";
 import type * as core_notifications_lib_preferences from "../core/notifications/lib/preferences.js";
@@ -45,6 +52,7 @@ import type * as core_notifications_mutations from "../core/notifications/mutati
 import type * as core_notifications_preferences from "../core/notifications/preferences.js";
 import type * as core_notifications_queries from "../core/notifications/queries.js";
 import type * as core_notifications_settings from "../core/notifications/settings.js";
+import type * as core_notifications_test from "../core/notifications/test.js";
 import type * as core_notifications_types from "../core/notifications/types.js";
 import type * as core_options from "../core/options.js";
 import type * as core_organizations_domains from "../core/organizations/domains.js";
@@ -158,6 +166,7 @@ import type * as plugins_disclaimers_queries from "../plugins/disclaimers/querie
 import type * as plugins_discord_actions from "../plugins/discord/actions.js";
 import type * as plugins_discord_gateway from "../plugins/discord/gateway.js";
 import type * as plugins_discord_gatewayRateLimits from "../plugins/discord/gatewayRateLimits.js";
+import type * as plugins_discord_notificationsSink from "../plugins/discord/notificationsSink.js";
 import type * as plugins_discord_permissions from "../plugins/discord/permissions.js";
 import type * as plugins_discord_queries from "../plugins/discord/queries.js";
 import type * as plugins_discord_roleRules from "../plugins/discord/roleRules.js";
@@ -259,8 +268,15 @@ declare const fullApi: ApiFromModules<{
   "core/media/queries": typeof core_media_queries;
   "core/menus/mutations": typeof core_menus_mutations;
   "core/menus/queries": typeof core_menus_queries;
+  "core/notifications/broadcasts": typeof core_notifications_broadcasts;
+  "core/notifications/delivery/registerSinks": typeof core_notifications_delivery_registerSinks;
+  "core/notifications/delivery/registry": typeof core_notifications_delivery_registry;
+  "core/notifications/delivery/runSinks": typeof core_notifications_delivery_runSinks;
+  "core/notifications/delivery/sinks/emailSink": typeof core_notifications_delivery_sinks_emailSink;
+  "core/notifications/delivery/types": typeof core_notifications_delivery_types;
   "core/notifications/helpers": typeof core_notifications_helpers;
   "core/notifications/internal/dispatch": typeof core_notifications_internal_dispatch;
+  "core/notifications/internal/testHelpers": typeof core_notifications_internal_testHelpers;
   "core/notifications/lib/formatters": typeof core_notifications_lib_formatters;
   "core/notifications/lib/index": typeof core_notifications_lib_index;
   "core/notifications/lib/preferences": typeof core_notifications_lib_preferences;
@@ -268,6 +284,7 @@ declare const fullApi: ApiFromModules<{
   "core/notifications/preferences": typeof core_notifications_preferences;
   "core/notifications/queries": typeof core_notifications_queries;
   "core/notifications/settings": typeof core_notifications_settings;
+  "core/notifications/test": typeof core_notifications_test;
   "core/notifications/types": typeof core_notifications_types;
   "core/options": typeof core_options;
   "core/organizations/domains": typeof core_organizations_domains;
@@ -381,6 +398,7 @@ declare const fullApi: ApiFromModules<{
   "plugins/discord/actions": typeof plugins_discord_actions;
   "plugins/discord/gateway": typeof plugins_discord_gateway;
   "plugins/discord/gatewayRateLimits": typeof plugins_discord_gatewayRateLimits;
+  "plugins/discord/notificationsSink": typeof plugins_discord_notificationsSink;
   "plugins/discord/permissions": typeof plugins_discord_permissions;
   "plugins/discord/queries": typeof plugins_discord_queries;
   "plugins/discord/roleRules": typeof plugins_discord_roleRules;
@@ -6821,6 +6839,8 @@ export declare const components: {
           "mutation",
           "internal",
           {
+            announcementChannelId?: string;
+            announcementEventKeys?: Array<string>;
             courseUpdatesChannelId?: string;
             escalationConfidenceThreshold?: number;
             escalationKeywords?: Array<string>;
@@ -6842,6 +6862,8 @@ export declare const components: {
           "internal",
           { guildId: string; organizationId: string },
           null | {
+            announcementChannelId?: string;
+            announcementEventKeys?: Array<string>;
             courseUpdatesChannelId?: string;
             escalationConfidenceThreshold?: number;
             escalationKeywords?: Array<string>;
