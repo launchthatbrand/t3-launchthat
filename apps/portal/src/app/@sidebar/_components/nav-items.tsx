@@ -88,6 +88,10 @@ export const navItems: CoreNavItem[] = [
         title: "Emails",
         url: "/admin/settings/emails",
       },
+      {
+        title: "Logs",
+        url: "/admin/logs",
+      },
     ],
   },
   { title: "Tools", url: "/admin/tools", icon: HammerIcon },

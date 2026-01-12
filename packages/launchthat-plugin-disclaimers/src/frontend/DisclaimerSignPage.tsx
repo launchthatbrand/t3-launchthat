@@ -17,6 +17,16 @@ import { useSearchParams } from "next/navigation";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 
+import {
+  createImageCache,
+  KonvaImage,
+  Layer,
+  loadPdfJs,
+  Rect,
+  Stage,
+  Text,
+  toPdfJsUrl,
+} from "@acme/konva";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent } from "@acme/ui/card";
 import {
@@ -25,16 +35,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@acme/ui/dialog";
-import {
-  KonvaImage,
-  Layer,
-  Rect,
-  Stage,
-  Text,
-  createImageCache,
-  loadPdfJs,
-  toPdfJsUrl,
-} from "@acme/konva";
 
 const SignatureMaker = dynamic(
   async () => (await import("@docuseal/signature-maker-react")).SignatureMaker,
@@ -92,6 +92,7 @@ const DisclaimerSigningCanvas = ({
   setSignatureByFieldId,
   isPending,
   onFinish,
+  onDownload,
   isComplete,
   downloadUrl,
   signedAt,
@@ -104,25 +105,31 @@ const DisclaimerSigningCanvas = ({
   signatureFields: BuilderSignatureFieldV1[];
   requiredSignatureFields: BuilderSignatureFieldV1[];
   signatureByFieldId: Record<string, string | null>;
-  setSignatureByFieldId: Dispatch<SetStateAction<Record<string, string | null>>>;
+  setSignatureByFieldId: Dispatch<
+    SetStateAction<Record<string, string | null>>
+  >;
   isPending: boolean;
   onFinish: () => void;
+  onDownload?: () => void;
   isComplete: boolean;
   downloadUrl: string | null;
   signedAt: number | null;
 }) => {
   const pdfJsUrl = useMemo(() => toPdfJsUrl(pdfUrl), [pdfUrl]);
-  const pdfKey = useMemo(() => `${pdfJsUrl}:${pdfVersion}`, [pdfJsUrl, pdfVersion]);
+  const pdfKey = useMemo(
+    () => `${pdfJsUrl}:${pdfVersion}`,
+    [pdfJsUrl, pdfVersion],
+  );
 
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
   const [pageCount, setPageCount] = useState(1);
-  const [pageSizes, setPageSizes] = useState<Array<{ width: number; height: number }>>(
-    [],
-  );
-  const [pageCanvases, setPageCanvases] = useState<Array<HTMLCanvasElement | null>>(
-    [],
-  );
+  const [pageSizes, setPageSizes] = useState<
+    Array<{ width: number; height: number }>
+  >([]);
+  const [pageCanvases, setPageCanvases] = useState<
+    Array<HTMLCanvasElement | null>
+  >([]);
 
   useEffect(() => {
     const node = frameRef.current;
@@ -176,10 +183,14 @@ const DisclaimerSigningCanvas = ({
         });
         const doc = await loadingTask.promise;
         const count =
-          typeof doc?.numPages === "number" && doc.numPages > 0 ? doc.numPages : 1;
+          typeof doc?.numPages === "number" && doc.numPages > 0
+            ? doc.numPages
+            : 1;
         if (cancelled) return;
         setPageCount(count);
-        setPageSizes(Array.from({ length: count }, () => ({ width: 612, height: 792 })));
+        setPageSizes(
+          Array.from({ length: count }, () => ({ width: 612, height: 792 })),
+        );
         setPageCanvases(Array.from({ length: count }, () => null));
 
         // Progressive render: do the first couple pages ASAP, then yield between pages.
@@ -197,7 +208,10 @@ const DisclaimerSigningCanvas = ({
           if (cancelled) return;
           setPageSizes((prev) => {
             const next = prev.slice();
-            next[pageIndex] = { width: baseViewport.width, height: baseViewport.height };
+            next[pageIndex] = {
+              width: baseViewport.width,
+              height: baseViewport.height,
+            };
             return next;
           });
           setPageCanvases((prev) => {
@@ -281,8 +295,12 @@ const DisclaimerSigningCanvas = ({
   const getSignatureImage = (fieldId: string) => {
     const base64 = signatureByFieldId[fieldId];
     if (!base64) return null;
-    const dataUrl = base64.startsWith("data:") ? base64 : `data:image/png;base64,${base64}`;
-    const img = signatureImageCache.get(dataUrl, () => setSignatureImageTick((t) => t + 1));
+    const dataUrl = base64.startsWith("data:")
+      ? base64
+      : `data:image/png;base64,${base64}`;
+    const img = signatureImageCache.get(dataUrl, () =>
+      setSignatureImageTick((t) => t + 1),
+    );
     return img;
   };
 
@@ -295,10 +313,12 @@ const DisclaimerSigningCanvas = ({
   } | null>(null);
 
   const requiredSignedCount = useMemo(() => {
-    return requiredSignatureFields.filter((f) => signatureByFieldId[f.id]).length;
+    return requiredSignatureFields.filter((f) => signatureByFieldId[f.id])
+      .length;
   }, [requiredSignatureFields, signatureByFieldId]);
   const requiredCount = requiredSignatureFields.length;
-  const allRequiredSigned = requiredCount > 0 ? requiredSignedCount >= requiredCount : false;
+  const allRequiredSigned =
+    requiredCount > 0 ? requiredSignedCount >= requiredCount : false;
 
   useEffect(() => {
     if (isComplete) setHasStarted(true);
@@ -333,7 +353,9 @@ const DisclaimerSigningCanvas = ({
   const handleStart = useCallback(() => {
     if (isComplete) return;
     setHasStarted(true);
-    const firstUnsigned = requiredSignatureFields.find((f) => !signatureByFieldId[f.id]);
+    const firstUnsigned = requiredSignatureFields.find(
+      (f) => !signatureByFieldId[f.id],
+    );
     if (!firstUnsigned) return;
     setScrollTarget({
       fieldId: firstUnsigned.id,
@@ -344,8 +366,13 @@ const DisclaimerSigningCanvas = ({
 
   const handleDownload = useCallback(() => {
     if (!downloadUrl) return;
+    try {
+      onDownload?.();
+    } catch {
+      // ignore (best-effort)
+    }
     window.open(downloadUrl, "_blank", "noreferrer");
-  }, [downloadUrl]);
+  }, [downloadUrl, onDownload]);
 
   const canInteract = hasStarted && !isComplete;
 
@@ -354,7 +381,9 @@ const DisclaimerSigningCanvas = ({
       <div className="bg-background/80 absolute inset-x-0 top-0 z-10 border-b px-4 py-3 backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold">{templateTitle}</div>
+            <div className="truncate text-sm font-semibold">
+              {templateTitle}
+            </div>
             <div className="text-muted-foreground text-xs">
               {(recipientName ? `${recipientName} • ` : "") + recipientEmail}
               {" • "}
@@ -365,21 +394,35 @@ const DisclaimerSigningCanvas = ({
                   : `${requiredSignedCount}/${requiredCount} required signed`}
               {" • "}
               {pageCount} page{pageCount === 1 ? "" : "s"}
-              {signedAt ? ` • Signed ${new Date(signedAt).toLocaleString()}` : ""}
+              {signedAt
+                ? ` • Signed ${new Date(signedAt).toLocaleString()}`
+                : ""}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             {isComplete ? (
-              <Button type="button" onClick={handleDownload} disabled={!downloadUrl}>
+              <Button
+                type="button"
+                onClick={handleDownload}
+                disabled={!downloadUrl}
+              >
                 {downloadUrl ? "Download" : "Preparing…"}
               </Button>
             ) : !hasStarted ? (
-              <Button type="button" onClick={handleStart} disabled={requiredCount === 0}>
+              <Button
+                type="button"
+                onClick={handleStart}
+                disabled={requiredCount === 0}
+              >
                 Start
               </Button>
             ) : (
-              <Button type="button" onClick={onFinish} disabled={!allRequiredSigned || isPending}>
+              <Button
+                type="button"
+                onClick={onFinish}
+                disabled={!allRequiredSigned || isPending}
+              >
                 Finish
               </Button>
             )}
@@ -400,7 +443,10 @@ const DisclaimerSigningCanvas = ({
                 const fieldsOnPage = fieldsByPageIndex[pageIndex] ?? [];
                 const stageHeight = Math.max(1, Math.ceil(ps.height * scale));
                 return (
-                  <div key={`${pdfKey}:p${pageIndex}`} className="mx-auto w-full max-w-5xl">
+                  <div
+                    key={`${pdfKey}:p${pageIndex}`}
+                    className="mx-auto w-full max-w-5xl"
+                  >
                     <Stage
                       width={stageWidth}
                       height={stageHeight}
@@ -521,14 +567,19 @@ const DisclaimerSigningCanvas = ({
                 withSubmit={false}
                 downloadOnSave={false}
                 onChange={(event: { base64: string | null }) => {
-                  const base64 = typeof event?.base64 === "string" ? event.base64 : null;
+                  const base64 =
+                    typeof event?.base64 === "string" ? event.base64 : null;
                   setFieldSigBase64(base64);
                 }}
               />
             </div>
 
             <div className="flex items-center justify-between gap-2">
-              <Button type="button" variant="outline" onClick={() => setFieldSigBase64(null)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setFieldSigBase64(null)}
+              >
                 Clear
               </Button>
               <Button type="button" onClick={saveFieldSignature}>
@@ -626,7 +677,9 @@ export function DisclaimerSignPage(props: { issueId: string }) {
 
   const receipt = useQuery(
     apiAny.plugins.disclaimers.queries.getSigningReceipt,
-    signingContext?.status === "complete" && tokenHash && issueId ? { issueId, tokenHash } : "skip",
+    signingContext?.status === "complete" && tokenHash && issueId
+      ? { issueId, tokenHash }
+      : "skip",
   ) as
     | {
         signedAt: number;
@@ -662,9 +715,13 @@ export function DisclaimerSignPage(props: { issueId: string }) {
     userAgent?: string;
   }) => Promise<null>;
 
-  const [signatureByFieldId, setSignatureByFieldId] = useState<Record<string, string | null>>(
-    {},
-  );
+  const recordSigningDownload = useMutation(
+    apiAny.plugins.disclaimers.mutations.recordSigningDownload,
+  ) as (args: { issueId: string; tokenHash: string }) => Promise<null>;
+
+  const [signatureByFieldId, setSignatureByFieldId] = useState<
+    Record<string, string | null>
+  >({});
   const [isPending, startTransition] = useTransition();
 
   const fetchClientIp = useCallback(async (): Promise<string | undefined> => {
@@ -713,13 +770,19 @@ export function DisclaimerSignPage(props: { issueId: string }) {
         issueId,
         tokenHash,
         ip,
-        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+        userAgent:
+          typeof navigator !== "undefined" ? navigator.userAgent : undefined,
       });
     })().catch(() => {
       // Allow retry if it failed due to transient network issues.
       hasRecordedViewRef.current = false;
     });
   }, [fetchClientIp, issueId, recordSigningView, signingContext, tokenHash]);
+
+  const handleRecordDownload = useCallback(() => {
+    if (!tokenHash || !issueId) return;
+    void recordSigningDownload({ issueId, tokenHash });
+  }, [issueId, recordSigningDownload, tokenHash]);
 
   const builderTemplate = useMemo(() => {
     const raw = signingContext?.template?.builderTemplateJson ?? null;
@@ -764,7 +827,9 @@ export function DisclaimerSignPage(props: { issueId: string }) {
       return;
     }
 
-    const missing = requiredSignatureFields.some((f) => !signatureByFieldId[f.id]);
+    const missing = requiredSignatureFields.some(
+      (f) => !signatureByFieldId[f.id],
+    );
     if (missing) {
       toast.error("Please sign all required fields.");
       return;
@@ -775,10 +840,14 @@ export function DisclaimerSignPage(props: { issueId: string }) {
         .map((f) => {
           const raw = signatureByFieldId[f.id];
           if (!raw) return null;
-          const signatureDataUrl = raw.startsWith("data:") ? raw : `data:image/png;base64,${raw}`;
+          const signatureDataUrl = raw.startsWith("data:")
+            ? raw
+            : `data:image/png;base64,${raw}`;
           return { fieldId: f.id, signatureDataUrl };
         })
-        .filter((x): x is { fieldId: string; signatureDataUrl: string } => Boolean(x));
+        .filter((x): x is { fieldId: string; signatureDataUrl: string } =>
+          Boolean(x),
+        );
 
       void (async () => {
         const ip = await fetchClientIp();
@@ -787,19 +856,23 @@ export function DisclaimerSignPage(props: { issueId: string }) {
           tokenHash,
           fieldSignatures,
           ip,
-          userAgent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+          userAgent:
+            typeof navigator !== "undefined" ? navigator.userAgent : undefined,
         });
       })()
         .then(() => {
           toast.success("Signed. Thank you!");
         })
         .catch((err: unknown) => {
-          toast.error(err instanceof Error ? err.message : "Failed to submit signature");
+          toast.error(
+            err instanceof Error ? err.message : "Failed to submit signature",
+          );
         });
     });
   };
 
-  const isLoading = signingContext === undefined && tokenHash !== null && issueId.length > 0;
+  const isLoading =
+    signingContext === undefined && tokenHash !== null && issueId.length > 0;
   const invalid = signingContext === null;
 
   return (
@@ -849,6 +922,7 @@ export function DisclaimerSignPage(props: { issueId: string }) {
           setSignatureByFieldId={setSignatureByFieldId}
           isPending={isPending}
           onFinish={handleSubmit}
+          onDownload={handleRecordDownload}
           isComplete={signingContext.status === "complete"}
           downloadUrl={receipt?.signedPdfUrl ?? null}
           signedAt={receipt?.signedAt ?? null}
@@ -859,5 +933,3 @@ export function DisclaimerSignPage(props: { issueId: string }) {
 }
 
 export default DisclaimerSignPage;
-
-

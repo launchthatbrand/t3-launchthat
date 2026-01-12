@@ -51,6 +51,30 @@ const action = actionTyped as any;
 
 const disclaimersPostsQueries = components.launchthat_disclaimers.posts.queries;
 const disclaimersActions = components.launchthat_disclaimers.actions;
+const logsMutations = components.launchthat_logs.entries.mutations;
+
+const stripUndefined = (value: Record<string, unknown>) =>
+  Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined));
+
+const resolveActor = async (ctx: any) => {
+  const identity = await ctx.auth.getUserIdentity();
+  const tokenIdentifier =
+    typeof identity?.tokenIdentifier === "string" ? identity.tokenIdentifier : null;
+  const subject = typeof identity?.subject === "string" ? identity.subject : null;
+  if (tokenIdentifier) {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", tokenIdentifier))
+      .unique();
+  }
+  if (subject) {
+    return await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", subject))
+      .unique();
+  }
+  return null;
+};
 
 export const importTemplatePdfAndAttach = action({
   args: {
@@ -119,6 +143,36 @@ export const issueDisclaimerAndSendEmail = action({
             recipientUserId: args.recipientUserId,
           },
     )) as { issueId: string; token: string };
+
+    // Best-effort mirror into unified logs.
+    try {
+      const actor = await resolveActor(ctx);
+      const email = String(args.recipientEmail ?? "").trim().toLowerCase();
+      const meta = stripUndefined({
+        issueId: String(created.issueId),
+        templatePostId: String(args.templatePostId),
+        issuePostId: args.issuePostId ? String(args.issuePostId) : undefined,
+        recipientUserId: args.recipientUserId ? String(args.recipientUserId) : undefined,
+      });
+      if (args.orgId) {
+        await ctx.runMutation(logsMutations.insertLogEntry as any, {
+          organizationId: String(args.orgId),
+          pluginKey: "disclaimers",
+          kind: "disclaimers.issued",
+          email: email || undefined,
+          level: "info",
+          status: "complete",
+          message: `Issued disclaimer to ${email || "recipient"}`,
+          scopeKind: "disclaimerIssue",
+          scopeId: String(created.issueId),
+          actorUserId: actor?._id ? String(actor._id) : undefined,
+          metadata: Object.keys(meta).length ? meta : undefined,
+          createdAt: Date.now(),
+        });
+      }
+    } catch (error) {
+      console.error("[disclaimers.issueDisclaimerAndSendEmail] log mirror failed:", error);
+    }
 
     const signUrl = buildSignUrl(
       created.issueId,
@@ -241,6 +295,23 @@ export const submitSignature = action({
   },
   returns: v.any(),
   handler: async (ctx: any, args: any) => {
+    // Fetch org snapshot up-front (best-effort) so we can log regardless of action outcome.
+    let orgIdForLog: string | null = null;
+    let recipientEmailForLog: string | null = null;
+    try {
+      const debug = await ctx.runQuery(
+        components.launchthat_disclaimers.queries.getSigningContextDebug,
+        { issueId: args.issueId, tokenHash: args.tokenHash },
+      );
+      orgIdForLog =
+        debug?.snapshot?.issueOrganizationId
+          ? String(debug.snapshot.issueOrganizationId)
+          : null;
+      // If we can’t infer recipientEmail from debug, keep it null.
+    } catch {
+      // ignore
+    }
+
     const result = (await ctx.runAction(disclaimersActions.submitSignature, {
       issueId: args.issueId,
       tokenHash: args.tokenHash,
@@ -249,6 +320,36 @@ export const submitSignature = action({
       ip: args.ip,
       userAgent: args.userAgent,
     })) as { signatureId: string; signedPdfFileId: any };
+
+    // Best-effort mirror into unified logs.
+    try {
+      const actor = await resolveActor(ctx);
+      if (orgIdForLog) {
+        const meta = stripUndefined({
+          issueId: String(args.issueId),
+          signatureId: String(result.signatureId),
+          signedPdfFileId: String(result.signedPdfFileId),
+          ip: typeof args.ip === "string" ? args.ip : undefined,
+          userAgent: typeof args.userAgent === "string" ? args.userAgent : undefined,
+        });
+        await ctx.runMutation(logsMutations.insertLogEntry as any, {
+          organizationId: String(orgIdForLog),
+          pluginKey: "disclaimers",
+          kind: "disclaimers.signed",
+          email: recipientEmailForLog ?? undefined,
+          level: "info",
+          status: "complete",
+          message: "Disclaimer signed",
+          scopeKind: "disclaimerIssue",
+          scopeId: String(args.issueId),
+          actorUserId: actor?._id ? String(actor._id) : undefined,
+          metadata: Object.keys(meta).length ? meta : undefined,
+          createdAt: Date.now(),
+        });
+      }
+    } catch (error) {
+      console.error("[disclaimers.submitSignature] log mirror failed:", error);
+    }
 
     return {
       signatureId: String(result.signatureId),

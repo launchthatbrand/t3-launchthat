@@ -9,7 +9,7 @@ import { degrees, PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
 import type { Id } from "../../_generated/dataModel";
 import type { MetaValue } from "../../../../../packages/launchthat-plugin-lms/src/types";
-import { api, internal } from "../../_generated/api";
+import { api, internal, components } from "../../_generated/api";
 import { action } from "../../_generated/server";
 import {
   buildQuizPrompt,
@@ -17,6 +17,9 @@ import {
 } from "../../../../../packages/launchthat-ai/src";
 
 type SupportedPdfImageFormat = "png" | "jpeg";
+
+const stripUndefined = (value: Record<string, unknown>) =>
+  Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined));
 
 const detectImageFormat = (
   bytes: Uint8Array,
@@ -670,6 +673,62 @@ export const generateCertificatePdf = action({
     );
     if (!post) {
       throw new Error("Certificate not found");
+    }
+
+    // Best-effort mirror into unified logs (certificate downloads).
+    try {
+      const identity = await ctx.auth.getUserIdentity();
+      const tokenIdentifier =
+        typeof identity?.tokenIdentifier === "string" ? identity.tokenIdentifier : null;
+      const subject = typeof identity?.subject === "string" ? identity.subject : null;
+      const actor =
+        tokenIdentifier
+          ? await ctx.db
+              .query("users")
+              .withIndex("by_token", (q) => q.eq("tokenIdentifier", tokenIdentifier))
+              .unique()
+          : subject
+            ? await ctx.db
+                .query("users")
+                .withIndex("by_clerk_id", (q) => q.eq("clerkId", subject))
+                .unique()
+            : null;
+
+      const organizationId =
+        typeof post?.organizationId === "string" && post.organizationId.trim().length > 0
+          ? post.organizationId.trim()
+          : typeof args.organizationId === "string" && args.organizationId.trim().length > 0
+            ? args.organizationId.trim()
+            : "";
+      if (organizationId) {
+        const email =
+          typeof actor?.email === "string" ? actor.email.trim().toLowerCase() : undefined;
+        const meta = stripUndefined({
+          certificateId: String(args.certificateId),
+          courseId:
+            typeof args.context?.courseId === "string" ? args.context.courseId : undefined,
+        });
+        await ctx.runMutation(
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+          components.launchthat_logs.entries.mutations.insertLogEntry as any,
+          {
+            organizationId: String(organizationId),
+            pluginKey: "lms",
+            kind: "lms.certificate.downloaded",
+            email,
+            level: "info",
+            status: "complete",
+            message: `Downloaded certificate (${String(args.certificateId)})`,
+            scopeKind: "certificate",
+            scopeId: String(args.certificateId),
+            actorUserId: actor?._id ? String(actor._id) : undefined,
+            metadata: Object.keys(meta).length ? meta : undefined,
+            createdAt: Date.now(),
+          },
+        );
+      }
+    } catch (error) {
+      console.error("[lms.generateCertificatePdf] log mirror failed:", error);
     }
 
     const metaEntries: any[] = await ctx.runQuery(

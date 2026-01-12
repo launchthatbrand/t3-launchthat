@@ -31,6 +31,11 @@ const components = generatedComponents as any;
 const internal = generatedInternal as any;
 const mutation = baseMutation as any;
 
+const logsMutations = components.launchthat_logs.entries.mutations;
+
+const stripUndefined = (value: Record<string, unknown>) =>
+  Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined));
+
 const CERTIFICATE_META_KEY = "certificateId";
 const QUIZ_PASS_PERCENT_META_KEY = "passPercent";
 
@@ -1721,6 +1726,43 @@ export const submitQuizAttempt: any = mutation({
       durationMs: args.durationMs ?? undefined,
     };
 
+    // Best-effort mirror into unified logs.
+    try {
+      const organizationId =
+        typeof quiz.organizationId === "string" && quiz.organizationId.trim().length > 0
+          ? quiz.organizationId.trim()
+          : "";
+      if (organizationId) {
+        const user = await ctx.db.get(userId);
+        const email =
+          typeof user?.email === "string" ? user.email.trim().toLowerCase() : undefined;
+        const meta = stripUndefined({
+          quizId: String(args.quizId),
+          courseId: resolvedCourseId ? String(resolvedCourseId) : undefined,
+          lessonId: resolvedLessonId ? String(resolvedLessonId) : undefined,
+          scorePercent,
+          passPercent,
+          attemptId: String(attempt?._id ?? ""),
+        });
+        await ctx.runMutation(logsMutations.insertLogEntry as any, {
+          organizationId: String(organizationId),
+          pluginKey: "lms",
+          kind: "lms.quiz.completed",
+          email,
+          level: "info",
+          status: "complete",
+          message: `Completed quiz (${String(args.quizId)})`,
+          scopeKind: "quiz",
+          scopeId: String(args.quizId),
+          actorUserId: String(userId),
+          metadata: Object.keys(meta).length ? meta : undefined,
+          createdAt: Date.now(),
+        });
+      }
+    } catch (error) {
+      console.error("[lms.submitQuizAttempt] log mirror failed:", error);
+    }
+
     return { attempt: attemptSummary };
   },
 });
@@ -1787,6 +1829,40 @@ export const setLessonCompletionStatus: any = mutation({
         ...(completedAt ? { completedAt } : {}),
       },
     );
+
+    // Best-effort mirror into unified logs (only when marking complete).
+    if (args.completed) {
+      try {
+        if (organizationId) {
+          const user = await ctx.db.get(userId);
+          const email =
+            typeof user?.email === "string"
+              ? user.email.trim().toLowerCase()
+              : undefined;
+          const meta = stripUndefined({
+            courseId: String(courseId),
+            lessonId: String(args.lessonId),
+            completedAt: completedAt ?? undefined,
+          });
+          await ctx.runMutation(logsMutations.insertLogEntry as any, {
+            organizationId: String(organizationId),
+            pluginKey: "lms",
+            kind: "lms.lesson.completed",
+            email,
+            level: "info",
+            status: "complete",
+            message: `Completed lesson (${String(args.lessonId)})`,
+            scopeKind: "lesson",
+            scopeId: String(args.lessonId),
+            actorUserId: String(userId),
+            metadata: Object.keys(meta).length ? meta : undefined,
+            createdAt: Date.now(),
+          });
+        }
+      } catch (error) {
+        console.error("[lms.setLessonCompletionStatus] log mirror failed:", error);
+      }
+    }
 
     if (shouldSetCompletedAt) {
       const courseBadgeIds = parseBadgeIdsMeta(
@@ -1951,6 +2027,123 @@ export const setTopicCompletionStatus: any = mutation({
         });
       }
     }
+
+    // Best-effort mirror into unified logs (only when marking complete).
+    if (args.completed) {
+      try {
+        if (organizationId) {
+          const user = await ctx.db.get(userId);
+          const email =
+            typeof user?.email === "string"
+              ? user.email.trim().toLowerCase()
+              : undefined;
+          const meta = stripUndefined({
+            courseId: String(courseId),
+            lessonId: _lessonId ? String(_lessonId) : undefined,
+            topicId: String(args.topicId),
+          });
+          await ctx.runMutation(logsMutations.insertLogEntry as any, {
+            organizationId: String(organizationId),
+            pluginKey: "lms",
+            kind: "lms.topic.completed",
+            email,
+            level: "info",
+            status: "complete",
+            message: `Completed topic (${String(args.topicId)})`,
+            scopeKind: "topic",
+            scopeId: String(args.topicId),
+            actorUserId: String(userId),
+            metadata: Object.keys(meta).length ? meta : undefined,
+            createdAt: Date.now(),
+          });
+        }
+      } catch (error) {
+        console.error("[lms.setTopicCompletionStatus] log mirror failed:", error);
+      }
+    }
+
     return { completedTopicIds: completedTopicIds.map(String) };
+  },
+});
+
+export const recordContentAccess: any = mutation({
+  args: {
+    courseId: v.string(),
+    accessedType: v.union(
+      v.literal("course"),
+      v.literal("lesson"),
+      v.literal("topic"),
+      v.literal("quiz"),
+      v.literal("certificate"),
+    ),
+    accessedId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx: any, args: any) => {
+    const userId = await getAuthenticatedUserDocIdByToken(ctx);
+    const course = await ctx.runQuery(
+      components.launchthat_lms.posts.queries.getPostByIdInternal,
+      { id: args.courseId as unknown as string },
+    );
+    if (!course || course.postTypeSlug !== "courses") {
+      throw new Error("Course not found");
+    }
+    const organizationId = course.organizationId ?? undefined;
+
+    const progress = await ensureCourseProgressDoc(
+      ctx,
+      userId,
+      args.courseId as unknown as Id<"posts">,
+      organizationId as any,
+    );
+
+    await ctx.runMutation(
+      components.launchthat_lms.progress.mutations.upsertCourseProgress,
+      {
+        userId: String(userId),
+        courseId: String(args.courseId),
+        organizationId: organizationId ? String(organizationId) : undefined,
+        completedLessonIds: (progress.completedLessonIds ?? []).map(String),
+        completedTopicIds: (progress.completedTopicIds ?? []).map(String),
+        lastAccessedAt: Date.now(),
+        lastAccessedId: String(args.accessedId),
+        lastAccessedType: String(args.accessedType),
+        ...(typeof progress.completedAt === "number"
+          ? { completedAt: progress.completedAt }
+          : {}),
+      },
+    );
+
+    // Best-effort mirror into unified logs.
+    try {
+      if (organizationId) {
+        const user = await ctx.db.get(userId);
+        const email =
+          typeof user?.email === "string" ? user.email.trim().toLowerCase() : undefined;
+        const meta = stripUndefined({
+          courseId: String(args.courseId),
+          accessedType: String(args.accessedType),
+          accessedId: String(args.accessedId),
+        });
+        await ctx.runMutation(logsMutations.insertLogEntry as any, {
+          organizationId: String(organizationId),
+          pluginKey: "lms",
+          kind: "lms.content.accessed",
+          email,
+          level: "info",
+          status: "complete",
+          message: `Accessed ${String(args.accessedType)} (${String(args.accessedId)})`,
+          scopeKind: String(args.accessedType),
+          scopeId: String(args.accessedId),
+          actorUserId: String(userId),
+          metadata: Object.keys(meta).length ? meta : undefined,
+          createdAt: Date.now(),
+        });
+      }
+    } catch (error) {
+      console.error("[lms.recordContentAccess] log mirror failed:", error);
+    }
+
+    return null;
   },
 });

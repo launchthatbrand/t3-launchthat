@@ -1,7 +1,7 @@
 "use client";
 
 import type { PluginFrontendSingleSlotProps } from "launchthat-plugin-core";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@portal/convexspec";
 import { useMutation, useQuery } from "convex/react";
 
@@ -87,6 +87,25 @@ export function QuizQuestions(props: QuizQuestionsProps = {}) {
   const submitQuizAttempt = useMutation(
     api.plugins.lms.mutations.submitQuizAttempt,
   );
+  const recordContentAccess = useMutation(api.plugins.lms.mutations.recordContentAccess);
+  const hasRecordedAccessRef = useRef(false);
+  useEffect(() => {
+    if (hasRecordedAccessRef.current) return;
+    if (!quizId) return;
+    const courseIdForLog =
+      typeof courseContext?.courseId === "string" && courseContext.courseId.length > 0
+        ? courseContext.courseId
+        : typeof courseContext?.postId === "string"
+          ? courseContext.postId
+          : null;
+    if (!courseIdForLog) return;
+    hasRecordedAccessRef.current = true;
+    void recordContentAccess({
+      courseId: courseIdForLog,
+      accessedType: "quiz",
+      accessedId: quizId,
+    });
+  }, [courseContext?.courseId, courseContext?.postId, quizId, recordContentAccess]);
 
   const [mode, setMode] = useState<"idle" | "inProgress" | "summary">("idle");
   const [answerMap, setAnswerMap] = useState<Record<string, AnswerPayload>>({});

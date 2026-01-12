@@ -261,6 +261,8 @@ export const LogEntityList = (props: LogEntityListProps) => {
             { label: "discord", value: "discord" },
             { label: "notifications", value: "notifications" },
             { label: "ecommerce", value: "ecommerce" },
+            { label: "lms", value: "lms" },
+            { label: "disclaimers", value: "disclaimers" },
           ],
         },
       ] satisfies {

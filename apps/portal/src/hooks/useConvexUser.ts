@@ -16,13 +16,11 @@ export function useConvexUser() {
    * Tenant/custom hosts intentionally do NOT mount <ClerkProvider />, so we must
    * never call Clerk hooks here.
    *
-   * `getUserByClerkId` already prefers the authenticated Convex identity
-   * (tokenIdentifier) when available, so we can safely pass a placeholder
-   * clerkId and still resolve "current user" whenever Convex auth is set.
+   * Use `getMe` so we can resolve the current user across BOTH:
+   * - Clerk-backed Convex auth (tokenIdentifier lookup)
+   * - Server-minted Convex tokens (fallback to identity.subject / clerkId)
    */
-  const user = useQuery(api.core.users.queries.getUserByClerkId, {
-    clerkId: "__self__",
-  });
+  const user = useQuery(api.core.users.queries.getMe, {});
 
   const isLoading = user === undefined;
 

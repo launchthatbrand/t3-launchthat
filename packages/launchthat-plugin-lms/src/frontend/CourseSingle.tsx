@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { api } from "@portal/convexspec";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { ClipboardList, Layers, PlayCircle } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
@@ -75,6 +75,19 @@ export function CourseSingle({
   );
   const isLoading = data === undefined;
   const isMissing = data === null;
+
+  const recordContentAccess = useMutation(api.plugins.lms.mutations.recordContentAccess);
+  const hasRecordedAccessRef = useRef(false);
+  useEffect(() => {
+    if (hasRecordedAccessRef.current) return;
+    if (isLoading || isMissing) return;
+    hasRecordedAccessRef.current = true;
+    void recordContentAccess({
+      courseId,
+      accessedType: "course",
+      accessedId: courseId,
+    });
+  }, [courseId, isLoading, isMissing, recordContentAccess]);
 
   const fallbackCourse: LmsCourseBuilderData["course"] = {
     _id: courseId,

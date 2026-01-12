@@ -4,6 +4,9 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { LogEntityList } from "launchthat-plugin-logs/admin";
 
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { Skeleton } from "@acme/ui/skeleton";
+
 import {
   AdminLayout,
   AdminLayoutContent,
@@ -19,6 +22,7 @@ export default function AdminLogsPage() {
   const { user: convexUser } = useConvexUser();
 
   const actorUserId = (convexUser as { _id?: Id<"users"> } | null)?._id;
+  const isUserLoading = convexUser === undefined;
 
   return (
     <AdminLayout
@@ -29,7 +33,38 @@ export default function AdminLogsPage() {
       <AdminLayoutContent className="flex flex-1">
         <AdminLayoutMain className="flex-1">
           <div className="container py-4">
-            {orgId && actorUserId ? (
+            {isUserLoading ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Logs</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-64 w-full" />
+                </CardContent>
+              </Card>
+            ) : !orgId ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Logs</CardTitle>
+                </CardHeader>
+                <CardContent className="text-muted-foreground text-sm">
+                  Tenant context is missing for this host. This usually means
+                  the current domain isn’t resolving to an organization.
+                </CardContent>
+              </Card>
+            ) : !actorUserId ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Logs</CardTitle>
+                </CardHeader>
+                <CardContent className="text-muted-foreground text-sm">
+                  You’re not signed in (or your session hasn’t been established
+                  on this host yet). Try refreshing once, or sign in again.
+                </CardContent>
+              </Card>
+            ) : (
               <LogEntityList
                 orgId={orgId}
                 actorUserId={actorUserId}
@@ -41,7 +76,7 @@ export default function AdminLogsPage() {
                 description="Filter by source or search across columns."
                 limit={500}
               />
-            ) : null}
+            )}
           </div>
         </AdminLayoutMain>
       </AdminLayoutContent>
