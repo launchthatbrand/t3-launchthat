@@ -76,7 +76,14 @@ export function CourseSingle({
   const isLoading = data === undefined;
   const isMissing = data === null;
 
-  const recordContentAccess = useMutation(api.plugins.lms.mutations.recordContentAccess);
+  // `@portal/convexspec` can lag behind Convex codegen in some environments.
+  // Use a loose reference here to avoid breaking the frontend build when the
+  // mutation exists at runtime but hasn't been reflected in types yet.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const apiAny = api as any;
+  const recordContentAccess = useMutation(
+    apiAny.plugins.lms.mutations.recordContentAccess,
+  );
   const hasRecordedAccessRef = useRef(false);
   useEffect(() => {
     if (hasRecordedAccessRef.current) return;

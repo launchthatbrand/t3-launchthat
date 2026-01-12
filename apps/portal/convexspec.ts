@@ -863,6 +863,7 @@ export type PublicApiType = {
             alt?: string;
             caption?: string;
             categories?: Array<string>;
+            mimeType?: string;
             organizationId?: Id<"organizations">;
             status?: "draft" | "published";
             storageId: Id<"_storage">;
@@ -880,6 +881,21 @@ export type PublicApiType = {
             title?: string;
             url: string;
           }
+        >;
+        setMediaPreviewImage: FunctionReference<
+          "mutation",
+          "public",
+          {
+            mediaItemId: Id<"mediaItems">;
+            previewImageStorageId: Id<"_storage">;
+          },
+          null
+        >;
+        requestGenerateVideoPreviewImage: FunctionReference<
+          "mutation",
+          "public",
+          { force?: boolean; mediaItemId: Id<"mediaItems"> },
+          null
         >;
         updateMedia: FunctionReference<
           "mutation",
@@ -928,10 +944,15 @@ export type PublicApiType = {
             externalUrl?: string;
             height?: number;
             mimeType?: string;
+            organizationId?: Id<"organizations">;
+            previewGeneratedAt?: number;
+            previewImageStorageId?: Id<"_storage">;
+            previewImageUrl?: string;
             status?: "draft" | "published";
             storageId?: Id<"_storage">;
             taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
             title?: string;
+            uploadedAt?: number;
             url?: string;
             width?: number;
           }
@@ -949,10 +970,15 @@ export type PublicApiType = {
             externalUrl?: string;
             height?: number;
             mimeType?: string;
+            organizationId?: Id<"organizations">;
+            previewGeneratedAt?: number;
+            previewImageStorageId?: Id<"_storage">;
+            previewImageUrl?: string;
             status?: "draft" | "published";
             storageId?: Id<"_storage">;
             taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
             title?: string;
+            uploadedAt?: number;
             url?: string;
             width?: number;
           }
@@ -976,10 +1002,15 @@ export type PublicApiType = {
             externalUrl?: string;
             height?: number;
             mimeType?: string;
+            organizationId?: Id<"organizations">;
+            previewGeneratedAt?: number;
+            previewImageStorageId?: Id<"_storage">;
+            previewImageUrl?: string;
             status?: "draft" | "published";
             storageId?: Id<"_storage">;
             taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
             title?: string;
+            uploadedAt?: number;
             url?: string;
             width?: number;
           }
@@ -1014,6 +1045,9 @@ export type PublicApiType = {
               height?: number;
               mimeType?: string;
               organizationId?: Id<"organizations">;
+              previewGeneratedAt?: number;
+              previewImageStorageId?: Id<"_storage">;
+              previewImageUrl?: string;
               status?: "draft" | "published";
               storageId?: Id<"_storage">;
               taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
@@ -1051,10 +1085,15 @@ export type PublicApiType = {
               externalUrl?: string;
               height?: number;
               mimeType?: string;
+              organizationId?: Id<"organizations">;
+              previewGeneratedAt?: number;
+              previewImageStorageId?: Id<"_storage">;
+              previewImageUrl?: string;
               status?: "draft" | "published";
               storageId?: Id<"_storage">;
               taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
               title?: string;
+              uploadedAt?: number;
               url?: string;
               width?: number;
             }>;
@@ -1085,10 +1124,15 @@ export type PublicApiType = {
               externalUrl?: string;
               height?: number;
               mimeType?: string;
+              organizationId?: Id<"organizations">;
+              previewGeneratedAt?: number;
+              previewImageStorageId?: Id<"_storage">;
+              previewImageUrl?: string;
               status?: "draft" | "published";
               storageId?: Id<"_storage">;
               taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
               title?: string;
+              uploadedAt?: number;
               url?: string;
               width?: number;
             }>;
@@ -1112,10 +1156,15 @@ export type PublicApiType = {
             externalUrl?: string;
             height?: number;
             mimeType?: string;
+            organizationId?: Id<"organizations">;
+            previewGeneratedAt?: number;
+            previewImageStorageId?: Id<"_storage">;
+            previewImageUrl?: string;
             status?: "draft" | "published";
             storageId?: Id<"_storage">;
             taxonomyTermIds?: Array<Id<"taxonomyTerms">>;
             title?: string;
+            uploadedAt?: number;
             url?: string;
             width?: number;
           }>
@@ -1162,6 +1211,7 @@ export type PublicApiType = {
             description?: string;
             isPublic?: boolean;
             name: string;
+            planId?: string;
           },
           Id<"organizations">
         >;
@@ -1176,6 +1226,7 @@ export type PublicApiType = {
             logo?: string | null;
             name?: string;
             organizationId: Id<"organizations">;
+            planId?: string;
             primaryColor?: string;
             slug?: string;
           },
@@ -1185,6 +1236,16 @@ export type PublicApiType = {
           "mutation",
           "public",
           { clerkOrganizationId: string; organizationId: Id<"organizations"> },
+          null
+        >;
+        setClerkOrganizationIdFromTenantSession: FunctionReference<
+          "mutation",
+          "public",
+          {
+            clerkOrganizationId: string;
+            organizationId: Id<"organizations">;
+            sessionIdHash: string;
+          },
           null
         >;
         inviteUser: FunctionReference<
@@ -1262,6 +1323,12 @@ export type PublicApiType = {
         >;
       };
       queries: {
+        getOrganizationForAdminFromTenantSession: FunctionReference<
+          "query",
+          "public",
+          { organizationId: Id<"organizations">; sessionIdHash: string },
+          { clerkOrganizationId?: string; name: string; slug: string }
+        >;
         myOrganizations: FunctionReference<
           "query",
           "public",
@@ -1459,10 +1526,17 @@ export type PublicApiType = {
             displayName: string;
             features?: Array<string>;
             isActive: boolean;
+            kind: "system" | "product";
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
             maxOrganizations: number;
-            name: "free" | "starter" | "business" | "agency";
+            name: string;
             priceMonthly: number;
             priceYearly?: number;
+            productPostId?: string;
             sortOrder: number;
             updatedAt: number;
           } | null
@@ -1478,10 +1552,43 @@ export type PublicApiType = {
             displayName: string;
             features?: Array<string>;
             isActive: boolean;
+            kind: "system" | "product";
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
             maxOrganizations: number;
-            name: "free" | "starter" | "business" | "agency";
+            name: string;
             priceMonthly: number;
             priceYearly?: number;
+            productPostId?: string;
+            sortOrder: number;
+            updatedAt: number;
+          }>
+        >;
+        getAssignableOrgPlans: FunctionReference<
+          "query",
+          "public",
+          Record<string, never>,
+          Array<{
+            _creationTime: number;
+            _id: string;
+            description: string;
+            displayName: string;
+            features?: Array<string>;
+            isActive: boolean;
+            kind: "system" | "product";
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
+            maxOrganizations: number;
+            name: string;
+            priceMonthly: number;
+            priceYearly?: number;
+            productPostId?: string;
             sortOrder: number;
             updatedAt: number;
           }>
@@ -2630,14 +2737,48 @@ export type PublicApiType = {
           Record<string, never>,
           any
         >;
+        createUserAdmin: FunctionReference<
+          "mutation",
+          "public",
+          {
+            email: string;
+            isActive?: boolean;
+            name?: string;
+            role?: string;
+            username?: string;
+          },
+          any
+        >;
         updateUser: FunctionReference<
           "mutation",
           "public",
           {
-            data: { email?: string; name?: string; role?: string };
+            data: {
+              email?: string;
+              isActive?: boolean;
+              name?: string;
+              role?: string;
+              username?: string;
+            };
             userId: Id<"users">;
           },
           any
+        >;
+        upsertUserFromClerkAdminViaTenantSession: FunctionReference<
+          "mutation",
+          "public",
+          {
+            clerkUserId: string;
+            email: string;
+            isActive?: boolean;
+            isEmailVerified?: boolean;
+            name?: string;
+            organizationId: Id<"organizations">;
+            role?: string;
+            sessionIdHash: string;
+            username?: string;
+          },
+          { membershipId: Id<"userOrganizations">; userId: Id<"users"> }
         >;
         deleteUser: FunctionReference<
           "mutation",
@@ -2727,6 +2868,7 @@ export type PublicApiType = {
             image?: string;
             name?: string;
             role?: string;
+            status?: string;
             tokenIdentifier?: string;
             username?: string;
           }
@@ -3232,6 +3374,18 @@ export type PublicApiType = {
           },
           Id<"emailOutbox">
         >;
+        sendTransactionalEmailFromTenantSession: FunctionReference<
+          "action",
+          "public",
+          {
+            organizationId: Id<"organizations">;
+            sessionIdHash: string;
+            templateKey: string;
+            to: string;
+            variables?: Record<string, string>;
+          },
+          Id<"emailOutbox">
+        >;
         sendTestEmail: FunctionReference<
           "action",
           "public",
@@ -3399,13 +3553,17 @@ export type PublicApiType = {
           "query",
           "public",
           { orgId: Id<"organizations"> },
-          { inAppDefaults: Record<string, boolean> }
+          {
+            emailDefaults: Record<string, boolean>;
+            inAppDefaults: Record<string, boolean>;
+          }
         >;
         setOrgDefaults: FunctionReference<
           "mutation",
           "public",
           {
             actorUserId: Id<"users">;
+            emailDefaults?: Record<string, boolean>;
             inAppDefaults: Record<string, boolean>;
             orgId: Id<"organizations">;
           },
@@ -3415,12 +3573,16 @@ export type PublicApiType = {
           "query",
           "public",
           { orgId: Id<"organizations">; userId: Id<"users"> },
-          { inAppEnabled: Record<string, boolean> }
+          {
+            emailEnabled: Record<string, boolean>;
+            inAppEnabled: Record<string, boolean>;
+          }
         >;
         setUserEventPrefs: FunctionReference<
           "mutation",
           "public",
           {
+            emailEnabled?: Record<string, boolean>;
             inAppEnabled: Record<string, boolean>;
             orgId: Id<"organizations">;
             userId: Id<"users">;
@@ -3446,6 +3608,12 @@ export type PublicApiType = {
             userId: Id<"users">;
           }>
         >;
+        listKnownEventKeysForOrg: FunctionReference<
+          "query",
+          "public",
+          { orgId: Id<"organizations">; userId: Id<"users"> },
+          Array<string>
+        >;
         upsertSubscription: FunctionReference<
           "mutation",
           "public",
@@ -3458,6 +3626,80 @@ export type PublicApiType = {
             userId: Id<"users">;
           },
           Id<"notificationSubscriptions">
+        >;
+      };
+      test: {
+        sendTestNotificationToUser: FunctionReference<
+          "action",
+          "public",
+          {
+            actionUrl?: string;
+            actorUserId: Id<"users">;
+            content?: string;
+            eventKey: string;
+            mode?: "forceAll" | "respectPreferences";
+            orgId: Id<"organizations">;
+            targetUserId?: Id<"users">;
+            title: string;
+          },
+          {
+            discordAttempted: boolean;
+            discordSucceeded: boolean;
+            emailAttempted: boolean;
+            emailSucceeded: boolean;
+            errors: Array<string>;
+            inAppInserted: boolean;
+          }
+        >;
+      };
+      broadcasts: {
+        createManualBroadcast: FunctionReference<
+          "mutation",
+          "public",
+          {
+            actionUrl?: string;
+            actorUserId: Id<"users">;
+            content?: string;
+            orgId: Id<"organizations">;
+            sinkIds: Array<string>;
+            title: string;
+          },
+          Id<"manualNotificationBroadcasts">
+        >;
+        listManualBroadcastsForOrg: FunctionReference<
+          "query",
+          "public",
+          {
+            actorUserId: Id<"users">;
+            limit?: number;
+            orgId: Id<"organizations">;
+          },
+          Array<{
+            _creationTime: number;
+            _id: Id<"manualNotificationBroadcasts">;
+            actionUrl?: string;
+            completedAt?: number;
+            content?: string;
+            createdAt: number;
+            createdByUserId: Id<"users">;
+            emailSent?: number;
+            inAppSent?: number;
+            orgId: Id<"organizations">;
+            sinkIds: Array<string>;
+            sinkStatus?: Record<
+              string,
+              {
+                error?: string;
+                sent?: number;
+                status: "scheduled" | "running" | "complete" | "failed";
+              }
+            >;
+            startedAt?: number;
+            status: "scheduled" | "running" | "complete" | "failed";
+            title: string;
+            totalMembers?: number;
+            updatedAt: number;
+          }>
         >;
       };
     };
@@ -3473,6 +3715,7 @@ export type PublicApiType = {
           },
           null | {
             areas: {
+              hidden?: { main: Array<string>; sidebar: Array<string> };
               main: Array<{ id: string; width: "half" | "full" }>;
               sidebar: Array<{ id: string }>;
             };
@@ -3487,6 +3730,7 @@ export type PublicApiType = {
           "public",
           {
             areas: {
+              hidden?: { main: Array<string>; sidebar: Array<string> };
               main: Array<{ id: string; width: "half" | "full" }>;
               sidebar: Array<{ id: string }>;
             };
@@ -3495,6 +3739,38 @@ export type PublicApiType = {
             scope: "dashboard" | "singlePost";
           },
           null
+        >;
+      };
+    };
+    logs: {
+      queries: {
+        listLogsForOrg: FunctionReference<
+          "query",
+          "public",
+          {
+            actorUserId: Id<"users">;
+            filter?: {
+              email?: string;
+              kind?: string;
+              level?: "debug" | "info" | "warn" | "error";
+              pluginKey?: string;
+              status?: "scheduled" | "running" | "complete" | "failed";
+            };
+            limit?: number;
+            orgId: Id<"organizations">;
+          },
+          Array<any>
+        >;
+        listEmailSuggestionsForOrg: FunctionReference<
+          "query",
+          "public",
+          {
+            actorUserId: Id<"users">;
+            limit?: number;
+            orgId: Id<"organizations">;
+            prefix?: string;
+          },
+          Array<string>
         >;
       };
     };
@@ -4381,6 +4657,21 @@ export type PublicApiType = {
           },
           { completedTopicIds: Array<string> }
         >;
+        recordContentAccess: FunctionReference<
+          "mutation",
+          "public",
+          {
+            accessedId: string;
+            accessedType:
+              | "course"
+              | "lesson"
+              | "topic"
+              | "quiz"
+              | "certificate";
+            courseId: string;
+          },
+          null
+        >;
       };
       actions: {
         generateQuizFromTranscript: FunctionReference<
@@ -4593,7 +4884,7 @@ export type PublicApiType = {
           revokeEnrollment: FunctionReference<
             "mutation",
             "public",
-            { courseId: string; userId: string },
+            { courseId: string; organizationId?: string; userId: string },
             null
           >;
           enrollUserByEmail: FunctionReference<
@@ -4801,7 +5092,16 @@ export type PublicApiType = {
             prompt: string;
             threadId: string;
           },
-          { text: string }
+          {
+            sources: Array<{
+              slug?: string;
+              source?: string;
+              title: string;
+              url: string;
+            }>;
+            text: string;
+            usedSourceIndexes: Array<number>;
+          }
         >;
       };
       rag: {
@@ -4818,6 +5118,7 @@ export type PublicApiType = {
             slug?: string;
             source?: string;
             title: string;
+            urlPath?: string;
           }>
         >;
         searchKnowledgeForContext: FunctionReference<
@@ -4834,6 +5135,7 @@ export type PublicApiType = {
             slug?: string;
             source?: string;
             title: string;
+            urlPath?: string;
           }>
         >;
       };
@@ -5897,6 +6199,12 @@ export type PublicApiType = {
           },
           null
         >;
+        recordSigningDownload: FunctionReference<
+          "mutation",
+          "public",
+          { issueId: string; tokenHash: string },
+          null
+        >;
       };
       queries: {
         listDisclaimerTemplates: FunctionReference<
@@ -6436,6 +6744,20 @@ export type PublicApiType = {
       payments: {
         authorizenet: {
           actions: {
+            createCimAndArbSubscription: FunctionReference<
+              "action",
+              "public",
+              {
+                amountMonthly: number;
+                currency?: string;
+                customer: { email: string; name?: string; postcode?: string };
+                opaqueData: { dataDescriptor: string; dataValue: string };
+                organizationId?: string;
+                startDate?: string;
+                totalOccurrences?: number;
+              },
+              any
+            >;
             chargeWithOpaqueData: FunctionReference<
               "action",
               "public",
@@ -6704,6 +7026,75 @@ export type PublicApiType = {
             null | any
           >;
         };
+      };
+      subscriptions: {
+        queries: {
+          listOrdersForSubscription: FunctionReference<
+            "query",
+            "public",
+            { limit?: number; organizationId: string; subscriptionId: string },
+            Array<{
+              createdAtMs: number;
+              currency: string;
+              id: string;
+              status: string;
+              totalAmount: number | null;
+            }>
+          >;
+        };
+        actions: {
+          processAuthnetWebhook: FunctionReference<
+            "action",
+            "public",
+            { organizationId: string; rawBody: string; signature?: string },
+            {
+              createdOrderId: string | null;
+              ok: boolean;
+              reason: string | null;
+            }
+          >;
+        };
+      };
+      orgPlans: {
+        listAssignableOrgPlans: FunctionReference<
+          "query",
+          "public",
+          Record<string, never>,
+          any
+        >;
+        getOrgPlanForProduct: FunctionReference<
+          "query",
+          "public",
+          { productPostId: string },
+          any
+        >;
+        upsertOrgPlanForProduct: FunctionReference<
+          "mutation",
+          "public",
+          {
+            description?: string;
+            displayName?: string;
+            features?: Array<string>;
+            isActive: boolean;
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
+            maxOrganizations?: number;
+            priceMonthly?: number;
+            priceYearly?: number;
+            productPostId: string;
+            sortOrder?: number;
+          },
+          any
+        >;
+        deactivateOrgPlanForProduct: FunctionReference<
+          "mutation",
+          "public",
+          { productPostId: string },
+          null
+        >;
       };
     };
     crm: {
@@ -7078,6 +7469,212 @@ export type PublicApiType = {
         >;
       };
     };
+    discord: {
+      queries: {
+        getOrgConfig: FunctionReference<
+          "query",
+          "public",
+          { organizationId: string },
+          any
+        >;
+        listGuildConnectionsForOrg: FunctionReference<
+          "query",
+          "public",
+          { organizationId: string },
+          any
+        >;
+        getGuildSettings: FunctionReference<
+          "query",
+          "public",
+          { guildId: string; organizationId: string },
+          any
+        >;
+        peekOauthState: FunctionReference<
+          "query",
+          "public",
+          { state: string },
+          any
+        >;
+      };
+      actions: {
+        startBotInstall: FunctionReference<
+          "action",
+          "public",
+          { organizationId: string; returnTo: string },
+          { state: string; url: string }
+        >;
+        completeBotInstall: FunctionReference<
+          "action",
+          "public",
+          { guildId: string; state: string },
+          null
+        >;
+        disconnectGuild: FunctionReference<
+          "action",
+          "public",
+          { guildId: string; organizationId: string },
+          null
+        >;
+        listRolesForGuild: FunctionReference<
+          "action",
+          "public",
+          { guildId: string; organizationId: string },
+          Array<{ id: string; managed?: boolean; name: string }>
+        >;
+        listGuildChannels: FunctionReference<
+          "action",
+          "public",
+          { guildId: string; organizationId: string },
+          Array<{ id: string; name: string; parentId?: string; type: number }>
+        >;
+        createForumChannel: FunctionReference<
+          "action",
+          "public",
+          {
+            guildId: string;
+            name: string;
+            organizationId: string;
+            parentId?: string;
+          },
+          { id: string; name: string; parentId?: string; type: number }
+        >;
+        upsertGuildSettings: FunctionReference<
+          "action",
+          "public",
+          {
+            announcementChannelId?: string;
+            announcementEventKeys?: Array<string>;
+            courseUpdatesChannelId?: string;
+            escalationConfidenceThreshold?: number;
+            escalationKeywords?: Array<string>;
+            guildId: string;
+            organizationId: string;
+            supportAiDisabledMessageEnabled?: boolean;
+            supportAiDisabledMessageText?: string;
+            supportAiEnabled: boolean;
+            supportForumChannelId?: string;
+            supportStaffRoleId?: string;
+            threadReplyCooldownMs?: number;
+          },
+          null
+        >;
+        createRole: FunctionReference<
+          "action",
+          "public",
+          {
+            color?: number;
+            guildId: string;
+            hoist?: boolean;
+            mentionable?: boolean;
+            name: string;
+            organizationId: string;
+          },
+          any
+        >;
+        updateRole: FunctionReference<
+          "action",
+          "public",
+          {
+            color?: number;
+            guildId: string;
+            hoist?: boolean;
+            mentionable?: boolean;
+            name?: string;
+            organizationId: string;
+            roleId: string;
+          },
+          any
+        >;
+        deleteRole: FunctionReference<
+          "action",
+          "public",
+          { guildId: string; organizationId: string; roleId: string },
+          null
+        >;
+        upsertOrgConfig: FunctionReference<
+          "action",
+          "public",
+          {
+            botToken: string;
+            clientId: string;
+            clientSecret: string;
+            enabled: boolean;
+            guildId: string;
+            organizationId: string;
+          },
+          null
+        >;
+        upsertOrgConfigV2: FunctionReference<
+          "action",
+          "public",
+          {
+            botMode: "global" | "custom";
+            customBotToken?: string;
+            customClientId?: string;
+            customClientSecret?: string;
+            enabled: boolean;
+            organizationId: string;
+          },
+          null
+        >;
+        fetchGuildRoles: FunctionReference<
+          "action",
+          "public",
+          { botToken: string; guildId: string },
+          Array<{ id: string; managed?: boolean; name: string }>
+        >;
+      };
+      roleRules: {
+        listRoleRulesForProduct: FunctionReference<
+          "query",
+          "public",
+          { organizationId: string; productId: string },
+          any
+        >;
+        replaceProductRoleRules: FunctionReference<
+          "mutation",
+          "public",
+          {
+            organizationId: string;
+            productId: string;
+            rules: Array<{
+              guildId: string;
+              roleId: string;
+              roleName?: string;
+            }>;
+          },
+          null
+        >;
+        replaceMarketingTagRoleRules: FunctionReference<
+          "mutation",
+          "public",
+          {
+            marketingTagId: string;
+            organizationId: string;
+            rules: Array<{
+              guildId: string;
+              roleId: string;
+              roleName?: string;
+            }>;
+          },
+          null
+        >;
+        listRoleRulesForMarketingTags: FunctionReference<
+          "query",
+          "public",
+          { marketingTagIds: Array<string>; organizationId: string },
+          any
+        >;
+      };
+      permissions: {
+        requireOrgAdmin: FunctionReference<
+          "query",
+          "public",
+          { organizationId: string },
+          null
+        >;
+      };
+    };
   };
   puckEditor: {
     queries: {
@@ -7205,6 +7802,21 @@ export type PublicApiType = {
         "public",
         { sessionIdHash: string },
         null
+      >;
+    };
+  };
+  dev: {
+    ffmpeg: {
+      ffmpegSmokeTest: FunctionReference<
+        "action",
+        "public",
+        Record<string, never>,
+        {
+          exitCode: number | null;
+          ffmpegPath: string | null;
+          ok: boolean;
+          output: string;
+        }
       >;
     };
   };

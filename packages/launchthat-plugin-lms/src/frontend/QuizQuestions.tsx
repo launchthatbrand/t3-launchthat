@@ -87,7 +87,14 @@ export function QuizQuestions(props: QuizQuestionsProps = {}) {
   const submitQuizAttempt = useMutation(
     api.plugins.lms.mutations.submitQuizAttempt,
   );
-  const recordContentAccess = useMutation(api.plugins.lms.mutations.recordContentAccess);
+  // `@portal/convexspec` can lag behind Convex codegen in some environments.
+  // Use a loose reference here to avoid breaking the frontend build when the
+  // mutation exists at runtime but hasn't been reflected in types yet.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const apiAny = api as any;
+  const recordContentAccess = useMutation(
+    apiAny.plugins.lms.mutations.recordContentAccess,
+  );
   const hasRecordedAccessRef = useRef(false);
   useEffect(() => {
     if (hasRecordedAccessRef.current) return;
@@ -95,9 +102,7 @@ export function QuizQuestions(props: QuizQuestionsProps = {}) {
     const courseIdForLog =
       typeof courseContext?.courseId === "string" && courseContext.courseId.length > 0
         ? courseContext.courseId
-        : typeof courseContext?.postId === "string"
-          ? courseContext.postId
-          : null;
+        : null;
     if (!courseIdForLog) return;
     hasRecordedAccessRef.current = true;
     void recordContentAccess({
@@ -105,7 +110,7 @@ export function QuizQuestions(props: QuizQuestionsProps = {}) {
       accessedType: "quiz",
       accessedId: quizId,
     });
-  }, [courseContext?.courseId, courseContext?.postId, quizId, recordContentAccess]);
+  }, [courseContext?.courseId, quizId, recordContentAccess]);
 
   const [mode, setMode] = useState<"idle" | "inProgress" | "summary">("idle");
   const [answerMap, setAnswerMap] = useState<Record<string, AnswerPayload>>({});
