@@ -60,6 +60,9 @@ const inferConfidence = (answer: string): number => {
   return weakSignals.some((s) => text.includes(s)) ? 0.4 : 0.85;
 };
 
+// Generated component typings can lag behind when we add new components.
+const componentsAny: any = components;
+
 const buildOrgPublicOrigin = async (ctx: any, organizationId: string) => {
   const fallback = process.env.CLIENT_ORIGIN ?? "http://localhost:3024";
   const orgInfo = await ctx.runQuery(
@@ -267,6 +270,9 @@ export const processGatewayEvent = internalAction({
       const retryAfterMs = retryAfter
         ? Math.round(Number(retryAfter) * 1000)
         : undefined;
+      const errorText = res.ok
+        ? undefined
+        : await res.text().catch(() => "request failed");
       await ctx.runMutation(discordSupportMutations.logDiscordApiCall, {
         organizationId,
         guildId,
@@ -275,10 +281,39 @@ export const processGatewayEvent = internalAction({
         url,
         status: res.status,
         retryAfterMs,
-        error: res.ok
-          ? undefined
-          : await res.text().catch(() => "request failed"),
+        error: errorText,
       });
+
+      // Best-effort mirror into unified logs.
+      try {
+        const metadata = Object.fromEntries(
+          Object.entries({
+            method: "POST",
+            url,
+            status: res.status,
+            retryAfterMs,
+            error: errorText,
+          }).filter(([, v]) => v !== undefined),
+        );
+
+        await ctx.runMutation(
+          componentsAny.launchthat_logs.entries.mutations.insertLogEntry,
+          {
+            organizationId,
+            pluginKey: "discord",
+            kind: "discord.api",
+            level: res.ok ? "info" : "error",
+            status: res.ok ? "complete" : "failed",
+            message: `Discord API POST (${res.status}) ${kind}`,
+            scopeKind: "discord",
+            scopeId: `${guildId}:${kind}`,
+            metadata: Object.keys(metadata).length ? metadata : undefined,
+            createdAt: Date.now(),
+          },
+        );
+      } catch (error) {
+        console.error("[discord.gateway.postJson] log mirror failed:", error);
+      }
       return res;
     };
 

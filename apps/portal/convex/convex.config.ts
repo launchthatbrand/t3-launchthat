@@ -11,6 +11,7 @@ import launchthat_disclaimers from "launchthat-plugin-disclaimers/convex/compone
 import launchthat_discord from "launchthat-plugin-discord/convex/component/convex.config";
 import launchthat_ecommerce from "launchthat-plugin-ecommerce/convex/component/convex.config";
 import launchthat_lms from "launchthat-plugin-lms/convex/component/convex.config";
+import launchthat_logs from "launchthat-plugin-logs/convex/component/convex.config";
 import launchthat_socialfeed from "launchthat-plugin-socialfeed/convex/component/convex.config";
 import launchthat_support from "launchthat-plugin-support/convex/component/convex.config";
 import launchthat_tasks from "launchthat-plugin-tasks/convex/component/convex.config";
@@ -34,4 +35,5 @@ app.use(launchthat_discord);
 app.use(launchthat_crm);
 app.use(launchthat_tasks);
 app.use(launchthat_vimeo);
+app.use(launchthat_logs);
 export default app;

@@ -153,6 +153,9 @@ const postDiscordJson = async (
   const retryAfterMs = retryAfter
     ? Math.round(Number(retryAfter) * 1000)
     : undefined;
+  const errorText = res.ok
+    ? undefined
+    : await res.text().catch(() => "request failed");
   await ctx.runMutation(
     components.launchthat_discord.support.mutations.logDiscordApiCall as any,
     {
@@ -163,11 +166,41 @@ const postDiscordJson = async (
       url: args.url,
       status: res.status,
       retryAfterMs,
-      error: res.ok
-        ? undefined
-        : await res.text().catch(() => "request failed"),
+      error: errorText,
     },
   );
+
+  // Best-effort mirror into unified logs.
+  try {
+    const metadata = Object.fromEntries(
+      Object.entries({
+        method: "POST",
+        url: args.url,
+        status: res.status,
+        retryAfterMs,
+        error: errorText,
+      }).filter(([, v]) => v !== undefined),
+    );
+
+    await ctx.runMutation(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      components.launchthat_logs.entries.mutations.insertLogEntry as any,
+      {
+        organizationId: args.organizationId,
+        pluginKey: "discord",
+        kind: "discord.api",
+        level: res.ok ? "info" : "error",
+        status: res.ok ? "complete" : "failed",
+        message: `Discord API POST (${res.status}) ${args.kind}`,
+        scopeKind: "discord",
+        scopeId: `${args.guildId}:${args.kind}`,
+        metadata: Object.keys(metadata).length ? metadata : undefined,
+        createdAt: Date.now(),
+      },
+    );
+  } catch (error) {
+    console.error("[discord.notificationsSink.postDiscordJson] log mirror failed:", error);
+  }
 };
 
 export const discordAnnouncementsSink: NotificationSink = {

@@ -28,6 +28,7 @@ import type * as core_emails_service from "../core/emails/service.js";
 import type * as core_lib_auth from "../core/lib/auth.js";
 import type * as core_lib_index from "../core/lib/index.js";
 import type * as core_lib_permissions from "../core/lib/permissions.js";
+import type * as core_logs_queries from "../core/logs/queries.js";
 import type * as core_media_actions from "../core/media/actions.js";
 import type * as core_media_http from "../core/media/http.js";
 import type * as core_media_integration from "../core/media/integration.js";
@@ -260,6 +261,7 @@ declare const fullApi: ApiFromModules<{
   "core/lib/auth": typeof core_lib_auth;
   "core/lib/index": typeof core_lib_index;
   "core/lib/permissions": typeof core_lib_permissions;
+  "core/logs/queries": typeof core_logs_queries;
   "core/media/actions": typeof core_media_actions;
   "core/media/http": typeof core_media_http;
   "core/media/integration": typeof core_media_integration;
@@ -7773,6 +7775,119 @@ export declare const components: {
             search?: string;
           },
           any
+        >;
+      };
+    };
+  };
+  launchthat_logs: {
+    entries: {
+      mutations: {
+        insertLogEntry: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            actionUrl?: string;
+            actorUserId?: string;
+            createdAt?: number;
+            email?: string;
+            kind: string;
+            level: "debug" | "info" | "warn" | "error";
+            message: string;
+            metadata?: any;
+            organizationId: string;
+            pluginKey: string;
+            scopeId?: string;
+            scopeKind?: string;
+            status?: "scheduled" | "running" | "complete" | "failed";
+          },
+          string
+        >;
+      };
+      queries: {
+        listLogsForOrg: FunctionReference<
+          "query",
+          "internal",
+          {
+            filter?: {
+              after?: number;
+              before?: number;
+              email?: string;
+              kind?: string;
+              level?: "debug" | "info" | "warn" | "error";
+              pluginKey?: string;
+              status?: "scheduled" | "running" | "complete" | "failed";
+            };
+            limit?: number;
+            organizationId: string;
+          },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            actionUrl?: string;
+            actorUserId?: string;
+            createdAt: number;
+            email?: string;
+            kind: string;
+            level: "debug" | "info" | "warn" | "error";
+            message: string;
+            metadata?: any;
+            organizationId: string;
+            pluginKey: string;
+            scopeId?: string;
+            scopeKind?: string;
+            status?: "scheduled" | "running" | "complete" | "failed";
+          }>
+        >;
+        listLogsForOrgPaginated: FunctionReference<
+          "query",
+          "internal",
+          {
+            filter?: {
+              after?: number;
+              before?: number;
+              email?: string;
+              kind?: string;
+              level?: "debug" | "info" | "warn" | "error";
+              pluginKey?: string;
+              status?: "scheduled" | "running" | "complete" | "failed";
+            };
+            organizationId: string;
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+          },
+          {
+            continueCursor: string | null;
+            isDone: boolean;
+            page: Array<{
+              _creationTime: number;
+              _id: string;
+              actionUrl?: string;
+              actorUserId?: string;
+              createdAt: number;
+              email?: string;
+              kind: string;
+              level: "debug" | "info" | "warn" | "error";
+              message: string;
+              metadata?: any;
+              organizationId: string;
+              pluginKey: string;
+              scopeId?: string;
+              scopeKind?: string;
+              status?: "scheduled" | "running" | "complete" | "failed";
+            }>;
+          }
+        >;
+        listRecentEmailsForOrg: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; organizationId: string; prefix?: string },
+          Array<string>
         >;
       };
     };

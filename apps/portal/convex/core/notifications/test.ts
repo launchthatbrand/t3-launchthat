@@ -4,7 +4,7 @@ import type { FunctionReference } from "convex/server";
 import { v } from "convex/values";
 
 import type { Id } from "../../_generated/dataModel";
-import { api, internal } from "../../_generated/api";
+import { api, components, internal } from "../../_generated/api";
 import { action } from "../../_generated/server";
 import { throwInvalidInput } from "../../shared/errors";
 
@@ -211,6 +211,66 @@ export const sendTestNotificationToUser = action({
       errors.push(
         e instanceof Error ? `discord: ${e.message}` : `discord: ${String(e)}`,
       );
+    }
+
+    // Mirror into unified logs so test notifications show up under /admin/logs and the Notifications logs tab.
+    try {
+      const sinkStatus = {
+        inApp: { status: inAppInserted ? ("complete" as const) : ("failed" as const) },
+        email: {
+          status: emailAttempted
+            ? emailSucceeded
+              ? ("complete" as const)
+              : ("failed" as const)
+            : ("scheduled" as const),
+        },
+        "discord.announcements": {
+          status: discordAttempted
+            ? discordSucceeded
+              ? ("complete" as const)
+              : ("failed" as const)
+            : ("scheduled" as const),
+        },
+      } as const;
+
+      const anyFailed =
+        (emailAttempted && !emailSucceeded) || (discordAttempted && !discordSucceeded);
+
+      const email =
+        typeof toggleInfo.userEmail === "string" && toggleInfo.userEmail.trim()
+          ? toggleInfo.userEmail.trim().toLowerCase()
+          : undefined;
+
+      const metadata = Object.fromEntries(
+        Object.entries({
+          notificationType: "test",
+          eventKey: payload.eventKey,
+          mode,
+          sinkIds: ["inApp", "email", "discord.announcements"],
+          sinkStatus,
+        }).filter(([, v]) => v !== undefined),
+      );
+
+      await ctx.runMutation(
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        components.launchthat_logs.entries.mutations.insertLogEntry as any,
+        {
+          organizationId: String(args.orgId),
+          pluginKey: "notifications",
+          kind: "notification.test",
+          email,
+          level: anyFailed ? "error" : "info",
+          status: anyFailed ? "failed" : "complete",
+          message: payload.title,
+          actionUrl: payload.actionUrl ?? undefined,
+          scopeKind: "test",
+          scopeId: "manual",
+          metadata: Object.keys(metadata).length ? metadata : undefined,
+          createdAt: Date.now(),
+        },
+      );
+    } catch (e) {
+      console.error("[notifications.test.sendTestNotificationToUser] log mirror failed:", e);
     }
 
     // NOTE: We intentionally do NOT schedule the sink runner here.

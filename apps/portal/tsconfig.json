@@ -77,6 +77,15 @@
       ],
       "launchthat-plugin-discord/*": [
         "../../packages/launchthat-plugin-discord/src/*"
+      ],
+      "launchthat-plugin-logs": [
+        "../../packages/launchthat-plugin-logs/src/index"
+      ],
+      "launchthat-plugin-logs/admin": [
+        "../../packages/launchthat-plugin-logs/src/admin/index.ts"
+      ],
+      "launchthat-plugin-logs/*": [
+        "../../packages/launchthat-plugin-logs/src/*"
       ]
     },
     "plugins": [{ "name": "next" }]

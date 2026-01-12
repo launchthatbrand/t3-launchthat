@@ -10,6 +10,7 @@ import {
   mutation,
   query,
 } from "../../_generated/server";
+import { components } from "../../_generated/api";
 
 const SINK_IN_APP = "inApp" as const;
 const SINK_EMAIL = "email" as const;
@@ -574,6 +575,44 @@ export const processManualBroadcast = internalAction({
         sinkStatus: finalSinkStatus,
       },
     });
+
+    // Mirror into unified logs (best-effort).
+    try {
+      const anyFailed = Object.values(finalSinkStatus).some(
+        (s: any) => s?.status === "failed",
+      );
+      const metadata = Object.fromEntries(
+        Object.entries({
+          notificationType: "manual",
+          eventKey: "manual.broadcast",
+          broadcastId: String(broadcast._id),
+          sinkIds,
+          sinkStatus: finalSinkStatus,
+          inAppSent: typeof broadcast.inAppSent === "number" ? broadcast.inAppSent : undefined,
+          emailSent: typeof broadcast.emailSent === "number" ? broadcast.emailSent : undefined,
+        }).filter(([, v]) => v !== undefined),
+      );
+
+      await ctx.runMutation(
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        components.launchthat_logs.entries.mutations.insertLogEntry as any,
+        {
+          organizationId: String(broadcast.orgId),
+          pluginKey: "notifications",
+          kind: "notification.broadcast",
+          level: anyFailed ? "error" : "info",
+          status: anyFailed ? "failed" : "complete",
+          message: broadcast.title,
+          actionUrl: broadcast.actionUrl ?? undefined,
+          scopeKind: "manualBroadcast",
+          scopeId: String(broadcast._id),
+          metadata: Object.keys(metadata).length ? metadata : undefined,
+          createdAt: Date.now(),
+        },
+      );
+    } catch (error) {
+      console.error("[notifications.broadcasts.processManualBroadcast] log mirror failed:", error);
+    }
 
     return null;
   },

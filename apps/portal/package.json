@@ -139,6 +139,7 @@
     "launchthat-plugin-ecommerce-stripe": "workspace:*",
     "launchthat-plugin-helpdesk": "workspace:*",
     "launchthat-plugin-lms": "workspace:*",
+    "launchthat-plugin-logs": "workspace:*",
     "launchthat-plugin-socialfeed": "workspace:*",
     "launchthat-plugin-support": "workspace:*",
     "launchthat-plugin-tasks": "workspace:*",

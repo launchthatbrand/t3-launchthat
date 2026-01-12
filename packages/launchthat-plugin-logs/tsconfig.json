@@ -1,0 +1,28 @@
+{
+  "extends": "@acme/tsconfig/compiled-package.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "dom", "dom.iterable"],
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "moduleResolution": "bundler",
+    "paths": {
+      "launchthat-plugin-core": ["../launchthat-plugin-core/src/index"],
+      "launchthat-plugin-core/frontendFilters": [
+        "../launchthat-plugin-core/src/frontendFilters"
+      ],
+      "launchthat-plugin-support": ["../launchthat-plugin-support/src/index"],
+      "launchthat-plugin-support/assistant": [
+        "../launchthat-plugin-support/src/assistant/experiences.ts"
+      ],
+      "launchthat-plugin-support/assistant/openai": [
+        "../launchthat-plugin-support/src/assistant/openai.ts"
+      ],
+      "@portal/convexspec": ["../../apps/portal/convexspec.ts"],
+      "@acme/ui": ["../ui/src/index"],
+      "@acme/ui/*": ["../ui/src/*"],
+      "@/*": ["../ui/src/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"]
+}

@@ -4,7 +4,7 @@ import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../../_generated/server";
 import type { EmailDesignKey } from "./reactEmail";
-import { internal } from "../../_generated/api";
+import { components, internal } from "../../_generated/api";
 import {
   internalAction,
   internalMutation,
@@ -1186,6 +1186,37 @@ export const queueRenderedEmail = internalMutation({
       createdAt: now,
     });
 
+    // Best-effort mirror into unified logs (never fail email queueing).
+    try {
+      const metadata = Object.fromEntries(
+        Object.entries({
+          to: args.to,
+          templateKey: args.templateKey,
+          subject: args.subject,
+        }).filter(([, v]) => v !== undefined),
+      );
+
+      await ctx.runMutation(
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        components.launchthat_logs.entries.mutations.insertLogEntry as any,
+        {
+          organizationId: String(args.orgId),
+          pluginKey: "core.emails",
+          kind: "email.queued",
+          email: args.to.trim().toLowerCase(),
+          level: "info",
+          status: "scheduled",
+          message: `Queued email to ${args.to}`,
+          scopeKind: "emailOutbox",
+          scopeId: String(outboxId),
+          metadata: Object.keys(metadata).length ? metadata : undefined,
+          createdAt: now,
+        },
+      );
+    } catch (error) {
+      console.error("[emails.queueRenderedEmail] log mirror failed:", error);
+    }
+
     await ctx.scheduler.runAfter(
       0,
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -1280,12 +1311,55 @@ export const markOutboxSentInternal = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const now = Date.now();
+    const outbox = await ctx.db.get(args.outboxId);
     await ctx.db.patch(args.outboxId, {
       status: "sent",
       providerMessageId: args.providerMessageId,
-      sentAt: Date.now(),
+      sentAt: now,
       error: undefined,
     });
+
+    // Best-effort mirror into unified logs.
+    try {
+      const orgId = outbox?.orgId;
+      const to = outbox?.to;
+      const templateKey = outbox?.templateKey;
+      if (orgId) {
+        const metadata = Object.fromEntries(
+          Object.entries({
+            to: typeof to === "string" ? to : undefined,
+            templateKey:
+              typeof templateKey === "string" ? templateKey : undefined,
+            providerMessageId: args.providerMessageId,
+          }).filter(([, v]) => v !== undefined),
+        );
+
+        await ctx.runMutation(
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+          components.launchthat_logs.entries.mutations.insertLogEntry as any,
+          {
+            organizationId: String(orgId),
+            pluginKey: "core.emails",
+            kind: "email.sent",
+            email: typeof to === "string" ? to.trim().toLowerCase() : undefined,
+            level: "info",
+            status: "complete",
+            message:
+              typeof to === "string" ? `Sent email to ${to}` : "Sent email",
+            scopeKind: "emailOutbox",
+            scopeId: String(args.outboxId),
+            metadata: Object.keys(metadata).length ? metadata : undefined,
+            createdAt: now,
+          },
+        );
+      }
+    } catch (error) {
+      console.error(
+        "[emails.markOutboxSentInternal] log mirror failed:",
+        error,
+      );
+    }
     return null;
   },
 });
@@ -1297,11 +1371,56 @@ export const markOutboxFailedInternal = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const now = Date.now();
+    const outbox = await ctx.db.get(args.outboxId);
     await ctx.db.patch(args.outboxId, {
       status: "failed",
       error: args.error,
-      sentAt: Date.now(),
+      sentAt: now,
     });
+
+    // Best-effort mirror into unified logs.
+    try {
+      const orgId = outbox?.orgId;
+      const to = outbox?.to;
+      const templateKey = outbox?.templateKey;
+      if (orgId) {
+        const metadata = Object.fromEntries(
+          Object.entries({
+            to: typeof to === "string" ? to : undefined,
+            templateKey:
+              typeof templateKey === "string" ? templateKey : undefined,
+            error: args.error,
+          }).filter(([, v]) => v !== undefined),
+        );
+
+        await ctx.runMutation(
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+          components.launchthat_logs.entries.mutations.insertLogEntry as any,
+          {
+            organizationId: String(orgId),
+            pluginKey: "core.emails",
+            kind: "email.failed",
+            email: typeof to === "string" ? to.trim().toLowerCase() : undefined,
+            level: "error",
+            status: "failed",
+            message:
+              typeof to === "string"
+                ? `Failed to send email to ${to}`
+                : "Failed to send email",
+            scopeKind: "emailOutbox",
+            scopeId: String(args.outboxId),
+            metadata: Object.keys(metadata).length ? metadata : undefined,
+            createdAt: now,
+          },
+        );
+      }
+    } catch (error) {
+      console.error(
+        "[emails.markOutboxFailedInternal] log mirror failed:",
+        error,
+      );
+    }
     return null;
   },
 });
