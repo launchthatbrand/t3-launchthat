@@ -25,17 +25,25 @@ const getUserByClerkId = async (
       .query("users")
       .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
       .unique();
-    if (!user) return null;
-    return {
-      _id: user._id,
-      organizationId: user.organizationId ?? null,
-    };
+    if (user) {
+      return {
+        _id: user._id,
+        organizationId: user.organizationId ?? null,
+      };
+    }
+    // If this tokenIdentifier doesn't match any stored user (common with server-minted tokens),
+    // fall through to the Clerk subject lookup below.
   }
 
-  // Fallback to stored Clerk user id (subject).
+  // Fallback to stored Clerk user id (subject) when present.
+  const resolvedClerkId =
+    typeof identity?.subject === "string" && identity.subject.trim()
+      ? identity.subject.trim()
+      : clerkId;
+
   const user = await ctx.db
     .query("users")
-    .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId))
+    .withIndex("by_clerk_id", (q) => q.eq("clerkId", resolvedClerkId))
     .first();
   if (!user) return null;
   return {
