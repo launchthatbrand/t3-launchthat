@@ -442,7 +442,21 @@ export const recordMessage = mutation({
         resolvedContactName = resolved.contactName ?? resolvedContactName;
       }
     }
-    const snippet = args.content.slice(0, 240);
+    const snippet = (() => {
+      const raw = args.content ?? "";
+      const trimmed = raw.trim();
+      if (!trimmed.startsWith("{")) return raw.slice(0, 240);
+      try {
+        const parsed = JSON.parse(trimmed) as any;
+        if (parsed && typeof parsed === "object" && parsed.kind === "assistant_response_v1") {
+          const text = typeof parsed.text === "string" ? parsed.text : "";
+          return (text || raw).slice(0, 240);
+        }
+      } catch {
+        // ignore
+      }
+      return raw.slice(0, 240);
+    })();
     await ctx.runMutation(supportMutations.recordMessageIndexUpdate, {
       organizationId: args.organizationId,
       sessionId: normalizedSessionId,

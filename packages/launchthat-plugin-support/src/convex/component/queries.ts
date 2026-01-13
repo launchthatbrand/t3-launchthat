@@ -184,17 +184,24 @@ export const listConversations = query({
       .order("desc")
       .take(limit);
 
-    return rows.map((row: any) => {
+    // Dedupe: historically we could end up with multiple rows pointing at the same
+    // agent thread id (e.g. one row keyed by clientSessionId + one keyed by agentThreadId).
+    // Keep the first one (newest) since we’re sorted by lastMessageAt desc.
+    const seen = new Set<string>();
+    const result: any[] = [];
+    for (const row of rows as any[]) {
       const threadId = row.agentThreadId ?? row.sessionId;
-      return {
+      const key = String(threadId ?? "");
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      result.push({
         threadId,
         lastMessage: row.lastMessageSnippet ?? undefined,
         lastRole: row.lastMessageAuthor ?? undefined,
         lastAt: row.lastMessageAt ?? undefined,
         firstAt: row.firstMessageAt ?? undefined,
         totalMessages: row.totalMessages ?? undefined,
-        contactId:
-          typeof row.contactId === "string" ? row.contactId : undefined,
+        contactId: typeof row.contactId === "string" ? row.contactId : undefined,
         contactName: row.contactName ?? undefined,
         contactEmail: row.contactEmail ?? undefined,
         origin: row.origin ?? undefined,
@@ -205,8 +212,9 @@ export const listConversations = query({
         agentThreadId: row.agentThreadId ?? undefined,
         // Back-compat: callers historically used this only as an opaque reference.
         postId: threadId,
-      };
-    });
+      });
+    }
+    return result;
   },
 });
 

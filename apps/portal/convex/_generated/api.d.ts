@@ -167,6 +167,7 @@ import type * as plugins_disclaimers_queries from "../plugins/disclaimers/querie
 import type * as plugins_discord_actions from "../plugins/discord/actions.js";
 import type * as plugins_discord_gateway from "../plugins/discord/gateway.js";
 import type * as plugins_discord_gatewayRateLimits from "../plugins/discord/gatewayRateLimits.js";
+import type * as plugins_discord_mutations from "../plugins/discord/mutations.js";
 import type * as plugins_discord_notificationsSink from "../plugins/discord/notificationsSink.js";
 import type * as plugins_discord_permissions from "../plugins/discord/permissions.js";
 import type * as plugins_discord_queries from "../plugins/discord/queries.js";
@@ -400,6 +401,7 @@ declare const fullApi: ApiFromModules<{
   "plugins/discord/actions": typeof plugins_discord_actions;
   "plugins/discord/gateway": typeof plugins_discord_gateway;
   "plugins/discord/gatewayRateLimits": typeof plugins_discord_gatewayRateLimits;
+  "plugins/discord/mutations": typeof plugins_discord_mutations;
   "plugins/discord/notificationsSink": typeof plugins_discord_notificationsSink;
   "plugins/discord/permissions": typeof plugins_discord_permissions;
   "plugins/discord/queries": typeof plugins_discord_queries;
@@ -7222,8 +7224,20 @@ export declare const components: {
           { discordUserId: string; organizationId: string; userId: string },
           null
         >;
+        unlinkUser: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; userId: string },
+          null
+        >;
       };
       queries: {
+        getUserIdByDiscordUserId: FunctionReference<
+          "query",
+          "internal",
+          { discordUserId: string; organizationId: string },
+          { linkedAt: number; userId: string } | null
+        >;
         getUserLink: FunctionReference<
           "query",
           "internal",

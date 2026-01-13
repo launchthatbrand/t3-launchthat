@@ -203,7 +203,10 @@ export const listMessages = query({
       sessionId: args.sessionId,
     })) as { agentThreadId?: string } | null;
 
-    const agentThreadId = conversation?.agentThreadId ?? (args.threadId ? resolvedThreadId : null);
+    // If the UI passed an agent thread id via `sessionId` (common in some admin views),
+    // `getConversationIndex` won’t find a row (because the real sessionId might be `discord:*`).
+    // In that case, fall back to treating the provided id as the agent thread id.
+    const agentThreadId = conversation?.agentThreadId ?? resolvedThreadId;
 
     if (!agentThreadId) {
       return [];
@@ -238,7 +241,24 @@ export const listMessages = query({
         return [];
       }
       const contentRaw = row?.message?.content;
-      const content = extractText(contentRaw).trim();
+      let content = extractText(contentRaw).trim();
+      // If the assistant message is a structured envelope, unwrap to just the text
+      // so all UIs (admin + widget) render cleanly by default.
+      if (content.startsWith("{")) {
+        try {
+          const parsed = JSON.parse(content) as any;
+          if (
+            parsed &&
+            typeof parsed === "object" &&
+            parsed.kind === "assistant_response_v1" &&
+            typeof parsed.text === "string"
+          ) {
+            content = parsed.text.trim() || content;
+          }
+        } catch {
+          // ignore
+        }
+      }
       if (!content) return [];
       return [
         {

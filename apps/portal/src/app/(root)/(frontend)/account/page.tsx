@@ -4,18 +4,29 @@ import "~/lib/plugins/installHooks";
 
 import type { Doc } from "@/convex/_generated/dataModel";
 import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { ChevronLeft } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   applyFilters,
   getRegisteredFilters,
   hasFilter,
 } from "@acme/admin-runtime/hooks";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@acme/ui/alert-dialog";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Separator } from "@acme/ui/separator";
@@ -67,6 +78,25 @@ const getEnabledPluginIds = (args: {
 
 function GeneralTabContent() {
   const { user, isLoading } = useConvexUser();
+  const tenant = useTenant();
+  const organizationId = getTenantOrganizationId(tenant);
+  const searchParams = useSearchParams();
+  const startUserLink = useAction(
+    (api as any).plugins.discord.actions.startUserLink,
+  );
+  const unlinkMyDiscordLink = useAction(
+    (api as any).plugins.discord.mutations.unlinkMyDiscordLink,
+  );
+  const myDiscordLink = useQuery(
+    (api as any).plugins.discord.queries.getMyDiscordLink,
+    organizationId ? { organizationId } : "skip",
+  ) as { discordUserId?: string; linkedAt?: number } | null | undefined;
+
+  const discordLinked = searchParams.get("discord_linked") === "1";
+  const discordLinkError = (
+    searchParams.get("discord_link_error") ?? ""
+  ).trim();
+  const [isDisconnectOpen, setIsDisconnectOpen] = useState(false);
 
   return (
     <div className="flex-1 space-y-6">
@@ -103,6 +133,145 @@ function GeneralTabContent() {
               </div>
             </>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Discord</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <AlertDialog
+            open={isDisconnectOpen}
+            onOpenChange={setIsDisconnectOpen}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Disconnect Discord?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Disconnecting will prevent Discord Support AI from accessing
+                  your orders/account details.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => {
+                    setIsDisconnectOpen(false);
+                    if (!organizationId) return;
+                    void (async () => {
+                      try {
+                        await unlinkMyDiscordLink({ organizationId });
+                        toast.success("Discord disconnected");
+                      } catch (e) {
+                        console.error(e);
+                        toast.error(
+                          e instanceof Error
+                            ? e.message
+                            : "Failed to disconnect Discord",
+                        );
+                      }
+                    })();
+                  }}
+                >
+                  Disconnect
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {myDiscordLink ? (
+            <div className="text-sm text-green-700 dark:text-green-400">
+              Discord account linked.
+            </div>
+          ) : discordLinked ? (
+            <div className="text-sm text-green-700 dark:text-green-400">
+              Discord account linked.
+            </div>
+          ) : null}
+          {discordLinkError ? (
+            <div className="text-destructive text-sm">
+              Discord link failed: {discordLinkError}
+            </div>
+          ) : null}
+
+          <div className="text-muted-foreground">
+            Link your Discord account so the support bot can help with
+            order/account-specific requests.
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {myDiscordLink ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsDisconnectOpen(true);
+                  }}
+                >
+                  Disconnect
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!organizationId) return;
+                    if (!user) {
+                      toast.error("Please sign in first");
+                      return;
+                    }
+                    void (async () => {
+                      try {
+                        const { url } = (await startUserLink({
+                          organizationId,
+                          returnTo: `${window.location.origin}/account`,
+                        })) as { url: string };
+                        window.location.href = url;
+                      } catch (e) {
+                        console.error(e);
+                        toast.error(
+                          e instanceof Error
+                            ? e.message
+                            : "Failed to start Discord relink",
+                        );
+                      }
+                    })();
+                  }}
+                >
+                  Relink
+                </Button>
+              </>
+            ) : (
+              <Button
+                disabled={!user || !organizationId}
+                onClick={() => {
+                  if (!organizationId) return;
+                  if (!user) {
+                    toast.error("Please sign in first");
+                    return;
+                  }
+
+                  void (async () => {
+                    try {
+                      const { url } = (await startUserLink({
+                        organizationId,
+                        returnTo: `${window.location.origin}/account`,
+                      })) as { url: string };
+                      window.location.href = url;
+                    } catch (e) {
+                      console.error(e);
+                      toast.error(
+                        e instanceof Error
+                          ? e.message
+                          : "Failed to start Discord link",
+                      );
+                    }
+                  })();
+                }}
+              >
+                Link Discord account
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

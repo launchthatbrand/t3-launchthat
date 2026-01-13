@@ -26,3 +26,23 @@ export const requireOrgAdmin = query({
   },
 });
 
+/**
+ * Throws if the caller is not a member of the org (or global portal admin).
+ * Used for user-scoped operations like linking a Discord account.
+ */
+export const requireOrgMember = query({
+  args: {
+    organizationId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await getAuthenticatedUserId(ctx);
+    await verifyOrganizationAccessWithClerkContext(
+      ctx,
+      args.organizationId as Id<"organizations">,
+      userId,
+    );
+    return null;
+  },
+});
+

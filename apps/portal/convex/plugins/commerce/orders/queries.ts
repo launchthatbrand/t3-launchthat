@@ -191,6 +191,89 @@ export const listMyOrders = query({
   },
 });
 
+// Used by internal systems (e.g. Discord support) to fetch a user's orders without relying on
+// the caller being authenticated as that user.
+export const listOrdersForUserId = query({
+  args: {
+    organizationId: v.optional(v.string()),
+    userId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const organizationId = args.organizationId;
+    const userId = args.userId;
+
+    const idsByUserId = (await ctx.runQuery(
+      (commercePostsQueries as any).listPostIdsByMetaKeyValue,
+      {
+        key: ORDER_META_KEYS.userId,
+        value: userId,
+        organizationId,
+        postTypeSlug: "orders",
+      },
+    )) as string[];
+
+    const idsByUserIdDot = (await ctx.runQuery(
+      (commercePostsQueries as any).listPostIdsByMetaKeyValue,
+      {
+        key: ORDER_META_KEYS.userIdDot,
+        value: userId,
+        organizationId,
+        postTypeSlug: "orders",
+      },
+    )) as string[];
+
+    const uniqueIds = Array.from(new Set([...(idsByUserId ?? []), ...(idsByUserIdDot ?? [])]));
+
+    const result: any[] = [];
+    for (const id of uniqueIds) {
+      const post = await ctx.runQuery(commercePostsQueries.getPostById as any, {
+        id,
+        organizationId,
+      });
+      if (!post) continue;
+
+      const meta = (await ctx.runQuery(commercePostsQueries.getPostMeta as any, {
+        postId: post._id,
+        organizationId,
+      })) as { key: string; value: unknown }[];
+
+      const total =
+        (getMetaValue(meta, "order.orderTotal")) ??
+        (getMetaValue(meta, "order:total"));
+      const currency = getMetaValue(meta, "order.currency");
+      const email = getMetaValue(meta, ORDER_META_KEYS.email);
+      const itemsJson = getMetaValue(meta, "order.itemsJson");
+
+      const itemsCount =
+        typeof itemsJson === "string"
+          ? (() => {
+              try {
+                const parsed = JSON.parse(itemsJson) as unknown;
+                return Array.isArray(parsed) ? parsed.length : undefined;
+              } catch {
+                return undefined;
+              }
+            })()
+          : undefined;
+
+      result.push({
+        _id: post._id,
+        _creationTime: post._creationTime,
+        status: post.status ?? "draft",
+        total: typeof total === "number" ? total : 0,
+        currency: typeof currency === "string" && currency.trim() ? currency : "USD",
+        email: typeof email === "string" ? email : undefined,
+        itemsCount,
+      });
+    }
+
+    const sorted = result.sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0));
+    return sorted.slice(0, args.limit ?? 5);
+  },
+});
+
 export const getOrder = query({
   args: {
     orderId: v.string(),

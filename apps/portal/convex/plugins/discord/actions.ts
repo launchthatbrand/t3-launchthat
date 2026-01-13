@@ -14,6 +14,7 @@ import { v } from "convex/values";
 
 import { api as apiAny, components } from "../../_generated/api";
 import { action, internalAction } from "../../_generated/server";
+import { verifyOrganizationAccessWithClerkContext } from "../../core/organizations/helpers";
 
 const discordOrgConfigMutations = components.launchthat_discord.orgConfigs
   .mutations as any;
@@ -22,6 +23,9 @@ const discordOrgConfigInternalQueries = components.launchthat_discord.orgConfigs
 const discordOauthMutations = components.launchthat_discord.oauth
   .mutations as any;
 const discordOauthMutationsAny = discordOauthMutations;
+const discordOauthQueriesAny = components.launchthat_discord.oauth.queries as any;
+const discordUserLinksMutationsAny = components.launchthat_discord.userLinks
+  .mutations as any;
 const discordGuildConnectionMutations = components.launchthat_discord
   .guildConnections.mutations as any;
 const discordGuildSettingsMutations = components.launchthat_discord
@@ -256,6 +260,192 @@ export const startBotInstall = action({
       `&state=${encodeURIComponent(state)}`;
 
     return { url, state };
+  },
+});
+
+export const startUserLink = action({
+  args: {
+    organizationId: v.string(),
+    returnTo: v.string(),
+  },
+  returns: v.object({
+    url: v.string(),
+    state: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    // Ensure caller is authenticated + is a member of this org.
+    await ctx.runQuery((apiAny as any).plugins.discord.permissions.requireOrgMember, {
+      organizationId: args.organizationId,
+    });
+
+    // Fetch the Convex user so we can store user._id (string) in the Discord component.
+    const me = (await ctx.runQuery((apiAny as any).core.users.queries.getMe, {})) as any;
+    if (!me?._id) {
+      throw new Error("User not found");
+    }
+
+    const { clientId } = await resolveOrgDiscordCredentials(ctx, args.organizationId);
+    const state = crypto.randomUUID();
+
+    const computeAuthRedirectUri = (returnTo: string): string => {
+      const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "";
+      const rootHost = rootDomain
+        .trim()
+        .toLowerCase()
+        .replace(/^https?:\/\//, "")
+        .split("/")[0]
+        ?.split(":")[0];
+
+      let returnToUrl: URL;
+      try {
+        returnToUrl = new URL(returnTo);
+      } catch {
+        throw new Error("Invalid returnTo URL");
+      }
+
+      const hostname = returnToUrl.hostname.toLowerCase();
+      const port = returnToUrl.port;
+      const isLocal =
+        hostname === "localhost" ||
+        hostname === "127.0.0.1" ||
+        hostname.endsWith(".localhost") ||
+        hostname.endsWith(".127.0.0.1");
+
+      const authHostname = isLocal
+        ? `auth.${hostname === "127.0.0.1" || hostname.endsWith(".127.0.0.1") ? "127.0.0.1" : "localhost"}`
+        : rootHost
+          ? `auth.${rootHost}`
+          : "auth.launchthat.app";
+
+      const proto = isLocal ? "http" : "https";
+      const origin = `${proto}://${authHostname}${isLocal && port ? `:${port}` : ""}`;
+      return `${origin}/auth/discord/link/callback`;
+    };
+
+    const redirectUri = computeAuthRedirectUri(args.returnTo);
+
+    await ctx.runMutation(discordOauthMutationsAny.createOauthState, {
+      organizationId: args.organizationId,
+      kind: "user_link",
+      userId: String(me._id),
+      state,
+      codeVerifier: "user_link_no_pkce",
+      returnTo: args.returnTo,
+    });
+
+    const scope = encodeURIComponent("identify");
+    const url =
+      `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(clientId)}` +
+      `&response_type=code` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&scope=${scope}` +
+      `&state=${encodeURIComponent(state)}` +
+      `&prompt=consent`;
+
+    return { url, state };
+  },
+});
+
+export const completeUserLink = action({
+  args: {
+    state: v.string(),
+    code: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const consumed = await ctx.runMutation(discordOauthMutationsAny.consumeOauthState, {
+      state: args.state,
+    });
+    if (!consumed || consumed.kind !== "user_link") {
+      throw new Error("Invalid or expired Discord link state");
+    }
+
+    const organizationId = String(consumed.organizationId);
+    const userId = typeof consumed.userId === "string" ? consumed.userId : "";
+    if (!userId) {
+      throw new Error("Missing userId for Discord link");
+    }
+
+    const returnTo = String(consumed.returnTo ?? "");
+    const redirectUri = (() => {
+      try {
+        const returnToUrl = new URL(returnTo);
+        const hostname = returnToUrl.hostname.toLowerCase();
+        const port = returnToUrl.port;
+        const isLocal =
+          hostname === "localhost" ||
+          hostname === "127.0.0.1" ||
+          hostname.endsWith(".localhost") ||
+          hostname.endsWith(".127.0.0.1");
+
+        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "";
+        const rootHost = rootDomain
+          .trim()
+          .toLowerCase()
+          .replace(/^https?:\/\//, "")
+          .split("/")[0]
+          ?.split(":")[0];
+
+        const authHostname = isLocal
+          ? `auth.${hostname === "127.0.0.1" || hostname.endsWith(".127.0.0.1") ? "127.0.0.1" : "localhost"}`
+          : rootHost
+            ? `auth.${rootHost}`
+            : "auth.launchthat.app";
+
+        const proto = isLocal ? "http" : "https";
+        const origin = `${proto}://${authHostname}${isLocal && port ? `:${port}` : ""}`;
+        return `${origin}/auth/discord/link/callback`;
+      } catch {
+        throw new Error("Invalid returnTo URL");
+      }
+    })();
+
+    const { clientId, clientSecret } = await resolveOrgDiscordCredentials(ctx, organizationId);
+
+    const body = new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: "authorization_code",
+      code: args.code,
+      redirect_uri: redirectUri,
+    });
+
+    const tokenRes = await fetch("https://discord.com/api/v10/oauth2/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+    if (!tokenRes.ok) {
+      const text = await tokenRes.text().catch(() => "token_exchange_failed");
+      throw new Error(`Discord token exchange failed: ${tokenRes.status} ${text}`.slice(0, 400));
+    }
+    const tokenJson: any = await tokenRes.json();
+    const accessToken = typeof tokenJson?.access_token === "string" ? tokenJson.access_token : "";
+    if (!accessToken) {
+      throw new Error("Discord token exchange returned no access token");
+    }
+
+    const meRes = await fetch("https://discord.com/api/v10/users/@me", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!meRes.ok) {
+      const text = await meRes.text().catch(() => "me_failed");
+      throw new Error(`Discord /users/@me failed: ${meRes.status} ${text}`.slice(0, 400));
+    }
+    const meJson: any = await meRes.json();
+    const discordUserId = typeof meJson?.id === "string" ? meJson.id : "";
+    if (!discordUserId) {
+      throw new Error("Discord user id missing from /users/@me");
+    }
+
+    // Persist link in the component table.
+    await ctx.runMutation(discordUserLinksMutationsAny.linkUser, {
+      organizationId,
+      userId,
+      discordUserId,
+    });
+
+    return null;
   },
 });
 
@@ -616,7 +806,7 @@ export const createPrivateSupportThread = internalAction({
     requesterDiscordUserId: v.string(),
     staffRoleId: v.optional(v.string()),
     publicThreadId: v.optional(v.string()),
-    name: v.optional(v.string()),
+    supportThreadId: v.string(),
   },
   returns: v.object({
     threadId: v.string(),
@@ -637,12 +827,34 @@ export const createPrivateSupportThread = internalAction({
       throw new Error("Missing requesterDiscordUserId");
     }
 
-    const baseName =
-      typeof args.name === "string" && args.name.trim().length > 0
-        ? args.name.trim()
-        : typeof args.publicThreadId === "string" && args.publicThreadId.trim()
-          ? `private-support-${args.publicThreadId.trim().slice(0, 8)}`
-          : `private-support-${Date.now()}`;
+    // Prefer server nickname -> global username -> fallback to user id.
+    let requesterName = requesterId;
+    try {
+      const memberRes = await fetch(
+        `https://discord.com/api/v10/guilds/${encodeURIComponent(args.guildId)}/members/${encodeURIComponent(requesterId)}`,
+        { headers: { Authorization: `Bot ${botToken}` } },
+      );
+      if (memberRes.ok) {
+        const json: any = await memberRes.json();
+        const nick = typeof json?.nick === "string" ? json.nick.trim() : "";
+        const username =
+          typeof json?.user?.username === "string" ? json.user.username.trim() : "";
+        requesterName = nick || username || requesterName;
+      }
+    } catch {
+      // ignore
+    }
+
+    const safeName = requesterName
+      .replace(/\s+/g, " ")
+      .replace(/[^\p{L}\p{N}\-_ .]/gu, "")
+      .trim()
+      .slice(0, 60);
+    const shortTicketId = args.supportThreadId.slice(-6);
+    const baseName = `${shortTicketId} - ${safeName || requesterId}`.slice(
+      0,
+      100,
+    );
 
     // Discord private thread type = 12 (GUILD_PRIVATE_THREAD)
     const createRes = await fetch(
@@ -654,7 +866,7 @@ export const createPrivateSupportThread = internalAction({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: baseName.slice(0, 100),
+          name: baseName,
           type: 12,
           auto_archive_duration: 1440,
           invitable: true,

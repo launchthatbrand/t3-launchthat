@@ -173,6 +173,7 @@ export const generateAgentReply = action({
   args: {
     organizationId: v.string(),
     threadId: v.string(),
+    sessionId: v.optional(v.string()),
     prompt: v.string(),
     contactId: v.optional(v.string()),
     contactEmail: v.optional(v.string()),
@@ -208,6 +209,7 @@ export const generateAgentReply = action({
         {
           organizationId,
           threadId: args.threadId,
+          sessionId: args.sessionId,
           role: "assistant",
           content: KNOWN_MISSING_KEY_MESSAGE,
           contactId: args.contactId ?? undefined,
@@ -256,6 +258,7 @@ export const generateAgentReply = action({
       {
         organizationId,
         threadId: args.threadId,
+        sessionId: args.sessionId,
         role: "user",
         content: trimmedPrompt,
         contactId: args.contactId ?? undefined,
@@ -694,6 +697,7 @@ export const generateAgentReply = action({
         {
           organizationId,
           threadId: args.threadId,
+          sessionId: args.sessionId,
           role: "assistant",
           content: assistantPayload,
           contactId: args.contactId ?? undefined,

@@ -12,6 +12,26 @@ import type { SupportChatSettings } from "../../settings";
 import { Textarea } from "@acme/ui/textarea";
 import { cn } from "@acme/ui";
 
+const stripAssistantEnvelope = (rawContent: string): string => {
+  if (!rawContent) return rawContent;
+  const trimmed = rawContent.trim();
+  if (!trimmed.startsWith("{")) return rawContent;
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (parsed && typeof parsed === "object") {
+      const kind = (parsed as any).kind;
+      if (kind === "assistant_response_v1") {
+        const text =
+          typeof (parsed as any).text === "string" ? (parsed as any).text : "";
+        return text || rawContent;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return rawContent;
+};
+
 interface ContactFormState {
   fullName: string;
   email: string;
@@ -220,6 +240,10 @@ export const ChatWidgetContent = ({
         const assistantName = message.id
           ? agentMetadataByMessageId.get(message.id)
           : undefined;
+        const renderedContent =
+          typeof message.content === "string"
+            ? stripAssistantEnvelope(message.content)
+            : String(message.content ?? "");
         return (
           <div
             key={message.id}
@@ -242,7 +266,7 @@ export const ChatWidgetContent = ({
                     {assistantName}
                   </p>
                 ) : null}
-                {message.content}
+                {renderedContent}
               </div>
 
               {message.role === "assistant" &&

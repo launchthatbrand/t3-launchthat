@@ -11,7 +11,7 @@ import crypto from "node:crypto";
 import { v } from "convex/values";
 
 import type { Id } from "../../_generated/dataModel";
-import { api, components, internal } from "../../_generated/api";
+import { api as apiAny, components, internal } from "../../_generated/api";
 import { internalAction } from "../../_generated/server";
 
 type GatewayEvent =
@@ -43,6 +43,8 @@ const discordGuildSettingsQuery = components.launchthat_discord.guildSettings
 const discordSupportMutations = components.launchthat_discord.support
   .mutations as any;
 const discordSupportQueries = components.launchthat_discord.support
+  .queries as any;
+const discordUserLinksQueries = components.launchthat_discord.userLinks
   .queries as any;
 
 const inferConfidence = (answer: string): number => {
@@ -146,8 +148,8 @@ export const processGatewayEvent = internalAction({
         ? settings.supportForumChannelId
         : null;
     const privateIntakeChannelId =
-      typeof (settings as any)?.supportPrivateIntakeChannelId === "string"
-        ? String((settings as any).supportPrivateIntakeChannelId)
+      typeof settings?.supportPrivateIntakeChannelId === "string"
+        ? settings.supportPrivateIntakeChannelId
         : null;
     const staffRoleId =
       typeof settings?.supportStaffRoleId === "string"
@@ -367,6 +369,22 @@ export const processGatewayEvent = internalAction({
           // No intake channel configured, so we can't create a private thread.
           // Continue with normal public behavior (no special handling).
         } else {
+          // Create/reuse the underlying Support thread now so we can use its threadId
+          // as the canonical identifier in Discord thread naming.
+          const sessionId = `discord:${guildId}:${threadId}`;
+          const created: any = await ctx.runMutation(
+            (apiAny as any).plugins.support.mutations.createThread,
+            {
+              organizationId,
+              clientSessionId: sessionId,
+              mode: "agent",
+            },
+          );
+          const supportThreadId = String(created?.threadId ?? "");
+          if (!supportThreadId) {
+            throw new Error("Failed to create support thread for escalation");
+          }
+
           const privateResult = (await ctx.runAction(
             (internal as any).plugins.discord.actions
               .createPrivateSupportThread,
@@ -377,10 +395,10 @@ export const processGatewayEvent = internalAction({
               requesterDiscordUserId: authorId,
               staffRoleId: staffRoleId ?? undefined,
               publicThreadId: threadId,
-              name: `private-support-${matchedKeyword}-${Date.now()}`,
+              supportThreadId,
             },
           )) as { threadId: string };
-          const privateThreadId = String(privateResult?.threadId ?? "");
+          const privateThreadId = String(privateResult.threadId);
           if (!privateThreadId) {
             throw new Error("Failed to create private support thread");
           }
@@ -424,14 +442,12 @@ export const processGatewayEvent = internalAction({
 
           // Best-effort unified log entry.
           try {
-            const metadata = Object.fromEntries(
-              Object.entries({
-                publicThreadId: threadId,
-                privateThreadId,
-                requesterDiscordUserId: authorId,
-                keyword: matchedKeyword,
-              }).filter(([, v]) => v !== undefined),
-            );
+            const metadata = {
+              publicThreadId: threadId,
+              privateThreadId,
+              requesterDiscordUserId: authorId,
+              keyword: matchedKeyword,
+            };
             await ctx.runMutation(
               componentsAny.launchthat_logs.entries.mutations.insertLogEntry,
               {
@@ -535,46 +551,176 @@ export const processGatewayEvent = internalAction({
 
     // Generate reply via existing support agent.
     // IMPORTANT: Support message storage expects a real Convex Id<"threads">.
-    // We create/reuse a support thread by using a stable clientSessionId derived from the Discord thread id.
-    const sessionId = `discord:${guildId}:${threadId}`;
-    const created = await ctx.runMutation(
-      api.plugins.support.mutations.createThread,
+    // We create/reuse a support thread by using a stable clientSessionId derived from the *canonical* public thread id.
+    // This allows escalated private threads to share context with the original public forum thread.
+    const baseThreadId = escalationMapping?.publicThreadId ?? threadId;
+    const sessionId = `discord:${guildId}:${baseThreadId}`;
+    const created: any = await ctx.runMutation(
+      (apiAny as any).plugins.support.mutations.createThread,
       {
         organizationId,
         clientSessionId: sessionId,
         mode: "agent",
       },
     );
-    const supportThreadId = String((created as any)?.threadId ?? "");
+    const supportThreadId = String(created?.threadId ?? "");
     if (!supportThreadId) {
       throw new Error("Failed to create support thread");
     }
 
+    const isEscalatedPrivateThread = Boolean(
+      escalationMapping && threadId === escalationMapping.privateThreadId,
+    );
+
+    // If we're in the private thread, require a linked Portal account so we can safely load user-specific data
+    // (e.g. ecommerce orders) into the agent context.
+    let promptForAgent = content;
+    let contactEmail: string | undefined;
+    const contextTagsForAgent: string[] = ["discord:support"];
+
+    if (isEscalatedPrivateThread) {
+      const requesterDiscordUserId =
+        typeof escalationMapping?.requesterDiscordUserId === "string"
+          ? escalationMapping.requesterDiscordUserId
+          : authorId;
+
+      const link: any = requesterDiscordUserId
+        ? await ctx.runQuery(discordUserLinksQueries.getUserIdByDiscordUserId, {
+            organizationId,
+            discordUserId: requesterDiscordUserId,
+          })
+        : null;
+
+      const linkedUserId =
+        typeof link?.userId === "string" ? String(link.userId) : "";
+
+      if (!linkedUserId) {
+        const origin = await buildOrgPublicOrigin(ctx, organizationId);
+        const linkUrl = `${origin}/account`;
+
+        await postJson(
+          "support_needs_linked_account",
+          `https://discord.com/api/v10/channels/${encodeURIComponent(threadId)}/messages`,
+          {
+            content:
+              "To help with order/account-specific requests, please link your Portal account first.\n" +
+              `Open: ${linkUrl}\n` +
+              "Click “Link Discord account”, then come back here and try your request again.",
+            allowed_mentions: { parse: [] },
+          },
+        );
+
+        const promptHash = crypto
+          .createHash("sha256")
+          .update(content, "utf8")
+          .digest("hex");
+        await ctx.runMutation(discordSupportMutations.recordSupportAiRun, {
+          organizationId,
+          guildId,
+          threadId,
+          triggerMessageId: messageId,
+          promptHash,
+          model: "system:needs_linked_account",
+          confidence: 1,
+          escalated: false,
+          answer: "Needs linked Portal account",
+        });
+
+        return null;
+      }
+
+      contextTagsForAgent.push(
+        `portal:user:${linkedUserId}`,
+        "commerce:orders",
+      );
+
+      // Load a compact order summary for the linked user and attach it to the agent prompt.
+      // This is intentionally small to avoid flooding context.
+      let orders: any[] = [];
+      try {
+        orders = (await ctx.runQuery(
+          (apiAny as any).plugins.commerce.orders.queries.listOrdersForUserId,
+          {
+            organizationId,
+            userId: linkedUserId,
+            limit: 5,
+          },
+        )) as any[];
+      } catch {
+        orders = [];
+      }
+
+      const lines: string[] = [];
+      if (Array.isArray(orders) && orders.length > 0) {
+        for (const o of orders) {
+          const id = typeof o?._id === "string" ? o._id : "";
+          const status = typeof o?.status === "string" ? o.status : "unknown";
+          const total = typeof o?.total === "number" ? o.total : 0;
+          const currency =
+            typeof o?.currency === "string" && o.currency.trim()
+              ? o.currency.trim().toUpperCase()
+              : "USD";
+          const itemsCount =
+            typeof o?.itemsCount === "number" ? o.itemsCount : undefined;
+          const createdAt =
+            typeof o?._creationTime === "number" ? o._creationTime : undefined;
+          const date = createdAt
+            ? new Date(Number(createdAt)).toISOString()
+            : undefined;
+          const email =
+            typeof o?.email === "string" && o.email.trim()
+              ? o.email.trim()
+              : undefined;
+
+          if (!contactEmail && email) contactEmail = email;
+
+          const orderIdLabel = id ?? "unknown";
+          lines.push(
+            `- orderId=${orderIdLabel} status=${status} total=${total} ${currency}` +
+              (itemsCount !== undefined ? ` items=${itemsCount}` : "") +
+              (date ? ` createdAt=${date}` : ""),
+          );
+        }
+      }
+
+      promptForAgent =
+        `${content}\n\n` +
+        "----\n" +
+        "Portal context (private thread):\n" +
+        `- linkedUserId=${linkedUserId}\n` +
+        (lines.length > 0
+          ? `- recentOrders:\n${lines.join("\n")}\n`
+          : "- recentOrders: none found\n") +
+        "----\n";
+    }
+
     const reply = await ctx.runAction(
-      api.plugins.support.agent.generateAgentReply,
+      (apiAny as any).plugins.support.agent.generateAgentReply,
       {
         organizationId,
         threadId: supportThreadId,
-        prompt: content,
+        sessionId,
+        prompt: promptForAgent,
         contactId: undefined,
-        contactEmail: undefined,
+        contactEmail,
         contactName: undefined,
-        contextTags: ["discord:support"],
+        contextTags: contextTagsForAgent,
       },
     );
 
     const text = String(reply?.text ?? "").trim();
     if (!text) return null;
 
+    const replyAny: any = reply;
     const sources: { title?: string; url?: string }[] = Array.isArray(
-      (reply as any)?.sources,
+      replyAny?.sources,
     )
-      ? (reply as any).sources
+      ? replyAny.sources
       : [];
     const usedSourceIndexes: number[] = Array.isArray(
-      (reply as any)?.usedSourceIndexes,
+      replyAny?.usedSourceIndexes,
     )
-      ? (reply as any).usedSourceIndexes
+      ? replyAny.usedSourceIndexes
           .map((v: any) => (typeof v === "number" ? v : Number(v)))
           .filter((v: number) => Number.isInteger(v))
       : [];

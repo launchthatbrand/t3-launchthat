@@ -510,8 +510,20 @@ export type Mounts = {
         { discordUserId: string; organizationId: string; userId: string },
         null
       >;
+      unlinkUser: FunctionReference<
+        "mutation",
+        "public",
+        { organizationId: string; userId: string },
+        null
+      >;
     };
     queries: {
+      getUserIdByDiscordUserId: FunctionReference<
+        "query",
+        "public",
+        { discordUserId: string; organizationId: string },
+        { linkedAt: number; userId: string } | null
+      >;
       getUserLink: FunctionReference<
         "query",
         "public",

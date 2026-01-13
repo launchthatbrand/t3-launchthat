@@ -123,7 +123,11 @@ export const sendTestNotificationToUser = action({
             : false;
 
     const createdAt = Date.now();
-    const org = await ctx.db.get(args.orgId);
+    // NOTE: this is an action; actions cannot access `ctx.db` directly.
+    // Fetch org data via query so we can use the org logo for the test notification image.
+    const org = (await ctx.runQuery(api.core.organizations.queries.getById, {
+      organizationId: args.orgId,
+    })) as { logo?: string | null } | null;
     const imageUrl =
       typeof org?.logo === "string" && org.logo.trim().length > 0
         ? org.logo.trim()
@@ -222,7 +226,9 @@ export const sendTestNotificationToUser = action({
     // Mirror into unified logs so test notifications show up under /admin/logs and the Notifications logs tab.
     try {
       const sinkStatus = {
-        inApp: { status: inAppInserted ? ("complete" as const) : ("failed" as const) },
+        inApp: {
+          status: inAppInserted ? ("complete" as const) : ("failed" as const),
+        },
         email: {
           status: emailAttempted
             ? emailSucceeded
@@ -240,7 +246,8 @@ export const sendTestNotificationToUser = action({
       } as const;
 
       const anyFailed =
-        (emailAttempted && !emailSucceeded) || (discordAttempted && !discordSucceeded);
+        (emailAttempted && !emailSucceeded) ||
+        (discordAttempted && !discordSucceeded);
 
       const email =
         typeof toggleInfo.userEmail === "string" && toggleInfo.userEmail.trim()
@@ -276,7 +283,10 @@ export const sendTestNotificationToUser = action({
         },
       );
     } catch (e) {
-      console.error("[notifications.test.sendTestNotificationToUser] log mirror failed:", e);
+      console.error(
+        "[notifications.test.sendTestNotificationToUser] log mirror failed:",
+        e,
+      );
     }
 
     // NOTE: We intentionally do NOT schedule the sink runner here.
