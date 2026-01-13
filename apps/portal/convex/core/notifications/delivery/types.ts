@@ -11,6 +11,8 @@ export const notificationEventPayloadValidator = v.object({
   title: v.string(),
   content: v.union(v.string(), v.null()),
   actionUrl: v.union(v.string(), v.null()),
+  // Optional image URL for sinks that support rich rendering (e.g. Discord embeds).
+  imageUrl: v.optional(v.union(v.string(), v.null())),
   actionData: v.union(v.record(v.string(), v.string()), v.null()),
   sourceUserId: v.union(v.id("users"), v.null()),
   expiresAt: v.union(v.number(), v.null()),

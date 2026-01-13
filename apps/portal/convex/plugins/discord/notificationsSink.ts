@@ -130,6 +130,12 @@ const absolutizeUrl = (origin: string, url: string) => {
   return `${origin}${url}`;
 };
 
+const normalizeOptionalString = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
 const postDiscordJson = async (
   ctx: any,
   args: {
@@ -227,6 +233,11 @@ export const discordAnnouncementsSink: NotificationSink = {
         ? absolutizeUrl(origin, payload.actionUrl)
         : "";
 
+    // Optional rich media (e.g. org logo for test notifications).
+    // Keep this loose so payload versions can evolve without breaking older clients.
+    const rawImageUrl = normalizeOptionalString((payload as any).imageUrl);
+    const imageUrl = rawImageUrl ? absolutizeUrl(origin, rawImageUrl) : null;
+
     for (const guildId of guildIds) {
       const settings = (await ctx.runQuery(
         components.launchthat_discord.guildSettings.queries
@@ -265,13 +276,24 @@ export const discordAnnouncementsSink: NotificationSink = {
 
       const contentLines: string[] = [];
       contentLines.push(`**${payload.title}**`);
-      if (payload.content && payload.content.trim()) {
-        contentLines.push(payload.content.trim());
-      }
+      const description =
+        payload.content && payload.content.trim() ? payload.content.trim() : "";
+      if (description) contentLines.push(description);
       if (actionUrl) {
         contentLines.push(actionUrl);
       }
       const content = contentLines.join("\n").slice(0, 1900);
+
+      const embeds = imageUrl
+        ? [
+            {
+              title: payload.title.slice(0, 256),
+              description: description ? description.slice(0, 4096) : undefined,
+              url: actionUrl || undefined,
+              image: { url: imageUrl },
+            },
+          ]
+        : undefined;
 
       await postDiscordJson(ctx, {
         botToken,
@@ -279,7 +301,11 @@ export const discordAnnouncementsSink: NotificationSink = {
         guildId,
         kind: "announcement",
         url: `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages`,
-        payload: { content, allowed_mentions: { parse: [] } },
+        payload: {
+          content,
+          ...(embeds ? { embeds } : {}),
+          allowed_mentions: { parse: [] },
+        },
       });
     }
   },

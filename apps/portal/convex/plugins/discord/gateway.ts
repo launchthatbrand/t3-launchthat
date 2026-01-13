@@ -145,6 +145,10 @@ export const processGatewayEvent = internalAction({
       typeof settings?.supportForumChannelId === "string"
         ? settings.supportForumChannelId
         : null;
+    const privateIntakeChannelId =
+      typeof (settings as any)?.supportPrivateIntakeChannelId === "string"
+        ? String((settings as any).supportPrivateIntakeChannelId)
+        : null;
     const staffRoleId =
       typeof settings?.supportStaffRoleId === "string"
         ? settings.supportStaffRoleId
@@ -223,15 +227,44 @@ export const processGatewayEvent = internalAction({
       },
     );
 
-    if (!forumChannelId) return null;
     if (authorIsBot) return null;
 
-    // For forum support, the parent forum channel id should be the configured one.
-    const incomingForum =
+    // Identify which parent channel this thread belongs to.
+    // For forum posts, this is the forum channel id. For private intake threads, this is the intake text channel id.
+    const incomingParentId =
       typeof (event as any).forumChannelId === "string"
         ? String((event as any).forumChannelId)
         : null;
-    if (incomingForum !== forumChannelId) {
+    const isPublicForumThread =
+      Boolean(forumChannelId) && incomingParentId === forumChannelId;
+    const isPrivateIntakeThread =
+      Boolean(privateIntakeChannelId) &&
+      incomingParentId === privateIntakeChannelId;
+    if (!isPublicForumThread && !isPrivateIntakeThread) return null;
+
+    const escalationMapping = (await ctx.runQuery(
+      discordSupportQueries.getEscalationMappingForThread,
+      { guildId, threadId },
+    )) as {
+      publicThreadId: string;
+      privateThreadId: string;
+      requesterDiscordUserId: string;
+    } | null;
+
+    // If this is a public forum thread that was already escalated, stop AI replies here.
+    if (
+      isPublicForumThread &&
+      escalationMapping &&
+      escalationMapping.publicThreadId === threadId
+    ) {
+      return null;
+    }
+
+    // If this is a private intake thread, only respond if we recognize it as an escalation thread.
+    if (
+      isPrivateIntakeThread &&
+      (!escalationMapping || escalationMapping.privateThreadId !== threadId)
+    ) {
       return null;
     }
 
@@ -316,6 +349,112 @@ export const processGatewayEvent = internalAction({
       }
       return res;
     };
+
+    // Public -> private escalation: if any escalation keyword is present in a public forum thread,
+    // create an invite-only private thread and hand off the user there.
+    if (
+      isPublicForumThread &&
+      supportAiEnabled &&
+      escalationKeywords.length > 0
+    ) {
+      const contentLower = content.toLowerCase();
+      const matchedKeyword =
+        escalationKeywords.find((kw) => kw && contentLower.includes(kw)) ??
+        null;
+
+      if (matchedKeyword) {
+        if (!privateIntakeChannelId) {
+          // No intake channel configured, so we can't create a private thread.
+          // Continue with normal public behavior (no special handling).
+        } else {
+          const privateResult = (await ctx.runAction(
+            (internal as any).plugins.discord.actions
+              .createPrivateSupportThread,
+            {
+              organizationId,
+              guildId,
+              intakeChannelId: privateIntakeChannelId,
+              requesterDiscordUserId: authorId,
+              staffRoleId: staffRoleId ?? undefined,
+              publicThreadId: threadId,
+              name: `private-support-${matchedKeyword}-${Date.now()}`,
+            },
+          )) as { threadId: string };
+          const privateThreadId = String(privateResult?.threadId ?? "");
+          if (!privateThreadId) {
+            throw new Error("Failed to create private support thread");
+          }
+
+          await ctx.runMutation(discordSupportMutations.setEscalationMapping, {
+            organizationId,
+            guildId,
+            publicThreadId: threadId,
+            privateThreadId,
+            requesterDiscordUserId: authorId,
+            keyword: matchedKeyword,
+          });
+
+          await postJson(
+            "support_escalation_handoff",
+            `https://discord.com/api/v10/channels/${encodeURIComponent(threadId)}/messages`,
+            {
+              content:
+                `For privacy, I created a private support thread for you: <#${privateThreadId}>\\n` +
+                "Please continue the conversation there.",
+              allowed_mentions: { parse: [] },
+            },
+          );
+
+          // Mark this trigger message as processed to avoid duplicate thread creation.
+          const promptHash = crypto
+            .createHash("sha256")
+            .update(content, "utf8")
+            .digest("hex");
+          await ctx.runMutation(discordSupportMutations.recordSupportAiRun, {
+            organizationId,
+            guildId,
+            threadId,
+            triggerMessageId: messageId,
+            promptHash,
+            model: "system:escalated_to_private",
+            confidence: 1,
+            escalated: true,
+            answer: `Escalated to private thread ${privateThreadId}`,
+          });
+
+          // Best-effort unified log entry.
+          try {
+            const metadata = Object.fromEntries(
+              Object.entries({
+                publicThreadId: threadId,
+                privateThreadId,
+                requesterDiscordUserId: authorId,
+                keyword: matchedKeyword,
+              }).filter(([, v]) => v !== undefined),
+            );
+            await ctx.runMutation(
+              componentsAny.launchthat_logs.entries.mutations.insertLogEntry,
+              {
+                organizationId,
+                pluginKey: "discord",
+                kind: "discord.support.escalation.created",
+                level: "info",
+                status: "complete",
+                message: `Escalated support thread to private (${matchedKeyword})`,
+                scopeKind: "discord",
+                scopeId: `${guildId}:${threadId}`,
+                metadata,
+                createdAt: Date.now(),
+              },
+            );
+          } catch {
+            // ignore
+          }
+
+          return null;
+        }
+      }
+    }
 
     // If AI is disabled, optionally post a short message so users aren’t confused.
     if (!supportAiEnabled) {

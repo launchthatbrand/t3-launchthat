@@ -13,7 +13,7 @@ import crypto from "node:crypto";
 import { v } from "convex/values";
 
 import { api as apiAny, components } from "../../_generated/api";
-import { action } from "../../_generated/server";
+import { action, internalAction } from "../../_generated/server";
 
 const discordOrgConfigMutations = components.launchthat_discord.orgConfigs
   .mutations as any;
@@ -26,6 +26,8 @@ const discordGuildConnectionMutations = components.launchthat_discord
   .guildConnections.mutations as any;
 const discordGuildSettingsMutations = components.launchthat_discord
   .guildSettings.mutations as any;
+const discordSupportMutations = components.launchthat_discord.support
+  .mutations as any;
 
 const encryptSecret = (plaintext: string, keyMaterial: string): string => {
   const key = crypto.createHash("sha256").update(keyMaterial).digest();
@@ -606,6 +608,145 @@ export const createForumChannel = action({
   },
 });
 
+export const createPrivateSupportThread = internalAction({
+  args: {
+    organizationId: v.string(),
+    guildId: v.string(),
+    intakeChannelId: v.string(),
+    requesterDiscordUserId: v.string(),
+    staffRoleId: v.optional(v.string()),
+    publicThreadId: v.optional(v.string()),
+    name: v.optional(v.string()),
+  },
+  returns: v.object({
+    threadId: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const { botToken } = await resolveOrgDiscordCredentials(
+      ctx,
+      args.organizationId,
+    );
+
+    const intakeChannelId = args.intakeChannelId.trim();
+    if (!intakeChannelId) {
+      throw new Error("Missing intakeChannelId");
+    }
+
+    const requesterId = args.requesterDiscordUserId.trim();
+    if (!requesterId) {
+      throw new Error("Missing requesterDiscordUserId");
+    }
+
+    const baseName =
+      typeof args.name === "string" && args.name.trim().length > 0
+        ? args.name.trim()
+        : typeof args.publicThreadId === "string" && args.publicThreadId.trim()
+          ? `private-support-${args.publicThreadId.trim().slice(0, 8)}`
+          : `private-support-${Date.now()}`;
+
+    // Discord private thread type = 12 (GUILD_PRIVATE_THREAD)
+    const createRes = await fetch(
+      `https://discord.com/api/v10/channels/${encodeURIComponent(intakeChannelId)}/threads`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: baseName.slice(0, 100),
+          type: 12,
+          auto_archive_duration: 1440,
+          invitable: true,
+        }),
+      },
+    );
+
+    if (!createRes.ok) {
+      const text = await createRes.text();
+      throw new Error(
+        `Discord create private thread failed (${createRes.status}): ${text}`,
+      );
+    }
+
+    const createJson = await createRes.json();
+    const threadId = typeof createJson?.id === "string" ? createJson.id : "";
+    if (!threadId) {
+      throw new Error("Discord create private thread returned no id");
+    }
+
+    // Invite the requester into the private thread.
+    const addRes = await fetch(
+      `https://discord.com/api/v10/channels/${encodeURIComponent(threadId)}/thread-members/${encodeURIComponent(requesterId)}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bot ${botToken}`,
+        },
+      },
+    );
+    if (!addRes.ok) {
+      const text = await addRes.text();
+      throw new Error(
+        `Discord add member to private thread failed (${addRes.status}): ${text}`,
+      );
+    }
+
+    // Best-effort initial message + staff ping.
+    try {
+      const staffRoleId =
+        typeof args.staffRoleId === "string" && args.staffRoleId.trim()
+          ? args.staffRoleId.trim()
+          : null;
+      const introLines: string[] = [];
+      introLines.push(
+        `Hi <@${requesterId}> — I created this private thread so you can share sensitive details safely.`,
+      );
+      introLines.push(
+        "Please describe the issue and include any order ID / email you used at checkout (if relevant).",
+      );
+      if (staffRoleId) {
+        introLines.push(`Notifying staff: <@&${staffRoleId}>`);
+      }
+
+      await fetch(
+        `https://discord.com/api/v10/channels/${encodeURIComponent(threadId)}/messages`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bot ${botToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            content: introLines.join("\n").slice(0, 1900),
+            allowed_mentions: staffRoleId
+              ? { roles: [staffRoleId], users: [requesterId] }
+              : { users: [requesterId] },
+          }),
+        },
+      );
+    } catch {
+      // ignore
+    }
+
+    // Mirror minimal audit to discordApiLogs (best-effort).
+    try {
+      await ctx.runMutation(discordSupportMutations.logDiscordApiCall, {
+        organizationId: args.organizationId,
+        guildId: args.guildId,
+        kind: "support_private_thread_created",
+        method: "POST",
+        url: `https://discord.com/api/v10/channels/${intakeChannelId}/threads`,
+        status: 200,
+      });
+    } catch {
+      // ignore
+    }
+
+    return { threadId };
+  },
+});
+
 export const upsertGuildSettings = action({
   args: {
     organizationId: v.string(),
@@ -613,6 +754,7 @@ export const upsertGuildSettings = action({
     approvedMemberRoleId: v.optional(v.string()),
     supportAiEnabled: v.boolean(),
     supportForumChannelId: v.optional(v.string()),
+    supportPrivateIntakeChannelId: v.optional(v.string()),
     supportStaffRoleId: v.optional(v.string()),
     escalationKeywords: v.optional(v.array(v.string())),
     escalationConfidenceThreshold: v.optional(v.number()),
@@ -637,6 +779,7 @@ export const upsertGuildSettings = action({
       approvedMemberRoleId: args.approvedMemberRoleId,
       supportAiEnabled: args.supportAiEnabled,
       supportForumChannelId: args.supportForumChannelId,
+      supportPrivateIntakeChannelId: args.supportPrivateIntakeChannelId,
       supportStaffRoleId: args.supportStaffRoleId,
       escalationKeywords: args.escalationKeywords,
       escalationConfidenceThreshold: args.escalationConfidenceThreshold,

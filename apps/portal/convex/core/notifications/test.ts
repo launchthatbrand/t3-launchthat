@@ -123,6 +123,11 @@ export const sendTestNotificationToUser = action({
             : false;
 
     const createdAt = Date.now();
+    const org = await ctx.db.get(args.orgId);
+    const imageUrl =
+      typeof org?.logo === "string" && org.logo.trim().length > 0
+        ? org.logo.trim()
+        : null;
     const payload = {
       orgId: args.orgId,
       eventKey: args.eventKey.trim(),
@@ -132,6 +137,7 @@ export const sendTestNotificationToUser = action({
       title: args.title.trim(),
       content: args.content?.trim() ? args.content.trim() : null,
       actionUrl: args.actionUrl?.trim() ? args.actionUrl.trim() : null,
+      imageUrl,
       actionData: null,
       sourceUserId: args.actorUserId,
       expiresAt: null,

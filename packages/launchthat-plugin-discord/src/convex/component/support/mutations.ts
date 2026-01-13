@@ -118,4 +118,81 @@ export const logDiscordApiCall = mutation({
   },
 });
 
+export const setEscalationMapping = mutation({
+  args: {
+    organizationId: v.string(),
+    guildId: v.string(),
+    publicThreadId: v.string(),
+    privateThreadId: v.string(),
+    requesterDiscordUserId: v.string(),
+    keyword: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const publicThread = await ctx.db
+      .query("supportThreads")
+      .withIndex("by_guildId_and_threadId", (q: any) =>
+        q.eq("guildId", args.guildId).eq("threadId", args.publicThreadId),
+      )
+      .first();
+
+    if (publicThread) {
+      await ctx.db.patch((publicThread as any)._id, {
+        escalatedToPrivateThreadId: args.privateThreadId,
+        escalationRequesterDiscordUserId: args.requesterDiscordUserId,
+        escalationKeyword: args.keyword,
+        escalatedAt: now,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.insert("supportThreads", {
+        organizationId: args.organizationId,
+        guildId: args.guildId,
+        threadId: args.publicThreadId,
+        status: "open",
+        escalatedToPrivateThreadId: args.privateThreadId,
+        escalationRequesterDiscordUserId: args.requesterDiscordUserId,
+        escalationKeyword: args.keyword,
+        escalatedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    const privateThread = await ctx.db
+      .query("supportThreads")
+      .withIndex("by_guildId_and_threadId", (q: any) =>
+        q.eq("guildId", args.guildId).eq("threadId", args.privateThreadId),
+      )
+      .first();
+
+    if (privateThread) {
+      await ctx.db.patch((privateThread as any)._id, {
+        escalatedFromPublicThreadId: args.publicThreadId,
+        escalationRequesterDiscordUserId: args.requesterDiscordUserId,
+        escalationKeyword: args.keyword,
+        escalatedAt: now,
+        updatedAt: now,
+      });
+    } else {
+      await ctx.db.insert("supportThreads", {
+        organizationId: args.organizationId,
+        guildId: args.guildId,
+        threadId: args.privateThreadId,
+        status: "open",
+        escalatedFromPublicThreadId: args.publicThreadId,
+        escalationRequesterDiscordUserId: args.requesterDiscordUserId,
+        escalationKeyword: args.keyword,
+        escalatedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    return null;
+  },
+});
+
 

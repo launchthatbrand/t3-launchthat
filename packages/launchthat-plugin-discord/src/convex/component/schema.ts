@@ -54,6 +54,9 @@ export default defineSchema({
     // Support AI settings (forum-based support)
     supportAiEnabled: v.boolean(),
     supportForumChannelId: v.optional(v.string()),
+    // Where to create invite-only private support threads when escalation keywords are detected.
+    // This should be a normal text channel id.
+    supportPrivateIntakeChannelId: v.optional(v.string()),
     supportStaffRoleId: v.optional(v.string()),
     escalationKeywords: v.optional(v.array(v.string())),
     escalationConfidenceThreshold: v.optional(v.number()),
@@ -80,6 +83,14 @@ export default defineSchema({
     forumChannelId: v.optional(v.string()),
     title: v.optional(v.string()),
     createdByDiscordUserId: v.optional(v.string()),
+    // If this thread is a public forum support thread that was escalated, we store the created private thread id here.
+    escalatedToPrivateThreadId: v.optional(v.string()),
+    // If this thread is a private intake thread created from a public thread escalation, we store the originating public thread id here.
+    escalatedFromPublicThreadId: v.optional(v.string()),
+    // The user who triggered the escalation (Discord user id).
+    escalationRequesterDiscordUserId: v.optional(v.string()),
+    escalationKeyword: v.optional(v.string()),
+    escalatedAt: v.optional(v.number()),
     status: v.union(
       v.literal("open"),
       v.literal("pending_human"),

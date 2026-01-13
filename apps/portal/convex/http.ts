@@ -16,6 +16,7 @@ const discordGuildConnectionsQuery = components.launchthat_discord.guildConnecti
   .queries as any;
 const discordGuildSettingsQuery = components.launchthat_discord.guildSettings
   .queries as any;
+const discordSupportQueries = components.launchthat_discord.support.queries as any;
 
 /**
  * Request body structure expected by the createAuthNetTransaction endpoint.
@@ -390,19 +391,69 @@ http.route({
             typeof settings?.supportForumChannelId === "string"
               ? settings.supportForumChannelId
               : null;
+          const privateIntakeChannelId =
+            typeof (settings as any)?.supportPrivateIntakeChannelId === "string"
+              ? String((settings as any).supportPrivateIntakeChannelId)
+              : null;
+          const escalationKeywords: string[] = Array.isArray(
+            (settings as any)?.escalationKeywords,
+          )
+            ? ((settings as any).escalationKeywords as unknown[])
+                .filter((v) => typeof v === "string")
+                .map((v) => String(v).trim().toLowerCase())
+                .filter(Boolean)
+                .slice(0, 50)
+            : [];
           const isMessageCreate = (event as any).type === "message_create";
           const authorIsBot = Boolean((event as any).authorIsBot);
-          const incomingForum =
+          const threadId =
+            typeof (event as any).threadId === "string"
+              ? String((event as any).threadId)
+              : "";
+          const incomingParentId =
             typeof (event as any).forumChannelId === "string"
               ? String((event as any).forumChannelId)
               : null;
 
-          shouldType =
-            Boolean(supportAiEnabled) &&
-            Boolean(forumChannelId) &&
-            !authorIsBot &&
-            isMessageCreate &&
-            incomingForum === forumChannelId;
+          if (!supportAiEnabled || authorIsBot || !isMessageCreate) {
+            shouldType = false;
+          } else if (incomingParentId && forumChannelId && incomingParentId === forumChannelId) {
+            const content =
+              typeof (event as any).content === "string"
+                ? String((event as any).content)
+                : "";
+            const contentLower = content.toLowerCase();
+            const keywordHit =
+              escalationKeywords.length > 0
+                ? escalationKeywords.some((kw) => kw && contentLower.includes(kw))
+                : false;
+
+            // If this will trigger a private handoff, don't show typing in the public thread.
+            if (keywordHit && privateIntakeChannelId) {
+              shouldType = false;
+            } else if (threadId) {
+              const mapping = await ctx.runQuery(
+                (discordSupportQueries as any).getEscalationMappingForThread,
+                { guildId, threadId },
+              );
+              shouldType = !(mapping && mapping.publicThreadId === threadId);
+            } else {
+              shouldType = true;
+            }
+          } else if (
+            incomingParentId &&
+            privateIntakeChannelId &&
+            incomingParentId === privateIntakeChannelId &&
+            threadId
+          ) {
+            const mapping = await ctx.runQuery(
+              (discordSupportQueries as any).getEscalationMappingForThread,
+              { guildId, threadId },
+            );
+            shouldType = Boolean(mapping && mapping.privateThreadId === threadId);
+          } else {
+            shouldType = false;
+          }
         }
       }
     } catch {

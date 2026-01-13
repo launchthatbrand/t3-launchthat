@@ -12,6 +12,7 @@ export const getGuildSettings = query({
       approvedMemberRoleId: v.optional(v.string()),
       supportAiEnabled: v.boolean(),
       supportForumChannelId: v.optional(v.string()),
+      supportPrivateIntakeChannelId: v.optional(v.string()),
       supportStaffRoleId: v.optional(v.string()),
       escalationKeywords: v.optional(v.array(v.string())),
       escalationConfidenceThreshold: v.optional(v.number()),
@@ -43,6 +44,10 @@ export const getGuildSettings = query({
       supportForumChannelId:
         typeof (row as any).supportForumChannelId === "string"
           ? ((row as any).supportForumChannelId as string)
+          : undefined,
+      supportPrivateIntakeChannelId:
+        typeof (row as any).supportPrivateIntakeChannelId === "string"
+          ? ((row as any).supportPrivateIntakeChannelId as string)
           : undefined,
       supportStaffRoleId:
         typeof (row as any).supportStaffRoleId === "string"

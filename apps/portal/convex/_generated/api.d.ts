@@ -6853,6 +6853,7 @@ export declare const components: {
             supportAiDisabledMessageText?: string;
             supportAiEnabled: boolean;
             supportForumChannelId?: string;
+            supportPrivateIntakeChannelId?: string;
             supportStaffRoleId?: string;
             threadReplyCooldownMs?: number;
           },
@@ -6877,6 +6878,7 @@ export declare const components: {
             supportAiDisabledMessageText?: string;
             supportAiEnabled: boolean;
             supportForumChannelId?: string;
+            supportPrivateIntakeChannelId?: string;
             supportStaffRoleId?: string;
             threadReplyCooldownMs?: number;
             updatedAt: number;
@@ -7113,6 +7115,19 @@ export declare const components: {
           },
           null
         >;
+        setEscalationMapping: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            guildId: string;
+            keyword?: string;
+            organizationId: string;
+            privateThreadId: string;
+            publicThreadId: string;
+            requesterDiscordUserId: string;
+          },
+          null
+        >;
         upsertSupportThreadAndMessage: FunctionReference<
           "mutation",
           "internal",
@@ -7133,6 +7148,16 @@ export declare const components: {
         >;
       };
       queries: {
+        getEscalationMappingForThread: FunctionReference<
+          "query",
+          "internal",
+          { guildId: string; threadId: string },
+          null | {
+            privateThreadId: string;
+            publicThreadId: string;
+            requesterDiscordUserId: string;
+          }
+        >;
         hasAiRunForTriggerMessage: FunctionReference<
           "query",
           "internal",

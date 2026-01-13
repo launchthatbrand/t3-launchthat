@@ -9,6 +9,7 @@ export type NotificationEventPayload = {
   title: string;
   content: string | null;
   actionUrl: string | null;
+  imageUrl?: string | null;
   actionData: Record<string, string> | null;
   sourceUserId: any | null;
   expiresAt: number | null;

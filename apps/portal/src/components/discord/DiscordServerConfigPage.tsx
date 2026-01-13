@@ -135,6 +135,10 @@ export const DiscordServerConfigPage = (props: {
     React.useState(false);
   const [supportForumChannelIdDraft, setSupportForumChannelIdDraft] =
     React.useState<string | null>(null);
+  const [
+    supportPrivateIntakeChannelIdDraft,
+    setSupportPrivateIntakeChannelIdDraft,
+  ] = React.useState<string | null>(null);
   const [supportStaffRoleIdDraft, setSupportStaffRoleIdDraft] = React.useState<
     string | null
   >(null);
@@ -279,6 +283,11 @@ export const DiscordServerConfigPage = (props: {
     setSupportForumChannelIdDraft(
       typeof guildSettings.supportForumChannelId === "string"
         ? guildSettings.supportForumChannelId
+        : null,
+    );
+    setSupportPrivateIntakeChannelIdDraft(
+      typeof (guildSettings as any).supportPrivateIntakeChannelId === "string"
+        ? String((guildSettings as any).supportPrivateIntakeChannelId)
         : null,
     );
     setSupportStaffRoleIdDraft(
@@ -427,6 +436,11 @@ export const DiscordServerConfigPage = (props: {
         supportForumChannelId:
           supportForumChannelIdDraft && supportForumChannelIdDraft.trim()
             ? supportForumChannelIdDraft.trim()
+            : undefined,
+        supportPrivateIntakeChannelId:
+          supportPrivateIntakeChannelIdDraft &&
+          supportPrivateIntakeChannelIdDraft.trim()
+            ? supportPrivateIntakeChannelIdDraft.trim()
             : undefined,
         supportStaffRoleId:
           supportStaffRoleIdDraft && supportStaffRoleIdDraft.trim()
@@ -836,6 +850,38 @@ export const DiscordServerConfigPage = (props: {
                       <SelectContent>
                         {channels
                           .filter((c) => c.type === 15) // GUILD_FORUM
+                          .map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label>Private intake channel</Label>
+                    <div className="text-muted-foreground text-xs">
+                      When a message contains an escalation keyword, the bot will create an invite-only private thread under this channel and hand off the user there.
+                    </div>
+                    <Select
+                      value={supportPrivateIntakeChannelIdDraft ?? ""}
+                      onValueChange={(v) =>
+                        setSupportPrivateIntakeChannelIdDraft(v || null)
+                      }
+                    >
+                      <SelectTrigger disabled={isLoadingChannels}>
+                        <SelectValue
+                          placeholder={
+                            isLoadingChannels
+                              ? "Loading channels..."
+                              : "Select text channel"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {channels
+                          .filter((c) => c.type === 0) // GUILD_TEXT
                           .map((c) => (
                             <SelectItem key={c.id} value={c.id}>
                               {c.name}

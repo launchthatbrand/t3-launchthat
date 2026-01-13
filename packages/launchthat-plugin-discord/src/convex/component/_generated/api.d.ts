@@ -149,6 +149,7 @@ export type Mounts = {
           supportAiDisabledMessageText?: string;
           supportAiEnabled: boolean;
           supportForumChannelId?: string;
+          supportPrivateIntakeChannelId?: string;
           supportStaffRoleId?: string;
           threadReplyCooldownMs?: number;
         },
@@ -173,6 +174,7 @@ export type Mounts = {
           supportAiDisabledMessageText?: string;
           supportAiEnabled: boolean;
           supportForumChannelId?: string;
+          supportPrivateIntakeChannelId?: string;
           supportStaffRoleId?: string;
           threadReplyCooldownMs?: number;
           updatedAt: number;
@@ -401,6 +403,19 @@ export type Mounts = {
         },
         null
       >;
+      setEscalationMapping: FunctionReference<
+        "mutation",
+        "public",
+        {
+          guildId: string;
+          keyword?: string;
+          organizationId: string;
+          privateThreadId: string;
+          publicThreadId: string;
+          requesterDiscordUserId: string;
+        },
+        null
+      >;
       upsertSupportThreadAndMessage: FunctionReference<
         "mutation",
         "public",
@@ -421,6 +436,16 @@ export type Mounts = {
       >;
     };
     queries: {
+      getEscalationMappingForThread: FunctionReference<
+        "query",
+        "public",
+        { guildId: string; threadId: string },
+        null | {
+          privateThreadId: string;
+          publicThreadId: string;
+          requesterDiscordUserId: string;
+        }
+      >;
       hasAiRunForTriggerMessage: FunctionReference<
         "query",
         "public",
