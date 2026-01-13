@@ -139,6 +139,7 @@ export type Mounts = {
         {
           announcementChannelId?: string;
           announcementEventKeys?: Array<string>;
+          approvedMemberRoleId?: string;
           courseUpdatesChannelId?: string;
           escalationConfidenceThreshold?: number;
           escalationKeywords?: Array<string>;
@@ -162,6 +163,7 @@ export type Mounts = {
         null | {
           announcementChannelId?: string;
           announcementEventKeys?: Array<string>;
+          approvedMemberRoleId?: string;
           courseUpdatesChannelId?: string;
           escalationConfidenceThreshold?: number;
           escalationKeywords?: Array<string>;

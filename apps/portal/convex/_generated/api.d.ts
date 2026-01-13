@@ -6843,6 +6843,7 @@ export declare const components: {
           {
             announcementChannelId?: string;
             announcementEventKeys?: Array<string>;
+            approvedMemberRoleId?: string;
             courseUpdatesChannelId?: string;
             escalationConfidenceThreshold?: number;
             escalationKeywords?: Array<string>;
@@ -6866,6 +6867,7 @@ export declare const components: {
           null | {
             announcementChannelId?: string;
             announcementEventKeys?: Array<string>;
+            approvedMemberRoleId?: string;
             courseUpdatesChannelId?: string;
             escalationConfidenceThreshold?: number;
             escalationKeywords?: Array<string>;

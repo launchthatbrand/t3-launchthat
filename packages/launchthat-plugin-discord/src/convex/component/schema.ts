@@ -47,6 +47,10 @@ export default defineSchema({
     organizationId: v.string(),
     guildId: v.string(),
 
+    // Member approvals (optional): choose a role that represents "approved".
+    // The admin UI can use this to show "pending" members (missing the role) and to approve by assigning it.
+    approvedMemberRoleId: v.optional(v.string()),
+
     // Support AI settings (forum-based support)
     supportAiEnabled: v.boolean(),
     supportForumChannelId: v.optional(v.string()),

@@ -431,6 +431,116 @@ export const listGuildChannels = action({
   },
 });
 
+export const listGuildMembers = action({
+  args: {
+    organizationId: v.string(),
+    guildId: v.string(),
+    limit: v.optional(v.number()),
+    after: v.optional(v.string()),
+  },
+  returns: v.object({
+    members: v.array(
+      v.object({
+        userId: v.string(),
+        username: v.string(),
+        displayName: v.optional(v.string()),
+        nick: v.optional(v.string()),
+        joinedAt: v.optional(v.string()),
+        pending: v.optional(v.boolean()),
+        roleIds: v.array(v.string()),
+      }),
+    ),
+    nextAfter: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    await ctx.runQuery((apiAny as any).plugins.discord.permissions.requireOrgAdmin, {
+      organizationId: args.organizationId,
+    });
+    const { botToken } = await resolveOrgDiscordCredentials(ctx, args.organizationId);
+
+    const limit = Math.max(1, Math.min(1000, args.limit ?? 100));
+    const url = new URL(`https://discord.com/api/v10/guilds/${args.guildId}/members`);
+    url.searchParams.set("limit", String(limit));
+    if (typeof args.after === "string" && args.after.trim()) {
+      url.searchParams.set("after", args.after.trim());
+    }
+
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Bot ${botToken}` },
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Discord members fetch failed (${res.status}): ${text}`);
+    }
+    const json = await res.json();
+    const arr = Array.isArray(json) ? json : [];
+
+    const members = arr
+      .map((m: any) => {
+        const user = m?.user ?? {};
+        const userId = typeof user?.id === "string" ? user.id : "";
+        const username = typeof user?.username === "string" ? user.username : "";
+        const globalName =
+          typeof user?.global_name === "string" ? user.global_name : undefined;
+        const nick = typeof m?.nick === "string" ? m.nick : undefined;
+        const joinedAt = typeof m?.joined_at === "string" ? m.joined_at : undefined;
+        const pending = typeof m?.pending === "boolean" ? m.pending : undefined;
+        const roleIds = Array.isArray(m?.roles)
+          ? (m.roles as unknown[]).filter((r) => typeof r === "string") as string[]
+          : [];
+        const displayName = nick ?? globalName ?? undefined;
+
+        return {
+          userId,
+          username,
+          displayName,
+          nick,
+          joinedAt,
+          pending,
+          roleIds,
+        };
+      })
+      .filter((m: any) => m.userId && m.username);
+
+    const nextAfter =
+      members.length > 0 ? String(members[members.length - 1].userId) : undefined;
+
+    return { members, nextAfter };
+  },
+});
+
+export const approveGuildMember = action({
+  args: {
+    organizationId: v.string(),
+    guildId: v.string(),
+    userId: v.string(),
+    roleId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.runQuery((apiAny as any).plugins.discord.permissions.requireOrgAdmin, {
+      organizationId: args.organizationId,
+    });
+    const { botToken } = await resolveOrgDiscordCredentials(ctx, args.organizationId);
+
+    const roleId = args.roleId.trim();
+    if (!roleId) throw new Error("Missing approved role id");
+
+    const res = await fetch(
+      `https://discord.com/api/v10/guilds/${args.guildId}/members/${args.userId}/roles/${roleId}`,
+      {
+        method: "PUT",
+        headers: { Authorization: `Bot ${botToken}` },
+      },
+    );
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Discord approve member failed (${res.status}): ${text}`);
+    }
+    return null;
+  },
+});
+
 export const createForumChannel = action({
   args: {
     organizationId: v.string(),
@@ -500,6 +610,7 @@ export const upsertGuildSettings = action({
   args: {
     organizationId: v.string(),
     guildId: v.string(),
+    approvedMemberRoleId: v.optional(v.string()),
     supportAiEnabled: v.boolean(),
     supportForumChannelId: v.optional(v.string()),
     supportStaffRoleId: v.optional(v.string()),
@@ -523,6 +634,7 @@ export const upsertGuildSettings = action({
     await ctx.runMutation(discordGuildSettingsMutations.upsertGuildSettings, {
       organizationId: args.organizationId,
       guildId: args.guildId,
+      approvedMemberRoleId: args.approvedMemberRoleId,
       supportAiEnabled: args.supportAiEnabled,
       supportForumChannelId: args.supportForumChannelId,
       supportStaffRoleId: args.supportStaffRoleId,

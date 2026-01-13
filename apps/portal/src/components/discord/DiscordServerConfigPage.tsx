@@ -56,6 +56,16 @@ type DiscordGuildChannel = {
   parentId?: string;
 };
 
+type DiscordGuildMember = {
+  userId: string;
+  username: string;
+  displayName?: string;
+  nick?: string;
+  joinedAt?: string;
+  pending?: boolean;
+  roleIds: string[];
+};
+
 type GuildConnection = {
   guildId: string;
   guildName?: string;
@@ -86,6 +96,8 @@ export const DiscordServerConfigPage = (props: {
   const startBotInstall = useAction(discordActions.startBotInstall);
   const listRolesForGuild = useAction(discordActions.listRolesForGuild);
   const listGuildChannels = useAction(discordActions.listGuildChannels);
+  const listGuildMembers = useAction(discordActions.listGuildMembers);
+  const approveGuildMember = useAction(discordActions.approveGuildMember);
   const createForumChannel = useAction(discordActions.createForumChannel);
   const createRole = useAction(discordActions.createRole);
   const updateRole = useAction(discordActions.updateRole);
@@ -146,6 +158,13 @@ export const DiscordServerConfigPage = (props: {
     React.useState<string | null>(null);
   const [announcementEventKeysDraft, setAnnouncementEventKeysDraft] =
     React.useState<string[]>([]);
+
+  const [approvedMemberRoleIdDraft, setApprovedMemberRoleIdDraft] =
+    React.useState<string | null>(null);
+
+  const [isLoadingMembers, setIsLoadingMembers] = React.useState(false);
+  const [members, setMembers] = React.useState<Array<DiscordGuildMember>>([]);
+  const [membersAfter, setMembersAfter] = React.useState<string | null>(null);
 
   const [createForumOpen, setCreateForumOpen] = React.useState(false);
   const [createForumNameDraft, setCreateForumNameDraft] =
@@ -250,6 +269,12 @@ export const DiscordServerConfigPage = (props: {
     if (!guildId) return;
     if (!guildSettings) return;
 
+    setApprovedMemberRoleIdDraft(
+      typeof (guildSettings as any).approvedMemberRoleId === "string"
+        ? String((guildSettings as any).approvedMemberRoleId)
+        : null,
+    );
+
     setSupportAiEnabledDraft(Boolean(guildSettings.supportAiEnabled));
     setSupportForumChannelIdDraft(
       typeof guildSettings.supportForumChannelId === "string"
@@ -323,6 +348,62 @@ export const DiscordServerConfigPage = (props: {
     );
   }, [guildId, guildSettings]);
 
+  const loadMembers = async (opts?: { after?: string | null; append?: boolean }) => {
+    if (!organizationId || !guildId) return;
+    try {
+      setIsLoadingMembers(true);
+      const result = (await listGuildMembers({
+        organizationId: String(organizationId),
+        guildId,
+        limit: 100,
+        after:
+          typeof opts?.after === "string" && opts.after.trim() ? opts.after.trim() : undefined,
+      })) as { members: DiscordGuildMember[]; nextAfter?: string };
+
+      setMembers((prev) => {
+        const next = Array.isArray(result?.members) ? result.members : [];
+        if (opts?.append) return [...prev, ...next];
+        return next;
+      });
+      setMembersAfter(typeof result?.nextAfter === "string" ? result.nextAfter : null);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Failed to load members");
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  };
+
+  const handleApproveMember = async (memberUserId: string) => {
+    if (!organizationId || !guildId) return;
+    const roleId = approvedMemberRoleIdDraft?.trim();
+    if (!roleId) {
+      toast.error("Select an approved member role first.");
+      return;
+    }
+    try {
+      await approveGuildMember({
+        organizationId: String(organizationId),
+        guildId,
+        userId: memberUserId,
+        roleId,
+      });
+      setMembers((prev) =>
+        prev.map((m) =>
+          m.userId === memberUserId && !m.roleIds.includes(roleId)
+            ? { ...m, roleIds: [...m.roleIds, roleId], pending: false }
+            : m,
+        ),
+      );
+      toast.success("Member approved");
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Failed to approve member");
+    }
+  };
+
   const handleSaveGuildSettings = async () => {
     if (!organizationId || !guildId) return;
     try {
@@ -338,6 +419,10 @@ export const DiscordServerConfigPage = (props: {
       await upsertGuildSettings({
         organizationId: String(organizationId),
         guildId,
+        approvedMemberRoleId:
+          approvedMemberRoleIdDraft && approvedMemberRoleIdDraft.trim()
+            ? approvedMemberRoleIdDraft.trim()
+            : undefined,
         supportAiEnabled: Boolean(supportAiEnabledDraft),
         supportForumChannelId:
           supportForumChannelIdDraft && supportForumChannelIdDraft.trim()
@@ -943,6 +1028,118 @@ export const DiscordServerConfigPage = (props: {
                   <Button onClick={() => void handleSaveGuildSettings()}>
                     Save announcements
                   </Button>
+                </div>
+              </div>
+
+              <div className="rounded-md border p-3">
+                <div className="mb-2 text-sm font-medium">Members</div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label>Approved member role</Label>
+                    <Select
+                      value={approvedMemberRoleIdDraft ?? ""}
+                      onValueChange={(v) => setApprovedMemberRoleIdDraft(v || null)}
+                    >
+                      <SelectTrigger disabled={isLoadingRoles}>
+                        <SelectValue
+                          placeholder={
+                            isLoadingRoles ? "Loading roles..." : "Select role"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roles
+                          .filter((r) => !r.managed)
+                          .map((r) => (
+                            <SelectItem key={r.id} value={r.id}>
+                              {r.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="text-muted-foreground text-xs">
+                      “Approve” assigns this role to a member. Discord membership
+                      screening “pending” is separate and can’t be approved by
+                      admins via API.
+                    </div>
+                  </div>
+
+                  <div className="flex items-end justify-end gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() => void loadMembers({ after: null, append: false })}
+                      disabled={isLoadingMembers}
+                    >
+                      {isLoadingMembers ? "Loading..." : "Load members"}
+                    </Button>
+                    <Button onClick={() => void handleSaveGuildSettings()}>
+                      Save
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  {(members ?? []).map((m) => {
+                    const needsRole =
+                      approvedMemberRoleIdDraft &&
+                      !m.roleIds.includes(approvedMemberRoleIdDraft);
+                    const isPending = Boolean(m.pending) || Boolean(needsRole);
+                    return (
+                      <div
+                        key={m.userId}
+                        className="flex flex-wrap items-center gap-2 rounded-md border p-2"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="text-sm font-medium">
+                              {m.displayName ?? m.username}
+                            </div>
+                            <div className="text-muted-foreground text-xs">
+                              @{m.username}
+                            </div>
+                            {isPending ? (
+                              <Badge variant="secondary">Pending</Badge>
+                            ) : (
+                              <Badge variant="outline">Active</Badge>
+                            )}
+                          </div>
+                          <div className="text-muted-foreground text-xs">
+                            Roles: {m.roleIds.length}
+                            {m.joinedAt ? ` • Joined: ${m.joinedAt}` : ""}
+                          </div>
+                        </div>
+
+                        {isPending ? (
+                          <Button
+                            size="sm"
+                            onClick={() => void handleApproveMember(m.userId)}
+                            disabled={!approvedMemberRoleIdDraft}
+                          >
+                            Approve
+                          </Button>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+
+                  {members.length === 0 ? (
+                    <div className="text-muted-foreground text-sm">
+                      No members loaded yet.
+                    </div>
+                  ) : null}
+
+                  {membersAfter ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        void loadMembers({ after: membersAfter, append: true })
+                      }
+                      disabled={isLoadingMembers}
+                    >
+                      {isLoadingMembers ? "Loading..." : "Load more"}
+                    </Button>
+                  ) : null}
                 </div>
               </div>
 
