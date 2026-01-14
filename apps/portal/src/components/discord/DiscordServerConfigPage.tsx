@@ -163,6 +163,11 @@ export const DiscordServerConfigPage = (props: {
   const [announcementEventKeysDraft, setAnnouncementEventKeysDraft] =
     React.useState<string[]>([]);
 
+  const [mentorTradesChannelIdDraft, setMentorTradesChannelIdDraft] =
+    React.useState<string | null>(null);
+  const [memberTradesChannelIdDraft, setMemberTradesChannelIdDraft] =
+    React.useState<string | null>(null);
+
   const [approvedMemberRoleIdDraft, setApprovedMemberRoleIdDraft] =
     React.useState<string | null>(null);
 
@@ -325,6 +330,17 @@ export const DiscordServerConfigPage = (props: {
           : [],
     );
 
+    setMentorTradesChannelIdDraft(
+      typeof (guildSettings as any).mentorTradesChannelId === "string"
+        ? String((guildSettings as any).mentorTradesChannelId)
+        : null,
+    );
+    setMemberTradesChannelIdDraft(
+      typeof (guildSettings as any).memberTradesChannelId === "string"
+        ? String((guildSettings as any).memberTradesChannelId)
+        : null,
+    );
+
     const kws = Array.isArray(guildSettings.escalationKeywords)
       ? (guildSettings.escalationKeywords as unknown[])
           .filter((v) => typeof v === "string")
@@ -474,6 +490,14 @@ export const DiscordServerConfigPage = (props: {
         announcementEventKeys:
           announcementEventKeysDraft.length > 0
             ? announcementEventKeysDraft
+            : undefined,
+        mentorTradesChannelId:
+          mentorTradesChannelIdDraft && mentorTradesChannelIdDraft.trim()
+            ? mentorTradesChannelIdDraft.trim()
+            : undefined,
+        memberTradesChannelId:
+          memberTradesChannelIdDraft && memberTradesChannelIdDraft.trim()
+            ? memberTradesChannelIdDraft.trim()
             : undefined,
       });
       toast.success("Guild settings saved");
@@ -1073,6 +1097,63 @@ export const DiscordServerConfigPage = (props: {
                 <div className="mt-3">
                   <Button onClick={() => void handleSaveGuildSettings()}>
                     Save announcements
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-md border p-3">
+                <div className="mb-2 text-sm font-medium">Trades (Trader Launchpad)</div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label>Mentors trades channel</Label>
+                    <Select
+                      value={mentorTradesChannelIdDraft ?? ""}
+                      onValueChange={(v) => setMentorTradesChannelIdDraft(v || null)}
+                    >
+                      <SelectTrigger disabled={isLoadingChannels}>
+                        <SelectValue placeholder="Select channel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {channels
+                          .filter((c) => c.type === 0)
+                          .map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="text-muted-foreground text-xs">
+                      Trades from org mentors/admins will be posted/updated here.
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Members trades channel</Label>
+                    <Select
+                      value={memberTradesChannelIdDraft ?? ""}
+                      onValueChange={(v) => setMemberTradesChannelIdDraft(v || null)}
+                    >
+                      <SelectTrigger disabled={isLoadingChannels}>
+                        <SelectValue placeholder="Select channel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {channels
+                          .filter((c) => c.type === 0)
+                          .map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="text-muted-foreground text-xs">
+                      Trades from normal members will be posted/updated here.
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <Button onClick={() => void handleSaveGuildSettings()}>
+                    Save trade channels
                   </Button>
                 </div>
               </div>

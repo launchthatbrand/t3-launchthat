@@ -86,6 +86,12 @@
       ],
       "launchthat-plugin-logs/*": [
         "../../packages/launchthat-plugin-logs/src/*"
+      ],
+      "launchthat-plugin-traderlaunchpad": [
+        "../../packages/launchthat-plugin-traderlaunchpad/src/index"
+      ],
+      "launchthat-plugin-traderlaunchpad/*": [
+        "../../packages/launchthat-plugin-traderlaunchpad/src/*"
       ]
     },
     "plugins": [{ "name": "next" }]

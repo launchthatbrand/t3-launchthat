@@ -13,6 +13,7 @@ import {
 } from "launchthat-plugin-socialfeed";
 import { supportPlugin } from "launchthat-plugin-support";
 import { tasksPlugin } from "launchthat-plugin-tasks";
+import { traderlaunchpadPlugin } from "launchthat-plugin-traderlaunchpad";
 import { vimeoPlugin } from "launchthat-plugin-vimeo";
 
 import type { PluginDefinition, PluginSettingDefinition } from "./types";
@@ -25,6 +26,7 @@ import { enhanceDiscordPluginDefinition } from "./enhanceDiscordPlugin";
 import { enhanceCrmPluginDefinition } from "./enhanceCrmPlugin";
 import { enhanceEcommercePluginDefinition } from "./enhanceEcommercePlugin";
 import { enhanceLmsPluginDefinition } from "./enhanceLmsPlugin";
+import { enhanceTraderlaunchpadPluginDefinition } from "./enhanceTraderlaunchpadPlugin";
 import { portalAccessControlPlugin } from "./portalAccessControlPlugin";
 import { portalNotificationsPlugin } from "./portalNotificationsPlugin";
 
@@ -56,9 +58,14 @@ const discordPluginEnhanced = enhanceDiscordPluginDefinition(
   discordPlugin as unknown as PluginDefinition,
 );
 
+const traderlaunchpadPluginEnhanced = enhanceTraderlaunchpadPluginDefinition(
+  traderlaunchpadPlugin as unknown as PluginDefinition,
+);
+
 export const pluginDefinitions: PluginDefinition[] = [
   portalAccessControlPlugin,
   discordPluginEnhanced,
+  traderlaunchpadPluginEnhanced,
   crmPluginEnhanced,
   lmsPluginEnhanced,
   calendarPlugin as unknown as PluginDefinition,

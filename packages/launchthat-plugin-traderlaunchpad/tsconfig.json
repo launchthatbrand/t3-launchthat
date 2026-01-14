@@ -1,9 +1,19 @@
 {
-  "extends": "@acme/tsconfig/base.json",
+  "extends": "@acme/tsconfig/compiled-package.json",
   "compilerOptions": {
-    "rootDir": "./src",
-    "outDir": "./dist"
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "moduleResolution": "bundler",
+    "paths": {
+      "launchthat-plugin-core": ["../launchthat-plugin-core/src/index"],
+      "@portal/*": ["../../apps/portal/*"],
+      "@portal/convexspec": ["../../apps/portal/convexspec.ts"],
+      "@convex-config/*": ["../../apps/portal/convex/*"],
+      "@convex-config/_generated/*": ["../../apps/portal/convex/_generated/*"],
+      "@/convex/_generated/*": ["../../apps/portal/convex/_generated/*"],
+      "@/convex/*": ["../../apps/portal/convex/*"]
+    }
   },
   "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["dist", "node_modules"]
 }

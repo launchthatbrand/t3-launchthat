@@ -144,6 +144,7 @@
     "launchthat-plugin-support": "workspace:*",
     "launchthat-plugin-tasks": "workspace:*",
     "launchthat-plugin-vimeo": "workspace:*",
+    "launchthat-plugin-traderlaunchpad": "workspace:*",
     "lenis": "^1.3.16",
     "lexical": "^0.31.2",
     "lodash-es": "^4.17.21",

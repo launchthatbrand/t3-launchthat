@@ -87,6 +87,7 @@ import type * as core_users_mutations from "../core/users/mutations.js";
 import type * as core_users_queries from "../core/users/queries.js";
 import type * as core_users_types from "../core/users/types.js";
 import type * as core_users from "../core/users.js";
+import type * as crons from "../crons.js";
 import type * as dev_ffmpeg from "../dev/ffmpeg.js";
 import type * as env from "../env.js";
 import type * as http from "../http.js";
@@ -200,6 +201,13 @@ import type * as plugins_support_options from "../plugins/support/options.js";
 import type * as plugins_support_posts_queries from "../plugins/support/posts/queries.js";
 import type * as plugins_support_queries from "../plugins/support/queries.js";
 import type * as plugins_support_rag from "../plugins/support/rag.js";
+import type * as plugins_traderlaunchpad_actions from "../plugins/traderlaunchpad/actions.js";
+import type * as plugins_traderlaunchpad_discord from "../plugins/traderlaunchpad/discord.js";
+import type * as plugins_traderlaunchpad_permissions from "../plugins/traderlaunchpad/permissions.js";
+import type * as plugins_traderlaunchpad_polling from "../plugins/traderlaunchpad/polling.js";
+import type * as plugins_traderlaunchpad_queries from "../plugins/traderlaunchpad/queries.js";
+import type * as plugins_traderlaunchpad_roleQueries from "../plugins/traderlaunchpad/roleQueries.js";
+import type * as plugins_traderlaunchpad_sync from "../plugins/traderlaunchpad/sync.js";
 import type * as plugins_vimeo_actions from "../plugins/vimeo/actions.js";
 import type * as plugins_vimeo_crons from "../plugins/vimeo/crons.js";
 import type * as plugins_vimeo_internalMutations from "../plugins/vimeo/internalMutations.js";
@@ -321,6 +329,7 @@ declare const fullApi: ApiFromModules<{
   "core/users/queries": typeof core_users_queries;
   "core/users/types": typeof core_users_types;
   "core/users": typeof core_users;
+  crons: typeof crons;
   "dev/ffmpeg": typeof dev_ffmpeg;
   env: typeof env;
   http: typeof http;
@@ -434,6 +443,13 @@ declare const fullApi: ApiFromModules<{
   "plugins/support/posts/queries": typeof plugins_support_posts_queries;
   "plugins/support/queries": typeof plugins_support_queries;
   "plugins/support/rag": typeof plugins_support_rag;
+  "plugins/traderlaunchpad/actions": typeof plugins_traderlaunchpad_actions;
+  "plugins/traderlaunchpad/discord": typeof plugins_traderlaunchpad_discord;
+  "plugins/traderlaunchpad/permissions": typeof plugins_traderlaunchpad_permissions;
+  "plugins/traderlaunchpad/polling": typeof plugins_traderlaunchpad_polling;
+  "plugins/traderlaunchpad/queries": typeof plugins_traderlaunchpad_queries;
+  "plugins/traderlaunchpad/roleQueries": typeof plugins_traderlaunchpad_roleQueries;
+  "plugins/traderlaunchpad/sync": typeof plugins_traderlaunchpad_sync;
   "plugins/vimeo/actions": typeof plugins_vimeo_actions;
   "plugins/vimeo/crons": typeof plugins_vimeo_crons;
   "plugins/vimeo/internalMutations": typeof plugins_vimeo_internalMutations;
@@ -6850,6 +6866,8 @@ export declare const components: {
             escalationConfidenceThreshold?: number;
             escalationKeywords?: Array<string>;
             guildId: string;
+            memberTradesChannelId?: string;
+            mentorTradesChannelId?: string;
             organizationId: string;
             supportAiDisabledMessageEnabled?: boolean;
             supportAiDisabledMessageText?: string;
@@ -6875,6 +6893,8 @@ export declare const components: {
             escalationConfidenceThreshold?: number;
             escalationKeywords?: Array<string>;
             guildId: string;
+            memberTradesChannelId?: string;
+            mentorTradesChannelId?: string;
             organizationId: string;
             supportAiDisabledMessageEnabled?: boolean;
             supportAiDisabledMessageText?: string;
@@ -7929,6 +7949,555 @@ export declare const components: {
           "internal",
           { limit?: number; organizationId: string; prefix?: string },
           Array<string>
+        >;
+      };
+    };
+  };
+  launchthat_traderlaunchpad: {
+    connections: {
+      drafts: {
+        consumeConnectDraft: FunctionReference<
+          "mutation",
+          "internal",
+          { draftId: string; organizationId: string; userId: string },
+          {
+            accessTokenEncrypted: string;
+            accessTokenExpiresAt?: number;
+            environment: "demo" | "live";
+            refreshTokenEncrypted: string;
+            refreshTokenExpiresAt?: number;
+            server: string;
+          } | null
+        >;
+        createConnectDraft: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accessTokenEncrypted: string;
+            accessTokenExpiresAt?: number;
+            environment: "demo" | "live";
+            expiresAt: number;
+            organizationId: string;
+            refreshTokenEncrypted: string;
+            refreshTokenExpiresAt?: number;
+            server: string;
+            userId: string;
+          },
+          string
+        >;
+      };
+      internalQueries: {
+        getConnectionSecrets: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; userId: string },
+          {
+            accessTokenEncrypted: string;
+            accessTokenExpiresAt?: number;
+            environment: "demo" | "live";
+            organizationId: string;
+            refreshTokenEncrypted: string;
+            refreshTokenExpiresAt?: number;
+            selectedAccNum: number;
+            selectedAccountId: string;
+            server: string;
+            status: "connected" | "error" | "disconnected";
+            userId: string;
+          } | null
+        >;
+        listConnectionsDueForPoll: FunctionReference<
+          "query",
+          "internal",
+          {
+            activeWindowMs?: number;
+            dueIntervalMs: number;
+            limit?: number;
+            now: number;
+            tier: "active" | "warm";
+          },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            hasOpenTrade?: boolean;
+            lastBrokerActivityAt?: number;
+            lastSyncAt: number;
+            organizationId: string;
+            status: "connected" | "error" | "disconnected";
+            syncLeaseOwner?: string;
+            syncLeaseUntil?: number;
+            userId: string;
+          }>
+        >;
+      };
+      mutations: {
+        claimSyncLeases: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            connectionIds: Array<string>;
+            leaseMs: number;
+            leaseOwner: string;
+            now: number;
+          },
+          Array<string>
+        >;
+        deleteConnection: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; userId: string },
+          null
+        >;
+        updateConnectionSyncState: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            connectionId: string;
+            hasOpenTrade?: boolean;
+            lastBrokerActivityAt?: number;
+            lastError?: string;
+            lastSyncAt?: number;
+            status?: "connected" | "error" | "disconnected";
+            syncLeaseOwner?: string;
+            syncLeaseUntil?: number;
+          },
+          null
+        >;
+        upsertConnection: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accessTokenEncrypted: string;
+            accessTokenExpiresAt?: number;
+            environment: "demo" | "live";
+            lastError?: string;
+            organizationId: string;
+            refreshTokenEncrypted: string;
+            refreshTokenExpiresAt?: number;
+            selectedAccNum: number;
+            selectedAccountId: string;
+            server: string;
+            status: "connected" | "error" | "disconnected";
+            userId: string;
+          },
+          string
+        >;
+      };
+      queries: {
+        getMyConnection: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; userId: string },
+          {
+            _creationTime: number;
+            _id: string;
+            createdAt: number;
+            environment: "demo" | "live";
+            hasOpenTrade?: boolean;
+            lastBrokerActivityAt?: number;
+            lastError?: string;
+            lastSyncAt: number;
+            organizationId: string;
+            selectedAccNum: number;
+            selectedAccountId: string;
+            server: string;
+            status: "connected" | "error" | "disconnected";
+            syncLeaseOwner?: string;
+            syncLeaseUntil?: number;
+            updatedAt: number;
+            userId: string;
+          } | null
+        >;
+      };
+    };
+    raw: {
+      mutations: {
+        upsertTradeAccountState: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accountId: string;
+            connectionId: string;
+            organizationId: string;
+            raw: any;
+            userId: string;
+          },
+          { id: string; wasNew: boolean }
+        >;
+        upsertTradeExecution: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            connectionId: string;
+            executedAt: number;
+            externalExecutionId: string;
+            externalOrderId?: string;
+            fees?: number;
+            instrumentId?: string;
+            organizationId: string;
+            price?: number;
+            qty?: number;
+            raw: any;
+            side?: "buy" | "sell";
+            symbol?: string;
+            userId: string;
+          },
+          { id: string; wasNew: boolean }
+        >;
+        upsertTradeOrder: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            closedAt?: number;
+            connectionId: string;
+            createdAt?: number;
+            externalOrderId: string;
+            instrumentId?: string;
+            organizationId: string;
+            raw: any;
+            side?: "buy" | "sell";
+            status?: string;
+            symbol?: string;
+            userId: string;
+          },
+          { id: string; wasNew: boolean }
+        >;
+        upsertTradeOrderHistory: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            closedAt?: number;
+            connectionId: string;
+            createdAt?: number;
+            externalOrderId: string;
+            instrumentId?: string;
+            organizationId: string;
+            raw: any;
+            side?: "buy" | "sell";
+            status?: string;
+            symbol?: string;
+            userId: string;
+          },
+          { id: string; wasNew: boolean }
+        >;
+        upsertTradePosition: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            avgPrice?: number;
+            connectionId: string;
+            externalPositionId: string;
+            instrumentId?: string;
+            openedAt?: number;
+            organizationId: string;
+            qty?: number;
+            raw: any;
+            side?: "buy" | "sell";
+            symbol?: string;
+            userId: string;
+          },
+          { id: string; wasNew: boolean }
+        >;
+      };
+      queries: {
+        getAccountStateForUser: FunctionReference<
+          "query",
+          "internal",
+          { accountId: string; organizationId: string; userId: string },
+          {
+            _creationTime: number;
+            _id: string;
+            accountId: string;
+            connectionId: string;
+            organizationId: string;
+            raw: any;
+            updatedAt: number;
+            userId: string;
+          } | null
+        >;
+        listExecutionsForUser: FunctionReference<
+          "query",
+          "internal",
+          {
+            fromExecutedAt?: number;
+            limit?: number;
+            organizationId: string;
+            toExecutedAt?: number;
+            userId: string;
+          },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            connectionId: string;
+            executedAt: number;
+            externalExecutionId: string;
+            externalOrderId?: string;
+            fees?: number;
+            instrumentId?: string;
+            organizationId: string;
+            price?: number;
+            qty?: number;
+            raw: any;
+            side?: "buy" | "sell";
+            symbol?: string;
+            updatedAt: number;
+            userId: string;
+          }>
+        >;
+        listOrdersForUser: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; organizationId: string; userId: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            closedAt?: number;
+            connectionId: string;
+            createdAt?: number;
+            externalOrderId: string;
+            instrumentId?: string;
+            organizationId: string;
+            raw: any;
+            side?: "buy" | "sell";
+            status?: string;
+            symbol?: string;
+            updatedAt: number;
+            userId: string;
+          }>
+        >;
+        listOrdersHistoryForUser: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; organizationId: string; userId: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            closedAt?: number;
+            connectionId: string;
+            createdAt?: number;
+            externalOrderId: string;
+            instrumentId?: string;
+            organizationId: string;
+            raw: any;
+            side?: "buy" | "sell";
+            status?: string;
+            symbol?: string;
+            updatedAt: number;
+            userId: string;
+          }>
+        >;
+        listPositionsForUser: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; organizationId: string; userId: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            avgPrice?: number;
+            connectionId: string;
+            externalPositionId: string;
+            instrumentId?: string;
+            openedAt?: number;
+            organizationId: string;
+            qty?: number;
+            raw: any;
+            side?: "buy" | "sell";
+            symbol?: string;
+            updatedAt: number;
+            userId: string;
+          }>
+        >;
+      };
+    };
+    tradeIdeas: {
+      internalQueries: {
+        getLatestGroupForSymbol: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; symbol: string; userId: string },
+          {
+            _creationTime: number;
+            _id: string;
+            accountId: string;
+            avgEntryPrice?: number;
+            closedAt?: number;
+            connectionId: string;
+            createdAt: number;
+            direction: "long" | "short";
+            discordChannelId?: string;
+            discordChannelKind?: "mentors" | "members";
+            discordLastSyncedAt?: number;
+            discordMessageId?: string;
+            fees?: number;
+            lastExecutionAt?: number;
+            lastProcessedExecutionId?: string;
+            netQty: number;
+            openedAt: number;
+            organizationId: string;
+            realizedPnl?: number;
+            status: "open" | "closed";
+            symbol: string;
+            updatedAt: number;
+            userId: string;
+          } | null
+        >;
+        getOpenGroupForSymbol: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; symbol: string; userId: string },
+          {
+            _creationTime: number;
+            _id: string;
+            accountId: string;
+            avgEntryPrice?: number;
+            closedAt?: number;
+            connectionId: string;
+            createdAt: number;
+            direction: "long" | "short";
+            discordChannelId?: string;
+            discordChannelKind?: "mentors" | "members";
+            discordLastSyncedAt?: number;
+            discordMessageId?: string;
+            fees?: number;
+            lastExecutionAt?: number;
+            lastProcessedExecutionId?: string;
+            netQty: number;
+            openedAt: number;
+            organizationId: string;
+            realizedPnl?: number;
+            status: "open" | "closed";
+            symbol: string;
+            updatedAt: number;
+            userId: string;
+          } | null
+        >;
+        hasAnyOpenGroup: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; userId: string },
+          boolean
+        >;
+      };
+      mutations: {
+        markDiscordSynced: FunctionReference<
+          "mutation",
+          "internal",
+          { tradeIdeaGroupId: string },
+          null
+        >;
+        setDiscordMessageLink: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            discordChannelId: string;
+            discordChannelKind: "mentors" | "members";
+            discordMessageId: string;
+            tradeIdeaGroupId: string;
+          },
+          null
+        >;
+        upsertTradeIdeaGroup: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accountId: string;
+            avgEntryPrice?: number;
+            closedAt?: number;
+            connectionId: string;
+            direction: "long" | "short";
+            fees?: number;
+            lastExecutionAt?: number;
+            lastProcessedExecutionId?: string;
+            netQty: number;
+            openedAt: number;
+            organizationId: string;
+            realizedPnl?: number;
+            status: "open" | "closed";
+            symbol: string;
+            userId: string;
+          },
+          string
+        >;
+      };
+      queries: {
+        getById: FunctionReference<
+          "query",
+          "internal",
+          { tradeIdeaGroupId: string },
+          {
+            _creationTime: number;
+            _id: string;
+            accountId: string;
+            avgEntryPrice?: number;
+            closedAt?: number;
+            connectionId: string;
+            createdAt: number;
+            direction: "long" | "short";
+            discordChannelId?: string;
+            discordChannelKind?: "mentors" | "members";
+            discordLastSyncedAt?: number;
+            discordMessageId?: string;
+            fees?: number;
+            lastExecutionAt?: number;
+            lastProcessedExecutionId?: string;
+            netQty: number;
+            openedAt: number;
+            organizationId: string;
+            realizedPnl?: number;
+            status: "open" | "closed";
+            symbol: string;
+            tags?: Array<string>;
+            thesis?: string;
+            updatedAt: number;
+            userId: string;
+          } | null
+        >;
+        listByStatus: FunctionReference<
+          "query",
+          "internal",
+          {
+            organizationId: string;
+            paginationOpts: {
+              cursor: string | null;
+              endCursor?: string | null;
+              id?: number;
+              maximumBytesRead?: number;
+              maximumRowsRead?: number;
+              numItems: number;
+            };
+            status: "open" | "closed";
+            userId: string;
+          },
+          {
+            continueCursor: string | null;
+            isDone: boolean;
+            page: Array<{
+              _creationTime: number;
+              _id: string;
+              accountId: string;
+              avgEntryPrice?: number;
+              closedAt?: number;
+              connectionId: string;
+              createdAt: number;
+              direction: "long" | "short";
+              discordChannelId?: string;
+              discordChannelKind?: "mentors" | "members";
+              discordLastSyncedAt?: number;
+              discordMessageId?: string;
+              fees?: number;
+              lastExecutionAt?: number;
+              lastProcessedExecutionId?: string;
+              netQty: number;
+              openedAt: number;
+              organizationId: string;
+              realizedPnl?: number;
+              status: "open" | "closed";
+              symbol: string;
+              tags?: Array<string>;
+              thesis?: string;
+              updatedAt: number;
+              userId: string;
+            }>;
+          }
         >;
       };
     };

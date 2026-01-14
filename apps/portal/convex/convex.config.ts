@@ -15,6 +15,7 @@ import launchthat_logs from "launchthat-plugin-logs/convex/component/convex.conf
 import launchthat_socialfeed from "launchthat-plugin-socialfeed/convex/component/convex.config";
 import launchthat_support from "launchthat-plugin-support/convex/component/convex.config";
 import launchthat_tasks from "launchthat-plugin-tasks/convex/component/convex.config";
+import launchthat_traderlaunchpad from "launchthat-plugin-traderlaunchpad/convex/component/convex.config";
 import launchthat_vimeo from "launchthat-plugin-vimeo/convex/component/convex.config";
 
 const app = defineApp();
@@ -36,4 +37,5 @@ app.use(launchthat_crm);
 app.use(launchthat_tasks);
 app.use(launchthat_vimeo);
 app.use(launchthat_logs);
+app.use(launchthat_traderlaunchpad);
 export default app;

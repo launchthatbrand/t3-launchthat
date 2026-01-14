@@ -401,3 +401,4 @@ Since analytics are for **all channels**, keep data manageable:
 - keep raw events retention bounded (e.g., 30–90 days) once rollups are validated
 
 
+

@@ -144,6 +144,8 @@ export type Mounts = {
           escalationConfidenceThreshold?: number;
           escalationKeywords?: Array<string>;
           guildId: string;
+          memberTradesChannelId?: string;
+          mentorTradesChannelId?: string;
           organizationId: string;
           supportAiDisabledMessageEnabled?: boolean;
           supportAiDisabledMessageText?: string;
@@ -169,6 +171,8 @@ export type Mounts = {
           escalationConfidenceThreshold?: number;
           escalationKeywords?: Array<string>;
           guildId: string;
+          memberTradesChannelId?: string;
+          mentorTradesChannelId?: string;
           organizationId: string;
           supportAiDisabledMessageEnabled?: boolean;
           supportAiDisabledMessageText?: string;

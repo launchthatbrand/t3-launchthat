@@ -976,6 +976,8 @@ export const upsertGuildSettings = action({
     courseUpdatesChannelId: v.optional(v.string()),
     announcementChannelId: v.optional(v.string()),
     announcementEventKeys: v.optional(v.array(v.string())),
+    mentorTradesChannelId: v.optional(v.string()),
+    memberTradesChannelId: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -1001,6 +1003,8 @@ export const upsertGuildSettings = action({
       courseUpdatesChannelId: args.courseUpdatesChannelId,
       announcementChannelId: args.announcementChannelId,
       announcementEventKeys: args.announcementEventKeys,
+      mentorTradesChannelId: args.mentorTradesChannelId,
+      memberTradesChannelId: args.memberTradesChannelId,
     });
     return null;
   },

@@ -22,6 +22,8 @@ export const getGuildSettings = query({
       courseUpdatesChannelId: v.optional(v.string()),
       announcementChannelId: v.optional(v.string()),
       announcementEventKeys: v.optional(v.array(v.string())),
+      mentorTradesChannelId: v.optional(v.string()),
+      memberTradesChannelId: v.optional(v.string()),
       updatedAt: v.number(),
     }),
   ),
@@ -87,6 +89,14 @@ export const getGuildSettings = query({
             (v) => typeof v === "string",
           ) as string[]
         : undefined,
+      mentorTradesChannelId:
+        typeof (row as any).mentorTradesChannelId === "string"
+          ? ((row as any).mentorTradesChannelId as string)
+          : undefined,
+      memberTradesChannelId:
+        typeof (row as any).memberTradesChannelId === "string"
+          ? ((row as any).memberTradesChannelId as string)
+          : undefined,
       updatedAt: Number((row as any).updatedAt ?? 0),
     };
   },

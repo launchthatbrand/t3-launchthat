@@ -12,9 +12,15 @@ export const createTraderLaunchpadPluginDefinition = (
 ): PluginDefinition => ({
   id: PLUGIN_ID,
   name: "Trader Launchpad",
-  description: "Trader Launchpad integration.",
-  longDescription: "Adds per-organization Trader Launchpad integration.",
-  features: ["Trader Launchpad integration"],
+  description: "Trading journal + TradeLocker import + Discord trade feed.",
+  longDescription:
+    "Adds per-user TradeLocker connections, trade idea grouping (until flat), and Discord trade feeds (mentors vs members).",
+  features: [
+    "Per-user TradeLocker connect",
+    "Raw order/execution import",
+    "Trade ideas (roundtrip)",
+    "Discord trade feed",
+  ],
   postTypes: [],
   activation: {
     optionKey: `plugin_${PLUGIN_ID}_enabled`,
@@ -30,8 +36,8 @@ export const createTraderLaunchpadPluginDefinition = (
       group: "integrations",
     },
   ],
-  // Settings UI is implemented in the Portal app (org-scoped) rather than in this package,
-  // since bot credentials must be scoped per organization.
+  // Settings UI is implemented in the Portal app rather than in this package, since it is
+  // org-scoped + user-scoped and depends on portal auth/session context.
 });
 
 export const traderlaunchpadPlugin: PluginDefinition =

@@ -2,7 +2,7 @@ export {
   PLUGIN_ID,
   type PluginId,
   createTraderLaunchpadPluginDefinition,
-  type CreatePluginDefinitionOptions,
+  type CreateTraderLaunchpadPluginDefinitionOptions,
   traderlaunchpadPlugin,
 } from "./plugin";
-export default traderlaunchpadPlugin;
+export { traderlaunchpadPlugin as default } from "./plugin";

@@ -71,6 +71,10 @@ export default defineSchema({
     announcementChannelId: v.optional(v.string()),
     announcementEventKeys: v.optional(v.array(v.string())),
 
+    // TraderLaunchpad trade feed routing (optional)
+    mentorTradesChannelId: v.optional(v.string()),
+    memberTradesChannelId: v.optional(v.string()),
+
     updatedAt: v.number(),
   })
     .index("by_organizationId_and_guildId", ["organizationId", "guildId"])
