@@ -8109,6 +8109,46 @@ export declare const components: {
         >;
       };
     };
+    journal: {
+      mutations: {
+        upsertProfile: FunctionReference<
+          "mutation",
+          "internal",
+          { isPublic: boolean; organizationId: string; userId: string },
+          { _id: string }
+        >;
+      };
+      queries: {
+        getProfileForUser: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; userId: string },
+          null | {
+            _creationTime: number;
+            _id: string;
+            createdAt: number;
+            isPublic: boolean;
+            organizationId: string;
+            updatedAt: number;
+            userId: string;
+          }
+        >;
+        listPublicProfiles: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; organizationId: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            createdAt: number;
+            isPublic: boolean;
+            organizationId: string;
+            updatedAt: number;
+            userId: string;
+          }>
+        >;
+      };
+    };
     raw: {
       mutations: {
         upsertTradeAccountState: FunctionReference<
@@ -8131,6 +8171,7 @@ export declare const components: {
             executedAt: number;
             externalExecutionId: string;
             externalOrderId?: string;
+            externalPositionId?: string;
             fees?: number;
             instrumentId?: string;
             organizationId: string;
@@ -8214,6 +8255,35 @@ export declare const components: {
             userId: string;
           } | null
         >;
+        listExecutionsForPosition: FunctionReference<
+          "query",
+          "internal",
+          {
+            limit?: number;
+            organizationId: string;
+            positionId: string;
+            userId: string;
+          },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            connectionId: string;
+            executedAt: number;
+            externalExecutionId: string;
+            externalOrderId?: string;
+            externalPositionId?: string;
+            fees?: number;
+            instrumentId?: string;
+            organizationId: string;
+            price?: number;
+            qty?: number;
+            raw: any;
+            side?: "buy" | "sell";
+            symbol?: string;
+            updatedAt: number;
+            userId: string;
+          }>
+        >;
         listExecutionsForUser: FunctionReference<
           "query",
           "internal",
@@ -8231,6 +8301,7 @@ export declare const components: {
             executedAt: number;
             externalExecutionId: string;
             externalOrderId?: string;
+            externalPositionId?: string;
             fees?: number;
             instrumentId?: string;
             organizationId: string;
@@ -8333,6 +8404,7 @@ export declare const components: {
             netQty: number;
             openedAt: number;
             organizationId: string;
+            positionId?: string;
             realizedPnl?: number;
             status: "open" | "closed";
             symbol: string;
@@ -8363,6 +8435,7 @@ export declare const components: {
             netQty: number;
             openedAt: number;
             organizationId: string;
+            positionId?: string;
             realizedPnl?: number;
             status: "open" | "closed";
             symbol: string;
@@ -8383,6 +8456,19 @@ export declare const components: {
           "internal",
           { tradeIdeaGroupId: string },
           null
+        >;
+        rebuildTradeIdeaForPosition: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accountId: string;
+            connectionId: string;
+            isOpen: boolean;
+            organizationId: string;
+            positionId: string;
+            userId: string;
+          },
+          { executionsLinked: number; tradeIdeaGroupId: string }
         >;
         setDiscordMessageLink: FunctionReference<
           "mutation",
@@ -8410,6 +8496,7 @@ export declare const components: {
             netQty: number;
             openedAt: number;
             organizationId: string;
+            positionId: string;
             realizedPnl?: number;
             status: "open" | "closed";
             symbol: string;
@@ -8442,6 +8529,7 @@ export declare const components: {
             netQty: number;
             openedAt: number;
             organizationId: string;
+            positionId?: string;
             realizedPnl?: number;
             status: "open" | "closed";
             symbol: string;
@@ -8489,6 +8577,7 @@ export declare const components: {
               netQty: number;
               openedAt: number;
               organizationId: string;
+              positionId?: string;
               realizedPnl?: number;
               status: "open" | "closed";
               symbol: string;

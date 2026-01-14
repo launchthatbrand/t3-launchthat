@@ -2,6 +2,16 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  journalProfiles: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+    isPublic: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_and_user", ["organizationId", "userId"])
+    .index("by_org_and_isPublic", ["organizationId", "isPublic"]),
+
   tradelockerConnectDrafts: defineTable({
     organizationId: v.string(),
     userId: v.string(),
@@ -82,6 +92,7 @@ export default defineSchema({
     connectionId: v.id("tradelockerConnections"),
     externalExecutionId: v.string(),
     externalOrderId: v.optional(v.string()),
+    externalPositionId: v.optional(v.string()),
     symbol: v.optional(v.string()),
     instrumentId: v.optional(v.string()),
     side: v.optional(v.union(v.literal("buy"), v.literal("sell"))),
@@ -102,6 +113,11 @@ export default defineSchema({
       "organizationId",
       "userId",
       "externalOrderId",
+    ])
+    .index("by_org_user_externalPositionId", [
+      "organizationId",
+      "userId",
+      "externalPositionId",
     ]),
 
   tradeOrdersHistory: defineTable({
@@ -160,6 +176,8 @@ export default defineSchema({
     userId: v.string(),
     connectionId: v.id("tradelockerConnections"),
     accountId: v.string(),
+    // New hedging-safe grouping key. Optional temporarily to avoid breaking legacy rows.
+    positionId: v.optional(v.string()),
     symbol: v.string(),
     status: v.union(v.literal("open"), v.literal("closed")),
     direction: v.union(v.literal("long"), v.literal("short")),
@@ -190,10 +208,48 @@ export default defineSchema({
       "status",
       "openedAt",
     ])
+    .index("by_org_user_accountId_positionId", [
+      "organizationId",
+      "userId",
+      "accountId",
+      "positionId",
+    ])
     .index("by_org_user_symbol_openedAt", [
       "organizationId",
       "userId",
       "symbol",
       "openedAt",
+    ]),
+
+  tradeIdeaEvents: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+    connectionId: v.id("tradelockerConnections"),
+    tradeIdeaGroupId: v.id("tradeIdeaGroups"),
+    externalExecutionId: v.string(),
+    externalOrderId: v.optional(v.string()),
+    externalPositionId: v.optional(v.string()),
+    executedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_org_user_tradeIdeaGroupId", [
+      "organizationId",
+      "userId",
+      "tradeIdeaGroupId",
+    ])
+    .index("by_org_user_externalExecutionId", [
+      "organizationId",
+      "userId",
+      "externalExecutionId",
+    ])
+    .index("by_org_user_externalOrderId", [
+      "organizationId",
+      "userId",
+      "externalOrderId",
+    ])
+    .index("by_org_user_externalPositionId", [
+      "organizationId",
+      "userId",
+      "externalPositionId",
     ]),
 });

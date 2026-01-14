@@ -443,6 +443,19 @@ export function registerCoreRouteHandlers(): void {
         if (!hasId(h.id)) next.push(h);
       };
 
+      // ---- TraderLaunchpad Journal routes (server-only registration) ----
+      // NOTE: Do NOT register these in plugin definition files, because those are imported by client code.
+      // This module is loaded only from `installHooks.server.ts`.
+      pushIfMissing({
+        id: "traderlaunchpad.journalRoutes",
+        priority: 9,
+        resolve: async (ctx: FrontendRouteHandlerContext) => {
+          if (!ctx.enabledPluginIds.includes("traderlaunchpad")) return null;
+          const mod = await import("~/lib/plugins/traderlaunchpad/journalRoutes.server");
+          return await mod.resolveTraderLaunchpadJournalRoute(ctx as any);
+        },
+      });
+
       pushIfMissing({
         id: "portal:ecommerce-checkout-with-clerk",
         priority: 4,

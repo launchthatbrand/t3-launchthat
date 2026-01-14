@@ -5,7 +5,6 @@
   @typescript-eslint/no-unsafe-argument,
   @typescript-eslint/no-unsafe-assignment,
   @typescript-eslint/no-unsafe-member-access,
-  @typescript-eslint/no-unsafe-call,
   @typescript-eslint/no-unsafe-return,
   @typescript-eslint/no-unnecessary-type-assertion,
   @typescript-eslint/no-unnecessary-condition,
@@ -105,7 +104,12 @@ const formatDateTime = (ms: unknown): string => {
   return new Date(n).toLocaleString();
 };
 
-export const TraderLaunchpadAccountTab = () => {
+export const TraderLaunchpadAccountTab = (
+  props: {
+    mode?: "accountTab" | "journal";
+    initialTab?: "dashboard" | "orders" | "ideas" | "settings";
+  } = {},
+) => {
   const tenant = useTenant();
   const organizationId = getTenantOrganizationId(tenant);
 
@@ -151,6 +155,7 @@ export const TraderLaunchpadAccountTab = () => {
   const finishConnect = useAction(tlActions.connectTradeLocker);
   const disconnect = useAction(tlActions.disconnectTradeLocker);
   const syncNow = useAction(tlActions.syncMyTradeLockerNow);
+  const setMyJournalPublic = useAction(tlActions.setMyJournalPublic);
 
   const [environment, setEnvironment] = React.useState<TradeLockerEnv>("demo");
   const [server, setServer] = React.useState("");
@@ -184,6 +189,11 @@ export const TraderLaunchpadAccountTab = () => {
     tlQueries.getMyTradeLockerAccountState,
     organizationId ? { organizationId } : "skip",
   ) as any;
+
+  const myJournalProfile = useQuery(
+    tlQueries.getMyJournalProfile,
+    organizationId ? { organizationId } : "skip",
+  ) as { isPublic: boolean } | null | undefined;
 
   const parsedAccountDetails =
     accountState?.raw?.parsedAccountDetails ??
@@ -261,16 +271,25 @@ export const TraderLaunchpadAccountTab = () => {
     }
   };
 
+  const mode = props.mode ?? "accountTab";
+  const initialTab = props.initialTab ?? "dashboard";
+
+  // When rendered as a journal route, we keep the tab bar hidden and only show the selected section.
+  const showTabs = mode === "accountTab";
+
   return (
     <div className="space-y-4">
-      <Tabs defaultValue="dashboard" className="space-y-4">
-        <TabsList className="grid w-full max-w-3xl grid-cols-4">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="orders">Orders</TabsTrigger>
-          <TabsTrigger value="ideas">Trade Ideas</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue={initialTab} className="space-y-4">
+        {showTabs ? (
+          <TabsList className="grid w-full max-w-3xl grid-cols-4">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="orders">Orders</TabsTrigger>
+            <TabsTrigger value="ideas">Trade Ideas</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
+        ) : null}
 
+        {showTabs || initialTab === "dashboard" ? (
         <TabsContent value="dashboard" className="space-y-4">
           {/* Summary cards */}
           <div className="grid gap-3 md:grid-cols-3">
@@ -576,7 +595,9 @@ export const TraderLaunchpadAccountTab = () => {
             </Card>
           </div>
         </TabsContent>
+        ) : null}
 
+        {showTabs || initialTab === "orders" ? (
         <TabsContent value="orders" className="space-y-4">
           <div ref={ordersSectionRef} className="space-y-4">
             <Card>
@@ -747,7 +768,9 @@ export const TraderLaunchpadAccountTab = () => {
             </Card>
           </div>
         </TabsContent>
+        ) : null}
 
+        {showTabs || initialTab === "ideas" ? (
         <TabsContent value="ideas" className="space-y-4">
           <Card>
             <CardHeader>
@@ -766,13 +789,51 @@ export const TraderLaunchpadAccountTab = () => {
             </CardContent>
           </Card>
         </TabsContent>
+        ) : null}
 
+        {showTabs || initialTab === "settings" ? (
         <TabsContent value="settings" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>TradeLocker Settings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              <Card className="border-dashed">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Public Journal</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="text-muted-foreground">
+                    If disabled, your journal won’t be publicly viewable and we
+                    won’t stream your trades to Discord.
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant={myJournalProfile?.isPublic ? "default" : "secondary"}>
+                      {myJournalProfile?.isPublic ? "Public" : "Private"}
+                    </Badge>
+                    <Button
+                      variant="secondary"
+                      disabled={myJournalProfile === undefined || !organizationId}
+                      onClick={() => {
+                        if (!organizationId) return;
+                        const next = !(myJournalProfile?.isPublic ?? true);
+                        void (async () => {
+                          try {
+                            await setMyJournalPublic({ organizationId, isPublic: next });
+                            toast.success(next ? "Journal is now public" : "Journal is now private");
+                          } catch (e) {
+                            console.error(e);
+                            toast.error(e instanceof Error ? e.message : "Failed to update");
+                          }
+                        })();
+                      }}
+                    >
+                      {myJournalProfile?.isPublic ? "Make private" : "Make public"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
               {connection ? (
                 <div className="space-y-3 text-sm">
                   <div className="flex flex-wrap items-center gap-2">
@@ -943,6 +1004,7 @@ export const TraderLaunchpadAccountTab = () => {
             </CardContent>
           </Card>
         </TabsContent>
+        ) : null}
       </Tabs>
     </div>
   );

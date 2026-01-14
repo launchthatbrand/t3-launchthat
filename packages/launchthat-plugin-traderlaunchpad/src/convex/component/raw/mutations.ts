@@ -72,6 +72,7 @@ export const upsertTradeExecution = mutation({
     connectionId: v.id("tradelockerConnections"),
     externalExecutionId: v.string(),
     externalOrderId: v.optional(v.string()),
+    externalPositionId: v.optional(v.string()),
     symbol: v.optional(v.string()),
     instrumentId: v.optional(v.string()),
     side: v.optional(v.union(v.literal("buy"), v.literal("sell"))),
@@ -101,6 +102,7 @@ export const upsertTradeExecution = mutation({
       await ctx.db.patch(existing._id, {
         connectionId: args.connectionId,
         externalOrderId: args.externalOrderId,
+        externalPositionId: args.externalPositionId,
         symbol: args.symbol,
         instrumentId: args.instrumentId,
         side: args.side,
@@ -120,6 +122,7 @@ export const upsertTradeExecution = mutation({
       connectionId: args.connectionId,
       externalExecutionId: args.externalExecutionId,
       externalOrderId: args.externalOrderId,
+      externalPositionId: args.externalPositionId,
       symbol: args.symbol,
       instrumentId: args.instrumentId,
       side: args.side,

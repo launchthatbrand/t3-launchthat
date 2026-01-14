@@ -233,6 +233,54 @@ export const getUserByEmail = query({
 });
 
 /**
+ * Get a user by username (for public profile/journal routes).
+ */
+export const getUserByUsername = query({
+  args: {
+    username: v.string(),
+    organizationId: v.optional(v.id("organizations")),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("users"),
+      _creationTime: v.number(),
+      name: v.optional(v.string()),
+      email: v.string(),
+      role: v.optional(v.string()),
+      username: v.optional(v.string()),
+      image: v.optional(v.string()),
+      organizationId: v.optional(v.id("organizations")),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const username = args.username.trim();
+    if (!username) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", username))
+      .first();
+
+    if (!user) return null;
+    if (args.organizationId && user.organizationId !== args.organizationId) {
+      return null;
+    }
+
+    return {
+      _id: user._id,
+      _creationTime: user._creationTime,
+      name: user.name ?? undefined,
+      email: user.email,
+      role: user.role ?? undefined,
+      username: user.username ?? undefined,
+      image: user.image ?? undefined,
+      organizationId: user.organizationId ?? undefined,
+    };
+  },
+});
+
+/**
  * Get a user by ID
  */
 export const getUserById = query({

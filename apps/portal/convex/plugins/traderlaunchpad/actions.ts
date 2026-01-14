@@ -24,6 +24,8 @@ const traderlaunchpadConnectionsInternalQueries =
   componentsUntyped.launchthat_traderlaunchpad.connections.internalQueries;
 const traderlaunchpadDraftMutations =
   componentsUntyped.launchthat_traderlaunchpad.connections.drafts;
+const traderlaunchpadJournalMutations =
+  componentsUntyped.launchthat_traderlaunchpad.journal.mutations;
 
 const requireOrgMemberRef =
   apiUntyped.plugins.traderlaunchpad.permissions.requireOrgMember;
@@ -381,5 +383,29 @@ export const syncMyTradeLockerNow = action({
     );
 
     return { ok: true, result };
+  },
+});
+
+export const setMyJournalPublic = action({
+  args: {
+    organizationId: v.id("organizations"),
+    isPublic: v.boolean(),
+  },
+  returns: v.object({ ok: v.boolean() }),
+  handler: async (ctx, args) => {
+    await ctx.runQuery(requireOrgMemberRef, {
+      organizationId: String(args.organizationId),
+    });
+
+    const me: any = await ctx.runQuery(getMeRef, {});
+    if (!me?._id) throw new Error("User not found");
+
+    await ctx.runMutation(traderlaunchpadJournalMutations.upsertProfile, {
+      organizationId: String(args.organizationId),
+      userId: String(me._id),
+      isPublic: args.isPublic,
+    });
+
+    return { ok: true };
   },
 });

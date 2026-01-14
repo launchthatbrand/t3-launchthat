@@ -400,6 +400,7 @@ type NormalizedOrder = {
 type NormalizedExecution = {
   externalExecutionId: string;
   externalOrderId?: string;
+  externalPositionId?: string;
   symbol?: string;
   instrumentId?: string;
   side?: "buy" | "sell";
@@ -589,6 +590,16 @@ const normalizeExecutions = (payload: any): NormalizedExecution[] => {
             : row?.orderId
               ? String(row.orderId)
               : undefined,
+      externalPositionId:
+        typeof row?.positionId === "string"
+          ? row.positionId
+          : typeof row?.posId === "string"
+            ? row.posId
+            : typeof row?.tradeId === "string"
+              ? row.tradeId
+              : row?.positionId || row?.posId || row?.tradeId
+                ? String(row.positionId ?? row.posId ?? row.tradeId)
+                : undefined,
       symbol: typeof row?.symbol === "string" ? row.symbol : undefined,
       instrumentId:
         typeof row?.instrumentId === "string"
@@ -1214,7 +1225,7 @@ export const syncTradeLockerConnection = internalAction({
 
     let executionsUpserted = 0;
     let executionsNew = 0;
-    const groupsTouched = 0; // MVP: Trade Ideas derivation is disabled (ingest-only sync).
+    let groupsTouched = 0;
 
     for (const e of executions) {
       const upsertRes = await ctx.runMutation(
@@ -1226,6 +1237,7 @@ export const syncTradeLockerConnection = internalAction({
           connectionId,
           externalExecutionId: e.externalExecutionId,
           externalOrderId: e.externalOrderId,
+          externalPositionId: e.externalPositionId,
           symbol: e.symbol,
           instrumentId: e.instrumentId,
           side: e.side,
@@ -1238,6 +1250,57 @@ export const syncTradeLockerConnection = internalAction({
       );
       executionsUpserted++;
       if (upsertRes?.wasNew) executionsNew++;
+    }
+
+    // Hedging-safe TradeIdeas: rebuild per broker position thread.
+    // We only build for positions we can identify (positionId present on positions and/or executions).
+    const openPositionIds = new Set<string>(
+      positions.map((p) => String(p.externalPositionId)).filter(Boolean),
+    );
+    const touchedPositionIds = new Set<string>();
+    for (const p of openPositionIds) touchedPositionIds.add(p);
+    for (const e of executions) {
+      if (typeof e.externalPositionId === "string" && e.externalPositionId.trim()) {
+        touchedPositionIds.add(e.externalPositionId.trim());
+      }
+    }
+
+    for (const positionId of touchedPositionIds) {
+      try {
+        const res = await ctx.runMutation(
+          components.launchthat_traderlaunchpad.tradeIdeas.mutations
+            .rebuildTradeIdeaForPosition as any,
+          {
+            organizationId: args.organizationId,
+            userId: args.userId,
+            connectionId,
+            accountId: tradeAccountId,
+            positionId,
+            isOpen: openPositionIds.has(positionId),
+          },
+        );
+        groupsTouched++;
+
+        // Discord streaming (gated by journalProfiles.isPublic inside the discord action).
+        await ctx.runAction(
+          internal.plugins.traderlaunchpad.discord.upsertTradeIdeaDiscordMessage,
+          {
+            organizationId: args.organizationId,
+            tradeIdeaGroupId: res.tradeIdeaGroupId,
+          },
+        );
+      } catch (err) {
+        await log(ctx, {
+          organizationId: args.organizationId,
+          level: "warn",
+          message: "TradeIdea rebuild failed for position",
+          metadata: {
+            userId: args.userId,
+            positionId,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        });
+      }
     }
 
     await ctx.runMutation(

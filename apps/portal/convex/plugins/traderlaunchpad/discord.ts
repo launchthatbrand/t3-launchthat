@@ -182,6 +182,19 @@ export const upsertTradeIdeaDiscordMessage = internalAction({
     );
     if (!group) return { ok: true, mode: "skipped" as const };
 
+    // Per-user public journal toggle: if user is private, do NOT stream to Discord.
+    // Default behavior (no profile row) is public.
+    const profile = await ctx.runQuery(
+      components.launchthat_traderlaunchpad.journal.queries.getProfileForUser as any,
+      {
+        organizationId: String(args.organizationId),
+        userId: String(group.userId),
+      },
+    );
+    if (profile && profile.isPublic === false) {
+      return { ok: true, mode: "skipped" as const };
+    }
+
     // Route by role.
     const role = await ctx.runQuery(
       internalAny.plugins.traderlaunchpad.roleQueries.getUserOrgRole,

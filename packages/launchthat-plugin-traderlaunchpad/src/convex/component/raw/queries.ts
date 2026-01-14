@@ -19,6 +19,7 @@ export const listExecutionsForUser = query({
       connectionId: v.id("tradelockerConnections"),
       externalExecutionId: v.string(),
       externalOrderId: v.optional(v.string()),
+      externalPositionId: v.optional(v.string()),
       symbol: v.optional(v.string()),
       instrumentId: v.optional(v.string()),
       side: v.optional(v.union(v.literal("buy"), v.literal("sell"))),
@@ -47,6 +48,54 @@ export const listExecutionsForUser = query({
           .eq("userId", args.userId)
           .gte("executedAt", from)
           .lte("executedAt", to),
+      )
+      .order("asc")
+      .take(limit);
+
+    return rows;
+  },
+});
+
+export const listExecutionsForPosition = query({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    positionId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("tradeExecutions"),
+      _creationTime: v.number(),
+      organizationId: v.string(),
+      userId: v.string(),
+      connectionId: v.id("tradelockerConnections"),
+      externalExecutionId: v.string(),
+      externalOrderId: v.optional(v.string()),
+      externalPositionId: v.optional(v.string()),
+      symbol: v.optional(v.string()),
+      instrumentId: v.optional(v.string()),
+      side: v.optional(v.union(v.literal("buy"), v.literal("sell"))),
+      executedAt: v.number(),
+      price: v.optional(v.number()),
+      qty: v.optional(v.number()),
+      fees: v.optional(v.number()),
+      raw: v.any(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(500, args.limit ?? 200));
+    const positionId = args.positionId.trim();
+    if (!positionId) return [];
+
+    const rows = await ctx.db
+      .query("tradeExecutions")
+      .withIndex("by_org_user_externalPositionId", (q: any) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("userId", args.userId)
+          .eq("externalPositionId", positionId),
       )
       .order("asc")
       .take(limit);

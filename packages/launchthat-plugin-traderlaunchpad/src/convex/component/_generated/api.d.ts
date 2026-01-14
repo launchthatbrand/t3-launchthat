@@ -14,6 +14,9 @@ import type * as connections_internalQueries from "../connections/internalQuerie
 import type * as connections_mutations from "../connections/mutations.js";
 import type * as connections_queries from "../connections/queries.js";
 import type * as index from "../index.js";
+import type * as journal_index from "../journal/index.js";
+import type * as journal_mutations from "../journal/mutations.js";
+import type * as journal_queries from "../journal/queries.js";
 import type * as raw_index from "../raw/index.js";
 import type * as raw_mutations from "../raw/mutations.js";
 import type * as raw_queries from "../raw/queries.js";
@@ -44,6 +47,9 @@ declare const fullApi: ApiFromModules<{
   "connections/mutations": typeof connections_mutations;
   "connections/queries": typeof connections_queries;
   index: typeof index;
+  "journal/index": typeof journal_index;
+  "journal/mutations": typeof journal_mutations;
+  "journal/queries": typeof journal_queries;
   "raw/index": typeof raw_index;
   "raw/mutations": typeof raw_mutations;
   "raw/queries": typeof raw_queries;
@@ -209,6 +215,46 @@ export type Mounts = {
       >;
     };
   };
+  journal: {
+    mutations: {
+      upsertProfile: FunctionReference<
+        "mutation",
+        "public",
+        { isPublic: boolean; organizationId: string; userId: string },
+        { _id: string }
+      >;
+    };
+    queries: {
+      getProfileForUser: FunctionReference<
+        "query",
+        "public",
+        { organizationId: string; userId: string },
+        null | {
+          _creationTime: number;
+          _id: string;
+          createdAt: number;
+          isPublic: boolean;
+          organizationId: string;
+          updatedAt: number;
+          userId: string;
+        }
+      >;
+      listPublicProfiles: FunctionReference<
+        "query",
+        "public",
+        { limit?: number; organizationId: string },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          createdAt: number;
+          isPublic: boolean;
+          organizationId: string;
+          updatedAt: number;
+          userId: string;
+        }>
+      >;
+    };
+  };
   raw: {
     mutations: {
       upsertTradeAccountState: FunctionReference<
@@ -231,6 +277,7 @@ export type Mounts = {
           executedAt: number;
           externalExecutionId: string;
           externalOrderId?: string;
+          externalPositionId?: string;
           fees?: number;
           instrumentId?: string;
           organizationId: string;
@@ -314,6 +361,35 @@ export type Mounts = {
           userId: string;
         } | null
       >;
+      listExecutionsForPosition: FunctionReference<
+        "query",
+        "public",
+        {
+          limit?: number;
+          organizationId: string;
+          positionId: string;
+          userId: string;
+        },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          connectionId: string;
+          executedAt: number;
+          externalExecutionId: string;
+          externalOrderId?: string;
+          externalPositionId?: string;
+          fees?: number;
+          instrumentId?: string;
+          organizationId: string;
+          price?: number;
+          qty?: number;
+          raw: any;
+          side?: "buy" | "sell";
+          symbol?: string;
+          updatedAt: number;
+          userId: string;
+        }>
+      >;
       listExecutionsForUser: FunctionReference<
         "query",
         "public",
@@ -331,6 +407,7 @@ export type Mounts = {
           executedAt: number;
           externalExecutionId: string;
           externalOrderId?: string;
+          externalPositionId?: string;
           fees?: number;
           instrumentId?: string;
           organizationId: string;
@@ -433,6 +510,7 @@ export type Mounts = {
           netQty: number;
           openedAt: number;
           organizationId: string;
+          positionId?: string;
           realizedPnl?: number;
           status: "open" | "closed";
           symbol: string;
@@ -463,6 +541,7 @@ export type Mounts = {
           netQty: number;
           openedAt: number;
           organizationId: string;
+          positionId?: string;
           realizedPnl?: number;
           status: "open" | "closed";
           symbol: string;
@@ -483,6 +562,19 @@ export type Mounts = {
         "public",
         { tradeIdeaGroupId: string },
         null
+      >;
+      rebuildTradeIdeaForPosition: FunctionReference<
+        "mutation",
+        "public",
+        {
+          accountId: string;
+          connectionId: string;
+          isOpen: boolean;
+          organizationId: string;
+          positionId: string;
+          userId: string;
+        },
+        { executionsLinked: number; tradeIdeaGroupId: string }
       >;
       setDiscordMessageLink: FunctionReference<
         "mutation",
@@ -510,6 +602,7 @@ export type Mounts = {
           netQty: number;
           openedAt: number;
           organizationId: string;
+          positionId: string;
           realizedPnl?: number;
           status: "open" | "closed";
           symbol: string;
@@ -542,6 +635,7 @@ export type Mounts = {
           netQty: number;
           openedAt: number;
           organizationId: string;
+          positionId?: string;
           realizedPnl?: number;
           status: "open" | "closed";
           symbol: string;
@@ -589,6 +683,7 @@ export type Mounts = {
             netQty: number;
             openedAt: number;
             organizationId: string;
+            positionId?: string;
             realizedPnl?: number;
             status: "open" | "closed";
             symbol: string;
