@@ -9,8 +9,6 @@ import { Toaster } from "@acme/ui/toast";
 
 import { env } from "~/env";
 
-// import { TRPCReactProvider } from "~/trpc/react";
-
 export const metadata: Metadata = {
   metadataBase: new URL(
     env.VERCEL_ENV === "production"
@@ -59,7 +57,7 @@ export default function RootLayout(props: { children: React.ReactNode }) {
         )}
       >
         <ThemeProvider>
-          <TRPCReactProvider>{props.children}</TRPCReactProvider>
+          {props.children}
           <div className="absolute right-4 bottom-4">
             <ThemeToggle />
           </div>
