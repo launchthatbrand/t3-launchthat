@@ -8,6 +8,7 @@ import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
 import { Toaster } from "@acme/ui/toast";
 
 import { env } from "~/env";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -56,13 +57,15 @@ export default function RootLayout(props: { children: React.ReactNode }) {
           geistMono.variable,
         )}
       >
-        <ThemeProvider>
-          {props.children}
-          <div className="absolute right-4 bottom-4">
-            <ThemeToggle />
-          </div>
-          <Toaster />
-        </ThemeProvider>
+        <Providers>
+          <ThemeProvider>
+            {props.children}
+            <div className="absolute right-4 bottom-4">
+              <ThemeToggle />
+            </div>
+            <Toaster />
+          </ThemeProvider>
+        </Providers>
       </body>
     </html>
   );

@@ -1598,6 +1598,9 @@ importers:
       convex-helpers:
         specifier: ^0.1.95
         version: 0.1.95(@standard-schema/spec@1.1.0)(convex@1.23.0(@clerk/clerk-react@5.30.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)(typescript@5.9.3)(zod@4.1.13)
+      launchthat-plugin-traderlaunchpad:
+        specifier: workspace:*
+        version: link:../../packages/launchthat-plugin-traderlaunchpad
       lucide-react:
         specifier: ^0.555.0
         version: 0.555.0(react@19.0.0)
@@ -3275,12 +3278,18 @@ importers:
 
   packages/launchthat-plugin-traderlaunchpad:
     dependencies:
+      '@acme/ui':
+        specifier: workspace:*
+        version: link:../ui
       convex:
         specifier: ^1.23.0
         version: 1.23.0(@clerk/clerk-react@5.30.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       launchthat-plugin-core:
         specifier: workspace:*
         version: link:../launchthat-plugin-core
+      sonner:
+        specifier: ^2.0.7
+        version: 2.0.7(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
     devDependencies:
       '@acme/eslint-config':
         specifier: workspace:*

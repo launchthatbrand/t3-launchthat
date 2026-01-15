@@ -100,6 +100,7 @@ export type Mounts = {
         {
           accessTokenEncrypted: string;
           accessTokenExpiresAt?: number;
+          connectionId: string;
           environment: "demo" | "live";
           organizationId: string;
           refreshTokenEncrypted: string;

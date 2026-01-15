@@ -1,37 +1,48 @@
-import { Suspense } from "react";
+import Link from "next/link";
 
-// import { HydrateClient, prefetch, trpc } from "~/trpc/server";
-import { AuthShowcase } from "./_components/auth-showcase";
-import {
-  CreatePostForm,
-  PostCardSkeleton,
-  PostList,
-} from "./_components/posts";
+import { Header } from "../components/landing/Header";
+import { Hero } from "../components/landing/Hero";
+import { HowItWorks } from "../components/landing/HowItWorks";
+import { Pricing } from "../components/landing/Pricing";
+import { SocialProof } from "../components/landing/SocialProof";
 
 export default function HomePage() {
   return (
-    <main className="container h-screen py-16">
-      <div className="flex flex-col items-center justify-center gap-4">
-        <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
-          Create <span className="text-primary">T3</span> Turbo
-        </h1>
-        {/* <AuthShowcase /> */}
+    <div className="text-foreground min-h-screen bg-black selection:bg-blue-500/30">
+      <Header />
 
-        <CreatePostForm />
-        <div className="w-full max-w-2xl overflow-y-scroll">
-          <Suspense
-            fallback={
-              <div className="flex w-full flex-col gap-4">
-                <PostCardSkeleton />
-                <PostCardSkeleton />
-                <PostCardSkeleton />
-              </div>
-            }
-          >
-            <PostList />
-          </Suspense>
+      <main>
+        <Hero />
+        <HowItWorks />
+        <SocialProof />
+        <Pricing />
+      </main>
+
+      <footer className="border-t border-white/10 bg-black py-12 text-center">
+        <div className="container mx-auto px-4">
+          <div className="mb-4 flex items-center justify-center gap-2 text-xl font-bold text-white">
+            <div className="flex h-6 w-6 items-center justify-center rounded bg-blue-600 text-xs">
+              TL
+            </div>
+            TraderLaunchpad
+          </div>
+          <div className="mb-8 flex justify-center gap-6 text-sm text-gray-500">
+            <Link href="#" className="transition-colors hover:text-white">
+              Terms of Service
+            </Link>
+            <Link href="#" className="transition-colors hover:text-white">
+              Privacy Policy
+            </Link>
+            <Link href="#" className="transition-colors hover:text-white">
+              Support
+            </Link>
+          </div>
+          <p className="text-sm text-gray-600">
+            &copy; {new Date().getFullYear()} TraderLaunchpad. All rights
+            reserved.
+          </p>
         </div>
-      </div>
-    </main>
+      </footer>
+    </div>
   );
 }

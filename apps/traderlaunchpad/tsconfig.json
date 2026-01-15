@@ -4,10 +4,14 @@
     "lib": ["ES2022", "dom", "dom.iterable"],
     "jsx": "preserve",
     "paths": {
-      "~/*": ["./src/*"]
+      "~/*": ["./src/*"],
+      "@acme/ui": ["../../packages/ui/src/index.ts"],
+      "@acme/ui/*": ["../../packages/ui/src/*"],
+      "@convexcms-config": ["./src/convexcms.config.ts"],
+      "@convex-config/*": ["./convex/*"]
     },
     "plugins": [{ "name": "next" }]
   },
   "include": [".", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "eslint.config.ts"]
 }

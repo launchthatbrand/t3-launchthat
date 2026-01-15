@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+
 import { query } from "../server";
 
 /**
@@ -12,6 +13,7 @@ export const getConnectionSecrets = query({
   },
   returns: v.union(
     v.object({
+      connectionId: v.id("tradelockerConnections"),
       organizationId: v.string(),
       userId: v.string(),
       environment: v.union(v.literal("demo"), v.literal("live")),
@@ -39,6 +41,7 @@ export const getConnectionSecrets = query({
       .first();
     if (!doc) return null;
     return {
+      connectionId: doc._id,
       organizationId: doc.organizationId,
       userId: doc.userId,
       environment: doc.environment,
@@ -120,9 +123,11 @@ export const listConnectionsDueForPoll = query({
     for (const c of candidates) {
       if (!c) continue;
       if (c.status !== "connected") continue;
-      if (typeof c.lastSyncAt === "number" && c.lastSyncAt > dueBefore) continue;
+      if (typeof c.lastSyncAt === "number" && c.lastSyncAt > dueBefore)
+        continue;
 
-      const leaseUntil = typeof c.syncLeaseUntil === "number" ? c.syncLeaseUntil : 0;
+      const leaseUntil =
+        typeof c.syncLeaseUntil === "number" ? c.syncLeaseUntil : 0;
       if (leaseUntil > now) continue;
 
       out.push(c);
@@ -145,5 +150,3 @@ export const listConnectionsDueForPoll = query({
     }));
   },
 });
-
-

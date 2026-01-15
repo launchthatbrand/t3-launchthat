@@ -6,6 +6,8 @@
     "moduleResolution": "bundler",
     "paths": {
       "launchthat-plugin-core": ["../launchthat-plugin-core/src/index"],
+      "@acme/ui": ["../ui/src/index.ts"],
+      "@acme/ui/*": ["../ui/src/*"],
       "@portal/*": ["../../apps/portal/*"],
       "@portal/convexspec": ["../../apps/portal/convexspec.ts"],
       "@convex-config/*": ["../../apps/portal/convex/*"],

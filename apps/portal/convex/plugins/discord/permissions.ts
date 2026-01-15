@@ -45,4 +45,3 @@ export const requireOrgMember = query({
     return null;
   },
 });
-
