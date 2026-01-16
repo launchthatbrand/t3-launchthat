@@ -17,6 +17,7 @@ export default defineSchema({
     userId: v.string(),
     environment: v.union(v.literal("demo"), v.literal("live")),
     server: v.string(),
+    jwtHost: v.optional(v.string()),
     accessTokenEncrypted: v.string(),
     refreshTokenEncrypted: v.string(),
     accessTokenExpiresAt: v.optional(v.number()),
@@ -36,6 +37,7 @@ export default defineSchema({
     userId: v.string(),
     environment: v.union(v.literal("demo"), v.literal("live")),
     server: v.string(),
+    jwtHost: v.optional(v.string()),
     selectedAccountId: v.string(),
     selectedAccNum: v.number(),
     accessTokenEncrypted: v.string(),
@@ -84,7 +86,13 @@ export default defineSchema({
       "userId",
       "externalOrderId",
     ])
-    .index("by_org_user_createdAt", ["organizationId", "userId", "createdAt"]),
+    .index("by_org_user_createdAt", ["organizationId", "userId", "createdAt"])
+    .index("by_org_user_instrumentId_updatedAt", [
+      "organizationId",
+      "userId",
+      "instrumentId",
+      "updatedAt",
+    ]),
 
   tradeExecutions: defineTable({
     organizationId: v.string(),
@@ -118,6 +126,12 @@ export default defineSchema({
       "organizationId",
       "userId",
       "externalPositionId",
+    ])
+    .index("by_org_user_instrumentId_executedAt", [
+      "organizationId",
+      "userId",
+      "instrumentId",
+      "executedAt",
     ]),
 
   tradeOrdersHistory: defineTable({
@@ -139,7 +153,13 @@ export default defineSchema({
       "userId",
       "externalOrderId",
     ])
-    .index("by_org_user_createdAt", ["organizationId", "userId", "createdAt"]),
+    .index("by_org_user_createdAt", ["organizationId", "userId", "createdAt"])
+    .index("by_org_user_instrumentId_updatedAt", [
+      "organizationId",
+      "userId",
+      "instrumentId",
+      "updatedAt",
+    ]),
 
   tradePositions: defineTable({
     organizationId: v.string(),
@@ -178,6 +198,7 @@ export default defineSchema({
     accountId: v.string(),
     // New hedging-safe grouping key. Optional temporarily to avoid breaking legacy rows.
     positionId: v.optional(v.string()),
+    instrumentId: v.optional(v.string()),
     symbol: v.string(),
     status: v.union(v.literal("open"), v.literal("closed")),
     direction: v.union(v.literal("long"), v.literal("short")),
@@ -218,6 +239,12 @@ export default defineSchema({
       "organizationId",
       "userId",
       "symbol",
+      "openedAt",
+    ])
+    .index("by_org_user_instrumentId_openedAt", [
+      "organizationId",
+      "userId",
+      "instrumentId",
       "openedAt",
     ]),
 

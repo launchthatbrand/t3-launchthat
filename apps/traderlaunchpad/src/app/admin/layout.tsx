@@ -25,7 +25,15 @@ export default function AdminLayout({
   if (!isLoaded || !userId) return null;
 
   // Determine active tab based on path
-  const activeTab = pathname.split("/").pop() || "dashboard";
+  const activeTab = React.useMemo(() => {
+    if (pathname.startsWith("/admin/tradeideas") || pathname.startsWith("/admin/tradeidea")) {
+      return "tradeideas";
+    }
+    if (pathname.startsWith("/admin/analytics")) return "analytics";
+    if (pathname.startsWith("/admin/orders")) return "orders";
+    if (pathname.startsWith("/admin/settings")) return "settings";
+    return "dashboard";
+  }, [pathname]);
 
   return (
     <div className="bg-background min-h-screen">
@@ -39,13 +47,19 @@ export default function AdminLayout({
               <span>TraderLaunchpad</span>
             </Link>
             <nav className="mx-6 flex items-center space-x-4 lg:space-x-6">
-              <Tabs value={activeTab} className="w-[400px]">
-                <TabsList className="grid w-full grid-cols-3">
+              <Tabs value={activeTab} className="w-[560px]">
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="dashboard" asChild>
                     <Link href="/admin/dashboard">Dashboard</Link>
                   </TabsTrigger>
+                  <TabsTrigger value="tradeideas" asChild>
+                    <Link href="/admin/tradeideas">TradeIdeas</Link>
+                  </TabsTrigger>
                   <TabsTrigger value="orders" asChild>
                     <Link href="/admin/orders">Orders</Link>
+                  </TabsTrigger>
+                  <TabsTrigger value="analytics" asChild>
+                    <Link href="/admin/analytics">Analytics</Link>
                   </TabsTrigger>
                   <TabsTrigger value="settings" asChild>
                     <Link href="/admin/settings">Settings</Link>

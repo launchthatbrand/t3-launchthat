@@ -22,6 +22,7 @@ import type * as raw_mutations from "../raw/mutations.js";
 import type * as raw_queries from "../raw/queries.js";
 import type * as server from "../server.js";
 import type * as sync from "../sync.js";
+import type * as tradeIdeas_analytics from "../tradeIdeas/analytics.js";
 import type * as tradeIdeas_index from "../tradeIdeas/index.js";
 import type * as tradeIdeas_internalQueries from "../tradeIdeas/internalQueries.js";
 import type * as tradeIdeas_mutations from "../tradeIdeas/mutations.js";
@@ -56,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   "raw/queries": typeof raw_queries;
   server: typeof server;
   sync: typeof sync;
+  "tradeIdeas/analytics": typeof tradeIdeas_analytics;
   "tradeIdeas/index": typeof tradeIdeas_index;
   "tradeIdeas/internalQueries": typeof tradeIdeas_internalQueries;
   "tradeIdeas/mutations": typeof tradeIdeas_mutations;
@@ -72,6 +74,7 @@ export type Mounts = {
           accessTokenEncrypted: string;
           accessTokenExpiresAt?: number;
           environment: "demo" | "live";
+          jwtHost?: string;
           refreshTokenEncrypted: string;
           refreshTokenExpiresAt?: number;
           server: string;
@@ -85,6 +88,7 @@ export type Mounts = {
           accessTokenExpiresAt?: number;
           environment: "demo" | "live";
           expiresAt: number;
+          jwtHost?: string;
           organizationId: string;
           refreshTokenEncrypted: string;
           refreshTokenExpiresAt?: number;
@@ -104,6 +108,7 @@ export type Mounts = {
           accessTokenExpiresAt?: number;
           connectionId: string;
           environment: "demo" | "live";
+          jwtHost?: string;
           organizationId: string;
           refreshTokenEncrypted: string;
           refreshTokenExpiresAt?: number;
@@ -178,6 +183,7 @@ export type Mounts = {
           accessTokenEncrypted: string;
           accessTokenExpiresAt?: number;
           environment: "demo" | "live";
+          jwtHost?: string;
           lastError?: string;
           organizationId: string;
           refreshTokenEncrypted: string;
@@ -202,6 +208,7 @@ export type Mounts = {
           createdAt: number;
           environment: "demo" | "live";
           hasOpenTrade?: boolean;
+          jwtHost?: string;
           lastBrokerActivityAt?: number;
           lastError?: string;
           lastSyncAt: number;
@@ -364,6 +371,84 @@ export type Mounts = {
           userId: string;
         } | null
       >;
+      getOrderById: FunctionReference<
+        "query",
+        "public",
+        {
+          kind?: "order" | "history";
+          orderId: string;
+          organizationId: string;
+          userId: string;
+        },
+        | {
+            kind: "order";
+            order: {
+              _creationTime: number;
+              _id: string;
+              closedAt?: number;
+              connectionId: string;
+              createdAt?: number;
+              externalOrderId: string;
+              instrumentId?: string;
+              organizationId: string;
+              raw: any;
+              side?: "buy" | "sell";
+              status?: string;
+              symbol?: string;
+              updatedAt: number;
+              userId: string;
+            };
+          }
+        | {
+            kind: "history";
+            order: {
+              _creationTime: number;
+              _id: string;
+              closedAt?: number;
+              connectionId: string;
+              createdAt?: number;
+              externalOrderId: string;
+              instrumentId?: string;
+              organizationId: string;
+              raw: any;
+              side?: "buy" | "sell";
+              status?: string;
+              symbol?: string;
+              updatedAt: number;
+              userId: string;
+            };
+          }
+        | null
+      >;
+      listExecutionsForOrder: FunctionReference<
+        "query",
+        "public",
+        {
+          externalOrderId: string;
+          limit?: number;
+          organizationId: string;
+          userId: string;
+        },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          connectionId: string;
+          executedAt: number;
+          externalExecutionId: string;
+          externalOrderId?: string;
+          externalPositionId?: string;
+          fees?: number;
+          instrumentId?: string;
+          organizationId: string;
+          price?: number;
+          qty?: number;
+          raw: any;
+          side?: "buy" | "sell";
+          symbol?: string;
+          updatedAt: number;
+          userId: string;
+        }>
+      >;
       listExecutionsForPosition: FunctionReference<
         "query",
         "public",
@@ -423,6 +508,35 @@ export type Mounts = {
           userId: string;
         }>
       >;
+      listExecutionsForUserByInstrumentId: FunctionReference<
+        "query",
+        "public",
+        {
+          instrumentId: string;
+          limit?: number;
+          organizationId: string;
+          userId: string;
+        },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          connectionId: string;
+          executedAt: number;
+          externalExecutionId: string;
+          externalOrderId?: string;
+          externalPositionId?: string;
+          fees?: number;
+          instrumentId?: string;
+          organizationId: string;
+          price?: number;
+          qty?: number;
+          raw: any;
+          side?: "buy" | "sell";
+          symbol?: string;
+          updatedAt: number;
+          userId: string;
+        }>
+      >;
       listOrdersForUser: FunctionReference<
         "query",
         "public",
@@ -444,10 +558,62 @@ export type Mounts = {
           userId: string;
         }>
       >;
+      listOrdersForUserByInstrumentId: FunctionReference<
+        "query",
+        "public",
+        {
+          instrumentId: string;
+          limit?: number;
+          organizationId: string;
+          userId: string;
+        },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          closedAt?: number;
+          connectionId: string;
+          createdAt?: number;
+          externalOrderId: string;
+          instrumentId?: string;
+          organizationId: string;
+          raw: any;
+          side?: "buy" | "sell";
+          status?: string;
+          symbol?: string;
+          updatedAt: number;
+          userId: string;
+        }>
+      >;
       listOrdersHistoryForUser: FunctionReference<
         "query",
         "public",
         { limit?: number; organizationId: string; userId: string },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          closedAt?: number;
+          connectionId: string;
+          createdAt?: number;
+          externalOrderId: string;
+          instrumentId?: string;
+          organizationId: string;
+          raw: any;
+          side?: "buy" | "sell";
+          status?: string;
+          symbol?: string;
+          updatedAt: number;
+          userId: string;
+        }>
+      >;
+      listOrdersHistoryForUserByInstrumentId: FunctionReference<
+        "query",
+        "public",
+        {
+          instrumentId: string;
+          limit?: number;
+          organizationId: string;
+          userId: string;
+        },
         Array<{
           _creationTime: number;
           _id: string;
@@ -489,6 +655,17 @@ export type Mounts = {
     };
   };
   sync: {
+    getInstrumentDetails: FunctionReference<
+      "action",
+      "public",
+      {
+        instrumentId: string;
+        organizationId: string;
+        secretsKey: string;
+        userId: string;
+      },
+      { instrumentId: string; raw: any; symbol?: string } | null
+    >;
     syncTradeLockerConnection: FunctionReference<
       "action",
       "public",
@@ -508,6 +685,38 @@ export type Mounts = {
     >;
   };
   tradeIdeas: {
+    analytics: {
+      getSummary: FunctionReference<
+        "query",
+        "public",
+        { limit?: number; organizationId: string; userId: string },
+        {
+          avgLoss: number;
+          avgWin: number;
+          closedTrades: number;
+          expectancy: number;
+          openTrades: number;
+          sampleSize: number;
+          totalFees: number;
+          totalPnl: number;
+          winRate: number;
+        }
+      >;
+      listByInstrument: FunctionReference<
+        "query",
+        "public",
+        { limit?: number; organizationId: string; userId: string },
+        Array<{
+          avgPnl: number;
+          instrumentId: string;
+          lastOpenedAt: number;
+          symbol: string;
+          totalPnl: number;
+          trades: number;
+          winRate: number;
+        }>
+      >;
+    };
     internalQueries: {
       getLatestGroupForSymbol: FunctionReference<
         "query",
@@ -527,6 +736,7 @@ export type Mounts = {
           discordLastSyncedAt?: number;
           discordMessageId?: string;
           fees?: number;
+          instrumentId?: string;
           lastExecutionAt?: number;
           lastProcessedExecutionId?: string;
           netQty: number;
@@ -558,6 +768,7 @@ export type Mounts = {
           discordLastSyncedAt?: number;
           discordMessageId?: string;
           fees?: number;
+          instrumentId?: string;
           lastExecutionAt?: number;
           lastProcessedExecutionId?: string;
           netQty: number;
@@ -598,6 +809,22 @@ export type Mounts = {
         },
         { executionsLinked: number; tradeIdeaGroupId: string }
       >;
+      rebuildTradeIdeasForInstrument: FunctionReference<
+        "mutation",
+        "public",
+        {
+          accountId: string;
+          connectionId: string;
+          instrumentId: string;
+          organizationId: string;
+          userId: string;
+        },
+        {
+          episodesBuilt: number;
+          eventsLinked: number;
+          tradeIdeaGroupIds: Array<string>;
+        }
+      >;
       setDiscordMessageLink: FunctionReference<
         "mutation",
         "public",
@@ -619,6 +846,7 @@ export type Mounts = {
           connectionId: string;
           direction: "long" | "short";
           fees?: number;
+          instrumentId?: string;
           lastExecutionAt?: number;
           lastProcessedExecutionId?: string;
           netQty: number;
@@ -652,6 +880,7 @@ export type Mounts = {
           discordLastSyncedAt?: number;
           discordMessageId?: string;
           fees?: number;
+          instrumentId?: string;
           lastExecutionAt?: number;
           lastProcessedExecutionId?: string;
           netQty: number;
@@ -700,6 +929,7 @@ export type Mounts = {
             discordLastSyncedAt?: number;
             discordMessageId?: string;
             fees?: number;
+            instrumentId?: string;
             lastExecutionAt?: number;
             lastProcessedExecutionId?: string;
             netQty: number;
@@ -715,6 +945,29 @@ export type Mounts = {
             userId: string;
           }>;
         }
+      >;
+      listEventsForGroup: FunctionReference<
+        "query",
+        "public",
+        {
+          limit?: number;
+          organizationId: string;
+          tradeIdeaGroupId: string;
+          userId: string;
+        },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          connectionId: string;
+          createdAt: number;
+          executedAt: number;
+          externalExecutionId: string;
+          externalOrderId?: string;
+          externalPositionId?: string;
+          organizationId: string;
+          tradeIdeaGroupId: string;
+          userId: string;
+        }>
       >;
     };
   };

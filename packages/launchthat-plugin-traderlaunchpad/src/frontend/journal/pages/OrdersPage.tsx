@@ -1,13 +1,36 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { useQuery } from "convex/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
 import type { ColumnDefinition } from "@acme/ui/entity-list/types";
-import { TraderLaunchpadApiAdapter, TradeOrderRow, TradePositionRow, formatAge } from "../TraderLaunchpadAccountTab";
+import { Button } from "@acme/ui/button";
+import {
+  TraderLaunchpadApiAdapter,
+  TradeOrderRow,
+  TradePositionRow,
+  formatAge,
+} from "../TraderLaunchpadAccountTab";
 
-const ordersColumns: ColumnDefinition<TradeOrderRow>[] = [
+const buildOrdersColumns = (
+  orderDetailBasePath: string,
+  kind?: "order" | "history",
+): ColumnDefinition<TradeOrderRow>[] => [
+  {
+    id: "details",
+    header: "Details",
+    accessorKey: "_id",
+    cell: (item: TradeOrderRow) => {
+      const suffix = kind ? `?kind=${kind}` : "";
+      return (
+        <Button asChild variant="link" className="px-0">
+          <Link href={`${orderDetailBasePath}/${item._id}${suffix}`}>View</Link>
+        </Button>
+      );
+    },
+  },
   { id: "symbol", header: "Symbol", accessorKey: "symbol" },
   {
     id: "side",
@@ -51,8 +74,20 @@ const positionsColumns: ColumnDefinition<TradePositionRow>[] = [
   },
 ];
 
-export function TraderLaunchpadOrdersPage(props: { api: TraderLaunchpadApiAdapter }) {
+export function TraderLaunchpadOrdersPage(props: {
+  api: TraderLaunchpadApiAdapter;
+  orderDetailBasePath?: string;
+}) {
   const tlQueries = props.api.queries;
+  const orderDetailBasePath = props.orderDetailBasePath ?? "/admin/order";
+  const ordersColumns = React.useMemo(
+    () => buildOrdersColumns(orderDetailBasePath, "order"),
+    [orderDetailBasePath],
+  );
+  const ordersHistoryColumns = React.useMemo(
+    () => buildOrdersColumns(orderDetailBasePath, "history"),
+    [orderDetailBasePath],
+  );
 
   const orders = useQuery(tlQueries.listMyTradeLockerOrders, { limit: 100 }) as
     | TradeOrderRow[]
@@ -122,7 +157,7 @@ export function TraderLaunchpadOrdersPage(props: { api: TraderLaunchpadApiAdapte
           ) : (
             <EntityList<TradeOrderRow>
               data={ordersHistory as any}
-              columns={ordersColumns as any}
+              columns={ordersHistoryColumns as any}
               viewModes={["list"]}
             />
           )}

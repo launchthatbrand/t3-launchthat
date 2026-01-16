@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-properties */
 "use node";
 
 /* eslint-disable
@@ -7,9 +8,9 @@
   turbo/no-undeclared-env-vars
 */
 import crypto from "node:crypto";
+import { action } from "@convex-config/_generated/server";
 import { v } from "convex/values";
 
-import { action } from "../_generated/server";
 import { resolveOrganizationId, resolveViewerUserId } from "./lib/resolve";
 
 // IMPORTANT: Avoid importing the typed Convex `api`/`components` here — it can trigger TS

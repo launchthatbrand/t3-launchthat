@@ -15,6 +15,7 @@ export const getMyConnection = query({
       userId: v.string(),
       environment: v.union(v.literal("demo"), v.literal("live")),
       server: v.string(),
+      jwtHost: v.optional(v.string()),
       selectedAccountId: v.string(),
       selectedAccNum: v.number(),
       status: v.union(
@@ -48,6 +49,7 @@ export const getMyConnection = query({
       userId: doc.userId,
       environment: doc.environment,
       server: doc.server,
+      jwtHost: doc.jwtHost,
       selectedAccountId: doc.selectedAccountId,
       selectedAccNum: doc.selectedAccNum,
       status: doc.status,

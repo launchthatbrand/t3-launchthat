@@ -7,6 +7,7 @@ export const createConnectDraft = mutation({
     userId: v.string(),
     environment: v.union(v.literal("demo"), v.literal("live")),
     server: v.string(),
+    jwtHost: v.optional(v.string()),
     accessTokenEncrypted: v.string(),
     refreshTokenEncrypted: v.string(),
     accessTokenExpiresAt: v.optional(v.number()),
@@ -20,6 +21,7 @@ export const createConnectDraft = mutation({
       userId: args.userId,
       environment: args.environment,
       server: args.server,
+      jwtHost: args.jwtHost,
       accessTokenEncrypted: args.accessTokenEncrypted,
       refreshTokenEncrypted: args.refreshTokenEncrypted,
       accessTokenExpiresAt: args.accessTokenExpiresAt,
@@ -40,6 +42,7 @@ export const consumeConnectDraft = mutation({
     v.object({
       environment: v.union(v.literal("demo"), v.literal("live")),
       server: v.string(),
+      jwtHost: v.optional(v.string()),
       accessTokenEncrypted: v.string(),
       refreshTokenEncrypted: v.string(),
       accessTokenExpiresAt: v.optional(v.number()),
@@ -64,6 +67,7 @@ export const consumeConnectDraft = mutation({
     return {
       environment: draft.environment,
       server: draft.server,
+      jwtHost: draft.jwtHost,
       accessTokenEncrypted: draft.accessTokenEncrypted,
       refreshTokenEncrypted: draft.refreshTokenEncrypted,
       accessTokenExpiresAt: draft.accessTokenExpiresAt,

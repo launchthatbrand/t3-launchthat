@@ -56,6 +56,7 @@ export declare const components: {
             accessTokenEncrypted: string;
             accessTokenExpiresAt?: number;
             environment: "demo" | "live";
+            jwtHost?: string;
             refreshTokenEncrypted: string;
             refreshTokenExpiresAt?: number;
             server: string;
@@ -69,6 +70,7 @@ export declare const components: {
             accessTokenExpiresAt?: number;
             environment: "demo" | "live";
             expiresAt: number;
+            jwtHost?: string;
             organizationId: string;
             refreshTokenEncrypted: string;
             refreshTokenExpiresAt?: number;
@@ -88,6 +90,7 @@ export declare const components: {
             accessTokenExpiresAt?: number;
             connectionId: string;
             environment: "demo" | "live";
+            jwtHost?: string;
             organizationId: string;
             refreshTokenEncrypted: string;
             refreshTokenExpiresAt?: number;
@@ -162,6 +165,7 @@ export declare const components: {
             accessTokenEncrypted: string;
             accessTokenExpiresAt?: number;
             environment: "demo" | "live";
+            jwtHost?: string;
             lastError?: string;
             organizationId: string;
             refreshTokenEncrypted: string;
@@ -186,6 +190,7 @@ export declare const components: {
             createdAt: number;
             environment: "demo" | "live";
             hasOpenTrade?: boolean;
+            jwtHost?: string;
             lastBrokerActivityAt?: number;
             lastError?: string;
             lastSyncAt: number;
@@ -348,6 +353,84 @@ export declare const components: {
             userId: string;
           } | null
         >;
+        getOrderById: FunctionReference<
+          "query",
+          "internal",
+          {
+            kind?: "order" | "history";
+            orderId: string;
+            organizationId: string;
+            userId: string;
+          },
+          | {
+              kind: "order";
+              order: {
+                _creationTime: number;
+                _id: string;
+                closedAt?: number;
+                connectionId: string;
+                createdAt?: number;
+                externalOrderId: string;
+                instrumentId?: string;
+                organizationId: string;
+                raw: any;
+                side?: "buy" | "sell";
+                status?: string;
+                symbol?: string;
+                updatedAt: number;
+                userId: string;
+              };
+            }
+          | {
+              kind: "history";
+              order: {
+                _creationTime: number;
+                _id: string;
+                closedAt?: number;
+                connectionId: string;
+                createdAt?: number;
+                externalOrderId: string;
+                instrumentId?: string;
+                organizationId: string;
+                raw: any;
+                side?: "buy" | "sell";
+                status?: string;
+                symbol?: string;
+                updatedAt: number;
+                userId: string;
+              };
+            }
+          | null
+        >;
+        listExecutionsForOrder: FunctionReference<
+          "query",
+          "internal",
+          {
+            externalOrderId: string;
+            limit?: number;
+            organizationId: string;
+            userId: string;
+          },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            connectionId: string;
+            executedAt: number;
+            externalExecutionId: string;
+            externalOrderId?: string;
+            externalPositionId?: string;
+            fees?: number;
+            instrumentId?: string;
+            organizationId: string;
+            price?: number;
+            qty?: number;
+            raw: any;
+            side?: "buy" | "sell";
+            symbol?: string;
+            updatedAt: number;
+            userId: string;
+          }>
+        >;
         listExecutionsForPosition: FunctionReference<
           "query",
           "internal",
@@ -407,6 +490,35 @@ export declare const components: {
             userId: string;
           }>
         >;
+        listExecutionsForUserByInstrumentId: FunctionReference<
+          "query",
+          "internal",
+          {
+            instrumentId: string;
+            limit?: number;
+            organizationId: string;
+            userId: string;
+          },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            connectionId: string;
+            executedAt: number;
+            externalExecutionId: string;
+            externalOrderId?: string;
+            externalPositionId?: string;
+            fees?: number;
+            instrumentId?: string;
+            organizationId: string;
+            price?: number;
+            qty?: number;
+            raw: any;
+            side?: "buy" | "sell";
+            symbol?: string;
+            updatedAt: number;
+            userId: string;
+          }>
+        >;
         listOrdersForUser: FunctionReference<
           "query",
           "internal",
@@ -428,10 +540,62 @@ export declare const components: {
             userId: string;
           }>
         >;
+        listOrdersForUserByInstrumentId: FunctionReference<
+          "query",
+          "internal",
+          {
+            instrumentId: string;
+            limit?: number;
+            organizationId: string;
+            userId: string;
+          },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            closedAt?: number;
+            connectionId: string;
+            createdAt?: number;
+            externalOrderId: string;
+            instrumentId?: string;
+            organizationId: string;
+            raw: any;
+            side?: "buy" | "sell";
+            status?: string;
+            symbol?: string;
+            updatedAt: number;
+            userId: string;
+          }>
+        >;
         listOrdersHistoryForUser: FunctionReference<
           "query",
           "internal",
           { limit?: number; organizationId: string; userId: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            closedAt?: number;
+            connectionId: string;
+            createdAt?: number;
+            externalOrderId: string;
+            instrumentId?: string;
+            organizationId: string;
+            raw: any;
+            side?: "buy" | "sell";
+            status?: string;
+            symbol?: string;
+            updatedAt: number;
+            userId: string;
+          }>
+        >;
+        listOrdersHistoryForUserByInstrumentId: FunctionReference<
+          "query",
+          "internal",
+          {
+            instrumentId: string;
+            limit?: number;
+            organizationId: string;
+            userId: string;
+          },
           Array<{
             _creationTime: number;
             _id: string;
@@ -473,6 +637,17 @@ export declare const components: {
       };
     };
     sync: {
+      getInstrumentDetails: FunctionReference<
+        "action",
+        "internal",
+        {
+          instrumentId: string;
+          organizationId: string;
+          secretsKey: string;
+          userId: string;
+        },
+        { instrumentId: string; raw: any; symbol?: string } | null
+      >;
       syncTradeLockerConnection: FunctionReference<
         "action",
         "internal",
@@ -492,6 +667,38 @@ export declare const components: {
       >;
     };
     tradeIdeas: {
+      analytics: {
+        getSummary: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; organizationId: string; userId: string },
+          {
+            avgLoss: number;
+            avgWin: number;
+            closedTrades: number;
+            expectancy: number;
+            openTrades: number;
+            sampleSize: number;
+            totalFees: number;
+            totalPnl: number;
+            winRate: number;
+          }
+        >;
+        listByInstrument: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; organizationId: string; userId: string },
+          Array<{
+            avgPnl: number;
+            instrumentId: string;
+            lastOpenedAt: number;
+            symbol: string;
+            totalPnl: number;
+            trades: number;
+            winRate: number;
+          }>
+        >;
+      };
       internalQueries: {
         getLatestGroupForSymbol: FunctionReference<
           "query",
@@ -511,6 +718,7 @@ export declare const components: {
             discordLastSyncedAt?: number;
             discordMessageId?: string;
             fees?: number;
+            instrumentId?: string;
             lastExecutionAt?: number;
             lastProcessedExecutionId?: string;
             netQty: number;
@@ -542,6 +750,7 @@ export declare const components: {
             discordLastSyncedAt?: number;
             discordMessageId?: string;
             fees?: number;
+            instrumentId?: string;
             lastExecutionAt?: number;
             lastProcessedExecutionId?: string;
             netQty: number;
@@ -582,6 +791,22 @@ export declare const components: {
           },
           { executionsLinked: number; tradeIdeaGroupId: string }
         >;
+        rebuildTradeIdeasForInstrument: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accountId: string;
+            connectionId: string;
+            instrumentId: string;
+            organizationId: string;
+            userId: string;
+          },
+          {
+            episodesBuilt: number;
+            eventsLinked: number;
+            tradeIdeaGroupIds: Array<string>;
+          }
+        >;
         setDiscordMessageLink: FunctionReference<
           "mutation",
           "internal",
@@ -603,6 +828,7 @@ export declare const components: {
             connectionId: string;
             direction: "long" | "short";
             fees?: number;
+            instrumentId?: string;
             lastExecutionAt?: number;
             lastProcessedExecutionId?: string;
             netQty: number;
@@ -636,6 +862,7 @@ export declare const components: {
             discordLastSyncedAt?: number;
             discordMessageId?: string;
             fees?: number;
+            instrumentId?: string;
             lastExecutionAt?: number;
             lastProcessedExecutionId?: string;
             netQty: number;
@@ -684,6 +911,7 @@ export declare const components: {
               discordLastSyncedAt?: number;
               discordMessageId?: string;
               fees?: number;
+              instrumentId?: string;
               lastExecutionAt?: number;
               lastProcessedExecutionId?: string;
               netQty: number;
@@ -699,6 +927,29 @@ export declare const components: {
               userId: string;
             }>;
           }
+        >;
+        listEventsForGroup: FunctionReference<
+          "query",
+          "internal",
+          {
+            limit?: number;
+            organizationId: string;
+            tradeIdeaGroupId: string;
+            userId: string;
+          },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            connectionId: string;
+            createdAt: number;
+            executedAt: number;
+            externalExecutionId: string;
+            externalOrderId?: string;
+            externalPositionId?: string;
+            organizationId: string;
+            tradeIdeaGroupId: string;
+            userId: string;
+          }>
         >;
       };
     };

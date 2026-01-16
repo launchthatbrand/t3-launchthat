@@ -23,6 +23,80 @@ const traderlaunchpadDraftMutations =
 const traderlaunchpadJournalMutations =
   componentsUntyped.launchthat_traderlaunchpad.journal.mutations;
 
+const textEncoder = new TextEncoder();
+
+const toArrayBuffer = (bytes: Uint8Array): ArrayBuffer =>
+  bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer;
+
+const base64Encode = (bytes: Uint8Array): string =>
+  Buffer.from(bytes).toString("base64");
+
+const base64UrlDecode = (input: string): string => {
+  const padded = input.replace(/-/g, "+").replace(/_/g, "/");
+  const padLength = (4 - (padded.length % 4)) % 4;
+  const b64 = `${padded}${"=".repeat(padLength)}`;
+  return Buffer.from(b64, "base64").toString("utf8");
+};
+
+const extractJwtHost = (token: string): string | null => {
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const payload = JSON.parse(base64UrlDecode(parts[1] ?? "")) as {
+      host?: string;
+    };
+    return typeof payload.host === "string" && payload.host.trim()
+      ? payload.host.trim()
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+const deriveAesKey = async (keyMaterial: string): Promise<CryptoKey> => {
+  const keyBytes = await crypto.subtle.digest(
+    "SHA-256",
+    toArrayBuffer(textEncoder.encode(keyMaterial)),
+  );
+  return await crypto.subtle.importKey(
+    "raw",
+    keyBytes,
+    { name: "AES-GCM" },
+    false,
+    ["encrypt", "decrypt"],
+  );
+};
+
+const encryptSecret = async (
+  plaintext: string,
+  keyMaterial: string,
+): Promise<string> => {
+  const key = await deriveAesKey(keyMaterial);
+  const ivBytes = crypto.getRandomValues(new Uint8Array(12));
+  const iv = toArrayBuffer(ivBytes);
+  const ciphertext = new Uint8Array(
+    await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      key,
+      toArrayBuffer(textEncoder.encode(plaintext)),
+    ),
+  );
+  const tag = ciphertext.slice(ciphertext.length - 16);
+  const data = ciphertext.slice(0, ciphertext.length - 16);
+  const payload = {
+    v: 1,
+    alg: "aes-256-gcm",
+    ivB64: base64Encode(ivBytes),
+    tagB64: base64Encode(tag),
+    dataB64: base64Encode(data),
+  };
+  const encoded = base64Encode(textEncoder.encode(JSON.stringify(payload)));
+  return `enc_v1:${encoded}`;
+};
+
 const baseUrlForEnv = (env: "demo" | "live"): string => {
   return `https://${env}.tradelocker.com/backend-api`;
 };
@@ -96,10 +170,18 @@ export const startTradeLockerConnect = action({
           ? json.refreshTokenExpiration
           : undefined;
 
-    const allAccountsRes = await fetch(`${baseUrl}/auth/jwt/all-accounts`, {
+    const jwtHost = extractJwtHost(accessToken);
+    const baseUrlResolved = jwtHost
+      ? `https://${jwtHost}/backend-api`
+      : baseUrl;
+
+    const allAccountsRes = await fetch(
+      `${baseUrlResolved}/auth/jwt/all-accounts`,
+      {
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
-    });
+      },
+    );
     if (!allAccountsRes.ok) {
       const text = await allAccountsRes.text().catch(() => "");
       throw new Error(
@@ -113,8 +195,16 @@ export const startTradeLockerConnect = action({
         ? accountsJson.accounts
         : [];
 
-    const accessTokenEncrypted = accessToken;
-    const refreshTokenEncrypted = refreshToken;
+    const tokenStorage = env.TRADELOCKER_TOKEN_STORAGE ?? "raw";
+    const secretsKey = env.TRADELOCKER_SECRETS_KEY;
+    const accessTokenEncrypted =
+      tokenStorage === "enc"
+        ? await encryptSecret(accessToken, secretsKey)
+        : accessToken;
+    const refreshTokenEncrypted =
+      tokenStorage === "enc"
+        ? await encryptSecret(refreshToken, secretsKey)
+        : refreshToken;
 
     const draftId = await ctx.runMutation(
       traderlaunchpadDraftMutations.createConnectDraft,
@@ -123,6 +213,7 @@ export const startTradeLockerConnect = action({
         userId,
         environment: args.environment,
         server,
+        jwtHost,
         accessTokenEncrypted,
         refreshTokenEncrypted,
         accessTokenExpiresAt,
@@ -178,6 +269,7 @@ export const connectTradeLocker = action({
         userId,
         environment: consumed.environment === "live" ? "live" : "demo",
         server: String(consumed.server ?? ""),
+        jwtHost: typeof consumed.jwtHost === "string" ? consumed.jwtHost : undefined,
         selectedAccountId: accountId,
         selectedAccNum: accNum,
         accessTokenEncrypted: String(consumed.accessTokenEncrypted ?? ""),
@@ -236,6 +328,34 @@ export const syncMyTradeLockerNow = action({
     );
 
     return { ok: true, result };
+  },
+});
+
+export const getMyTradeLockerInstrumentDetails = action({
+  args: {
+    instrumentId: v.string(),
+  },
+  returns: v.union(
+    v.object({
+      instrumentId: v.string(),
+      symbol: v.optional(v.string()),
+      raw: v.any(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const result = await ctx.runAction(
+      componentsUntyped.launchthat_traderlaunchpad.sync.getInstrumentDetails,
+      {
+        organizationId,
+        userId,
+        instrumentId: args.instrumentId,
+        secretsKey: env.TRADELOCKER_SECRETS_KEY,
+      },
+    );
+    return result;
   },
 });
 

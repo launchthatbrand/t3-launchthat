@@ -58,6 +58,7 @@ export const listByStatus = query({
         connectionId: v.id("tradelockerConnections"),
         accountId: v.string(),
         positionId: v.optional(v.string()),
+        instrumentId: v.optional(v.string()),
         symbol: v.string(),
         status: v.union(v.literal("open"), v.literal("closed")),
         direction: v.union(v.literal("long"), v.literal("short")),
@@ -156,6 +157,7 @@ export const getById = query({
       connectionId: v.id("tradelockerConnections"),
       accountId: v.string(),
       positionId: v.optional(v.string()),
+      instrumentId: v.optional(v.string()),
       symbol: v.string(),
       status: v.union(v.literal("open"), v.literal("closed")),
       direction: v.union(v.literal("long"), v.literal("short")),
@@ -184,5 +186,43 @@ export const getById = query({
     const doc = await ctx.db.get(args.tradeIdeaGroupId);
     if (!doc) return null;
     return doc;
+  },
+});
+
+export const listEventsForGroup = query({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    tradeIdeaGroupId: v.id("tradeIdeaGroups"),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("tradeIdeaEvents"),
+      _creationTime: v.number(),
+      organizationId: v.string(),
+      userId: v.string(),
+      connectionId: v.id("tradelockerConnections"),
+      tradeIdeaGroupId: v.id("tradeIdeaGroups"),
+      externalExecutionId: v.string(),
+      externalOrderId: v.optional(v.string()),
+      externalPositionId: v.optional(v.string()),
+      executedAt: v.number(),
+      createdAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(500, args.limit ?? 200));
+    const rows = await ctx.db
+      .query("tradeIdeaEvents")
+      .withIndex("by_org_user_tradeIdeaGroupId", (q: any) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("userId", args.userId)
+          .eq("tradeIdeaGroupId", args.tradeIdeaGroupId),
+      )
+      .order("desc")
+      .take(limit);
+    return rows;
   },
 });

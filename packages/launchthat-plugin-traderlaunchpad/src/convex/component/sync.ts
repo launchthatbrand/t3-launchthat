@@ -411,7 +411,17 @@ const tradeLockerInstrumentDetails = async (args: {
   accessToken: string;
   accNum: number;
   instrumentId: string;
-}): Promise<{ ok: boolean; status: number; json: any }> => {
+}): Promise<{
+  ok: boolean;
+  status: number;
+  json: any;
+  attempts: Array<{
+    path: string;
+    status: number;
+    ok: boolean;
+    text: string;
+  }>;
+}> => {
   const id = encodeURIComponent(args.instrumentId);
   const candidates = [
     `/trade/instruments/${id}`,
@@ -420,7 +430,17 @@ const tradeLockerInstrumentDetails = async (args: {
     `/trade/instruments/details/${id}`,
     `/trade/symbol_info?tradableInstrumentId=${id}`,
     `/trade/symbolInfo?tradableInstrumentId=${id}`,
+    `/clientapi/v1/instruments/${id}`,
+    `/clientapi/v1/instruments/details/${id}`,
+    `/clientapi/v1/instruments?ids=${id}`,
+    `/clientapi/v1/instruments?instrumentId=${id}`,
   ];
+  const attempts: Array<{
+    path: string;
+    status: number;
+    ok: boolean;
+    text: string;
+  }> = [];
   for (const path of candidates) {
     const res = await tradeLockerApi({
       baseUrl: args.baseUrl,
@@ -428,12 +448,334 @@ const tradeLockerInstrumentDetails = async (args: {
       accNum: args.accNum,
       path,
     });
-    if (res.ok) return { ok: true, status: res.status, json: res.json };
+    attempts.push({
+      path,
+      status: res.status,
+      ok: res.ok,
+      text: res.text?.slice(0, 200) ?? "",
+    });
+    if (res.ok)
+      return {
+        ok: true,
+        status: res.status,
+        json: res.json,
+        attempts,
+      };
     if (res.status !== 404)
-      return { ok: false, status: res.status, json: res.json };
+      return {
+        ok: false,
+        status: res.status,
+        json: res.json,
+        attempts,
+      };
   }
-  return { ok: false, status: 404, json: null };
+  return { ok: false, status: 404, json: null, attempts };
 };
+
+const extractInstrumentSymbol = (payload: any): string | undefined => {
+  const root =
+    payload?.d && typeof payload.d === "object" ? payload.d : payload;
+  const candidates = [
+    root?.symbol,
+    root?.name,
+    root?.shortName,
+    root?.ticker,
+    root?.instrumentName,
+    root?.instrument,
+    root?.tradableInstrument?.symbol,
+    root?.tradableInstrument?.name,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+  return undefined;
+};
+
+const tradeLockerInstrumentsForAccount = async (args: {
+  baseUrl: string;
+  accessToken: string;
+  accNum: number;
+  accountId: string;
+}): Promise<{
+  ok: boolean;
+  status: number;
+  json: any;
+  text: string;
+}> => {
+  const res = await tradeLockerApi({
+    baseUrl: args.baseUrl,
+    accessToken: args.accessToken,
+    accNum: args.accNum,
+    path: `/trade/accounts/${encodeURIComponent(args.accountId)}/instruments`,
+  });
+  return { ok: res.ok, status: res.status, json: res.json, text: res.text };
+};
+
+const findInstrumentInList = (
+  payload: any,
+  instrumentId: string,
+): { symbol?: string; raw?: any } => {
+  const root =
+    payload?.d && typeof payload.d === "object" ? payload.d : payload;
+  const rows: any[] = Array.isArray(root)
+    ? root
+    : Array.isArray(root?.instruments)
+      ? root.instruments
+      : Array.isArray(root?.data)
+        ? root.data
+        : [];
+  if (!rows.length) return {};
+  const target = instrumentId.trim();
+  const targetNum = Number(target);
+  const match = rows.find((row) => {
+    const candidates = [
+      row?.instrumentId,
+      row?.id,
+      row?._id,
+      row?.tradableInstrumentId,
+    ];
+    for (const candidate of candidates) {
+      if (String(candidate ?? "") === target) return true;
+      if (Number.isFinite(targetNum) && Number(candidate) === targetNum)
+        return true;
+    }
+    return false;
+  });
+  if (!match) return {};
+  return {
+    symbol:
+      typeof match?.symbol === "string"
+        ? match.symbol
+        : typeof match?.name === "string"
+          ? match.name
+          : undefined,
+    raw: match,
+  };
+};
+
+export const getInstrumentDetails = action({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    instrumentId: v.string(),
+    secretsKey: v.string(),
+  },
+  returns: v.union(
+    v.object({
+      instrumentId: v.string(),
+      symbol: v.optional(v.string()),
+      raw: v.any(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const instrumentId = args.instrumentId.trim();
+    if (!instrumentId) return null;
+
+    const secrets = await ctx.runQuery(
+      api.connections.internalQueries.getConnectionSecrets as any,
+      { organizationId: args.organizationId, userId: args.userId },
+    );
+    if (!secrets || secrets.status !== "connected") return null;
+
+    const keyMaterial = requireTradeLockerSecretsKey(args.secretsKey);
+    let accessToken = await decryptSecret(
+      String((secrets as any).accessTokenEncrypted ?? ""),
+      keyMaterial,
+    );
+    let refreshToken = await decryptSecret(
+      String((secrets as any).refreshTokenEncrypted ?? ""),
+      keyMaterial,
+    );
+    const shouldEncrypt =
+      String((secrets as any).accessTokenEncrypted ?? "").startsWith(
+        "enc_v1:",
+      ) ||
+      String((secrets as any).refreshTokenEncrypted ?? "").startsWith(
+        "enc_v1:",
+      );
+    const jwtHost =
+      typeof (secrets as any).jwtHost === "string"
+        ? String((secrets as any).jwtHost)
+        : extractJwtHost(accessToken);
+    const baseUrlFallback = baseUrlForEnv(
+      secrets.environment === "live" ? "live" : "demo",
+    );
+    const baseUrl = jwtHost
+      ? `https://${jwtHost}/backend-api`
+      : baseUrlFallback;
+
+    const accNum = Number(secrets.selectedAccNum ?? 0);
+    const accountId = String(secrets.selectedAccountId ?? "").trim();
+    if (!Number.isFinite(accNum) || accNum <= 0 || !accountId) return null;
+
+    const allAccountsRes = await tradeLockerAllAccounts({
+      baseUrl,
+      accessToken,
+    });
+    const accounts = allAccountsRes.accounts;
+    const matched =
+      accounts.find(
+        (a) =>
+          String(a?.accountId ?? a?.id ?? a?._id ?? "") === accountId ||
+          String(a?.accNum ?? a?.acc_num ?? a?.accountNumber ?? "") ===
+            accountId ||
+          Number(a?.accNum ?? a?.acc_num ?? a?.accountNumber ?? 0) === accNum ||
+          Number(a?.accountId ?? a?.id ?? 0) === accNum,
+      ) ?? null;
+    const tradeAccountId = String(
+      matched?.accountId ?? matched?.id ?? matched?._id ?? accountId,
+    );
+    const tradeAccNum = Number(
+      matched?.accNum ?? matched?.acc_num ?? matched?.accountNumber ?? accNum,
+    );
+
+    const rotateTokens = async (reason: string): Promise<boolean> => {
+      const refreshRes = await tradeLockerRefreshTokens({
+        baseUrl,
+        refreshToken,
+      });
+      if (
+        !refreshRes.ok ||
+        !refreshRes.accessToken ||
+        !refreshRes.refreshToken
+      ) {
+        console.warn("[tradelocker.instrument.refresh_failed]", {
+          organizationId: args.organizationId,
+          userId: args.userId,
+          reason,
+          status: refreshRes.status,
+          refreshText: refreshRes.text?.slice(0, 200) ?? "",
+        });
+        return false;
+      }
+      accessToken = refreshRes.accessToken;
+      refreshToken = refreshRes.refreshToken;
+      const accessTokenToStore = shouldEncrypt
+        ? await encryptSecret(accessToken, keyMaterial)
+        : accessToken;
+      const refreshTokenToStore = shouldEncrypt
+        ? await encryptSecret(refreshToken, keyMaterial)
+        : refreshToken;
+      await ctx.runMutation(api.connections.mutations.upsertConnection as any, {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        environment: secrets.environment === "live" ? "live" : "demo",
+        server: String(secrets.server ?? ""),
+        selectedAccountId: tradeAccountId,
+        selectedAccNum: tradeAccNum,
+        accessTokenEncrypted: accessTokenToStore,
+        refreshTokenEncrypted: refreshTokenToStore,
+        accessTokenExpiresAt: refreshRes.expireDateMs,
+        refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
+        status: "connected",
+        lastError: undefined,
+        jwtHost: extractJwtHost(accessToken),
+      });
+      return true;
+    };
+
+    let listRes = await tradeLockerInstrumentsForAccount({
+      baseUrl,
+      accessToken,
+      accNum: tradeAccNum,
+      accountId: tradeAccountId,
+    });
+    if (listRes.status === 401 || listRes.status === 403) {
+      const refreshed = await rotateTokens("instruments_list_401_403");
+      if (refreshed) {
+        listRes = await tradeLockerInstrumentsForAccount({
+          baseUrl,
+          accessToken,
+          accNum: tradeAccNum,
+          accountId: tradeAccountId,
+        });
+      }
+    }
+    const fromList = listRes.ok
+      ? findInstrumentInList(listRes.json, instrumentId)
+      : {};
+    console.log("[tradelocker.instrument.lookup_list]", {
+      organizationId: args.organizationId,
+      userId: args.userId,
+      instrumentId,
+      environment: secrets.environment,
+      server: secrets.server,
+      jwtHost,
+      baseUrl,
+      accNum: tradeAccNum,
+      accountId: tradeAccountId,
+      allAccountsStatus: allAccountsRes.status,
+      allAccountsOk: allAccountsRes.ok,
+      status: listRes.status,
+      ok: listRes.ok,
+      text: listRes.text?.slice(0, 200) ?? "",
+      listKeys:
+        listRes.json && typeof listRes.json === "object"
+          ? Object.keys(listRes.json as Record<string, unknown>).slice(0, 25)
+          : [],
+    });
+    if (fromList.symbol) {
+      console.log("[tradelocker.instrument.lookup_result]", {
+        instrumentId,
+        symbol: fromList.symbol,
+        source: "account_instruments",
+      });
+      return {
+        instrumentId,
+        symbol: fromList.symbol,
+        raw: fromList.raw ?? listRes.json,
+      };
+    }
+
+    let res = await tradeLockerInstrumentDetails({
+      baseUrl,
+      accessToken,
+      accNum: tradeAccNum,
+      instrumentId,
+    });
+    if (res.status === 401 || res.status === 403) {
+      const refreshed = await rotateTokens("instrument_detail_401_403");
+      if (refreshed) {
+        res = await tradeLockerInstrumentDetails({
+          baseUrl,
+          accessToken,
+          accNum: tradeAccNum,
+          instrumentId,
+        });
+      }
+    }
+    console.log("[tradelocker.instrument.lookup_detail]", {
+      organizationId: args.organizationId,
+      userId: args.userId,
+      instrumentId,
+      environment: secrets.environment,
+      server: secrets.server,
+      jwtHost,
+      baseUrl,
+      accNum: tradeAccNum,
+      accountId: tradeAccountId,
+      status: res.status,
+      ok: res.ok,
+      attempts: res.attempts,
+    });
+    if (!res.ok) return null;
+    const symbol = extractInstrumentSymbol(res.json);
+    console.log("[tradelocker.instrument.lookup_result]", {
+      instrumentId,
+      symbol,
+      source: "instrument_details",
+      hasRaw: Boolean(res.json),
+      rawKeys:
+        res.json && typeof res.json === "object"
+          ? Object.keys(res.json as Record<string, unknown>).slice(0, 25)
+          : [],
+    });
+    return { instrumentId, symbol, raw: res.json };
+  },
+});
 
 const log = async (
   _ctx: unknown,
@@ -754,10 +1096,11 @@ export const syncTradeLockerConnection = action({
     const baseUrlFallback = baseUrlForEnv(
       secrets.environment === "live" ? "live" : "demo",
     );
-    const jwtHost = extractJwtHost(accessToken);
-    const baseUrl = jwtHost
-      ? `https://${jwtHost}/backend-api`
-      : baseUrlFallback;
+    let jwtHost =
+      typeof (secrets as any).jwtHost === "string"
+        ? String((secrets as any).jwtHost)
+        : extractJwtHost(accessToken);
+    let baseUrl = jwtHost ? `https://${jwtHost}/backend-api` : baseUrlFallback;
     const accNum = Number(secrets.selectedAccNum ?? 0);
     const accountId = String(secrets.selectedAccountId ?? "");
     if (!accountId || !Number.isFinite(accNum) || accNum <= 0) {
@@ -787,6 +1130,11 @@ export const syncTradeLockerConnection = action({
 
       accessToken = res.accessToken;
       refreshToken = res.refreshToken;
+      const refreshedJwtHost = extractJwtHost(accessToken);
+      if (refreshedJwtHost) {
+        jwtHost = refreshedJwtHost;
+        baseUrl = `https://${jwtHost}/backend-api`;
+      }
 
       const accessTokenEncrypted = await encryptSecret(
         accessToken,
@@ -802,6 +1150,7 @@ export const syncTradeLockerConnection = action({
         userId: args.userId,
         environment: secrets.environment === "live" ? "live" : "demo",
         server: String(secrets.server ?? ""),
+        jwtHost: jwtHost ?? undefined,
         selectedAccountId: accountId,
         selectedAccNum: accNum,
         accessTokenEncrypted,
@@ -1162,6 +1511,46 @@ export const syncTradeLockerConnection = action({
       .sort((a, b) => a.executedAt - b.executedAt)
       .slice(0, Math.max(1, Math.min(2000, args.limit ?? 500)));
 
+    const instrumentCache = new Map<string, string>();
+    const resolveInstrumentSymbol = async (
+      instrumentId?: string,
+    ): Promise<string | undefined> => {
+      const id = typeof instrumentId === "string" ? instrumentId.trim() : "";
+      if (!id) return undefined;
+      if (instrumentCache.has(id)) return instrumentCache.get(id);
+      const res = await tradeLockerInstrumentDetails({
+        baseUrl,
+        accessToken,
+        accNum: tradeAccNum,
+        instrumentId: id,
+      });
+      if (!res.ok) return undefined;
+      const symbol = extractInstrumentSymbol(res.json);
+      if (symbol) instrumentCache.set(id, symbol);
+      return symbol;
+    };
+
+    for (const o of orders) {
+      if (!o.symbol && o.instrumentId) {
+        o.symbol = await resolveInstrumentSymbol(o.instrumentId);
+      }
+    }
+    for (const o of ordersHistory) {
+      if (!o.symbol && o.instrumentId) {
+        o.symbol = await resolveInstrumentSymbol(o.instrumentId);
+      }
+    }
+    for (const p of positions) {
+      if (!p.symbol && p.instrumentId) {
+        p.symbol = await resolveInstrumentSymbol(p.instrumentId);
+      }
+    }
+    for (const e of executions) {
+      if (!e.symbol && e.instrumentId) {
+        e.symbol = await resolveInstrumentSymbol(e.instrumentId);
+      }
+    }
+
     await log(ctx, {
       organizationId: args.organizationId,
       level: "info",
@@ -1379,45 +1768,43 @@ export const syncTradeLockerConnection = action({
       if (upsertRes?.wasNew) executionsNew++;
     }
 
-    // Hedging-safe TradeIdeas: rebuild per broker position thread.
-    // We only build for positions we can identify (positionId present on positions and/or executions).
-    const openPositionIds = new Set<string>(
-      positions.map((p) => String(p.externalPositionId)).filter(Boolean),
-    );
-    const touchedPositionIds = new Set<string>();
-    for (const p of openPositionIds) touchedPositionIds.add(p);
+    // Phase 1 TradeIdeas: rebuild “episodes” per instrumentId (open iff netQty != 0).
+    const touchedInstrumentIds = new Set<string>();
+    for (const p of positions) {
+      if (typeof p.instrumentId === "string" && p.instrumentId.trim()) {
+        touchedInstrumentIds.add(p.instrumentId.trim());
+      }
+    }
     for (const e of executions) {
-      if (
-        typeof e.externalPositionId === "string" &&
-        e.externalPositionId.trim()
-      ) {
-        touchedPositionIds.add(e.externalPositionId.trim());
+      if (typeof e.instrumentId === "string" && e.instrumentId.trim()) {
+        touchedInstrumentIds.add(e.instrumentId.trim());
       }
     }
 
-    for (const positionId of touchedPositionIds) {
+    for (const instrumentId of touchedInstrumentIds) {
       try {
         const res = await ctx.runMutation(
-          api.tradeIdeas.mutations.rebuildTradeIdeaForPosition as any,
+          api.tradeIdeas.mutations.rebuildTradeIdeasForInstrument as any,
           {
             organizationId: args.organizationId,
             userId: args.userId,
             connectionId,
             accountId: tradeAccountId,
-            positionId,
-            isOpen: openPositionIds.has(positionId),
+            instrumentId,
           },
         );
         groupsTouched++;
-        tradeIdeaGroupIds.push(res.tradeIdeaGroupId as Id<"tradeIdeaGroups">);
+        for (const id of res.tradeIdeaGroupIds ?? []) {
+          tradeIdeaGroupIds.push(id as Id<"tradeIdeaGroups">);
+        }
       } catch (err) {
         await log(ctx, {
           organizationId: args.organizationId,
           level: "warn",
-          message: "TradeIdea rebuild failed for position",
+          message: "TradeIdea rebuild failed for instrument",
           metadata: {
             userId: args.userId,
-            positionId,
+            instrumentId,
             error: err instanceof Error ? err.message : String(err),
           },
         });

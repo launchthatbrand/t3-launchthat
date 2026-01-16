@@ -1,10 +1,12 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { useQuery } from "convex/react";
 
 import type { ColumnDefinition } from "@acme/ui/entity-list/types";
 import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
 
@@ -40,6 +42,71 @@ const positionsColumns: ColumnDefinition<TradePositionRow>[] = [
   },
 ];
 
+type TradeIdeaRow = Record<string, unknown> & {
+  _id: string;
+  status: "open" | "closed";
+  symbol: string;
+  instrumentId?: string;
+  direction: "long" | "short";
+  openedAt: number;
+  closedAt?: number;
+  netQty: number;
+  realizedPnl?: number;
+  fees?: number;
+};
+
+const tradeIdeasColumns: ColumnDefinition<TradeIdeaRow>[] = [
+  {
+    id: "symbol",
+    header: "Symbol",
+    accessorKey: "symbol",
+    cell: (row: TradeIdeaRow) => (
+      <Link
+        className="text-blue-600 hover:underline"
+        href={`/admin/tradeidea/${encodeURIComponent(row._id)}`}
+      >
+        {row.symbol}
+      </Link>
+    ),
+  },
+  {
+    id: "direction",
+    header: "Dir",
+    accessorKey: "direction",
+    cell: (row: TradeIdeaRow) => (row.direction === "long" ? "Long" : "Short"),
+  },
+  {
+    id: "closedAt",
+    header: "Closed",
+    accessorKey: "closedAt",
+    cell: (row: TradeIdeaRow) =>
+      typeof row.closedAt === "number" ? formatAge(row.closedAt) : "—",
+  },
+  {
+    id: "pnl",
+    header: "P&L",
+    accessorKey: "realizedPnl",
+    cell: (row: TradeIdeaRow) =>
+      typeof row.realizedPnl === "number" ? row.realizedPnl.toFixed(2) : "—",
+  },
+  {
+    id: "fees",
+    header: "Fees",
+    accessorKey: "fees",
+    cell: (row: TradeIdeaRow) =>
+      typeof row.fees === "number" ? row.fees.toFixed(2) : "—",
+  },
+  {
+    id: "actions",
+    header: "",
+    cell: (row: TradeIdeaRow) => (
+      <Button variant="outline" size="sm" asChild>
+        <Link href={`/admin/tradeidea/${encodeURIComponent(row._id)}`}>Review</Link>
+      </Button>
+    ),
+  },
+];
+
 export function TraderLaunchpadDashboardPage(props: {
   api: TraderLaunchpadApiAdapter;
 }) {
@@ -62,6 +129,35 @@ export function TraderLaunchpadDashboardPage(props: {
   const positions = useQuery(tlQueries.listMyTradeLockerPositions, {
     limit: 100,
   }) as TradePositionRow[] | undefined;
+
+  const analytics = useQuery(tlQueries.getMyTradeIdeaAnalyticsSummary, {
+    limit: 200,
+  }) as
+    | {
+        sampleSize: number;
+        closedTrades: number;
+        openTrades: number;
+        winRate: number;
+        avgWin: number;
+        avgLoss: number;
+        expectancy: number;
+        totalFees: number;
+        totalPnl: number;
+      }
+    | undefined;
+
+  const closedTradeIdeasResult = useQuery(tlQueries.listMyTradeIdeasByStatus, {
+    status: "closed",
+    paginationOpts: { numItems: 10, cursor: null },
+  }) as
+    | {
+        page: TradeIdeaRow[];
+        isDone: boolean;
+        continueCursor: string | null;
+      }
+    | undefined;
+
+  const closedTradeIdeas = closedTradeIdeasResult?.page ?? [];
 
   const status = connectionData?.connection?.status as
     | "connected"
@@ -107,15 +203,104 @@ export function TraderLaunchpadDashboardPage(props: {
           </div>
         </div>
 
-        <div className="text-sm">
-          <div>
-            <span className="text-muted-foreground">Last synced:</span>{" "}
-            {lastSyncAt ? formatAge(lastSyncAt) : "—"}
-          </div>
-          <div>
-            <span className="text-muted-foreground">Syncing:</span> {syncLabel}
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/tradeideas?status=closed">Review trades</Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/analytics">Analytics</Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/admin/settings">Settings</Link>
+          </Button>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Closed TradeIdeas</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold">
+            {analytics ? analytics.closedTrades : "—"}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Win rate</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold">
+            {analytics ? `${Math.round(analytics.winRate * 100)}%` : "—"}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Total P&amp;L</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold">
+            {analytics ? analytics.totalPnl.toFixed(2) : "—"}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Open TradeIdeas</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold">
+            {analytics ? analytics.openTrades : "—"}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-3 pb-2">
+            <CardTitle className="text-base">Recent closed TradeIdeas</CardTitle>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/admin/tradeideas?status=closed">View all</Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {closedTradeIdeasResult === undefined ? (
+              <div className="text-muted-foreground text-sm">Loading…</div>
+            ) : closedTradeIdeas.length === 0 ? (
+              <div className="text-muted-foreground text-sm">
+                No closed TradeIdeas yet. Sync to import trades, then come back to review.
+              </div>
+            ) : (
+              <EntityList<TradeIdeaRow>
+                data={closedTradeIdeas as any}
+                columns={tradeIdeasColumns as any}
+                viewModes={["list"]}
+                enableSearch={false}
+                enableFooter={false}
+              />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Sync health</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div>
+              <span className="text-muted-foreground">Last synced:</span>{" "}
+              {lastSyncAt ? formatAge(lastSyncAt) : "—"}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Syncing:</span> {syncLabel}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Connected:</span>{" "}
+              {status === "connected" ? "Yes" : "No"}
+            </div>
+            <div className="pt-2">
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/admin/settings">Manage connection</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -159,6 +344,17 @@ export function TraderLaunchpadDashboardPage(props: {
           )}
         </CardContent>
       </Card>
+
+      {/* legacy block retained below */}
+      <div className="hidden text-sm">
+          <div>
+            <span className="text-muted-foreground">Last synced:</span>{" "}
+            {lastSyncAt ? formatAge(lastSyncAt) : "—"}
+          </div>
+          <div>
+            <span className="text-muted-foreground">Syncing:</span> {syncLabel}
+          </div>
+      </div>
     </div>
   );
 }

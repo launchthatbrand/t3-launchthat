@@ -8,6 +8,7 @@ export const upsertConnection = mutation({
     userId: v.string(),
     environment: v.union(v.literal("demo"), v.literal("live")),
     server: v.string(),
+    jwtHost: v.optional(v.string()),
     selectedAccountId: v.string(),
     selectedAccNum: v.number(),
     accessTokenEncrypted: v.string(),
@@ -35,6 +36,7 @@ export const upsertConnection = mutation({
       await ctx.db.patch(existing._id, {
         environment: args.environment,
         server: args.server,
+        jwtHost: args.jwtHost,
         selectedAccountId: args.selectedAccountId,
         selectedAccNum: args.selectedAccNum,
         accessTokenEncrypted: args.accessTokenEncrypted,
@@ -56,6 +58,7 @@ export const upsertConnection = mutation({
       userId: args.userId,
       environment: args.environment,
       server: args.server,
+      jwtHost: args.jwtHost,
       selectedAccountId: args.selectedAccountId,
       selectedAccNum: args.selectedAccNum,
       accessTokenEncrypted: args.accessTokenEncrypted,

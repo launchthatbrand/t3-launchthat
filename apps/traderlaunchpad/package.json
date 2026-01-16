@@ -10,7 +10,8 @@
     "lint": "eslint --flag unstable_native_nodejs_ts_config",
     "start": "pnpm with-env next start",
     "typecheck": "tsc --noEmit",
-    "with-env": "dotenv -e ../../.env --"
+    "with-env": "dotenv -e ../../.env --",
+    "btools": "npx @agentdeskai/browser-tools-server@latest"
   },
   "dependencies": {
     "@acme/api": "workspace:*",

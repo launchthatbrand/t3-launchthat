@@ -53,6 +53,16 @@ export type TraderLaunchpadApiAdapter = {
     listMyTradeLockerOrdersHistory: any;
     listMyTradeLockerPositions: any;
     getMyTradeLockerAccountState: any;
+    getMyTradeLockerOrderDetail: any;
+    listMyTradeLockerExecutionsForOrder: any;
+    listMyTradeLockerOrdersForInstrument: any;
+    listMyTradeLockerOrdersHistoryForInstrument: any;
+    listMyTradeLockerExecutionsForInstrument: any;
+    getMyTradeIdeaAnalyticsSummary: any;
+    listMyTradeIdeaAnalyticsByInstrument: any;
+    listMyTradeIdeasByStatus: any;
+    getMyTradeIdeaById: any;
+    listMyTradeIdeaEvents: any;
     getMyJournalProfile: any;
   };
   actions: {
@@ -60,6 +70,7 @@ export type TraderLaunchpadApiAdapter = {
     connectTradeLocker: any;
     disconnectTradeLocker: any;
     syncMyTradeLockerNow: any;
+    getMyTradeLockerInstrumentDetails: any;
     setMyJournalPublic: any;
   };
 };
@@ -80,6 +91,19 @@ export type TradePositionRow = Record<string, unknown> & {
   side?: "buy" | "sell";
   qty?: number;
   avgPrice?: number;
+  updatedAt: number;
+};
+
+export type TradeExecutionRow = Record<string, unknown> & {
+  _id: string;
+  externalExecutionId: string;
+  externalOrderId?: string;
+  symbol?: string;
+  side?: "buy" | "sell";
+  executedAt: number;
+  price?: number;
+  qty?: number;
+  fees?: number;
   updatedAt: number;
 };
 

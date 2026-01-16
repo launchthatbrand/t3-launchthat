@@ -178,6 +178,271 @@ export const listOrdersHistoryForUser = query({
   },
 });
 
+const tradeOrderView = v.object({
+  _id: v.id("tradeOrders"),
+  _creationTime: v.number(),
+  organizationId: v.string(),
+  userId: v.string(),
+  connectionId: v.id("tradelockerConnections"),
+  externalOrderId: v.string(),
+  symbol: v.optional(v.string()),
+  instrumentId: v.optional(v.string()),
+  side: v.optional(v.union(v.literal("buy"), v.literal("sell"))),
+  status: v.optional(v.string()),
+  createdAt: v.optional(v.number()),
+  closedAt: v.optional(v.number()),
+  raw: v.any(),
+  updatedAt: v.number(),
+});
+
+const tradeOrderHistoryView = v.object({
+  _id: v.id("tradeOrdersHistory"),
+  _creationTime: v.number(),
+  organizationId: v.string(),
+  userId: v.string(),
+  connectionId: v.id("tradelockerConnections"),
+  externalOrderId: v.string(),
+  symbol: v.optional(v.string()),
+  instrumentId: v.optional(v.string()),
+  side: v.optional(v.union(v.literal("buy"), v.literal("sell"))),
+  status: v.optional(v.string()),
+  createdAt: v.optional(v.number()),
+  closedAt: v.optional(v.number()),
+  raw: v.any(),
+  updatedAt: v.number(),
+});
+
+export const listOrdersForUserByInstrumentId = query({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    instrumentId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("tradeOrders"),
+      _creationTime: v.number(),
+      organizationId: v.string(),
+      userId: v.string(),
+      connectionId: v.id("tradelockerConnections"),
+      externalOrderId: v.string(),
+      symbol: v.optional(v.string()),
+      instrumentId: v.optional(v.string()),
+      side: v.optional(v.union(v.literal("buy"), v.literal("sell"))),
+      status: v.optional(v.string()),
+      createdAt: v.optional(v.number()),
+      closedAt: v.optional(v.number()),
+      raw: v.any(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(500, args.limit ?? 200));
+    const instrumentId = args.instrumentId.trim();
+    if (!instrumentId) return [];
+    const rows = await ctx.db
+      .query("tradeOrders")
+      .withIndex("by_org_user_instrumentId_updatedAt", (q: any) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("userId", args.userId)
+          .eq("instrumentId", instrumentId),
+      )
+      .order("desc")
+      .take(limit);
+    return rows;
+  },
+});
+
+export const listOrdersHistoryForUserByInstrumentId = query({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    instrumentId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("tradeOrdersHistory"),
+      _creationTime: v.number(),
+      organizationId: v.string(),
+      userId: v.string(),
+      connectionId: v.id("tradelockerConnections"),
+      externalOrderId: v.string(),
+      symbol: v.optional(v.string()),
+      instrumentId: v.optional(v.string()),
+      side: v.optional(v.union(v.literal("buy"), v.literal("sell"))),
+      status: v.optional(v.string()),
+      createdAt: v.optional(v.number()),
+      closedAt: v.optional(v.number()),
+      raw: v.any(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(500, args.limit ?? 200));
+    const instrumentId = args.instrumentId.trim();
+    if (!instrumentId) return [];
+    const rows = await ctx.db
+      .query("tradeOrdersHistory")
+      .withIndex("by_org_user_instrumentId_updatedAt", (q: any) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("userId", args.userId)
+          .eq("instrumentId", instrumentId),
+      )
+      .order("desc")
+      .take(limit);
+    return rows;
+  },
+});
+
+export const listExecutionsForUserByInstrumentId = query({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    instrumentId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("tradeExecutions"),
+      _creationTime: v.number(),
+      organizationId: v.string(),
+      userId: v.string(),
+      connectionId: v.id("tradelockerConnections"),
+      externalExecutionId: v.string(),
+      externalOrderId: v.optional(v.string()),
+      externalPositionId: v.optional(v.string()),
+      symbol: v.optional(v.string()),
+      instrumentId: v.optional(v.string()),
+      side: v.optional(v.union(v.literal("buy"), v.literal("sell"))),
+      executedAt: v.number(),
+      price: v.optional(v.number()),
+      qty: v.optional(v.number()),
+      fees: v.optional(v.number()),
+      raw: v.any(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(500, args.limit ?? 200));
+    const instrumentId = args.instrumentId.trim();
+    if (!instrumentId) return [];
+    const rows = await ctx.db
+      .query("tradeExecutions")
+      .withIndex("by_org_user_instrumentId_executedAt", (q: any) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("userId", args.userId)
+          .eq("instrumentId", instrumentId),
+      )
+      .order("desc")
+      .take(limit);
+    return rows;
+  },
+});
+
+export const getOrderById = query({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    orderId: v.string(),
+    kind: v.optional(v.union(v.literal("order"), v.literal("history"))),
+  },
+  returns: v.union(
+    v.object({
+      kind: v.literal("order"),
+      order: tradeOrderView,
+    }),
+    v.object({
+      kind: v.literal("history"),
+      order: tradeOrderHistoryView,
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const orderId = args.orderId.trim();
+    if (!orderId) return null;
+    if (args.kind === "history") {
+      const history = await ctx.db.get(orderId as any);
+      if (
+        history &&
+        history.organizationId === args.organizationId &&
+        history.userId === args.userId
+      ) {
+        return { kind: "history", order: history };
+      }
+      return null;
+    }
+
+    const order = await ctx.db.get(orderId as any);
+    if (
+      order &&
+      order.organizationId === args.organizationId &&
+      order.userId === args.userId
+    ) {
+      return { kind: "order", order };
+    }
+    const history = await ctx.db.get(orderId as any);
+    if (
+      history &&
+      history.organizationId === args.organizationId &&
+      history.userId === args.userId
+    ) {
+      return { kind: "history", order: history };
+    }
+    return null;
+  },
+});
+
+export const listExecutionsForOrder = query({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    externalOrderId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("tradeExecutions"),
+      _creationTime: v.number(),
+      organizationId: v.string(),
+      userId: v.string(),
+      connectionId: v.id("tradelockerConnections"),
+      externalExecutionId: v.string(),
+      externalOrderId: v.optional(v.string()),
+      externalPositionId: v.optional(v.string()),
+      symbol: v.optional(v.string()),
+      instrumentId: v.optional(v.string()),
+      side: v.optional(v.union(v.literal("buy"), v.literal("sell"))),
+      executedAt: v.number(),
+      price: v.optional(v.number()),
+      qty: v.optional(v.number()),
+      fees: v.optional(v.number()),
+      raw: v.any(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(500, args.limit ?? 200));
+    const externalOrderId = args.externalOrderId.trim();
+    if (!externalOrderId) return [];
+    const rows = await ctx.db
+      .query("tradeExecutions")
+      .withIndex("by_org_user_externalOrderId", (q: any) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("userId", args.userId)
+          .eq("externalOrderId", externalOrderId),
+      )
+      .order("desc")
+      .take(limit);
+    return rows;
+  },
+});
+
 export const listPositionsForUser = query({
   args: {
     organizationId: v.string(),

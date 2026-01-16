@@ -205,8 +205,18 @@ export function TraderLaunchpadSettingsPage(props: {
         <CardContent className="space-y-4">
           {status === "connected" ? (
             <div className="flex items-center justify-between">
-              <div className="text-muted-foreground text-sm">
-                Connected to {String(connectionData?.connection?.server ?? "—")}
+              <div className="text-muted-foreground text-sm space-y-1">
+                <div>
+                  Connected to{" "}
+                  {String(connectionData?.connection?.server ?? "—")}
+                </div>
+                <div>
+                  Environment:{" "}
+                  {String(connectionData?.connection?.environment ?? "—")}
+                </div>
+                <div>
+                  Host: {String(connectionData?.connection?.jwtHost ?? "—")}
+                </div>
               </div>
               <Button
                 variant="destructive"

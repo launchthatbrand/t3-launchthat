@@ -17,6 +17,7 @@ export const env = createEnv({
     // POSTGRES_URL: z.url(),
     TRADERLAUNCHPAD_DEFAULT_ORG_ID: z.string().min(1),
     TRADELOCKER_SECRETS_KEY: z.string().min(1),
+    TRADELOCKER_TOKEN_STORAGE: z.enum(["raw", "enc"]).default("raw"),
   },
 
   /**
