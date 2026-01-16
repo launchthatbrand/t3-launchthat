@@ -16,6 +16,7 @@ export const env = createEnv({
   server: {
     // POSTGRES_URL: z.url(),
     TRADERLAUNCHPAD_DEFAULT_ORG_ID: z.string().min(1),
+    TRADELOCKER_SECRETS_KEY: z.string().min(1),
   },
 
   /**

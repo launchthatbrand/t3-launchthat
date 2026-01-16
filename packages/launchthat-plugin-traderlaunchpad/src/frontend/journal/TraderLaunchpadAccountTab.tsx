@@ -194,11 +194,20 @@ export function TraderLaunchpadAccountTab(props: {
       // Best-effort set defaults from first account.
       const a0 = accounts[0] ?? null;
       if (a0 && typeof a0 === "object") {
-        if (typeof (a0 as any).accountId === "string") {
-          setSelectedAccountId((a0 as any).accountId);
+        const initialAccountId = String(
+          (a0 as any)?.accountId ?? (a0 as any)?.id ?? (a0 as any)?._id ?? "",
+        );
+        if (initialAccountId) {
+          setSelectedAccountId(initialAccountId);
         }
-        if (typeof (a0 as any).accNum === "number") {
-          setSelectedAccNum((a0 as any).accNum);
+        const initialAccNum = Number(
+          (a0 as any)?.accNum ??
+            (a0 as any)?.acc_num ??
+            (a0 as any)?.accountNumber ??
+            0,
+        );
+        if (Number.isFinite(initialAccNum) && initialAccNum > 0) {
+          setSelectedAccNum(initialAccNum);
         }
       }
     } catch (err) {
@@ -556,17 +565,46 @@ export function TraderLaunchpadAccountTab(props: {
                         </div>
                         <Select
                           value={selectedAccountId}
-                          onValueChange={(v) => setSelectedAccountId(v)}
+                          onValueChange={(v) => {
+                            setSelectedAccountId(v);
+                            const selected = draft.accounts.find((a, idx) => {
+                              const accountId = String(
+                                (a as any)?.accountId ??
+                                  (a as any)?.id ??
+                                  (a as any)?._id ??
+                                  "",
+                              );
+                              const fallbackId = accountId || `unknown-${idx}`;
+                              return fallbackId === v;
+                            });
+                            const accNumValue = Number(
+                              (selected as any)?.accNum ??
+                                (selected as any)?.acc_num ??
+                                (selected as any)?.accountNumber ??
+                                0,
+                            );
+                            if (
+                              Number.isFinite(accNumValue) &&
+                              accNumValue > 0
+                            ) {
+                              setSelectedAccNum(accNumValue);
+                            }
+                          }}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Choose account" />
                           </SelectTrigger>
                           <SelectContent>
                             {draft.accounts.map((a, idx) => {
-                              const id = String((a as any)?.accountId ?? "");
+                              const id = String(
+                                (a as any)?.accountId ??
+                                  (a as any)?.id ??
+                                  (a as any)?._id ??
+                                  "",
+                              );
                               const label =
                                 String((a as any)?.name ?? "") ||
-                                String((a as any)?.accountId ?? "") ||
+                                id ||
                                 `Account ${idx + 1}`;
                               return (
                                 <SelectItem

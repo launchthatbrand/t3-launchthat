@@ -3,18 +3,28 @@
 import React from "react";
 import { useAction, useQuery } from "convex/react";
 import { toast } from "sonner";
+
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@acme/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@acme/ui/select";
 import { Separator } from "@acme/ui/separator";
 import { Switch } from "@acme/ui/switch";
+
 import { TraderLaunchpadApiAdapter } from "../TraderLaunchpadAccountTab";
 
 type TradeLockerEnv = "demo" | "live";
 
-export function TraderLaunchpadSettingsPage(props: { api: TraderLaunchpadApiAdapter }) {
+export function TraderLaunchpadSettingsPage(props: {
+  api: TraderLaunchpadApiAdapter;
+}) {
   const tlQueries = props.api.queries;
   const tlActions = props.api.actions;
 
@@ -79,11 +89,20 @@ export function TraderLaunchpadSettingsPage(props: { api: TraderLaunchpadApiAdap
       // Best-effort set defaults from first account.
       const a0 = accounts[0] ?? null;
       if (a0 && typeof a0 === "object") {
-        if (typeof (a0 as any).accountId === "string") {
-          setSelectedAccountId((a0 as any).accountId);
+        const initialAccountId = String(
+          (a0 as any)?.accountId ?? (a0 as any)?.id ?? (a0 as any)?._id ?? "",
+        );
+        if (initialAccountId) {
+          setSelectedAccountId(initialAccountId);
         }
-        if (typeof (a0 as any).accNum === "number") {
-          setSelectedAccNum((a0 as any).accNum);
+        const initialAccNum = Number(
+          (a0 as any)?.accNum ??
+            (a0 as any)?.acc_num ??
+            (a0 as any)?.accountNumber ??
+            0,
+        );
+        if (Number.isFinite(initialAccNum) && initialAccNum > 0) {
+          setSelectedAccNum(initialAccNum);
         }
       }
     } catch (err) {
@@ -187,8 +206,7 @@ export function TraderLaunchpadSettingsPage(props: { api: TraderLaunchpadApiAdap
           {status === "connected" ? (
             <div className="flex items-center justify-between">
               <div className="text-muted-foreground text-sm">
-                Connected to{" "}
-                {String(connectionData?.connection?.server ?? "—")}
+                Connected to {String(connectionData?.connection?.server ?? "—")}
               </div>
               <Button
                 variant="destructive"
@@ -205,9 +223,7 @@ export function TraderLaunchpadSettingsPage(props: { api: TraderLaunchpadApiAdap
                   <Label>Environment</Label>
                   <Select
                     value={connectEnv}
-                    onValueChange={(v) =>
-                      setConnectEnv(v as TradeLockerEnv)
-                    }
+                    onValueChange={(v) => setConnectEnv(v as TradeLockerEnv)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select environment" />
@@ -253,25 +269,52 @@ export function TraderLaunchpadSettingsPage(props: { api: TraderLaunchpadApiAdap
                 <>
                   <Separator />
                   <div className="space-y-2">
-                    <div className="text-sm font-medium">
-                      Select account
-                    </div>
+                    <div className="text-sm font-medium">Select account</div>
                     <Select
                       value={selectedAccountId}
-                      onValueChange={(v) => setSelectedAccountId(v)}
+                      onValueChange={(v) => {
+                        setSelectedAccountId(v);
+                        const selected = draft.accounts.find((a, idx) => {
+                          const accountId = String(
+                            (a as any)?.accountId ??
+                              (a as any)?.id ??
+                              (a as any)?._id ??
+                              "",
+                          );
+                          const fallbackId = accountId || `unknown-${idx}`;
+                          return fallbackId === v;
+                        });
+                        const accNumValue = Number(
+                          (selected as any)?.accNum ??
+                            (selected as any)?.acc_num ??
+                            (selected as any)?.accountNumber ??
+                            0,
+                        );
+                        if (Number.isFinite(accNumValue) && accNumValue > 0) {
+                          setSelectedAccNum(accNumValue);
+                        }
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Choose account" />
                       </SelectTrigger>
                       <SelectContent>
                         {draft.accounts.map((a, idx) => {
-                          const id = String((a as any)?.accountId ?? "");
+                          const id = String(
+                            (a as any)?.accountId ??
+                              (a as any)?.id ??
+                              (a as any)?._id ??
+                              "",
+                          );
                           const label =
                             String((a as any)?.name ?? "") ||
-                            String((a as any)?.accountId ?? "") ||
+                            id ||
                             `Account ${idx + 1}`;
                           return (
-                            <SelectItem key={id || String(idx)} value={id || `unknown-${idx}`}>
+                            <SelectItem
+                              key={id || String(idx)}
+                              value={id || `unknown-${idx}`}
+                            >
                               {label}
                             </SelectItem>
                           );

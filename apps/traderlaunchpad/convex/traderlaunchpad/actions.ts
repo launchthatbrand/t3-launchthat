@@ -3,19 +3,16 @@
 /* eslint-disable
   @typescript-eslint/no-explicit-any,
   @typescript-eslint/no-unsafe-assignment,
-  @typescript-eslint/no-unsafe-member-access,
-  turbo/no-undeclared-env-vars
+  @typescript-eslint/no-unsafe-member-access
 */
-import crypto from "node:crypto";
 import { v } from "convex/values";
 
 import { action } from "../_generated/server";
+import { env } from "../../src/env";
 import { resolveOrganizationId, resolveViewerUserId } from "./lib/resolve";
 
 // IMPORTANT: Avoid importing the typed Convex `api`/`components` here — it can trigger TS
 // "type instantiation is excessively deep". Pull via require() to keep it `any`.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const internalAny: any = require("../_generated/api").internal;
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const componentsUntyped: any = require("../_generated/api").components;
 
@@ -25,38 +22,6 @@ const traderlaunchpadDraftMutations =
   componentsUntyped.launchthat_traderlaunchpad.connections.drafts;
 const traderlaunchpadJournalMutations =
   componentsUntyped.launchthat_traderlaunchpad.journal.mutations;
-
-const encryptSecret = (plaintext: string, keyMaterial: string): string => {
-  const key = crypto.createHash("sha256").update(keyMaterial).digest();
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
-  const ciphertext = Buffer.concat([
-    cipher.update(Buffer.from(plaintext, "utf8")),
-    cipher.final(),
-  ]);
-  const tag = cipher.getAuthTag();
-  const payload = {
-    v: 1,
-    alg: "aes-256-gcm",
-    ivB64: iv.toString("base64"),
-    tagB64: tag.toString("base64"),
-    dataB64: ciphertext.toString("base64"),
-  };
-  const encoded = Buffer.from(JSON.stringify(payload), "utf8").toString(
-    "base64",
-  );
-  return `enc_v1:${encoded}`;
-};
-
-const requireTradeLockerSecretsKey = (): string => {
-  const keyMaterial = process.env.TRADELOCKER_SECRETS_KEY;
-  if (!keyMaterial) {
-    throw new Error(
-      "Missing TRADELOCKER_SECRETS_KEY env (required to encrypt TradeLocker tokens)",
-    );
-  }
-  return keyMaterial;
-};
 
 const baseUrlForEnv = (env: "demo" | "live"): string => {
   return `https://${env}.tradelocker.com/backend-api`;
@@ -148,9 +113,8 @@ export const startTradeLockerConnect = action({
         ? accountsJson.accounts
         : [];
 
-    const keyMaterial = requireTradeLockerSecretsKey();
-    const accessTokenEncrypted = encryptSecret(accessToken, keyMaterial);
-    const refreshTokenEncrypted = encryptSecret(refreshToken, keyMaterial);
+    const accessTokenEncrypted = accessToken;
+    const refreshTokenEncrypted = refreshToken;
 
     const draftId = await ctx.runMutation(
       traderlaunchpadDraftMutations.createConnectDraft,
@@ -261,11 +225,13 @@ export const syncMyTradeLockerNow = action({
     const userId = await resolveViewerUserId(ctx);
 
     const result = await ctx.runAction(
-      internalAny.traderlaunchpad.sync.syncTradeLockerConnection,
+      componentsUntyped.launchthat_traderlaunchpad.sync
+        .syncTradeLockerConnection,
       {
         organizationId,
         userId,
         limit: 500,
+        secretsKey: env.TRADELOCKER_SECRETS_KEY,
       },
     );
 

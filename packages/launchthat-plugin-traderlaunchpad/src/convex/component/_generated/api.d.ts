@@ -21,6 +21,7 @@ import type * as raw_index from "../raw/index.js";
 import type * as raw_mutations from "../raw/mutations.js";
 import type * as raw_queries from "../raw/queries.js";
 import type * as server from "../server.js";
+import type * as sync from "../sync.js";
 import type * as tradeIdeas_index from "../tradeIdeas/index.js";
 import type * as tradeIdeas_internalQueries from "../tradeIdeas/internalQueries.js";
 import type * as tradeIdeas_mutations from "../tradeIdeas/mutations.js";
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   "raw/mutations": typeof raw_mutations;
   "raw/queries": typeof raw_queries;
   server: typeof server;
+  sync: typeof sync;
   "tradeIdeas/index": typeof tradeIdeas_index;
   "tradeIdeas/internalQueries": typeof tradeIdeas_internalQueries;
   "tradeIdeas/mutations": typeof tradeIdeas_mutations;
@@ -485,6 +487,25 @@ export type Mounts = {
         }>
       >;
     };
+  };
+  sync: {
+    syncTradeLockerConnection: FunctionReference<
+      "action",
+      "public",
+      {
+        limit?: number;
+        organizationId: string;
+        secretsKey: string;
+        userId: string;
+      },
+      {
+        executionsNew: number;
+        executionsUpserted: number;
+        groupsTouched: number;
+        ordersUpserted: number;
+        tradeIdeaGroupIds: Array<string>;
+      }
+    >;
   };
   tradeIdeas: {
     internalQueries: {

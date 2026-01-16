@@ -11,7 +11,6 @@
 import type * as traderlaunchpad_actions from "../traderlaunchpad/actions.js";
 import type * as traderlaunchpad_lib_resolve from "../traderlaunchpad/lib/resolve.js";
 import type * as traderlaunchpad_queries from "../traderlaunchpad/queries.js";
-import type * as traderlaunchpad_sync from "../traderlaunchpad/sync.js";
 import type * as traderlaunchpad_types from "../traderlaunchpad/types.js";
 
 import type {
@@ -32,7 +31,6 @@ declare const fullApi: ApiFromModules<{
   "traderlaunchpad/actions": typeof traderlaunchpad_actions;
   "traderlaunchpad/lib/resolve": typeof traderlaunchpad_lib_resolve;
   "traderlaunchpad/queries": typeof traderlaunchpad_queries;
-  "traderlaunchpad/sync": typeof traderlaunchpad_sync;
   "traderlaunchpad/types": typeof traderlaunchpad_types;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
@@ -473,6 +471,25 @@ export declare const components: {
           }>
         >;
       };
+    };
+    sync: {
+      syncTradeLockerConnection: FunctionReference<
+        "action",
+        "internal",
+        {
+          limit?: number;
+          organizationId: string;
+          secretsKey: string;
+          userId: string;
+        },
+        {
+          executionsNew: number;
+          executionsUpserted: number;
+          groupsTouched: number;
+          ordersUpserted: number;
+          tradeIdeaGroupIds: Array<string>;
+        }
+      >;
     };
     tradeIdeas: {
       internalQueries: {
