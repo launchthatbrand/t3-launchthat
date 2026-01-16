@@ -15,6 +15,8 @@ import type * as guildSettings_index from "../guildSettings/index.js";
 import type * as guildSettings_mutations from "../guildSettings/mutations.js";
 import type * as guildSettings_queries from "../guildSettings/queries.js";
 import type * as index from "../index.js";
+import type * as oauth_helpers_index from "../oauth/helpers/index.js";
+import type * as oauth_helpers_queries from "../oauth/helpers/queries.js";
 import type * as oauth_index from "../oauth/index.js";
 import type * as oauth_mutations from "../oauth/mutations.js";
 import type * as oauth_queries from "../oauth/queries.js";
@@ -27,6 +29,8 @@ import type * as orgConfigs_queries from "../orgConfigs/queries.js";
 import type * as roleRules_index from "../roleRules/index.js";
 import type * as roleRules_mutations from "../roleRules/mutations.js";
 import type * as roleRules_queries from "../roleRules/queries.js";
+import type * as routing_index from "../routing/index.js";
+import type * as routing_queries from "../routing/queries.js";
 import type * as server from "../server.js";
 import type * as support_index from "../support/index.js";
 import type * as support_mutations from "../support/mutations.js";
@@ -34,6 +38,9 @@ import type * as support_queries from "../support/queries.js";
 import type * as syncJobs_index from "../syncJobs/index.js";
 import type * as syncJobs_mutations from "../syncJobs/mutations.js";
 import type * as syncJobs_queries from "../syncJobs/queries.js";
+import type * as templates_index from "../templates/index.js";
+import type * as templates_mutations from "../templates/mutations.js";
+import type * as templates_queries from "../templates/queries.js";
 import type * as userLinks_index from "../userLinks/index.js";
 import type * as userLinks_mutations from "../userLinks/mutations.js";
 import type * as userLinks_queries from "../userLinks/queries.js";
@@ -60,6 +67,8 @@ declare const fullApi: ApiFromModules<{
   "guildSettings/mutations": typeof guildSettings_mutations;
   "guildSettings/queries": typeof guildSettings_queries;
   index: typeof index;
+  "oauth/helpers/index": typeof oauth_helpers_index;
+  "oauth/helpers/queries": typeof oauth_helpers_queries;
   "oauth/index": typeof oauth_index;
   "oauth/mutations": typeof oauth_mutations;
   "oauth/queries": typeof oauth_queries;
@@ -72,6 +81,8 @@ declare const fullApi: ApiFromModules<{
   "roleRules/index": typeof roleRules_index;
   "roleRules/mutations": typeof roleRules_mutations;
   "roleRules/queries": typeof roleRules_queries;
+  "routing/index": typeof routing_index;
+  "routing/queries": typeof routing_queries;
   server: typeof server;
   "support/index": typeof support_index;
   "support/mutations": typeof support_mutations;
@@ -79,6 +90,9 @@ declare const fullApi: ApiFromModules<{
   "syncJobs/index": typeof syncJobs_index;
   "syncJobs/mutations": typeof syncJobs_mutations;
   "syncJobs/queries": typeof syncJobs_queries;
+  "templates/index": typeof templates_index;
+  "templates/mutations": typeof templates_mutations;
+  "templates/queries": typeof templates_queries;
   "userLinks/index": typeof userLinks_index;
   "userLinks/mutations": typeof userLinks_mutations;
   "userLinks/queries": typeof userLinks_queries;
@@ -187,6 +201,21 @@ export type Mounts = {
     };
   };
   oauth: {
+    helpers: {
+      queries: {
+        computeAuthRedirectUri: FunctionReference<
+          "query",
+          "public",
+          {
+            callbackPath: string;
+            fallbackAuthHost?: string;
+            returnTo: string;
+            rootDomain?: string;
+          },
+          { isLocal: boolean; redirectUri: string; returnToHost: string }
+        >;
+      };
+    };
     mutations: {
       consumeOauthState: FunctionReference<
         "mutation",
@@ -374,6 +403,20 @@ export type Mounts = {
       >;
     };
   };
+  routing: {
+    queries: {
+      resolveTradeFeedChannel: FunctionReference<
+        "query",
+        "public",
+        {
+          channelKind: "mentors" | "members";
+          guildId: string;
+          organizationId: string;
+        },
+        string | null
+      >;
+    };
+  };
   support: {
     mutations: {
       logDiscordApiCall: FunctionReference<
@@ -503,6 +546,41 @@ export type Mounts = {
           reason: "purchase" | "tagChange" | "manual";
           userId: string;
         }>
+      >;
+    };
+  };
+  templates: {
+    mutations: {
+      upsertTemplate: FunctionReference<
+        "mutation",
+        "public",
+        {
+          guildId?: string;
+          kind: "tradeidea";
+          organizationId: string;
+          template: string;
+        },
+        null
+      >;
+    };
+    queries: {
+      renderTradeIdeaMessage: FunctionReference<
+        "query",
+        "public",
+        {
+          avgEntryPrice?: number;
+          closedAt?: number;
+          direction: "long" | "short";
+          fees?: number;
+          guildId?: string;
+          netQty: number;
+          openedAt?: number;
+          organizationId: string;
+          realizedPnl?: number;
+          status: "open" | "closed";
+          symbol: string;
+        },
+        { content: string }
       >;
     };
   };

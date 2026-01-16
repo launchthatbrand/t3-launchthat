@@ -1,9 +1,10 @@
 "use node";
 
-import crypto from "node:crypto";
 import type { Id } from "@convex-config/_generated/dataModel";
 import { components, internal } from "@convex-config/_generated/api";
 import { v } from "convex/values";
+import { resolveOrgBotToken } from "launchthat-plugin-discord/runtime/credentials";
+import { discordJsonWithRetryAfter } from "launchthat-plugin-discord/runtime/discordApi";
 
 import type { NotificationSink } from "../../core/notifications/delivery/registry";
 import { internalAction } from "../../_generated/server";
@@ -24,32 +25,7 @@ const requireDiscordSecretsKey = (): string => {
   return keyMaterial;
 };
 
-const decryptSecret = (ciphertext: string, keyMaterial: string): string => {
-  if (!ciphertext.startsWith("enc_v1:")) {
-    throw new Error("Expected enc_v1 ciphertext");
-  }
-  const raw = ciphertext.slice("enc_v1:".length);
-  const decoded = Buffer.from(raw, "base64").toString("utf8");
-  const parsed = JSON.parse(decoded) as {
-    alg: string;
-    ivB64: string;
-    tagB64: string;
-    dataB64: string;
-  };
-  if (parsed.alg !== "aes-256-gcm") {
-    throw new Error("Unsupported ciphertext alg");
-  }
-  const key = crypto.createHash("sha256").update(keyMaterial).digest();
-  const iv = Buffer.from(parsed.ivB64, "base64");
-  const tag = Buffer.from(parsed.tagB64, "base64");
-  const data = Buffer.from(parsed.dataB64, "base64");
-  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-  decipher.setAuthTag(tag);
-  const plaintext = Buffer.concat([decipher.update(data), decipher.final()]);
-  return plaintext.toString("utf8");
-};
-
-const resolveOrgBotToken = async (ctx: any, organizationId: string) => {
+const resolveOrgBotTokenForOrg = async (ctx: any, organizationId: string) => {
   const config = (await ctx.runQuery(
     components.launchthat_discord.orgConfigs.internalQueries
       .getOrgConfigSecrets as any,
@@ -64,23 +40,13 @@ const resolveOrgBotToken = async (ctx: any, organizationId: string) => {
     throw new Error("Discord is not enabled for this organization");
   }
 
-  if (config.botMode === "global") {
-    return requireDiscordGlobalBotToken();
-  }
-
-  const keyMaterial = requireDiscordSecretsKey();
-  const encrypted =
-    typeof config.customBotTokenEncrypted === "string" &&
-    config.customBotTokenEncrypted.trim()
-      ? config.customBotTokenEncrypted.trim()
-      : typeof config.botTokenEncrypted === "string" &&
-          config.botTokenEncrypted.trim()
-        ? config.botTokenEncrypted.trim()
-        : "";
-  if (!encrypted) {
-    throw new Error("Discord custom bot token not configured");
-  }
-  return decryptSecret(encrypted, keyMaterial);
+  return resolveOrgBotToken({
+    botMode: config.botMode === "custom" ? "custom" : "global",
+    globalBotToken: requireDiscordGlobalBotToken(),
+    secretsKey: requireDiscordSecretsKey(),
+    customBotTokenEncrypted: config.customBotTokenEncrypted,
+    botTokenEncrypted: config.botTokenEncrypted,
+  });
 };
 
 const buildOrgPublicOrigin = async (
@@ -147,21 +113,14 @@ const postDiscordJson = async (
     payload: any;
   },
 ) => {
-  const res = await fetch(args.url, {
+  const res = await discordJsonWithRetryAfter({
+    botToken: args.botToken,
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      Authorization: `Bot ${args.botToken}`,
-    },
-    body: JSON.stringify(args.payload),
+    url: args.url,
+    body: args.payload,
   });
-  const retryAfter = res.headers.get("retry-after");
-  const retryAfterMs = retryAfter
-    ? Math.round(Number(retryAfter) * 1000)
-    : undefined;
-  const errorText = res.ok
-    ? undefined
-    : await res.text().catch(() => "request failed");
+  const retryAfterMs = res.retryAfterMs;
+  const errorText = res.ok ? undefined : res.text || "request failed";
   await ctx.runMutation(
     components.launchthat_discord.support.mutations.logDiscordApiCall as any,
     {
@@ -205,7 +164,10 @@ const postDiscordJson = async (
       },
     );
   } catch (error) {
-    console.error("[discord.notificationsSink.postDiscordJson] log mirror failed:", error);
+    console.error(
+      "[discord.notificationsSink.postDiscordJson] log mirror failed:",
+      error,
+    );
   }
 };
 
@@ -225,7 +187,7 @@ export const discordAnnouncementsSink: NotificationSink = {
       : [];
     if (guildIds.length === 0) return;
 
-    const botToken = await resolveOrgBotToken(ctx, String(payload.orgId));
+    const botToken = await resolveOrgBotTokenForOrg(ctx, String(payload.orgId));
 
     const origin = await buildOrgPublicOrigin(ctx, payload.orgId as any);
     const actionUrl =
@@ -352,7 +314,7 @@ export const sendManualAnnouncement = internalAction({
       return { postedGuildIds, errors };
     }
 
-    const botToken = await resolveOrgBotToken(ctx, String(args.orgId));
+    const botToken = await resolveOrgBotTokenForOrg(ctx, String(args.orgId));
     const origin = await buildOrgPublicOrigin(ctx, args.orgId as any);
     const actionUrl =
       typeof args.actionUrl === "string" && args.actionUrl.trim().length > 0

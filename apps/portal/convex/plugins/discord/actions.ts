@@ -11,10 +11,18 @@
 */
 import crypto from "node:crypto";
 import { v } from "convex/values";
+import { resolveDiscordCredentials } from "launchthat-plugin-discord/runtime/credentials";
+import {
+  decryptSecret,
+  encryptSecret,
+} from "launchthat-plugin-discord/runtime/crypto";
+import {
+  exchangeDiscordCode,
+  fetchDiscordUser,
+} from "launchthat-plugin-discord/runtime/oauth";
 
 import { api as apiAny, components } from "../../_generated/api";
 import { action, internalAction } from "../../_generated/server";
-import { verifyOrganizationAccessWithClerkContext } from "../../core/organizations/helpers";
 
 const discordOrgConfigMutations = components.launchthat_discord.orgConfigs
   .mutations as any;
@@ -23,7 +31,9 @@ const discordOrgConfigInternalQueries = components.launchthat_discord.orgConfigs
 const discordOauthMutations = components.launchthat_discord.oauth
   .mutations as any;
 const discordOauthMutationsAny = discordOauthMutations;
-const discordOauthQueriesAny = components.launchthat_discord.oauth.queries as any;
+const discordOauthHelperQueries: any = (
+  components.launchthat_discord.oauth as any
+).helpers?.queries;
 const discordUserLinksMutationsAny = components.launchthat_discord.userLinks
   .mutations as any;
 const discordGuildConnectionMutations = components.launchthat_discord
@@ -32,54 +42,6 @@ const discordGuildSettingsMutations = components.launchthat_discord
   .guildSettings.mutations as any;
 const discordSupportMutations = components.launchthat_discord.support
   .mutations as any;
-
-const encryptSecret = (plaintext: string, keyMaterial: string): string => {
-  const key = crypto.createHash("sha256").update(keyMaterial).digest();
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
-  const ciphertext = Buffer.concat([
-    cipher.update(Buffer.from(plaintext, "utf8")),
-    cipher.final(),
-  ]);
-  const tag = cipher.getAuthTag();
-  const payload = {
-    v: 1,
-    alg: "aes-256-gcm",
-    ivB64: iv.toString("base64"),
-    tagB64: tag.toString("base64"),
-    dataB64: ciphertext.toString("base64"),
-  };
-  const encoded = Buffer.from(JSON.stringify(payload), "utf8").toString(
-    "base64",
-  );
-  return `enc_v1:${encoded}`;
-};
-
-const decryptSecret = (ciphertext: string, keyMaterial: string): string => {
-  if (!ciphertext.startsWith("enc_v1:")) {
-    throw new Error("Expected enc_v1 ciphertext");
-  }
-  const raw = ciphertext.slice("enc_v1:".length);
-  const decoded = Buffer.from(raw, "base64").toString("utf8");
-  const parsed = JSON.parse(decoded) as {
-    v: number;
-    alg: string;
-    ivB64: string;
-    tagB64: string;
-    dataB64: string;
-  };
-  if (parsed.alg !== "aes-256-gcm") {
-    throw new Error("Unsupported ciphertext alg");
-  }
-  const key = crypto.createHash("sha256").update(keyMaterial).digest();
-  const iv = Buffer.from(parsed.ivB64, "base64");
-  const tag = Buffer.from(parsed.tagB64, "base64");
-  const data = Buffer.from(parsed.dataB64, "base64");
-  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-  decipher.setAuthTag(tag);
-  const plaintext = Buffer.concat([decipher.update(data), decipher.final()]);
-  return plaintext.toString("utf8");
-};
 
 const requireDiscordSecretsKey = (): string => {
   const keyMaterial = process.env.DISCORD_SECRETS_KEY;
@@ -129,49 +91,43 @@ const resolveOrgDiscordCredentials = async (
   const botMode =
     config.botMode === "global" ? ("global" as const) : ("custom" as const);
 
-  if (botMode === "global") {
-    const global = requireDiscordGlobalEnv();
-    return { botMode, ...global };
-  }
-
-  const keyMaterial = requireDiscordSecretsKey();
-  const clientId: string =
-    (typeof config.customClientId === "string" &&
-      config.customClientId.trim()) ||
-    (typeof config.clientId === "string" && config.clientId.trim()) ||
-    "";
-  const clientSecretEncrypted: string =
-    (typeof config.customClientSecretEncrypted === "string" &&
-      config.customClientSecretEncrypted) ||
-    (typeof config.clientSecretEncrypted === "string" &&
-      config.clientSecretEncrypted) ||
-    "";
-  const botTokenEncrypted: string =
-    (typeof config.customBotTokenEncrypted === "string" &&
-      config.customBotTokenEncrypted) ||
-    (typeof config.botTokenEncrypted === "string" &&
-      config.botTokenEncrypted) ||
-    "";
-
-  if (!clientId || !clientSecretEncrypted || !botTokenEncrypted) {
-    throw new Error(
-      "Discord custom bot credentials are incomplete for this organization",
-    );
-  }
-
-  return {
+  return resolveDiscordCredentials({
     botMode,
-    clientId,
-    clientSecret: decryptSecret(clientSecretEncrypted, keyMaterial),
-    botToken: decryptSecret(botTokenEncrypted, keyMaterial),
-  };
+    globalClientId: process.env.DISCORD_GLOBAL_CLIENT_ID,
+    globalClientSecret: process.env.DISCORD_GLOBAL_CLIENT_SECRET,
+    globalBotToken: process.env.DISCORD_GLOBAL_BOT_TOKEN,
+    secretsKey: process.env.DISCORD_SECRETS_KEY,
+    customClientId: config.customClientId,
+    clientId: config.clientId,
+    customClientSecretEncrypted: config.customClientSecretEncrypted,
+    clientSecretEncrypted: config.clientSecretEncrypted,
+    customBotTokenEncrypted: config.customBotTokenEncrypted,
+    botTokenEncrypted: config.botTokenEncrypted,
+  });
 };
 
 const requireOrgAdminRef = (apiAny as any).plugins.discord.permissions
-  .requireOrgAdmin as any;
+  .requireOrgAdmin;
 
 const requireOrgAdmin = async (ctx: any, organizationId: string) => {
-  await (ctx.runQuery as any)(requireOrgAdminRef, { organizationId });
+  await ctx.runQuery(requireOrgAdminRef, { organizationId });
+};
+
+const computeAuthRedirect = async (
+  ctx: any,
+  args: { returnTo: string; callbackPath: string },
+): Promise<string> => {
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "";
+  const result = await ctx.runQuery(
+    discordOauthHelperQueries.computeAuthRedirectUri,
+    {
+      returnTo: args.returnTo,
+      rootDomain,
+      fallbackAuthHost: "auth.launchthat.app",
+      callbackPath: args.callbackPath,
+    },
+  );
+  return result.redirectUri;
 };
 
 export const startBotInstall = action({
@@ -190,43 +146,10 @@ export const startBotInstall = action({
       args.organizationId,
     );
     const state = crypto.randomUUID();
-
-    const computeAuthRedirectUri = (returnTo: string): string => {
-      const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "";
-      const rootHost = rootDomain
-        .trim()
-        .toLowerCase()
-        .replace(/^https?:\/\//, "")
-        .split("/")[0]
-        ?.split(":")[0];
-
-      let returnToUrl: URL;
-      try {
-        returnToUrl = new URL(returnTo);
-      } catch {
-        throw new Error("Invalid returnTo URL");
-      }
-
-      const hostname = returnToUrl.hostname.toLowerCase();
-      const port = returnToUrl.port;
-      const isLocal =
-        hostname === "localhost" ||
-        hostname === "127.0.0.1" ||
-        hostname.endsWith(".localhost") ||
-        hostname.endsWith(".127.0.0.1");
-
-      const authHostname = isLocal
-        ? `auth.${hostname === "127.0.0.1" || hostname.endsWith(".127.0.0.1") ? "127.0.0.1" : "localhost"}`
-        : rootHost
-          ? `auth.${rootHost}`
-          : "auth.launchthat.app";
-
-      const proto = isLocal ? "http" : "https";
-      const origin = `${proto}://${authHostname}${isLocal && port ? `:${port}` : ""}`;
-      return `${origin}/auth/discord/install/callback`;
-    };
-
-    const redirectUri = computeAuthRedirectUri(args.returnTo);
+    const redirectUri = await computeAuthRedirect(ctx, {
+      returnTo: args.returnTo,
+      callbackPath: "/auth/discord/install/callback",
+    });
 
     // Store state for validation on callback. For bot install we don't need PKCE,
     // but our table requires a codeVerifier string.
@@ -274,55 +197,28 @@ export const startUserLink = action({
   }),
   handler: async (ctx, args) => {
     // Ensure caller is authenticated + is a member of this org.
-    await ctx.runQuery((apiAny as any).plugins.discord.permissions.requireOrgMember, {
-      organizationId: args.organizationId,
-    });
+    await ctx.runQuery(
+      apiAny.plugins.discord.permissions.requireOrgMember as any,
+      {
+        organizationId: args.organizationId,
+      },
+    );
 
     // Fetch the Convex user so we can store user._id (string) in the Discord component.
-    const me = (await ctx.runQuery((apiAny as any).core.users.queries.getMe, {})) as any;
+    const me = await ctx.runQuery(apiAny.core.users.queries.getMe as any, {});
     if (!me?._id) {
       throw new Error("User not found");
     }
 
-    const { clientId } = await resolveOrgDiscordCredentials(ctx, args.organizationId);
+    const { clientId } = await resolveOrgDiscordCredentials(
+      ctx,
+      args.organizationId,
+    );
     const state = crypto.randomUUID();
-
-    const computeAuthRedirectUri = (returnTo: string): string => {
-      const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "";
-      const rootHost = rootDomain
-        .trim()
-        .toLowerCase()
-        .replace(/^https?:\/\//, "")
-        .split("/")[0]
-        ?.split(":")[0];
-
-      let returnToUrl: URL;
-      try {
-        returnToUrl = new URL(returnTo);
-      } catch {
-        throw new Error("Invalid returnTo URL");
-      }
-
-      const hostname = returnToUrl.hostname.toLowerCase();
-      const port = returnToUrl.port;
-      const isLocal =
-        hostname === "localhost" ||
-        hostname === "127.0.0.1" ||
-        hostname.endsWith(".localhost") ||
-        hostname.endsWith(".127.0.0.1");
-
-      const authHostname = isLocal
-        ? `auth.${hostname === "127.0.0.1" || hostname.endsWith(".127.0.0.1") ? "127.0.0.1" : "localhost"}`
-        : rootHost
-          ? `auth.${rootHost}`
-          : "auth.launchthat.app";
-
-      const proto = isLocal ? "http" : "https";
-      const origin = `${proto}://${authHostname}${isLocal && port ? `:${port}` : ""}`;
-      return `${origin}/auth/discord/link/callback`;
-    };
-
-    const redirectUri = computeAuthRedirectUri(args.returnTo);
+    const redirectUri = await computeAuthRedirect(ctx, {
+      returnTo: args.returnTo,
+      callbackPath: "/auth/discord/link/callback",
+    });
 
     await ctx.runMutation(discordOauthMutationsAny.createOauthState, {
       organizationId: args.organizationId,
@@ -353,9 +249,12 @@ export const completeUserLink = action({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const consumed = await ctx.runMutation(discordOauthMutationsAny.consumeOauthState, {
-      state: args.state,
-    });
+    const consumed = await ctx.runMutation(
+      discordOauthMutationsAny.consumeOauthState,
+      {
+        state: args.state,
+      },
+    );
     if (!consumed || consumed.kind !== "user_link") {
       throw new Error("Invalid or expired Discord link state");
     }
@@ -367,76 +266,23 @@ export const completeUserLink = action({
     }
 
     const returnTo = String(consumed.returnTo ?? "");
-    const redirectUri = (() => {
-      try {
-        const returnToUrl = new URL(returnTo);
-        const hostname = returnToUrl.hostname.toLowerCase();
-        const port = returnToUrl.port;
-        const isLocal =
-          hostname === "localhost" ||
-          hostname === "127.0.0.1" ||
-          hostname.endsWith(".localhost") ||
-          hostname.endsWith(".127.0.0.1");
+    const redirectUri = await computeAuthRedirect(ctx, {
+      returnTo,
+      callbackPath: "/auth/discord/link/callback",
+    });
 
-        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "";
-        const rootHost = rootDomain
-          .trim()
-          .toLowerCase()
-          .replace(/^https?:\/\//, "")
-          .split("/")[0]
-          ?.split(":")[0];
+    const { clientId, clientSecret } = await resolveOrgDiscordCredentials(
+      ctx,
+      organizationId,
+    );
 
-        const authHostname = isLocal
-          ? `auth.${hostname === "127.0.0.1" || hostname.endsWith(".127.0.0.1") ? "127.0.0.1" : "localhost"}`
-          : rootHost
-            ? `auth.${rootHost}`
-            : "auth.launchthat.app";
-
-        const proto = isLocal ? "http" : "https";
-        const origin = `${proto}://${authHostname}${isLocal && port ? `:${port}` : ""}`;
-        return `${origin}/auth/discord/link/callback`;
-      } catch {
-        throw new Error("Invalid returnTo URL");
-      }
-    })();
-
-    const { clientId, clientSecret } = await resolveOrgDiscordCredentials(ctx, organizationId);
-
-    const body = new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      grant_type: "authorization_code",
+    const token = await exchangeDiscordCode({
+      clientId,
+      clientSecret,
       code: args.code,
-      redirect_uri: redirectUri,
+      redirectUri,
     });
-
-    const tokenRes = await fetch("https://discord.com/api/v10/oauth2/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body,
-    });
-    if (!tokenRes.ok) {
-      const text = await tokenRes.text().catch(() => "token_exchange_failed");
-      throw new Error(`Discord token exchange failed: ${tokenRes.status} ${text}`.slice(0, 400));
-    }
-    const tokenJson: any = await tokenRes.json();
-    const accessToken = typeof tokenJson?.access_token === "string" ? tokenJson.access_token : "";
-    if (!accessToken) {
-      throw new Error("Discord token exchange returned no access token");
-    }
-
-    const meRes = await fetch("https://discord.com/api/v10/users/@me", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    if (!meRes.ok) {
-      const text = await meRes.text().catch(() => "me_failed");
-      throw new Error(`Discord /users/@me failed: ${meRes.status} ${text}`.slice(0, 400));
-    }
-    const meJson: any = await meRes.json();
-    const discordUserId = typeof meJson?.id === "string" ? meJson.id : "";
-    if (!discordUserId) {
-      throw new Error("Discord user id missing from /users/@me");
-    }
+    const discordUserId = await fetchDiscordUser(token.accessToken);
 
     // Persist link in the component table.
     await ctx.runMutation(discordUserLinksMutationsAny.linkUser, {
@@ -645,13 +491,21 @@ export const listGuildMembers = action({
     nextAfter: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
-    await ctx.runQuery((apiAny as any).plugins.discord.permissions.requireOrgAdmin, {
-      organizationId: args.organizationId,
-    });
-    const { botToken } = await resolveOrgDiscordCredentials(ctx, args.organizationId);
+    await ctx.runQuery(
+      (apiAny as any).plugins.discord.permissions.requireOrgAdmin,
+      {
+        organizationId: args.organizationId,
+      },
+    );
+    const { botToken } = await resolveOrgDiscordCredentials(
+      ctx,
+      args.organizationId,
+    );
 
     const limit = Math.max(1, Math.min(1000, args.limit ?? 100));
-    const url = new URL(`https://discord.com/api/v10/guilds/${args.guildId}/members`);
+    const url = new URL(
+      `https://discord.com/api/v10/guilds/${args.guildId}/members`,
+    );
     url.searchParams.set("limit", String(limit));
     if (typeof args.after === "string" && args.after.trim()) {
       url.searchParams.set("after", args.after.trim());
@@ -671,14 +525,18 @@ export const listGuildMembers = action({
       .map((m: any) => {
         const user = m?.user ?? {};
         const userId = typeof user?.id === "string" ? user.id : "";
-        const username = typeof user?.username === "string" ? user.username : "";
+        const username =
+          typeof user?.username === "string" ? user.username : "";
         const globalName =
           typeof user?.global_name === "string" ? user.global_name : undefined;
         const nick = typeof m?.nick === "string" ? m.nick : undefined;
-        const joinedAt = typeof m?.joined_at === "string" ? m.joined_at : undefined;
+        const joinedAt =
+          typeof m?.joined_at === "string" ? m.joined_at : undefined;
         const pending = typeof m?.pending === "boolean" ? m.pending : undefined;
         const roleIds = Array.isArray(m?.roles)
-          ? (m.roles as unknown[]).filter((r) => typeof r === "string") as string[]
+          ? (m.roles as unknown[]).filter(
+              (r): r is string => typeof r === "string",
+            )
           : [];
         const displayName = nick ?? globalName ?? undefined;
 
@@ -694,8 +552,10 @@ export const listGuildMembers = action({
       })
       .filter((m: any) => m.userId && m.username);
 
-    const nextAfter =
-      members.length > 0 ? String(members[members.length - 1].userId) : undefined;
+    const lastMember = members.length > 0 ? members[members.length - 1] : null;
+    const nextAfter = lastMember?.userId
+      ? String(lastMember.userId)
+      : undefined;
 
     return { members, nextAfter };
   },
@@ -710,10 +570,16 @@ export const approveGuildMember = action({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.runQuery((apiAny as any).plugins.discord.permissions.requireOrgAdmin, {
-      organizationId: args.organizationId,
-    });
-    const { botToken } = await resolveOrgDiscordCredentials(ctx, args.organizationId);
+    await ctx.runQuery(
+      (apiAny as any).plugins.discord.permissions.requireOrgAdmin,
+      {
+        organizationId: args.organizationId,
+      },
+    );
+    const { botToken } = await resolveOrgDiscordCredentials(
+      ctx,
+      args.organizationId,
+    );
 
     const roleId = args.roleId.trim();
     if (!roleId) throw new Error("Missing approved role id");
@@ -831,14 +697,18 @@ export const createPrivateSupportThread = internalAction({
     let requesterName = requesterId;
     try {
       const memberRes = await fetch(
-        `https://discord.com/api/v10/guilds/${encodeURIComponent(args.guildId)}/members/${encodeURIComponent(requesterId)}`,
+        `https://discord.com/api/v10/guilds/${encodeURIComponent(
+          args.guildId,
+        )}/members/${encodeURIComponent(requesterId)}`,
         { headers: { Authorization: `Bot ${botToken}` } },
       );
       if (memberRes.ok) {
         const json: any = await memberRes.json();
         const nick = typeof json?.nick === "string" ? json.nick.trim() : "";
         const username =
-          typeof json?.user?.username === "string" ? json.user.username.trim() : "";
+          typeof json?.user?.username === "string"
+            ? json.user.username.trim()
+            : "";
         requesterName = nick || username || requesterName;
       }
     } catch {
@@ -889,7 +759,9 @@ export const createPrivateSupportThread = internalAction({
 
     // Invite the requester into the private thread.
     const addRes = await fetch(
-      `https://discord.com/api/v10/channels/${encodeURIComponent(threadId)}/thread-members/${encodeURIComponent(requesterId)}`,
+      `https://discord.com/api/v10/channels/${encodeURIComponent(
+        String(threadId),
+      )}/thread-members/${encodeURIComponent(String(requesterId))}`,
       {
         method: "PUT",
         headers: {
@@ -922,7 +794,9 @@ export const createPrivateSupportThread = internalAction({
       }
 
       await fetch(
-        `https://discord.com/api/v10/channels/${encodeURIComponent(threadId)}/messages`,
+        `https://discord.com/api/v10/channels/${encodeURIComponent(
+          String(threadId),
+        )}/messages`,
         {
           method: "POST",
           headers: {

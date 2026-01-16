@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as discord_queries from "../discord/queries.js";
 import type * as traderlaunchpad_actions from "../traderlaunchpad/actions.js";
 import type * as traderlaunchpad_lib_resolve from "../traderlaunchpad/lib/resolve.js";
 import type * as traderlaunchpad_mutations from "../traderlaunchpad/mutations.js";
@@ -29,6 +30,7 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "discord/queries": typeof discord_queries;
   "traderlaunchpad/actions": typeof traderlaunchpad_actions;
   "traderlaunchpad/lib/resolve": typeof traderlaunchpad_lib_resolve;
   "traderlaunchpad/mutations": typeof traderlaunchpad_mutations;
@@ -1016,6 +1018,532 @@ export declare const components: {
             tradeIdeaGroupId: string;
             userId: string;
           }>
+        >;
+      };
+    };
+  };
+  launchthat_discord: {
+    guildConnections: {
+      mutations: {
+        deleteGuildConnection: FunctionReference<
+          "mutation",
+          "internal",
+          { guildId: string; organizationId: string },
+          null
+        >;
+        upsertGuildConnection: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            botModeAtConnect: "global" | "custom";
+            connectedAt: number;
+            guildId: string;
+            guildName?: string;
+            organizationId: string;
+          },
+          null
+        >;
+      };
+      queries: {
+        getGuildConnectionByGuildId: FunctionReference<
+          "query",
+          "internal",
+          { guildId: string },
+          null | {
+            botModeAtConnect: "global" | "custom";
+            connectedAt: number;
+            guildId: string;
+            guildName?: string;
+            organizationId: string;
+          }
+        >;
+        listGuildConnectionsForOrg: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string },
+          Array<{
+            botModeAtConnect: "global" | "custom";
+            connectedAt: number;
+            guildId: string;
+            guildName?: string;
+          }>
+        >;
+      };
+    };
+    guildSettings: {
+      mutations: {
+        upsertGuildSettings: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            announcementChannelId?: string;
+            announcementEventKeys?: Array<string>;
+            approvedMemberRoleId?: string;
+            courseUpdatesChannelId?: string;
+            escalationConfidenceThreshold?: number;
+            escalationKeywords?: Array<string>;
+            guildId: string;
+            memberTradesChannelId?: string;
+            mentorTradesChannelId?: string;
+            organizationId: string;
+            supportAiDisabledMessageEnabled?: boolean;
+            supportAiDisabledMessageText?: string;
+            supportAiEnabled: boolean;
+            supportForumChannelId?: string;
+            supportPrivateIntakeChannelId?: string;
+            supportStaffRoleId?: string;
+            threadReplyCooldownMs?: number;
+          },
+          null
+        >;
+      };
+      queries: {
+        getGuildSettings: FunctionReference<
+          "query",
+          "internal",
+          { guildId: string; organizationId: string },
+          null | {
+            announcementChannelId?: string;
+            announcementEventKeys?: Array<string>;
+            approvedMemberRoleId?: string;
+            courseUpdatesChannelId?: string;
+            escalationConfidenceThreshold?: number;
+            escalationKeywords?: Array<string>;
+            guildId: string;
+            memberTradesChannelId?: string;
+            mentorTradesChannelId?: string;
+            organizationId: string;
+            supportAiDisabledMessageEnabled?: boolean;
+            supportAiDisabledMessageText?: string;
+            supportAiEnabled: boolean;
+            supportForumChannelId?: string;
+            supportPrivateIntakeChannelId?: string;
+            supportStaffRoleId?: string;
+            threadReplyCooldownMs?: number;
+            updatedAt: number;
+          }
+        >;
+      };
+    };
+    oauth: {
+      helpers: {
+        queries: {
+          computeAuthRedirectUri: FunctionReference<
+            "query",
+            "internal",
+            {
+              callbackPath: string;
+              fallbackAuthHost?: string;
+              returnTo: string;
+              rootDomain?: string;
+            },
+            { isLocal: boolean; redirectUri: string; returnToHost: string }
+          >;
+        };
+      };
+      mutations: {
+        consumeOauthState: FunctionReference<
+          "mutation",
+          "internal",
+          { state: string },
+          {
+            codeVerifier: string;
+            kind: "org_install" | "user_link";
+            organizationId: string;
+            returnTo: string;
+            userId?: string;
+          } | null
+        >;
+        createOauthState: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            codeVerifier: string;
+            kind: "org_install" | "user_link";
+            organizationId: string;
+            returnTo: string;
+            state: string;
+            userId?: string;
+          },
+          null
+        >;
+      };
+      queries: {
+        peekOauthState: FunctionReference<
+          "query",
+          "internal",
+          { state: string },
+          {
+            codeVerifier: string;
+            createdAt: number;
+            kind: "org_install" | "user_link";
+            organizationId: string;
+            returnTo: string;
+            userId?: string;
+          } | null
+        >;
+      };
+    };
+    orgConfigs: {
+      internalQueries: {
+        getOrgConfigSecrets: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string },
+          {
+            botMode: "global" | "custom";
+            botTokenEncrypted?: string;
+            clientId?: string;
+            clientSecretEncrypted?: string;
+            customBotTokenEncrypted?: string;
+            customClientId?: string;
+            customClientSecretEncrypted?: string;
+            enabled: boolean;
+            guildId?: string;
+            organizationId: string;
+          } | null
+        >;
+      };
+      mutations: {
+        upsertOrgConfig: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            botTokenEncrypted: string;
+            clientId: string;
+            clientSecretEncrypted: string;
+            enabled: boolean;
+            guildId: string;
+            organizationId: string;
+          },
+          null
+        >;
+        upsertOrgConfigV2: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            botMode: "global" | "custom";
+            customBotTokenEncrypted?: string;
+            customClientId?: string;
+            customClientSecretEncrypted?: string;
+            enabled: boolean;
+            organizationId: string;
+          },
+          null
+        >;
+      };
+      queries: {
+        getOrgConfig: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string },
+          {
+            botMode: "global" | "custom";
+            connectedAt: number;
+            customClientId?: string;
+            enabled: boolean;
+            hasBotToken: boolean;
+            hasClientSecret: boolean;
+            lastError?: string;
+            lastValidatedAt?: number;
+            organizationId: string;
+          } | null
+        >;
+      };
+    };
+    roleRules: {
+      mutations: {
+        replaceMarketingTagRoleRules: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            marketingTagId: string;
+            organizationId: string;
+            rules: Array<{
+              guildId: string;
+              roleId: string;
+              roleName?: string;
+            }>;
+          },
+          null
+        >;
+        replaceOrgRoleRules: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            organizationId: string;
+            rules: Array<{
+              enabled: boolean;
+              guildId?: string;
+              kind: "product" | "marketingTag";
+              marketingTagId?: string;
+              productId?: string;
+              roleId: string;
+              roleName?: string;
+            }>;
+          },
+          null
+        >;
+        replaceProductRoleRules: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            organizationId: string;
+            productId: string;
+            rules: Array<{
+              guildId: string;
+              roleId: string;
+              roleName?: string;
+            }>;
+          },
+          null
+        >;
+      };
+      queries: {
+        listRoleRulesForMarketingTags: FunctionReference<
+          "query",
+          "internal",
+          { marketingTagIds: Array<string>; organizationId: string },
+          Array<{
+            enabled: boolean;
+            guildId?: string;
+            marketingTagId: string;
+            roleId: string;
+            roleName?: string;
+          }>
+        >;
+        listRoleRulesForOrgKind: FunctionReference<
+          "query",
+          "internal",
+          { kind: "product" | "marketingTag"; organizationId: string },
+          Array<{
+            enabled: boolean;
+            guildId?: string;
+            roleId: string;
+            roleName?: string;
+          }>
+        >;
+        listRoleRulesForProduct: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; productId: string },
+          Array<{
+            enabled: boolean;
+            guildId?: string;
+            roleId: string;
+            roleName?: string;
+          }>
+        >;
+      };
+    };
+    routing: {
+      queries: {
+        resolveTradeFeedChannel: FunctionReference<
+          "query",
+          "internal",
+          {
+            channelKind: "mentors" | "members";
+            guildId: string;
+            organizationId: string;
+          },
+          string | null
+        >;
+      };
+    };
+    support: {
+      mutations: {
+        logDiscordApiCall: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            error?: string;
+            guildId?: string;
+            kind: string;
+            method: string;
+            organizationId?: string;
+            retryAfterMs?: number;
+            status: number;
+            url: string;
+          },
+          null
+        >;
+        recordSupportAiRun: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            answer: string;
+            confidence?: number;
+            escalated: boolean;
+            guildId: string;
+            model?: string;
+            organizationId: string;
+            promptHash: string;
+            threadId: string;
+            triggerMessageId: string;
+          },
+          null
+        >;
+        setEscalationMapping: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            guildId: string;
+            keyword?: string;
+            organizationId: string;
+            privateThreadId: string;
+            publicThreadId: string;
+            requesterDiscordUserId: string;
+          },
+          null
+        >;
+        upsertSupportThreadAndMessage: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            authorDiscordUserId?: string;
+            authorIsBot?: boolean;
+            content?: string;
+            createdByDiscordUserId?: string;
+            forumChannelId?: string;
+            guildId: string;
+            messageCreatedAt?: number;
+            messageId?: string;
+            organizationId: string;
+            threadId: string;
+            threadName?: string;
+          },
+          null
+        >;
+      };
+      queries: {
+        getEscalationMappingForThread: FunctionReference<
+          "query",
+          "internal",
+          { guildId: string; threadId: string },
+          null | {
+            privateThreadId: string;
+            publicThreadId: string;
+            requesterDiscordUserId: string;
+          }
+        >;
+        hasAiRunForTriggerMessage: FunctionReference<
+          "query",
+          "internal",
+          { guildId: string; triggerMessageId: string },
+          boolean
+        >;
+      };
+    };
+    syncJobs: {
+      mutations: {
+        deleteJob: FunctionReference<
+          "mutation",
+          "internal",
+          { jobId: string },
+          null
+        >;
+        enqueueSyncJob: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            organizationId: string;
+            payload: any;
+            reason: "purchase" | "tagChange" | "manual";
+            userId: string;
+          },
+          null
+        >;
+        setJobStatus: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            attempts?: number;
+            jobId: string;
+            lastError?: string;
+            status: "pending" | "processing" | "done" | "failed";
+          },
+          null
+        >;
+      };
+      queries: {
+        listPendingJobs: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number },
+          Array<{
+            _id: string;
+            attempts: number;
+            createdAt: number;
+            organizationId: string;
+            payload: any;
+            reason: "purchase" | "tagChange" | "manual";
+            userId: string;
+          }>
+        >;
+      };
+    };
+    templates: {
+      mutations: {
+        upsertTemplate: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            guildId?: string;
+            kind: "tradeidea";
+            organizationId: string;
+            template: string;
+          },
+          null
+        >;
+      };
+      queries: {
+        renderTradeIdeaMessage: FunctionReference<
+          "query",
+          "internal",
+          {
+            avgEntryPrice?: number;
+            closedAt?: number;
+            direction: "long" | "short";
+            fees?: number;
+            guildId?: string;
+            netQty: number;
+            openedAt?: number;
+            organizationId: string;
+            realizedPnl?: number;
+            status: "open" | "closed";
+            symbol: string;
+          },
+          { content: string }
+        >;
+      };
+    };
+    userLinks: {
+      mutations: {
+        linkUser: FunctionReference<
+          "mutation",
+          "internal",
+          { discordUserId: string; organizationId: string; userId: string },
+          null
+        >;
+        unlinkUser: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; userId: string },
+          null
+        >;
+      };
+      queries: {
+        getUserIdByDiscordUserId: FunctionReference<
+          "query",
+          "internal",
+          { discordUserId: string; organizationId: string },
+          { linkedAt: number; userId: string } | null
+        >;
+        getUserLink: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; userId: string },
+          { discordUserId: string; linkedAt: number } | null
         >;
       };
     };

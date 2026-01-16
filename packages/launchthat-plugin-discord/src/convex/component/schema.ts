@@ -80,6 +80,49 @@ export default defineSchema({
     .index("by_organizationId_and_guildId", ["organizationId", "guildId"])
     .index("by_guildId", ["guildId"]),
 
+  routingRules: defineTable({
+    organizationId: v.string(),
+    guildId: v.optional(v.string()),
+    kind: v.union(v.literal("trade_feed")),
+    channelKind: v.union(v.literal("mentors"), v.literal("members")),
+    channelId: v.string(),
+    enabled: v.boolean(),
+    updatedAt: v.number(),
+  })
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_and_guildId", ["organizationId", "guildId"])
+    .index("by_organizationId_and_kind", ["organizationId", "kind"])
+    .index("by_organizationId_and_guildId_and_kind", [
+      "organizationId",
+      "guildId",
+      "kind",
+    ])
+    .index("by_organizationId_and_guildId_and_kind_and_channelKind", [
+      "organizationId",
+      "guildId",
+      "kind",
+      "channelKind",
+    ])
+    .index("by_organizationId_and_kind_and_channelKind", [
+      "organizationId",
+      "kind",
+      "channelKind",
+    ]),
+
+  messageTemplates: defineTable({
+    organizationId: v.string(),
+    guildId: v.optional(v.string()),
+    kind: v.union(v.literal("tradeidea")),
+    template: v.string(),
+    updatedAt: v.number(),
+  })
+    .index("by_organizationId_and_kind", ["organizationId", "kind"])
+    .index("by_organizationId_and_guildId_and_kind", [
+      "organizationId",
+      "guildId",
+      "kind",
+    ]),
+
   supportThreads: defineTable({
     organizationId: v.string(),
     guildId: v.string(),

@@ -1,64 +1,14 @@
 // @ts-nocheck
 "use node";
 
-import crypto from "node:crypto";
 import { v } from "convex/values";
+import { resolveOrgBotToken } from "launchthat-plugin-discord/runtime/credentials";
+import { discordApi } from "launchthat-plugin-discord/runtime/discordApi";
 
 import { api, components } from "../../_generated/api";
 import { internalAction } from "../../_generated/server";
 
 const CRM_PLUGIN_ENABLED_KEY = "plugin_crm_enabled";
-
-const decryptSecret = (encoded: string, keyMaterial: string): string => {
-  if (!encoded.startsWith("enc_v1:")) {
-    throw new Error("Unsupported encrypted secret payload");
-  }
-  const raw = Buffer.from(encoded.slice("enc_v1:".length), "base64").toString(
-    "utf8",
-  );
-  const parsed = JSON.parse(raw) as {
-    v: number;
-    alg: string;
-    ivB64: string;
-    tagB64: string;
-    dataB64: string;
-  };
-  if (parsed.v !== 1 || parsed.alg !== "aes-256-gcm") {
-    throw new Error("Unsupported encrypted secret payload");
-  }
-  const key = crypto.createHash("sha256").update(keyMaterial).digest();
-  const iv = Buffer.from(parsed.ivB64, "base64");
-  const tag = Buffer.from(parsed.tagB64, "base64");
-  const data = Buffer.from(parsed.dataB64, "base64");
-  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-  decipher.setAuthTag(tag);
-  const plaintext = Buffer.concat([decipher.update(data), decipher.final()]);
-  return plaintext.toString("utf8");
-};
-
-const discordApi = async (
-  method: string,
-  url: string,
-  botToken: string,
-  body?: unknown,
-): Promise<{ ok: boolean; status: number; text: string; json: any }> => {
-  const res = await fetch(url, {
-    method,
-    headers: {
-      Authorization: `Bot ${botToken}`,
-      "Content-Type": "application/json",
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const text = await res.text();
-  let json: any = null;
-  try {
-    json = text ? JSON.parse(text) : null;
-  } catch {
-    json = null;
-  }
-  return { ok: res.ok, status: res.status, text, json };
-};
 
 export const processPendingJobs = internalAction({
   args: { limit: v.optional(v.number()) },
@@ -89,7 +39,8 @@ export const processPendingJobs = internalAction({
         }
 
         const orgSecrets = await ctx.runQuery(
-          components.launchthat_discord.orgConfigs.internalQueries.getOrgConfigSecrets as any,
+          components.launchthat_discord.orgConfigs.internalQueries
+            .getOrgConfigSecrets as any,
           { organizationId },
         );
         if (!orgSecrets || !orgSecrets.enabled) {
@@ -101,16 +52,25 @@ export const processPendingJobs = internalAction({
         }
 
         const guildConnections = (await ctx.runQuery(
-          components.launchthat_discord.guildConnections.queries.listGuildConnectionsForOrg as any,
+          components.launchthat_discord.guildConnections.queries
+            .listGuildConnectionsForOrg as any,
           { organizationId },
-        )) as Array<{ guildId: string; botModeAtConnect: "global" | "custom" }> | undefined;
+        )) as
+          | Array<{ guildId: string; botModeAtConnect: "global" | "custom" }>
+          | undefined;
 
-        const legacyGuildId = typeof orgSecrets.guildId === "string" ? orgSecrets.guildId : "";
+        const legacyGuildId =
+          typeof orgSecrets.guildId === "string" ? orgSecrets.guildId : "";
         const effectiveConnections =
           Array.isArray(guildConnections) && guildConnections.length > 0
             ? guildConnections
             : legacyGuildId
-              ? [{ guildId: legacyGuildId, botModeAtConnect: orgSecrets.botMode ?? "global" }]
+              ? [
+                  {
+                    guildId: legacyGuildId,
+                    botModeAtConnect: orgSecrets.botMode ?? "global",
+                  },
+                ]
               : [];
 
         if (effectiveConnections.length === 0) {
@@ -137,10 +97,16 @@ export const processPendingJobs = internalAction({
         const discordUserId = String(link.discordUserId);
 
         const payload = (job.payload ?? {}) as any;
-        const purchasedProductIds: string[] = Array.isArray(payload.purchasedProductIds)
-          ? payload.purchasedProductIds.map((p: any) => String(p)).filter(Boolean)
+        const purchasedProductIds: string[] = Array.isArray(
+          payload.purchasedProductIds,
+        )
+          ? payload.purchasedProductIds
+              .map((p: any) => String(p))
+              .filter(Boolean)
           : [];
-        const marketingTagIdsFromPayload: string[] = Array.isArray(payload.marketingTagIds)
+        const marketingTagIdsFromPayload: string[] = Array.isArray(
+          payload.marketingTagIds,
+        )
           ? payload.marketingTagIds.map((t: any) => String(t)).filter(Boolean)
           : [];
 
@@ -149,7 +115,8 @@ export const processPendingJobs = internalAction({
         const productDesiredByGuild: Map<string, Set<string>> = new Map();
         for (const productId of purchasedProductIds) {
           const rules = await ctx.runQuery(
-            components.launchthat_discord.roleRules.queries.listRoleRulesForProduct as any,
+            components.launchthat_discord.roleRules.queries
+              .listRoleRulesForProduct as any,
             { organizationId, productId },
           );
           for (const r of rules ?? []) {
@@ -160,7 +127,8 @@ export const processPendingJobs = internalAction({
               typeof r.guildId === "string" && r.guildId.trim()
                 ? r.guildId.trim()
                 : "*";
-            if (!productDesiredByGuild.has(guildId)) productDesiredByGuild.set(guildId, new Set());
+            if (!productDesiredByGuild.has(guildId))
+              productDesiredByGuild.set(guildId, new Set());
             productDesiredByGuild.get(guildId)!.add(roleId);
           }
         }
@@ -172,16 +140,21 @@ export const processPendingJobs = internalAction({
           const option = await ctx.runQuery(api.core.options.get as any, {
             metaKey: CRM_PLUGIN_ENABLED_KEY,
             type: "site",
-            orgId: /^[a-z0-9]{32}$/i.test(organizationId) ? organizationId : undefined,
+            orgId: /^[a-z0-9]{32}$/i.test(organizationId)
+              ? organizationId
+              : undefined,
           });
           const enabled = Boolean(option?.metaValue);
           if (enabled && effectiveMarketingTagIds.length === 0) {
             const tags = await ctx.runQuery(
-              components.launchthat_crm.marketingTags.queries.getUserMarketingTags as any,
+              components.launchthat_crm.marketingTags.queries
+                .getUserMarketingTags as any,
               { organizationId, userId },
             );
             const ids = Array.isArray(tags)
-              ? tags.map((t: any) => String(t?._id ?? t?.id ?? "")).filter(Boolean)
+              ? tags
+                  .map((t: any) => String(t?._id ?? t?.id ?? ""))
+                  .filter(Boolean)
               : [];
             effectiveMarketingTagIds = ids;
           }
@@ -190,7 +163,8 @@ export const processPendingJobs = internalAction({
         }
         if (effectiveMarketingTagIds.length > 0) {
           const rules = await ctx.runQuery(
-            components.launchthat_discord.roleRules.queries.listRoleRulesForMarketingTags as any,
+            components.launchthat_discord.roleRules.queries
+              .listRoleRulesForMarketingTags as any,
             { organizationId, marketingTagIds: effectiveMarketingTagIds },
           );
           for (const r of rules ?? []) {
@@ -211,11 +185,13 @@ export const processPendingJobs = internalAction({
         // Managed roles set (TAG-ONLY): only remove roles that are managed by marketing-tag rules, grouped by guild.
         const managedTagRoleIdsByGuild: Map<string, Set<string>> = new Map();
         const tagManagedRows = await ctx.runQuery(
-          components.launchthat_discord.roleRules.queries.listRoleRulesForOrgKind as any,
+          components.launchthat_discord.roleRules.queries
+            .listRoleRulesForOrgKind as any,
           { organizationId, kind: "marketingTag" },
         );
         for (const row of tagManagedRows ?? []) {
-          const roleId = typeof row?.roleId === "string" ? row.roleId.trim() : "";
+          const roleId =
+            typeof row?.roleId === "string" ? row.roleId.trim() : "";
           if (!roleId) continue;
           const guildId =
             typeof row?.guildId === "string" && row.guildId.trim()
@@ -231,31 +207,13 @@ export const processPendingJobs = internalAction({
           const guildId = String(conn.guildId ?? "").trim();
           if (!guildId) continue;
 
-          let botToken = "";
-          if (conn.botModeAtConnect === "global") {
-            botToken = globalBotToken ?? "";
-            if (!botToken) {
-              throw new Error(
-                "Missing DISCORD_GLOBAL_BOT_TOKEN (required for global guild connections)",
-              );
-            }
-          } else {
-            if (!keyMaterial) {
-              throw new Error(
-                "Missing DISCORD_SECRETS_KEY (required to decrypt custom bot token)",
-              );
-            }
-            const encrypted =
-              typeof orgSecrets.customBotTokenEncrypted === "string"
-                ? orgSecrets.customBotTokenEncrypted
-                : typeof orgSecrets.botTokenEncrypted === "string"
-                  ? orgSecrets.botTokenEncrypted
-                  : "";
-            if (!encrypted) {
-              throw new Error("Discord custom bot token not configured for org");
-            }
-            botToken = decryptSecret(encrypted, keyMaterial);
-          }
+          const botToken = resolveOrgBotToken({
+            botMode: conn.botModeAtConnect === "custom" ? "custom" : "global",
+            globalBotToken: globalBotToken ?? undefined,
+            secretsKey: keyMaterial ?? undefined,
+            customBotTokenEncrypted: orgSecrets.customBotTokenEncrypted,
+            botTokenEncrypted: orgSecrets.botTokenEncrypted,
+          });
 
           const memberRes = await discordApi(
             "GET",
@@ -292,7 +250,9 @@ export const processPendingJobs = internalAction({
             ...(managedTagRoleIdsByGuild.get("*") ?? []),
           ]);
 
-          const toAdd = Array.from(desiredUnion).filter((r) => !currentRoleIds.has(r));
+          const toAdd = Array.from(desiredUnion).filter(
+            (r) => !currentRoleIds.has(r),
+          );
           const toRemove = Array.from(currentRoleIds).filter(
             (r) => managedTagRoleIds.has(r) && !desiredFromTags.has(r),
           );
@@ -345,5 +305,3 @@ export const processPendingJobs = internalAction({
     return null;
   },
 });
-
-

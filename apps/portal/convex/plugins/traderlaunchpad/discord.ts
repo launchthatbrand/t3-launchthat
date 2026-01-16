@@ -7,93 +7,35 @@
   @typescript-eslint/no-unsafe-member-access,
   turbo/no-undeclared-env-vars
 */
-import crypto from "node:crypto";
 import { v } from "convex/values";
+import { resolveOrgBotToken } from "launchthat-plugin-discord/runtime/credentials";
+import { discordJson } from "launchthat-plugin-discord/runtime/discordApi";
 
 import { components, internal } from "../../_generated/api";
 import { internalAction } from "../../_generated/server";
 
 const internalAny = internal as any;
+const discordComponent = components.launchthat_discord as any;
+const discordRoutingQueries = discordComponent.routing.queries;
+const discordTemplateQueries = discordComponent.templates.queries;
 
-const requireDiscordGlobalBotToken = (): string => {
-  const botToken = process.env.DISCORD_GLOBAL_BOT_TOKEN;
-  if (!botToken) throw new Error("Missing DISCORD_GLOBAL_BOT_TOKEN");
-  return botToken;
-};
-
-const requireDiscordSecretsKey = (): string => {
-  const keyMaterial = process.env.DISCORD_SECRETS_KEY;
-  if (!keyMaterial) throw new Error("Missing DISCORD_SECRETS_KEY");
-  return keyMaterial;
-};
-
-const decryptSecret = (ciphertext: string, keyMaterial: string): string => {
-  if (!ciphertext.startsWith("enc_v1:"))
-    throw new Error("Expected enc_v1 ciphertext");
-  const raw = ciphertext.slice("enc_v1:".length);
-  const decoded = Buffer.from(raw, "base64").toString("utf8");
-  const parsed = JSON.parse(decoded) as {
-    alg: string;
-    ivB64: string;
-    tagB64: string;
-    dataB64: string;
-  };
-  if (parsed.alg !== "aes-256-gcm")
-    throw new Error("Unsupported ciphertext alg");
-  const key = crypto.createHash("sha256").update(keyMaterial).digest();
-  const iv = Buffer.from(parsed.ivB64, "base64");
-  const tag = Buffer.from(parsed.tagB64, "base64");
-  const data = Buffer.from(parsed.dataB64, "base64");
-  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-  decipher.setAuthTag(tag);
-  const plaintext = Buffer.concat([decipher.update(data), decipher.final()]);
-  return plaintext.toString("utf8");
-};
-
-const resolveOrgBotToken = async (ctx: any, organizationId: string) => {
+const resolveOrgBotTokenForOrg = async (ctx: any, organizationId: string) => {
   const config = await ctx.runQuery(
     components.launchthat_discord.orgConfigs.internalQueries
       .getOrgConfigSecrets as any,
     { organizationId },
   );
-  if (!config?.enabled)
+  if (!config?.enabled) {
     throw new Error("Discord is not enabled for this organization");
-  if (config.botMode === "global") return requireDiscordGlobalBotToken();
-  const keyMaterial = requireDiscordSecretsKey();
-  const encrypted: string =
-    typeof config.customBotTokenEncrypted === "string" &&
-    config.customBotTokenEncrypted.trim()
-      ? config.customBotTokenEncrypted.trim()
-      : typeof config.botTokenEncrypted === "string" &&
-          config.botTokenEncrypted.trim()
-        ? config.botTokenEncrypted.trim()
-        : "";
-  if (!encrypted) throw new Error("Discord custom bot token not configured");
-  return decryptSecret(encrypted, keyMaterial);
-};
-
-const discordJson = async (args: {
-  botToken: string;
-  method: "POST" | "PATCH";
-  url: string;
-  body: unknown;
-}): Promise<{ ok: boolean; status: number; text: string; json: any }> => {
-  const res = await fetch(args.url, {
-    method: args.method,
-    headers: {
-      Authorization: `Bot ${args.botToken}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(args.body),
-  });
-  const text = await res.text();
-  let json: any = null;
-  try {
-    json = text ? JSON.parse(text) : null;
-  } catch {
-    json = null;
   }
-  return { ok: res.ok, status: res.status, text, json };
+
+  return resolveOrgBotToken({
+    botMode: config.botMode === "custom" ? "custom" : "global",
+    globalBotToken: process.env.DISCORD_GLOBAL_BOT_TOKEN,
+    secretsKey: process.env.DISCORD_SECRETS_KEY,
+    customBotTokenEncrypted: config.customBotTokenEncrypted,
+    botTokenEncrypted: config.botTokenEncrypted,
+  });
 };
 
 const logDiscordUpsert = async (
@@ -136,30 +78,6 @@ const logDiscordUpsert = async (
   }
 };
 
-const formatTradeMessage = (group: any) => {
-  const symbol = String(group.symbol ?? "");
-  const status = group.status === "closed" ? "Closed" : "Open";
-  const dir = group.direction === "short" ? "Short" : "Long";
-  const netQty = typeof group.netQty === "number" ? group.netQty : 0;
-  const avg =
-    typeof group.avgEntryPrice === "number" ? group.avgEntryPrice : null;
-  const pnl = typeof group.realizedPnl === "number" ? group.realizedPnl : null;
-  const fees = typeof group.fees === "number" ? group.fees : null;
-  const openedAt = typeof group.openedAt === "number" ? group.openedAt : null;
-  const closedAt = typeof group.closedAt === "number" ? group.closedAt : null;
-
-  const lines = [
-    `**${symbol}** — **${dir}** — **${status}**`,
-    `Qty: \`${netQty}\`${avg !== null ? ` • Avg: \`${avg}\`` : ""}`,
-    pnl !== null ? `Realized PnL: \`${pnl}\`` : null,
-    fees !== null ? `Fees: \`${fees}\`` : null,
-    openedAt ? `Opened: <t:${Math.floor(openedAt / 1000)}:f>` : null,
-    closedAt ? `Closed: <t:${Math.floor(closedAt / 1000)}:f>` : null,
-  ].filter(Boolean);
-
-  return { content: lines.join("\n") };
-};
-
 export const upsertTradeIdeaDiscordMessage = internalAction({
   args: {
     organizationId: v.id("organizations"),
@@ -185,7 +103,8 @@ export const upsertTradeIdeaDiscordMessage = internalAction({
     // Per-user public journal toggle: if user is private, do NOT stream to Discord.
     // Default behavior (no profile row) is public.
     const profile = await ctx.runQuery(
-      components.launchthat_traderlaunchpad.journal.queries.getProfileForUser as any,
+      components.launchthat_traderlaunchpad.journal.queries
+        .getProfileForUser as any,
       {
         organizationId: String(args.organizationId),
         userId: String(group.userId),
@@ -219,23 +138,42 @@ export const upsertTradeIdeaDiscordMessage = internalAction({
         : "";
     if (!guildId) return { ok: true, mode: "skipped" as const };
 
-    const settings = await ctx.runQuery(
-      components.launchthat_discord.guildSettings.queries
-        .getGuildSettings as any,
-      { organizationId: String(args.organizationId), guildId },
+    const channelId = await ctx.runQuery(
+      discordRoutingQueries.resolveTradeFeedChannel,
+      {
+        organizationId: String(args.organizationId),
+        guildId,
+        channelKind: kind,
+      },
     );
-    const channelId =
-      kind === "mentors"
-        ? typeof settings?.mentorTradesChannelId === "string"
-          ? settings.mentorTradesChannelId.trim()
-          : ""
-        : typeof settings?.memberTradesChannelId === "string"
-          ? settings.memberTradesChannelId.trim()
-          : "";
     if (!channelId) return { ok: true, mode: "skipped" as const };
 
-    const botToken = await resolveOrgBotToken(ctx, String(args.organizationId));
-    const payload = formatTradeMessage(group);
+    const botToken = await resolveOrgBotTokenForOrg(
+      ctx,
+      String(args.organizationId),
+    );
+    const payload = await ctx.runQuery(
+      discordTemplateQueries.renderTradeIdeaMessage,
+      {
+        organizationId: String(args.organizationId),
+        guildId,
+        symbol: String(group.symbol ?? ""),
+        status: group.status === "closed" ? "closed" : "open",
+        direction: group.direction === "short" ? "short" : "long",
+        netQty: typeof group.netQty === "number" ? group.netQty : 0,
+        avgEntryPrice:
+          typeof group.avgEntryPrice === "number"
+            ? group.avgEntryPrice
+            : undefined,
+        realizedPnl:
+          typeof group.realizedPnl === "number" ? group.realizedPnl : undefined,
+        fees: typeof group.fees === "number" ? group.fees : undefined,
+        openedAt:
+          typeof group.openedAt === "number" ? group.openedAt : undefined,
+        closedAt:
+          typeof group.closedAt === "number" ? group.closedAt : undefined,
+      },
+    );
 
     const existingChannelId =
       typeof group.discordChannelId === "string" ? group.discordChannelId : "";
@@ -311,8 +249,9 @@ export const upsertTradeIdeaDiscordMessage = internalAction({
         `Discord POST message failed (${res.status}): ${res.text}`,
       );
     }
+    const responseJson = res.json as { id?: string } | null;
     const messageId =
-      typeof res.json?.id === "string" ? String(res.json.id) : "";
+      typeof responseJson?.id === "string" ? String(responseJson.id) : "";
     if (!messageId) {
       throw new Error("Discord POST succeeded but response missing message id");
     }
