@@ -63,7 +63,13 @@ export type TraderLaunchpadApiAdapter = {
     listMyTradeIdeasByStatus: any;
     getMyTradeIdeaById: any;
     listMyTradeIdeaEvents: any;
+    getMyTradeIdeaNoteForGroup: any;
+    listMyNextTradeIdeasToReview: any;
     getMyJournalProfile: any;
+  };
+  mutations: {
+    upsertMyTradeIdeaNoteForGroup: any;
+    markMyTradeIdeaReviewed: any;
   };
   actions: {
     startTradeLockerConnect: any;

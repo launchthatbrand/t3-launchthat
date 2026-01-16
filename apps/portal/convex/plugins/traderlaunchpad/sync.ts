@@ -36,6 +36,9 @@ export const syncTradeLockerConnection = internalAction({
         userId: args.userId,
         limit: args.limit,
         secretsKey: process.env.TRADELOCKER_SECRETS_KEY ?? "",
+        tokenStorage: (process.env.TRADELOCKER_TOKEN_STORAGE ?? "enc") as
+          | "raw"
+          | "enc",
       },
     );
 

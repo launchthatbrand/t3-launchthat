@@ -10,6 +10,7 @@
 
 import type * as traderlaunchpad_actions from "../traderlaunchpad/actions.js";
 import type * as traderlaunchpad_lib_resolve from "../traderlaunchpad/lib/resolve.js";
+import type * as traderlaunchpad_mutations from "../traderlaunchpad/mutations.js";
 import type * as traderlaunchpad_queries from "../traderlaunchpad/queries.js";
 import type * as traderlaunchpad_types from "../traderlaunchpad/types.js";
 
@@ -30,6 +31,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   "traderlaunchpad/actions": typeof traderlaunchpad_actions;
   "traderlaunchpad/lib/resolve": typeof traderlaunchpad_lib_resolve;
+  "traderlaunchpad/mutations": typeof traderlaunchpad_mutations;
   "traderlaunchpad/queries": typeof traderlaunchpad_queries;
   "traderlaunchpad/types": typeof traderlaunchpad_types;
 }>;
@@ -644,6 +646,7 @@ export declare const components: {
           instrumentId: string;
           organizationId: string;
           secretsKey: string;
+          tokenStorage?: "raw" | "enc";
           userId: string;
         },
         { instrumentId: string; raw: any; symbol?: string } | null
@@ -655,6 +658,7 @@ export declare const components: {
           limit?: number;
           organizationId: string;
           secretsKey: string;
+          tokenStorage?: "raw" | "enc";
           userId: string;
         },
         {
@@ -838,6 +842,68 @@ export declare const components: {
             realizedPnl?: number;
             status: "open" | "closed";
             symbol: string;
+            userId: string;
+          },
+          string
+        >;
+      };
+      notes: {
+        getNoteForGroup: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; tradeIdeaGroupId: string; userId: string },
+          {
+            _creationTime: number;
+            _id: string;
+            mistakes?: string;
+            nextTime?: string;
+            organizationId: string;
+            outcome?: string;
+            reviewStatus: "todo" | "reviewed";
+            reviewedAt?: number;
+            setup?: string;
+            tags?: Array<string>;
+            thesis?: string;
+            tradeIdeaGroupId: string;
+            updatedAt: number;
+            userId: string;
+          } | null
+        >;
+        listNextToReview: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; organizationId: string; userId: string },
+          Array<{
+            closedAt: number;
+            direction: "long" | "short";
+            fees?: number;
+            instrumentId?: string;
+            noteUpdatedAt?: number;
+            realizedPnl?: number;
+            reviewStatus: "todo" | "reviewed";
+            reviewedAt?: number;
+            symbol: string;
+            tradeIdeaGroupId: string;
+          }>
+        >;
+        markReviewed: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; tradeIdeaGroupId: string; userId: string },
+          string
+        >;
+        upsertNoteForGroup: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            mistakes?: string;
+            nextTime?: string;
+            organizationId: string;
+            outcome?: string;
+            setup?: string;
+            tags?: Array<string>;
+            thesis?: string;
+            tradeIdeaGroupId: string;
             userId: string;
           },
           string

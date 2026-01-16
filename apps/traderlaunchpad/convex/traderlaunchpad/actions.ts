@@ -324,6 +324,7 @@ export const syncMyTradeLockerNow = action({
         userId,
         limit: 500,
         secretsKey: env.TRADELOCKER_SECRETS_KEY,
+        tokenStorage: env.TRADELOCKER_TOKEN_STORAGE,
       },
     );
 
@@ -353,6 +354,7 @@ export const getMyTradeLockerInstrumentDetails = action({
         userId,
         instrumentId: args.instrumentId,
         secretsKey: env.TRADELOCKER_SECRETS_KEY,
+        tokenStorage: env.TRADELOCKER_TOKEN_STORAGE,
       },
     );
     return result;

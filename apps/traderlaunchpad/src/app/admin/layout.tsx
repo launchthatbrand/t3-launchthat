@@ -22,11 +22,13 @@ export default function AdminLayout({
     }
   }, [isLoaded, userId]);
 
-  if (!isLoaded || !userId) return null;
-
   // Determine active tab based on path
   const activeTab = React.useMemo(() => {
-    if (pathname.startsWith("/admin/tradeideas") || pathname.startsWith("/admin/tradeidea")) {
+    if (pathname.startsWith("/admin/integrations")) return "integrations";
+    if (
+      pathname.startsWith("/admin/tradeideas") ||
+      pathname.startsWith("/admin/tradeidea")
+    ) {
       return "tradeideas";
     }
     if (pathname.startsWith("/admin/analytics")) return "analytics";
@@ -35,9 +37,11 @@ export default function AdminLayout({
     return "dashboard";
   }, [pathname]);
 
+  if (!isLoaded || !userId) return null;
+
   return (
     <div className="bg-background min-h-screen">
-      <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur">
+      <header className="bg-background/95 supports-backdrop-filter:bg-background/60 border-b backdrop-blur">
         <div className="container flex h-14 items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2 font-bold">
@@ -47,8 +51,8 @@ export default function AdminLayout({
               <span>TraderLaunchpad</span>
             </Link>
             <nav className="mx-6 flex items-center space-x-4 lg:space-x-6">
-              <Tabs value={activeTab} className="w-[560px]">
-                <TabsList className="grid w-full grid-cols-5">
+              <Tabs value={activeTab} className="w-[680px]">
+                <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="dashboard" asChild>
                     <Link href="/admin/dashboard">Dashboard</Link>
                   </TabsTrigger>
@@ -60,6 +64,9 @@ export default function AdminLayout({
                   </TabsTrigger>
                   <TabsTrigger value="analytics" asChild>
                     <Link href="/admin/analytics">Analytics</Link>
+                  </TabsTrigger>
+                  <TabsTrigger value="integrations" asChild>
+                    <Link href="/admin/integrations">Integrations</Link>
                   </TabsTrigger>
                   <TabsTrigger value="settings" asChild>
                     <Link href="/admin/settings">Settings</Link>

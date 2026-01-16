@@ -42,28 +42,28 @@ const positionsColumns: ColumnDefinition<TradePositionRow>[] = [
   },
 ];
 
-type TradeIdeaRow = Record<string, unknown> & {
-  _id: string;
-  status: "open" | "closed";
+type NextToReviewRow = {
+  tradeIdeaGroupId: string;
   symbol: string;
   instrumentId?: string;
   direction: "long" | "short";
-  openedAt: number;
-  closedAt?: number;
-  netQty: number;
+  closedAt: number;
   realizedPnl?: number;
   fees?: number;
+  reviewStatus: "todo" | "reviewed";
+  reviewedAt?: number;
+  noteUpdatedAt?: number;
 };
 
-const tradeIdeasColumns: ColumnDefinition<TradeIdeaRow>[] = [
+const tradeIdeasColumns: ColumnDefinition<NextToReviewRow>[] = [
   {
     id: "symbol",
     header: "Symbol",
     accessorKey: "symbol",
-    cell: (row: TradeIdeaRow) => (
+    cell: (row: NextToReviewRow) => (
       <Link
         className="text-blue-600 hover:underline"
-        href={`/admin/tradeidea/${encodeURIComponent(row._id)}`}
+        href={`/admin/tradeidea/${encodeURIComponent(row.tradeIdeaGroupId)}`}
       >
         {row.symbol}
       </Link>
@@ -73,35 +73,35 @@ const tradeIdeasColumns: ColumnDefinition<TradeIdeaRow>[] = [
     id: "direction",
     header: "Dir",
     accessorKey: "direction",
-    cell: (row: TradeIdeaRow) => (row.direction === "long" ? "Long" : "Short"),
+    cell: (row: NextToReviewRow) => (row.direction === "long" ? "Long" : "Short"),
   },
   {
     id: "closedAt",
     header: "Closed",
     accessorKey: "closedAt",
-    cell: (row: TradeIdeaRow) =>
+    cell: (row: NextToReviewRow) =>
       typeof row.closedAt === "number" ? formatAge(row.closedAt) : "—",
   },
   {
     id: "pnl",
     header: "P&L",
     accessorKey: "realizedPnl",
-    cell: (row: TradeIdeaRow) =>
+    cell: (row: NextToReviewRow) =>
       typeof row.realizedPnl === "number" ? row.realizedPnl.toFixed(2) : "—",
   },
   {
     id: "fees",
     header: "Fees",
     accessorKey: "fees",
-    cell: (row: TradeIdeaRow) =>
+    cell: (row: NextToReviewRow) =>
       typeof row.fees === "number" ? row.fees.toFixed(2) : "—",
   },
   {
     id: "actions",
     header: "",
-    cell: (row: TradeIdeaRow) => (
+    cell: (row: NextToReviewRow) => (
       <Button variant="outline" size="sm" asChild>
-        <Link href={`/admin/tradeidea/${encodeURIComponent(row._id)}`}>Review</Link>
+        <Link href={`/admin/tradeidea/${encodeURIComponent(row.tradeIdeaGroupId)}`}>Review</Link>
       </Button>
     ),
   },
@@ -146,18 +146,9 @@ export function TraderLaunchpadDashboardPage(props: {
       }
     | undefined;
 
-  const closedTradeIdeasResult = useQuery(tlQueries.listMyTradeIdeasByStatus, {
-    status: "closed",
-    paginationOpts: { numItems: 10, cursor: null },
-  }) as
-    | {
-        page: TradeIdeaRow[];
-        isDone: boolean;
-        continueCursor: string | null;
-      }
-    | undefined;
-
-  const closedTradeIdeas = closedTradeIdeasResult?.page ?? [];
+  const nextToReview = useQuery(tlQueries.listMyNextTradeIdeasToReview, {
+    limit: 10,
+  }) as NextToReviewRow[] | undefined;
 
   const status = connectionData?.connection?.status as
     | "connected"
@@ -260,15 +251,15 @@ export function TraderLaunchpadDashboardPage(props: {
             </Button>
           </CardHeader>
           <CardContent>
-            {closedTradeIdeasResult === undefined ? (
+            {nextToReview === undefined ? (
               <div className="text-muted-foreground text-sm">Loading…</div>
-            ) : closedTradeIdeas.length === 0 ? (
+            ) : nextToReview.length === 0 ? (
               <div className="text-muted-foreground text-sm">
-                No closed TradeIdeas yet. Sync to import trades, then come back to review.
+                Nothing to review yet. Sync to import trades, then come back to review.
               </div>
             ) : (
-              <EntityList<TradeIdeaRow>
-                data={closedTradeIdeas as any}
+              <EntityList<NextToReviewRow>
+                data={nextToReview as any}
                 columns={tradeIdeasColumns as any}
                 viewModes={["list"]}
                 enableSearch={false}

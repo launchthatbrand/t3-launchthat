@@ -21,6 +21,7 @@ const tradeIdeasQueries = components.launchthat_traderlaunchpad.tradeIdeas
   .queries as any;
 const tradeIdeasAnalytics = components.launchthat_traderlaunchpad.tradeIdeas
   .analytics as any;
+const tradeIdeasNotes = components.launchthat_traderlaunchpad.tradeIdeas.notes as any;
 
 const tradeOrderView = v.object({
   _id: v.string(),
@@ -448,15 +449,9 @@ export const getMyTradeIdeaById = query({
   },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
-    // Component query only needs the ID; org/user are enforced by data model (and UI uses app auth).
-    // We still pass org/user where applicable in other calls.
     return await ctx.runQuery(tradeIdeasQueries.getById, {
       tradeIdeaGroupId: args.tradeIdeaGroupId as any,
-      organizationId,
-      userId,
-    } as any);
+    });
   },
 });
 
@@ -475,5 +470,80 @@ export const listMyTradeIdeaEvents = query({
       tradeIdeaGroupId: args.tradeIdeaGroupId as any,
       limit: args.limit,
     } as any);
+  },
+});
+
+export const getMyTradeIdeaNoteForGroup = query({
+  args: {
+    tradeIdeaGroupId: v.string(),
+  },
+  returns: v.union(
+    v.object({
+      _id: v.string(),
+      _creationTime: v.number(),
+      organizationId: v.string(),
+      userId: v.string(),
+      tradeIdeaGroupId: v.string(),
+      reviewStatus: v.union(v.literal("todo"), v.literal("reviewed")),
+      reviewedAt: v.optional(v.number()),
+      thesis: v.optional(v.string()),
+      setup: v.optional(v.string()),
+      mistakes: v.optional(v.string()),
+      outcome: v.optional(v.string()),
+      nextTime: v.optional(v.string()),
+      tags: v.optional(v.array(v.string())),
+      updatedAt: v.number(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    return await ctx.runQuery(tradeIdeasNotes.getNoteForGroup, {
+      organizationId,
+      userId,
+      tradeIdeaGroupId: args.tradeIdeaGroupId as any,
+    });
+  },
+});
+
+export const listMyNextTradeIdeasToReview = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      tradeIdeaGroupId: v.string(),
+      symbol: v.string(),
+      instrumentId: v.optional(v.string()),
+      direction: v.union(v.literal("long"), v.literal("short")),
+      closedAt: v.number(),
+      realizedPnl: v.optional(v.number()),
+      fees: v.optional(v.number()),
+      reviewStatus: v.union(v.literal("todo"), v.literal("reviewed")),
+      reviewedAt: v.optional(v.number()),
+      noteUpdatedAt: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const rows = await ctx.runQuery(tradeIdeasNotes.listNextToReview, {
+      organizationId,
+      userId,
+      limit: args.limit,
+    });
+    return (rows ?? []).map((r: any) => ({
+      tradeIdeaGroupId: String(r.tradeIdeaGroupId),
+      symbol: String(r.symbol ?? "UNKNOWN"),
+      instrumentId: typeof r.instrumentId === "string" ? r.instrumentId : undefined,
+      direction: r.direction === "short" ? "short" : "long",
+      closedAt: Number(r.closedAt ?? 0),
+      realizedPnl: typeof r.realizedPnl === "number" ? r.realizedPnl : undefined,
+      fees: typeof r.fees === "number" ? r.fees : undefined,
+      reviewStatus: r.reviewStatus === "reviewed" ? "reviewed" : "todo",
+      reviewedAt: typeof r.reviewedAt === "number" ? r.reviewedAt : undefined,
+      noteUpdatedAt: typeof r.noteUpdatedAt === "number" ? r.noteUpdatedAt : undefined,
+    }));
   },
 });

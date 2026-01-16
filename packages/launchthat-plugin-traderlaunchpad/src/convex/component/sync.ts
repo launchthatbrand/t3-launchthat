@@ -561,6 +561,7 @@ export const getInstrumentDetails = action({
     userId: v.string(),
     instrumentId: v.string(),
     secretsKey: v.string(),
+    tokenStorage: v.optional(v.union(v.literal("raw"), v.literal("enc"))),
   },
   returns: v.union(
     v.object({
@@ -589,13 +590,12 @@ export const getInstrumentDetails = action({
       String((secrets as any).refreshTokenEncrypted ?? ""),
       keyMaterial,
     );
-    const shouldEncrypt =
-      String((secrets as any).accessTokenEncrypted ?? "").startsWith(
-        "enc_v1:",
-      ) ||
-      String((secrets as any).refreshTokenEncrypted ?? "").startsWith(
-        "enc_v1:",
-      );
+    const storedEncrypted =
+      String((secrets as any).accessTokenEncrypted ?? "").startsWith("enc_v1:") ||
+      String((secrets as any).refreshTokenEncrypted ?? "").startsWith("enc_v1:");
+    const requestedTokenStorage =
+      args.tokenStorage === "enc" ? "enc" : "raw";
+    const shouldEncrypt = requestedTokenStorage === "enc" || storedEncrypted;
     const jwtHost =
       typeof (secrets as any).jwtHost === "string"
         ? String((secrets as any).jwtHost)
@@ -631,6 +631,28 @@ export const getInstrumentDetails = action({
     const tradeAccNum = Number(
       matched?.accNum ?? matched?.acc_num ?? matched?.accountNumber ?? accNum,
     );
+
+    // Migration-safe path: if caller requests encryption but tokens are stored as plaintext,
+    // re-encrypt and persist without requiring a refresh to occur first.
+    if (requestedTokenStorage === "enc" && !storedEncrypted) {
+      const accessTokenEncrypted = await encryptSecret(accessToken, keyMaterial);
+      const refreshTokenEncrypted = await encryptSecret(refreshToken, keyMaterial);
+      await ctx.runMutation(api.connections.mutations.upsertConnection as any, {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        environment: secrets.environment === "live" ? "live" : "demo",
+        server: String(secrets.server ?? ""),
+        selectedAccountId: tradeAccountId,
+        selectedAccNum: tradeAccNum,
+        accessTokenEncrypted,
+        refreshTokenEncrypted,
+        accessTokenExpiresAt: (secrets as any).accessTokenExpiresAt,
+        refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
+        status: "connected",
+        lastError: undefined,
+        jwtHost: extractJwtHost(accessToken),
+      });
+    }
 
     const rotateTokens = async (reason: string): Promise<boolean> => {
       const refreshRes = await tradeLockerRefreshTokens({
@@ -1039,6 +1061,7 @@ export const syncTradeLockerConnection = action({
     userId: v.string(),
     limit: v.optional(v.number()),
     secretsKey: v.string(),
+    tokenStorage: v.optional(v.union(v.literal("raw"), v.literal("enc"))),
   },
   returns: v.object({
     ordersUpserted: v.number(),
@@ -1093,6 +1116,35 @@ export const syncTradeLockerConnection = action({
       keyMaterial,
     );
 
+    const storedEncrypted =
+      String((secrets as any).accessTokenEncrypted ?? "").startsWith("enc_v1:") ||
+      String((secrets as any).refreshTokenEncrypted ?? "").startsWith("enc_v1:");
+    const requestedTokenStorage =
+      args.tokenStorage === "enc" ? "enc" : "raw";
+    const shouldEncrypt = requestedTokenStorage === "enc" || storedEncrypted;
+
+    // Migration-safe path: if caller requests encryption but tokens are stored as plaintext,
+    // re-encrypt and persist without requiring a refresh to occur first.
+    if (requestedTokenStorage === "enc" && !storedEncrypted) {
+      const accessTokenEncrypted = await encryptSecret(accessToken, keyMaterial);
+      const refreshTokenEncrypted = await encryptSecret(refreshToken, keyMaterial);
+      await ctx.runMutation(api.connections.mutations.upsertConnection as any, {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        environment: secrets.environment === "live" ? "live" : "demo",
+        server: String(secrets.server ?? ""),
+        selectedAccountId: String(secrets.selectedAccountId ?? ""),
+        selectedAccNum: Number(secrets.selectedAccNum ?? 0),
+        accessTokenEncrypted,
+        refreshTokenEncrypted,
+        accessTokenExpiresAt: (secrets as any).accessTokenExpiresAt,
+        refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
+        status: "connected",
+        lastError: undefined,
+        jwtHost: extractJwtHost(accessToken),
+      });
+    }
+
     const baseUrlFallback = baseUrlForEnv(
       secrets.environment === "live" ? "live" : "demo",
     );
@@ -1136,14 +1188,12 @@ export const syncTradeLockerConnection = action({
         baseUrl = `https://${jwtHost}/backend-api`;
       }
 
-      const accessTokenEncrypted = await encryptSecret(
-        accessToken,
-        keyMaterial,
-      );
-      const refreshTokenEncrypted = await encryptSecret(
-        refreshToken,
-        keyMaterial,
-      );
+      const accessTokenEncrypted = shouldEncrypt
+        ? await encryptSecret(accessToken, keyMaterial)
+        : accessToken;
+      const refreshTokenEncrypted = shouldEncrypt
+        ? await encryptSecret(refreshToken, keyMaterial)
+        : refreshToken;
 
       await ctx.runMutation(api.connections.mutations.upsertConnection as any, {
         organizationId: args.organizationId,

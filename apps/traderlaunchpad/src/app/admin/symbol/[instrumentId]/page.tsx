@@ -17,6 +17,7 @@ export default function AdminSymbolTradesPage() {
     <TraderLaunchpadSymbolTradesPage
       api={{
         queries: api.traderlaunchpad.queries,
+        mutations: api.traderlaunchpad.mutations,
         actions: api.traderlaunchpad.actions,
       }}
       instrumentId={instrumentId}

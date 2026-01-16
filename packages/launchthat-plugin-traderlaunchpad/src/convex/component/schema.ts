@@ -279,4 +279,30 @@ export default defineSchema({
       "userId",
       "externalPositionId",
     ]),
+
+  tradeIdeaNotes: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+    tradeIdeaGroupId: v.id("tradeIdeaGroups"),
+    reviewStatus: v.union(v.literal("todo"), v.literal("reviewed")),
+    reviewedAt: v.optional(v.number()),
+    thesis: v.optional(v.string()),
+    setup: v.optional(v.string()),
+    mistakes: v.optional(v.string()),
+    outcome: v.optional(v.string()),
+    nextTime: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+    updatedAt: v.number(),
+  })
+    .index("by_org_user_tradeIdeaGroupId", [
+      "organizationId",
+      "userId",
+      "tradeIdeaGroupId",
+    ])
+    .index("by_org_user_reviewStatus_updatedAt", [
+      "organizationId",
+      "userId",
+      "reviewStatus",
+      "updatedAt",
+    ]),
 });

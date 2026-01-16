@@ -26,6 +26,7 @@ import type * as tradeIdeas_analytics from "../tradeIdeas/analytics.js";
 import type * as tradeIdeas_index from "../tradeIdeas/index.js";
 import type * as tradeIdeas_internalQueries from "../tradeIdeas/internalQueries.js";
 import type * as tradeIdeas_mutations from "../tradeIdeas/mutations.js";
+import type * as tradeIdeas_notes from "../tradeIdeas/notes.js";
 import type * as tradeIdeas_queries from "../tradeIdeas/queries.js";
 
 import type {
@@ -61,6 +62,7 @@ declare const fullApi: ApiFromModules<{
   "tradeIdeas/index": typeof tradeIdeas_index;
   "tradeIdeas/internalQueries": typeof tradeIdeas_internalQueries;
   "tradeIdeas/mutations": typeof tradeIdeas_mutations;
+  "tradeIdeas/notes": typeof tradeIdeas_notes;
   "tradeIdeas/queries": typeof tradeIdeas_queries;
 }>;
 export type Mounts = {
@@ -662,6 +664,7 @@ export type Mounts = {
         instrumentId: string;
         organizationId: string;
         secretsKey: string;
+        tokenStorage?: "raw" | "enc";
         userId: string;
       },
       { instrumentId: string; raw: any; symbol?: string } | null
@@ -673,6 +676,7 @@ export type Mounts = {
         limit?: number;
         organizationId: string;
         secretsKey: string;
+        tokenStorage?: "raw" | "enc";
         userId: string;
       },
       {
@@ -856,6 +860,68 @@ export type Mounts = {
           realizedPnl?: number;
           status: "open" | "closed";
           symbol: string;
+          userId: string;
+        },
+        string
+      >;
+    };
+    notes: {
+      getNoteForGroup: FunctionReference<
+        "query",
+        "public",
+        { organizationId: string; tradeIdeaGroupId: string; userId: string },
+        {
+          _creationTime: number;
+          _id: string;
+          mistakes?: string;
+          nextTime?: string;
+          organizationId: string;
+          outcome?: string;
+          reviewStatus: "todo" | "reviewed";
+          reviewedAt?: number;
+          setup?: string;
+          tags?: Array<string>;
+          thesis?: string;
+          tradeIdeaGroupId: string;
+          updatedAt: number;
+          userId: string;
+        } | null
+      >;
+      listNextToReview: FunctionReference<
+        "query",
+        "public",
+        { limit?: number; organizationId: string; userId: string },
+        Array<{
+          closedAt: number;
+          direction: "long" | "short";
+          fees?: number;
+          instrumentId?: string;
+          noteUpdatedAt?: number;
+          realizedPnl?: number;
+          reviewStatus: "todo" | "reviewed";
+          reviewedAt?: number;
+          symbol: string;
+          tradeIdeaGroupId: string;
+        }>
+      >;
+      markReviewed: FunctionReference<
+        "mutation",
+        "public",
+        { organizationId: string; tradeIdeaGroupId: string; userId: string },
+        string
+      >;
+      upsertNoteForGroup: FunctionReference<
+        "mutation",
+        "public",
+        {
+          mistakes?: string;
+          nextTime?: string;
+          organizationId: string;
+          outcome?: string;
+          setup?: string;
+          tags?: Array<string>;
+          thesis?: string;
+          tradeIdeaGroupId: string;
           userId: string;
         },
         string

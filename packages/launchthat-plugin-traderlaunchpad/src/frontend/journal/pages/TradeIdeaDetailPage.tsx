@@ -2,14 +2,18 @@
 
 import React from "react";
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
+import { toast } from "sonner";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
 import type { ColumnDefinition } from "@acme/ui/entity-list/types";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
 import { Separator } from "@acme/ui/separator";
+import { Textarea } from "@acme/ui/textarea";
 
 import type { TraderLaunchpadApiAdapter } from "../TraderLaunchpadAccountTab";
 import { formatAge } from "../TraderLaunchpadAccountTab";
@@ -37,6 +41,19 @@ type TradeIdeaEvent = Record<string, unknown> & {
   executedAt: number;
 };
 
+type TradeIdeaNote = {
+  _id: string;
+  reviewStatus: "todo" | "reviewed";
+  reviewedAt?: number;
+  thesis?: string;
+  setup?: string;
+  mistakes?: string;
+  outcome?: string;
+  nextTime?: string;
+  tags?: string[];
+  updatedAt: number;
+} | null;
+
 const eventColumns: ColumnDefinition<TradeIdeaEvent>[] = [
   {
     id: "executedAt",
@@ -55,6 +72,10 @@ export function TraderLaunchpadTradeIdeaDetailPage(props: {
   tradeIdeaGroupId: string;
 }) {
   const tlQueries = props.api.queries;
+  const tlMutations = props.api.mutations;
+
+  const upsertNote = useMutation(tlMutations.upsertMyTradeIdeaNoteForGroup);
+  const markReviewed = useMutation(tlMutations.markMyTradeIdeaReviewed);
 
   const tradeIdea = useQuery(tlQueries.getMyTradeIdeaById, {
     tradeIdeaGroupId: props.tradeIdeaGroupId,
@@ -64,6 +85,43 @@ export function TraderLaunchpadTradeIdeaDetailPage(props: {
     tradeIdeaGroupId: props.tradeIdeaGroupId,
     limit: 200,
   }) as TradeIdeaEvent[] | undefined;
+
+  const note = useQuery(tlQueries.getMyTradeIdeaNoteForGroup, {
+    tradeIdeaGroupId: props.tradeIdeaGroupId,
+  }) as TradeIdeaNote | undefined;
+
+  const [draft, setDraft] = React.useState<{
+    thesis: string;
+    setup: string;
+    mistakes: string;
+    outcome: string;
+    nextTime: string;
+    tags: string;
+  }>({
+    thesis: "",
+    setup: "",
+    mistakes: "",
+    outcome: "",
+    nextTime: "",
+    tags: "",
+  });
+
+  const didInitRef = React.useRef(false);
+  React.useEffect(() => {
+    if (didInitRef.current) return;
+    if (note === undefined) return;
+    didInitRef.current = true;
+    setDraft({
+      thesis: note?.thesis ?? "",
+      setup: note?.setup ?? "",
+      mistakes: note?.mistakes ?? "",
+      outcome: note?.outcome ?? "",
+      nextTime: note?.nextTime ?? "",
+      tags: Array.isArray(note?.tags) ? note!.tags.join(", ") : "",
+    });
+  }, [note]);
+
+  const reviewStatus = note?.reviewStatus ?? "todo";
 
   const symbol = tradeIdea?.symbol ?? "—";
   const instrumentId =
@@ -154,6 +212,128 @@ export function TraderLaunchpadTradeIdeaDetailPage(props: {
                     ? tradeIdea.avgEntryPrice.toFixed(3)
                     : "—"}
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Separator />
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <CardTitle>Review</CardTitle>
+              <div className="flex items-center gap-2">
+                <Badge variant={reviewStatus === "reviewed" ? "default" : "outline"}>
+                  {reviewStatus === "reviewed" ? "Reviewed" : "To review"}
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={reviewStatus === "reviewed"}
+                  onClick={async () => {
+                    try {
+                      await markReviewed({ tradeIdeaGroupId: props.tradeIdeaGroupId });
+                      toast.success("Marked reviewed");
+                    } catch (e) {
+                      toast.error(
+                        e instanceof Error ? e.message : "Failed to mark reviewed",
+                      );
+                    }
+                  }}
+                >
+                  Mark reviewed
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-2">
+                <Label htmlFor="thesis">Thesis</Label>
+                <Textarea
+                  id="thesis"
+                  value={draft.thesis}
+                  onChange={(e) =>
+                    setDraft((s) => ({ ...s, thesis: e.target.value }))
+                  }
+                  placeholder="Why did you take this trade?"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="setup">Setup</Label>
+                <Textarea
+                  id="setup"
+                  value={draft.setup}
+                  onChange={(e) =>
+                    setDraft((s) => ({ ...s, setup: e.target.value }))
+                  }
+                  placeholder="Pattern / playbook / conditions"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="mistakes">Mistakes</Label>
+                <Textarea
+                  id="mistakes"
+                  value={draft.mistakes}
+                  onChange={(e) =>
+                    setDraft((s) => ({ ...s, mistakes: e.target.value }))
+                  }
+                  placeholder="What went wrong (if anything)?"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="outcome">Outcome</Label>
+                <Textarea
+                  id="outcome"
+                  value={draft.outcome}
+                  onChange={(e) =>
+                    setDraft((s) => ({ ...s, outcome: e.target.value }))
+                  }
+                  placeholder="What happened?"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="nextTime">Next time</Label>
+                <Textarea
+                  id="nextTime"
+                  value={draft.nextTime}
+                  onChange={(e) =>
+                    setDraft((s) => ({ ...s, nextTime: e.target.value }))
+                  }
+                  placeholder="What will you do differently next time?"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="tags">Tags</Label>
+                <Input
+                  id="tags"
+                  value={draft.tags}
+                  onChange={(e) => setDraft((s) => ({ ...s, tags: e.target.value }))}
+                  placeholder="comma,separated,tags"
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  onClick={async () => {
+                    const tags = draft.tags
+                      .split(",")
+                      .map((t) => t.trim())
+                      .filter(Boolean);
+                    try {
+                      await upsertNote({
+                        tradeIdeaGroupId: props.tradeIdeaGroupId,
+                        thesis: draft.thesis || undefined,
+                        setup: draft.setup || undefined,
+                        mistakes: draft.mistakes || undefined,
+                        outcome: draft.outcome || undefined,
+                        nextTime: draft.nextTime || undefined,
+                        tags: tags.length ? tags : undefined,
+                      });
+                      toast.success("Saved");
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : "Failed to save");
+                    }
+                  }}
+                >
+                  Save
+                </Button>
               </div>
             </CardContent>
           </Card>
