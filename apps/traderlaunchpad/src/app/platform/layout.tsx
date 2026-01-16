@@ -18,6 +18,7 @@ export default function PlatformLayout(props: { children: React.ReactNode }) {
   }, [isLoaded, userId]);
 
   const activeTab = React.useMemo(() => {
+    if (pathname.startsWith("/platform/integrations")) return "integrations";
     if (pathname.startsWith("/platform/users")) return "users";
     if (pathname.startsWith("/platform/settings")) return "settings";
     return "dashboard";
@@ -27,7 +28,7 @@ export default function PlatformLayout(props: { children: React.ReactNode }) {
 
   return (
     <div className="bg-background min-h-screen">
-      <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur">
+      <header className="bg-background/95 supports-backdrop-filter:bg-background/60 border-b backdrop-blur">
         <div className="container flex h-14 items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2 font-bold">
@@ -48,10 +49,13 @@ export default function PlatformLayout(props: { children: React.ReactNode }) {
             </div>
 
             <nav className="mx-6 flex items-center space-x-4 lg:space-x-6">
-              <Tabs value={activeTab} className="w-[420px]">
-                <TabsList className="grid w-full grid-cols-3">
+              <Tabs value={activeTab} className="w-[560px]">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="dashboard" asChild>
                     <Link href="/platform">Dashboard</Link>
+                  </TabsTrigger>
+                  <TabsTrigger value="integrations" asChild>
+                    <Link href="/platform/integrations">Integrations</Link>
                   </TabsTrigger>
                   <TabsTrigger value="users" asChild>
                     <Link href="/platform/users">Users</Link>

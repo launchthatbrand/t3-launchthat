@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Copy, ExternalLink, PlugZap, ShieldCheck } from "lucide-react";
+import { Copy, ExternalLink, Lock, PlugZap, ShieldCheck } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
@@ -32,6 +32,10 @@ const MOCK_CONNECTIONS = [
 ];
 
 export default function AdminPortalIntegrationsPage() {
+  // mock entitlement gate
+  const entitlement = "free" as const; // "pro" | "mentor"
+  const isPro = entitlement !== "free";
+
   const authorizeUrl =
     "/oauth/authorize?client_id=portal_mock&redirect_uri=/admin/integrations/portal/callback&scope=trades:read%20tradeideas:read%20discord:routing:write&state=mockstate";
 
@@ -59,13 +63,57 @@ export default function AdminPortalIntegrationsPage() {
           <Button variant="outline" asChild>
             <Link href="/admin/integrations">Back</Link>
           </Button>
-          <Button className="border-0 bg-blue-600 text-white hover:bg-blue-700" asChild>
-            <Link href={authorizeUrl}>
-              Authorize Portal <ExternalLink className="ml-2 h-4 w-4" />
-            </Link>
+          <Button variant="outline" asChild>
+            <Link href="/admin/integrations/portal/setup">Setup</Link>
           </Button>
+          <Button variant="outline" asChild>
+            <Link href="/admin/integrations/portal/test">Test</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/admin/integrations/portal/scopes">Scopes</Link>
+          </Button>
+          {isPro ? (
+            <Button className="border-0 bg-blue-600 text-white hover:bg-blue-700" asChild>
+              <Link href={authorizeUrl}>
+                Authorize Portal <ExternalLink className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          ) : (
+            <Button className="border-0 bg-blue-600 text-white hover:bg-blue-700" asChild>
+              <Link href="/admin/billing">
+                Upgrade to authorize <Lock className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
+
+      {!isPro ? (
+        <Card className="overflow-hidden border-blue-500/30 bg-blue-600/5">
+          <CardHeader className="border-b border-blue-500/20">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Lock className="h-4 w-4 text-blue-600" />
+              Integrations are a Pro feature
+            </CardTitle>
+            <CardDescription>
+              Upgrade to Pro to connect Portal, issue tokens, and configure Discord routing.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 pt-6 md:flex-row md:items-center md:justify-between">
+            <div className="text-muted-foreground text-sm">
+              You can still browse this UI, but auth and routing actions are disabled.
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button className="border-0 bg-blue-600 text-white hover:bg-blue-700" asChild>
+                <Link href="/admin/billing">Upgrade</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/admin/billing">View plans</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
@@ -135,9 +183,15 @@ export default function AdminPortalIntegrationsPage() {
                   <Copy className="h-4 w-4" />
                   {copied ? "Copied" : "Copy"}
                 </Button>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={authorizeUrl}>Open</Link>
-                </Button>
+                {isPro ? (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={authorizeUrl}>Open</Link>
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/admin/billing">Upgrade</Link>
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -150,6 +204,25 @@ export default function AdminPortalIntegrationsPage() {
                 <li>Configure Discord routing (via Portal)</li>
                 <li>Audit + revoke anytime</li>
               </ul>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2 text-sm">
+              <div className="font-semibold">Setup helpers</div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/admin/integrations/portal/setup">Guided setup</Link>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/admin/integrations/portal/webhooks">
+                    Webhooks vs OAuth
+                  </Link>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/admin/sharing">Sharing UX</Link>
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

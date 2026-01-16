@@ -42,6 +42,12 @@ export default function PortalRoutingMockPage() {
               Back
             </Link>
           </Button>
+          <Button variant="outline" asChild>
+            <Link href="/admin/sharing/preview">Preview</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/admin/integrations/portal/test">Test</Link>
+          </Button>
           <Button className="border-0 bg-blue-600 text-white hover:bg-blue-700">
             Save (mock)
           </Button>
