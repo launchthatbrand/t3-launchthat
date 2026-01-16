@@ -8,7 +8,13 @@
       "@acme/ui": ["../../packages/ui/src/index.ts"],
       "@acme/ui/*": ["../../packages/ui/src/*"],
       "@convexcms-config": ["./src/convexcms.config.ts"],
-      "@convex-config/*": ["./convex/*"]
+      "@convex-config/*": ["./convex/*"],
+      "launchthat-plugin-discord": [
+        "../../packages/launchthat-plugin-discord/src/index.ts"
+      ],
+      "launchthat-plugin-discord/*": [
+        "../../packages/launchthat-plugin-discord/src/*"
+      ]
     },
     "plugins": [{ "name": "next" }]
   },

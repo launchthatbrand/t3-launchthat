@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as discord_actions from "../discord/actions.js";
+import type * as discord_mutations from "../discord/mutations.js";
 import type * as discord_queries from "../discord/queries.js";
 import type * as traderlaunchpad_actions from "../traderlaunchpad/actions.js";
 import type * as traderlaunchpad_lib_resolve from "../traderlaunchpad/lib/resolve.js";
@@ -30,6 +32,8 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "discord/actions": typeof discord_actions;
+  "discord/mutations": typeof discord_mutations;
   "discord/queries": typeof discord_queries;
   "traderlaunchpad/actions": typeof traderlaunchpad_actions;
   "traderlaunchpad/lib/resolve": typeof traderlaunchpad_lib_resolve;
@@ -1497,6 +1501,12 @@ export declare const components: {
         >;
       };
       queries: {
+        getTemplate: FunctionReference<
+          "query",
+          "internal",
+          { guildId?: string; kind: "tradeidea"; organizationId: string },
+          null | { template: string; updatedAt: number }
+        >;
         renderTradeIdeaMessage: FunctionReference<
           "query",
           "internal",

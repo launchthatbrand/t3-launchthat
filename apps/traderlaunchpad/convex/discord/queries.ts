@@ -2,13 +2,26 @@ import { v } from "convex/values";
 
 import { components } from "../_generated/api";
 import { query } from "../_generated/server";
-import { resolveOrganizationId } from "../traderlaunchpad/lib/resolve";
+import {
+  resolveOrganizationId,
+  resolveViewerUserId,
+} from "../traderlaunchpad/lib/resolve";
 
 const discordRoutingQueries = components.launchthat_discord.routing
   .queries as any;
 const discordTemplateQueries = components.launchthat_discord.templates
   .queries as any;
 const discordOauthHelperQueries = components.launchthat_discord.oauth.helpers
+  .queries as any;
+const discordOrgConfigQueries = components.launchthat_discord.orgConfigs
+  .queries as any;
+const discordGuildConnectionsQueries = components.launchthat_discord
+  .guildConnections.queries as any;
+const discordGuildSettingsQueries = components.launchthat_discord.guildSettings
+  .queries as any;
+const discordTemplatesQueries = components.launchthat_discord.templates
+  .queries as any;
+const discordUserLinksQueries = components.launchthat_discord.userLinks
   .queries as any;
 
 export const resolveTradeFeedChannel = query({
@@ -80,5 +93,73 @@ export const computeDiscordAuthRedirect = query({
         callbackPath: args.callbackPath,
       },
     );
+  },
+});
+
+export const getOrgConfig = query({
+  args: {},
+  returns: v.any(),
+  handler: async (ctx) => {
+    const organizationId = resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    return await ctx.runQuery(discordOrgConfigQueries.getOrgConfig, {
+      organizationId,
+    });
+  },
+});
+
+export const listGuildConnectionsForOrg = query({
+  args: {},
+  returns: v.any(),
+  handler: async (ctx) => {
+    const organizationId = resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    return await ctx.runQuery(
+      discordGuildConnectionsQueries.listGuildConnectionsForOrg,
+      { organizationId },
+    );
+  },
+});
+
+export const getGuildSettings = query({
+  args: { guildId: v.string() },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    return await ctx.runQuery(discordGuildSettingsQueries.getGuildSettings, {
+      organizationId,
+      guildId: args.guildId,
+    });
+  },
+});
+
+export const getTemplate = query({
+  args: {
+    guildId: v.optional(v.string()),
+    kind: v.union(v.literal("tradeidea")),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    return await ctx.runQuery(discordTemplatesQueries.getTemplate, {
+      organizationId,
+      guildId: args.guildId,
+      kind: args.kind,
+    });
+  },
+});
+
+export const getMyDiscordLink = query({
+  args: {},
+  returns: v.any(),
+  handler: async (ctx) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    return await ctx.runQuery(discordUserLinksQueries.getUserLink, {
+      organizationId,
+      userId,
+    });
   },
 });

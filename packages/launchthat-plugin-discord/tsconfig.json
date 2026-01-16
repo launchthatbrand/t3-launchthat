@@ -1,13 +1,21 @@
 {
-  "extends": "../../tooling/typescript/compiled-package.json",
+  "extends": "@acme/tsconfig/compiled-package.json",
   "compilerOptions": {
+    "jsx": "react-jsx",
     "baseUrl": ".",
+    "moduleResolution": "bundler",
     "paths": {
       "launchthat-plugin-core": ["../launchthat-plugin-core/src/index"],
+      "@acme/ui": ["../ui/src/index.ts"],
+      "@acme/ui/*": ["../ui/src/*"],
+      "@portal/*": ["../../apps/portal/*"],
       "@portal/convexspec": ["../../apps/portal/convexspec.ts"],
-      "@/*": ["./src/*"]
+      "@convex-config/*": ["../../apps/portal/convex/*"],
+      "@convex-config/_generated/*": ["../../apps/portal/convex/_generated/*"],
+      "@/convex/_generated/*": ["../../apps/portal/convex/_generated/*"],
+      "@/convex/*": ["../../apps/portal/convex/*"]
     }
   },
   "include": ["src"],
-  "exclude": ["node_modules"]
+  "exclude": ["dist", "node_modules"]
 }

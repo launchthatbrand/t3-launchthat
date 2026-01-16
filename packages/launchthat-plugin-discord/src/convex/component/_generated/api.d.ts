@@ -564,6 +564,12 @@ export type Mounts = {
       >;
     };
     queries: {
+      getTemplate: FunctionReference<
+        "query",
+        "public",
+        { guildId?: string; kind: "tradeidea"; organizationId: string },
+        null | { template: string; updatedAt: number }
+      >;
       renderTradeIdeaMessage: FunctionReference<
         "query",
         "public",

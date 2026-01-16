@@ -67,7 +67,9 @@ export const renderTradeIdeaMessage = query({
         : defaultTradeIdeaTemplate;
 
     const avg =
-      typeof args.avgEntryPrice === "number" ? String(args.avgEntryPrice) : null;
+      typeof args.avgEntryPrice === "number"
+        ? String(args.avgEntryPrice)
+        : null;
     const realized =
       typeof args.realizedPnl === "number" ? String(args.realizedPnl) : null;
     const fee = typeof args.fees === "number" ? String(args.fees) : null;
@@ -100,3 +102,48 @@ export const renderTradeIdeaMessage = query({
   },
 });
 
+export const getTemplate = query({
+  args: {
+    organizationId: v.string(),
+    guildId: v.optional(v.string()),
+    kind: v.union(v.literal("tradeidea")),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      template: v.string(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const guildId = args.guildId ?? undefined;
+    let templateRow = await ctx.db
+      .query("messageTemplates")
+      .withIndex("by_organizationId_and_guildId_and_kind", (q: any) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("guildId", guildId)
+          .eq("kind", args.kind),
+      )
+      .unique();
+
+    if (!templateRow && guildId) {
+      templateRow = await ctx.db
+        .query("messageTemplates")
+        .withIndex("by_organizationId_and_guildId_and_kind", (q: any) =>
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("guildId", undefined)
+            .eq("kind", args.kind),
+        )
+        .unique();
+    }
+
+    if (!templateRow) return null;
+
+    return {
+      template: templateRow.template,
+      updatedAt: templateRow.updatedAt,
+    };
+  },
+});

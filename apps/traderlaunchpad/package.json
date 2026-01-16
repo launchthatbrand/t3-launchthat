@@ -39,6 +39,7 @@
     "clsx": "^2.1.1",
     "convex": "^1.23.0",
     "convex-helpers": "^0.1.95",
+    "launchthat-plugin-discord": "workspace:*",
     "launchthat-plugin-traderlaunchpad": "workspace:*",
     "lightweight-charts": "^4.2.0",
     "lucide-react": "^0.555.0",

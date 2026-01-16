@@ -35,6 +35,14 @@
     "./runtime/credentials": {
       "types": "./dist/runtime/credentials.d.ts",
       "default": "./src/runtime/credentials.ts"
+    },
+    "./frontend": {
+      "types": "./dist/frontend/index.d.ts",
+      "default": "./src/frontend/index.ts"
+    },
+    "./frontend/discord": {
+      "types": "./dist/frontend/discord/index.d.ts",
+      "default": "./src/frontend/discord/index.ts"
     }
   },
   "license": "MIT",
@@ -54,6 +62,7 @@
     "@acme/eslint-config": "workspace:*",
     "@acme/prettier-config": "workspace:*",
     "@acme/tsconfig": "workspace:*",
+    "@acme/ui": "workspace:*",
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "prettier": "catalog:",
