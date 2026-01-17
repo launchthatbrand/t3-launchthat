@@ -15,19 +15,10 @@ import {
   IphoneMock,
 } from "@acme/ui";
 
-type PhoneNotification = {
-  id: string;
-  app: string;
-  time: string;
-  title: string;
-  body: string;
-  accent?: boolean;
-  details: {
-    title: string;
-    summary: string;
-    howCalculated?: string;
-  };
-};
+import {
+  NotificationTile,
+  type PhoneNotification,
+} from "./NotificationTile";
 
 export const IphoneNotificationDemo = () => {
   const [now, setNow] = useState<Date>(() => new Date());
@@ -163,10 +154,12 @@ export const IphoneNotificationDemo = () => {
 
   const [isOpen, setIsOpen] = useState(false);
   const [selected, setSelected] = useState<PhoneNotification | null>(null);
-  const [clickOffset, setClickOffset] = useState<{ x: number; y: number }>({
-    x: 0,
-    y: 0,
-  });
+  const [origin, setOrigin] = useState<{
+    x: number;
+    y: number;
+    scale: number;
+    radius: number;
+  }>({ x: 0, y: 0, scale: 0.35, radius: 18 });
   const [isPaused, setIsPaused] = useState(false);
   const resumeTimeoutRef = useRef<number | null>(null);
 
@@ -175,10 +168,31 @@ export const IphoneNotificationDemo = () => {
     n: PhoneNotification,
   ) => {
     setSelected(n);
-    // Offset from viewport center → gives the illusion the dialog expands from the click.
-    const x = e.clientX - window.innerWidth / 2;
-    const y = e.clientY - window.innerHeight / 2;
-    setClickOffset({ x, y });
+    // Animate from the clicked tile's rect (much more "native" than cursor).
+    const rect = e.currentTarget.getBoundingClientRect();
+    const rectCenterX = rect.left + rect.width / 2;
+    const rectCenterY = rect.top + rect.height / 2;
+    const viewportCenterX = window.innerWidth / 2;
+    const viewportCenterY = window.innerHeight / 2;
+
+    // Approximate target dialog size (matches DialogContent classes).
+    const isSmUp =
+      typeof window !== "undefined" &&
+      window.matchMedia("(min-width: 640px)").matches;
+    const targetW = isSmUp ? window.innerWidth * 0.5 : window.innerWidth - 32;
+    const targetH = isSmUp ? window.innerHeight * 0.5 : window.innerHeight - 32;
+
+    const scale = Math.max(
+      0.18,
+      Math.min(0.85, Math.min(rect.width / targetW, rect.height / targetH)),
+    );
+
+    setOrigin({
+      x: rectCenterX - viewportCenterX,
+      y: rectCenterY - viewportCenterY,
+      scale,
+      radius: 18,
+    });
     setIsOpen(true);
   };
 
@@ -241,50 +255,18 @@ export const IphoneNotificationDemo = () => {
           stackOverlapPx={12}
           stackScaleStep={0.02}
           stackOpacityStep={0.12}
+          maxStackDepth={2}
           itemMotionProps={{
             transition: { duration: 0.75, ease: "easeOut" },
           }}
           className="w-full"
         >
           {notifications.map((n) => (
-            <button
+            <NotificationTile
               key={n.id}
-              type="button"
-              onClick={(e) => handleNotificationClick(e, n)}
-              className={[
-                "h-[92px] w-full rounded-2xl border bg-white/10 px-3.5 py-3 text-left shadow-[0_12px_30px_rgba(0,0,0,0.35)] backdrop-blur-xl",
-                "transition-colors hover:bg-white/12 focus-visible:ring-2 focus-visible:ring-orange-400/50 focus-visible:outline-hidden",
-                n.accent ? "border-orange-500/20" : "border-white/10",
-              ].join(" ")}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <div
-                    className={[
-                      "h-8 w-8 shrink-0 rounded-[10px] ring-1 ring-white/10",
-                      n.accent
-                        ? "bg-linear-to-br from-orange-500/70 to-orange-300/30 shadow-[0_0_18px_rgba(249,115,22,0.35)]"
-                        : "bg-white/10",
-                    ].join(" ")}
-                  />
-                  <div className="truncate text-[11px] font-medium text-white/80">
-                    {n.app}
-                  </div>
-                </div>
-                <div className="shrink-0 text-[11px] text-white/55">
-                  {n.time}
-                </div>
-              </div>
-
-              <div className="mt-2">
-                <div className="truncate text-[13px] font-semibold text-white">
-                  {n.title}
-                </div>
-                <div className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-white/70">
-                  {n.body}
-                </div>
-              </div>
-            </button>
+              notification={n}
+              onClickAction={handleNotificationClick}
+            />
           ))}
         </AnimatedList>
       </IphoneMock>
@@ -300,11 +282,12 @@ export const IphoneNotificationDemo = () => {
             className="overflow-auto rounded-lg border border-white/10 bg-black/60 p-6 text-white shadow-lg backdrop-blur-xl"
             initial={{
               opacity: 0,
-              scale: 0.35,
-              x: clickOffset.x,
-              y: clickOffset.y,
+              scale: origin.scale,
+              x: origin.x,
+              y: origin.y,
+              borderRadius: origin.radius,
             }}
-            animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
+            animate={{ opacity: 1, scale: 1, x: 0, y: 0, borderRadius: 12 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.35, ease: "easeOut" }}
           >

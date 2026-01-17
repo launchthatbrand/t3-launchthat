@@ -84,6 +84,11 @@ export interface AnimatedListProps extends ComponentPropsWithoutRef<"div"> {
    * Used by "iosPush" variant (gap between items).
    */
   itemGapPx?: number;
+  /**
+   * Used by "iosPush" variant: maximum number of stacked layers shown behind the last visible tile.
+   * Example: maxStackDepth={2} shows at most two peeking layers.
+   */
+  maxStackDepth?: number;
 }
 
 export const AnimatedList = React.memo(
@@ -103,6 +108,7 @@ export const AnimatedList = React.memo(
     stackPlacement = "top",
     itemHeightPx = 92,
     itemGapPx = 8,
+    maxStackDepth = 3,
     ...props
   }: AnimatedListProps) => {
     const [index, setIndex] = useState(0);
@@ -195,7 +201,11 @@ export const AnimatedList = React.memo(
               // Once we have more than maxVisible items, anything beyond the last visible
               // becomes part of the stack behind the last visible tile.
               const isStacked = i >= maxVisible;
-              const stackDepth = isStacked ? i - maxVisible + 1 : 0;
+              const rawStackDepth = isStacked ? i - maxVisible + 1 : 0;
+              const stackDepth = Math.min(
+                rawStackDepth,
+                Math.max(0, maxStackDepth),
+              );
 
               const y = isStacked
                 ? (maxVisible - 1) * (itemHeightPx + itemGapPx) +
@@ -204,8 +214,9 @@ export const AnimatedList = React.memo(
 
               const zIndex = itemsToShow.length - i; // newest (i=0) on top
               const shouldFadeOlder = itemsToShow.length > maxVisible;
+              // Smoother curve than linear; older items fade more naturally.
               const ageFadeOpacity = shouldFadeOlder
-                ? Math.max(0.35, 1 - stackOpacityStep * i)
+                ? Math.max(0.35, Math.pow(1 - stackOpacityStep, i))
                 : 1;
 
               return (
