@@ -8,10 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 
 import type { DiscordPageProps } from "../types";
 
+const cx = (...classes: Array<string | undefined | false>) =>
+  classes.filter(Boolean).join(" ");
+
 export function DiscordUserLinkPage({
   api,
   organizationId,
   className,
+  ui,
 }: DiscordPageProps) {
   const link = useQuery(
     api.queries.getMyDiscordLink,
@@ -41,28 +45,51 @@ export function DiscordUserLinkPage({
   };
 
   return (
-    <div className={className}>
-      <div className="mb-6">
-        <h2 className="text-foreground text-2xl font-semibold">Discord link</h2>
-        <p className="text-muted-foreground text-sm">
+    <div className={cx(className, ui?.pageClassName)}>
+      <div className={cx("mb-6", ui?.headerClassName)}>
+        <h2
+          className={cx(
+            "text-foreground text-2xl font-semibold",
+            ui?.titleClassName,
+          )}
+        >
+          Discord link
+        </h2>
+        <p
+          className={cx(
+            "text-muted-foreground text-sm",
+            ui?.descriptionClassName,
+          )}
+        >
           Link your Discord account for member actions and support automation.
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Linked account</CardTitle>
+      <Card className={ui?.cardClassName}>
+        <CardHeader className={ui?.cardHeaderClassName}>
+          <CardTitle className={ui?.cardTitleClassName}>
+            Linked account
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent
+          className={cx("space-y-4", ui?.cardContentClassName)}
+        >
           <p className="text-muted-foreground text-sm">
             {link?.discordUserId
               ? `Linked to Discord user ${link.discordUserId}`
               : "No Discord account linked yet."}
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={handleLink}>Link Discord</Button>
+            <Button onClick={handleLink} className={ui?.buttonClassName}>
+              Link Discord
+            </Button>
             {link?.discordUserId ? (
-              <Button variant="outline" onClick={handleUnlink} disabled={busy}>
+              <Button
+                variant="outline"
+                onClick={handleUnlink}
+                disabled={busy}
+                className={ui?.outlineButtonClassName}
+              >
                 {busy ? "Unlinking..." : "Unlink"}
               </Button>
             ) : null}

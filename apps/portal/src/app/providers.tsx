@@ -18,6 +18,7 @@ import {
 } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { SupportChatWidget } from "launchthat-plugin-support";
+import { OnboardingGateProvider } from "launchthat-plugin-onboarding/frontend";
 import { useLocalStorage } from "usehooks-ts";
 
 import { ThemeProvider } from "@acme/ui/theme";
@@ -25,8 +26,9 @@ import { Toaster } from "@acme/ui/toast";
 
 import { ContentProtectionProvider } from "~/components/access/ContentProtectionProvider";
 import { HostProvider } from "~/context/HostContext";
-import { TenantProvider } from "~/context/TenantContext";
+import { TenantProvider, useTenant } from "~/context/TenantContext";
 import { env } from "~/env";
+import { useConvexUser } from "~/hooks/useConvexUser";
 import { isAuthHostForHost } from "~/lib/host";
 import { PORTAL_TENANT_ID, PORTAL_TENANT_SUMMARY } from "~/lib/tenant-fetcher";
 import { ConvexUserEnsurer } from "./ConvexUserEnsurer";
@@ -69,17 +71,19 @@ export function Providers({ children, tenant, host }: ProvidersProps) {
                 <ConvexUserEnsurer />
                 {/* <GuestCartMerger /> */}
 
-                <ThemeProvider>
-                  {children}
-                  {chatOrganizationId ? (
-                    <SupportChatWidgetBridgeWithClerk
-                      organizationId={chatOrganizationId}
-                      tenantName={chatTenantName}
-                      isAdminRoute={isAdminRoute}
-                    />
-                  ) : null}
-                  <Toaster />
-                </ThemeProvider>
+                <PortalOnboardingGate>
+                  <ThemeProvider>
+                    {children}
+                    {chatOrganizationId ? (
+                      <SupportChatWidgetBridgeWithClerk
+                        organizationId={chatOrganizationId}
+                        tenantName={chatTenantName}
+                        isAdminRoute={isAdminRoute}
+                      />
+                    ) : null}
+                    <Toaster />
+                  </ThemeProvider>
+                </PortalOnboardingGate>
               </HostProvider>
             </TenantProvider>
           </ContentProtectionProvider>
@@ -92,22 +96,46 @@ export function Providers({ children, tenant, host }: ProvidersProps) {
         <ContentProtectionProvider>
           <TenantProvider value={effectiveTenant}>
             <HostProvider host={host}>
-              <ThemeProvider>
-                {children}
-                {chatOrganizationId ? (
-                  <SupportChatWidgetBridgeAnonymous
-                    organizationId={chatOrganizationId}
-                    tenantName={chatTenantName}
-                    isAdminRoute={isAdminRoute}
-                  />
-                ) : null}
-                <Toaster />
-              </ThemeProvider>
+              <PortalOnboardingGate>
+                <ThemeProvider>
+                  {children}
+                  {chatOrganizationId ? (
+                    <SupportChatWidgetBridgeAnonymous
+                      organizationId={chatOrganizationId}
+                      tenantName={chatTenantName}
+                      isAdminRoute={isAdminRoute}
+                    />
+                  ) : null}
+                  <Toaster />
+                </ThemeProvider>
+              </PortalOnboardingGate>
             </HostProvider>
           </TenantProvider>
         </ContentProtectionProvider>
       </SessionProvider>
     </TenantConvexProvider>
+  );
+}
+
+function PortalOnboardingGate({ children }: { children: React.ReactNode }) {
+  const tenant = useTenant();
+  const { convexId } = useConvexUser();
+  const organizationId = tenant?._id;
+  const statusArgs =
+    organizationId && convexId
+      ? { organizationId: String(organizationId), userId: String(convexId) }
+      : null;
+
+  return (
+    <OnboardingGateProvider
+      api={{
+        queries: (api as any).plugins.onboarding.queries,
+      }}
+      statusArgs={statusArgs}
+      fallbackRoute="/admin/onboarding"
+    >
+      {children}
+    </OnboardingGateProvider>
   );
 }
 

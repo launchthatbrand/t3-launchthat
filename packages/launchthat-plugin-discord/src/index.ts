@@ -6,3 +6,4 @@ export {
   discordPlugin,
 } from "./plugin";
 export { discordPlugin as default } from "./plugin";
+export * from "./frontend";

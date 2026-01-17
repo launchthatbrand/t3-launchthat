@@ -21,6 +21,8 @@ export const upsertGuildSettings = mutation({
     announcementEventKeys: v.optional(v.array(v.string())),
     mentorTradesChannelId: v.optional(v.string()),
     memberTradesChannelId: v.optional(v.string()),
+    mentorTradesTemplateId: v.optional(v.id("messageTemplates")),
+    memberTradesTemplateId: v.optional(v.id("messageTemplates")),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -50,6 +52,8 @@ export const upsertGuildSettings = mutation({
       announcementEventKeys: args.announcementEventKeys,
       mentorTradesChannelId: args.mentorTradesChannelId,
       memberTradesChannelId: args.memberTradesChannelId,
+    mentorTradesTemplateId: args.mentorTradesTemplateId,
+    memberTradesTemplateId: args.memberTradesTemplateId,
       updatedAt: now,
     };
 

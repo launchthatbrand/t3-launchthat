@@ -29,6 +29,8 @@ export const upsertGuildSettings = mutation({
     announcementEventKeys: v.optional(v.array(v.string())),
     mentorTradesChannelId: v.optional(v.string()),
     memberTradesChannelId: v.optional(v.string()),
+    mentorTradesTemplateId: v.optional(v.string()),
+    memberTradesTemplateId: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -45,7 +47,9 @@ export const upsertGuildSettings = mutation({
 export const upsertTemplate = mutation({
   args: {
     guildId: v.optional(v.string()),
-    kind: v.union(v.literal("tradeidea")),
+    kind: v.string(),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
     template: v.string(),
   },
   returns: v.null(),
@@ -53,6 +57,64 @@ export const upsertTemplate = mutation({
     const organizationId = resolveOrganizationId();
     await resolveViewerUserId(ctx);
     await ctx.runMutation(discordTemplatesMutations.upsertTemplate, {
+      organizationId,
+      ...args,
+    });
+    return null;
+  },
+});
+
+export const createTemplate = mutation({
+  args: {
+    guildId: v.optional(v.string()),
+    kind: v.string(),
+    name: v.string(),
+    description: v.optional(v.string()),
+    template: v.string(),
+  },
+  returns: v.string(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    const templateId = await ctx.runMutation(
+      discordTemplatesMutations.createTemplate,
+      {
+      organizationId,
+      ...args,
+      },
+    );
+    return String(templateId);
+  },
+});
+
+export const updateTemplate = mutation({
+  args: {
+    templateId: v.string(),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    template: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    await ctx.runMutation(discordTemplatesMutations.updateTemplate, {
+      organizationId,
+      ...args,
+    });
+    return null;
+  },
+});
+
+export const deleteTemplate = mutation({
+  args: {
+    templateId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    await ctx.runMutation(discordTemplatesMutations.deleteTemplate, {
       organizationId,
       ...args,
     });

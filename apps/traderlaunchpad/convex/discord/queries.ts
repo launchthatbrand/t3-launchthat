@@ -43,6 +43,7 @@ export const resolveTradeFeedChannel = query({
 export const renderTradeIdeaMessage = query({
   args: {
     guildId: v.optional(v.string()),
+    templateId: v.optional(v.string()),
     symbol: v.string(),
     status: v.union(v.literal("open"), v.literal("closed")),
     direction: v.union(v.literal("long"), v.literal("short")),
@@ -59,6 +60,7 @@ export const renderTradeIdeaMessage = query({
     return await ctx.runQuery(discordTemplateQueries.renderTradeIdeaMessage, {
       organizationId,
       guildId: args.guildId,
+      templateId: args.templateId,
       symbol: args.symbol,
       status: args.status,
       direction: args.direction,
@@ -137,7 +139,7 @@ export const getGuildSettings = query({
 export const getTemplate = query({
   args: {
     guildId: v.optional(v.string()),
-    kind: v.union(v.literal("tradeidea")),
+    kind: v.string(),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
@@ -147,6 +149,38 @@ export const getTemplate = query({
       organizationId,
       guildId: args.guildId,
       kind: args.kind,
+    });
+  },
+});
+
+export const listTemplates = query({
+  args: {
+    guildId: v.optional(v.string()),
+    kind: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    return await ctx.runQuery(discordTemplatesQueries.listTemplates, {
+      organizationId,
+      guildId: args.guildId,
+      kind: args.kind,
+    });
+  },
+});
+
+export const getTemplateById = query({
+  args: {
+    templateId: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    return await ctx.runQuery(discordTemplatesQueries.getTemplateById, {
+      organizationId,
+      templateId: args.templateId,
     });
   },
 });

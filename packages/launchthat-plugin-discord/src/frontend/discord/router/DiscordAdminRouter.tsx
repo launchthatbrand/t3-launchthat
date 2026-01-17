@@ -4,7 +4,11 @@ import React from "react";
 
 import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
-import type { DiscordLinkComponent, DiscordPageProps } from "../types";
+import type {
+  DiscordLinkComponent,
+  DiscordPageProps,
+  DiscordTemplateContext,
+} from "../types";
 import {
   DiscordAuditPage,
   DiscordConnectionsPage,
@@ -18,6 +22,8 @@ import { getDiscordAdminRoute, getSegment } from "./routes";
 type DiscordAdminRouterProps = DiscordPageProps & {
   segments?: string[];
   LinkComponent?: DiscordLinkComponent;
+  templateContexts?: DiscordTemplateContext[];
+  defaultTemplateKind?: string;
 };
 
 export function DiscordAdminRouter({
@@ -26,6 +32,9 @@ export function DiscordAdminRouter({
   organizationId,
   basePath = "/admin/discord",
   LinkComponent,
+  templateContexts,
+  defaultTemplateKind,
+  ui,
   className,
 }: DiscordAdminRouterProps) {
   const segment = getSegment(segments);
@@ -63,29 +72,42 @@ export function DiscordAdminRouter({
           api={api}
           organizationId={organizationId}
           basePath={basePath}
+          ui={ui}
         />
       ) : null}
       {segment === "connections" ? (
-        <DiscordConnectionsPage api={api} organizationId={organizationId} />
+        <DiscordConnectionsPage
+          api={api}
+          organizationId={organizationId}
+          ui={ui}
+        />
       ) : null}
       {segment === "templates" ? (
         <DiscordTemplatesPage
           api={api}
           organizationId={organizationId}
           basePath={basePath}
+          templateContexts={templateContexts}
+          defaultTemplateKind={defaultTemplateKind}
+          ui={ui}
         />
       ) : null}
       {segment === "audit" ? (
-        <DiscordAuditPage api={api} organizationId={organizationId} />
+        <DiscordAuditPage api={api} organizationId={organizationId} ui={ui} />
       ) : null}
       {segment === "link" ? (
-        <DiscordUserLinkPage api={api} organizationId={organizationId} />
+        <DiscordUserLinkPage
+          api={api}
+          organizationId={organizationId}
+          ui={ui}
+        />
       ) : null}
       {segment === "guilds" && guildId ? (
         <DiscordGuildSettingsPage
           api={api}
           organizationId={organizationId}
           guildId={guildId}
+          ui={ui}
         />
       ) : null}
     </div>

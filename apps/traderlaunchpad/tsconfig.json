@@ -9,6 +9,12 @@
       "@acme/ui/*": ["../../packages/ui/src/*"],
       "@convexcms-config": ["./src/convexcms.config.ts"],
       "@convex-config/*": ["./convex/*"],
+      "launchthat-plugin-onboarding": [
+        "../../packages/launchthat-plugin-onboarding/src/index.ts"
+      ],
+      "launchthat-plugin-onboarding/*": [
+        "../../packages/launchthat-plugin-onboarding/src/*"
+      ],
       "launchthat-plugin-discord": [
         "../../packages/launchthat-plugin-discord/src/index.ts"
       ],

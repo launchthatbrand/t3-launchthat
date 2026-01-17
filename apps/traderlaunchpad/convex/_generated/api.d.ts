@@ -11,6 +11,8 @@
 import type * as discord_actions from "../discord/actions.js";
 import type * as discord_mutations from "../discord/mutations.js";
 import type * as discord_queries from "../discord/queries.js";
+import type * as onboarding_mutations from "../onboarding/mutations.js";
+import type * as onboarding_queries from "../onboarding/queries.js";
 import type * as traderlaunchpad_actions from "../traderlaunchpad/actions.js";
 import type * as traderlaunchpad_lib_resolve from "../traderlaunchpad/lib/resolve.js";
 import type * as traderlaunchpad_mutations from "../traderlaunchpad/mutations.js";
@@ -35,6 +37,8 @@ declare const fullApi: ApiFromModules<{
   "discord/actions": typeof discord_actions;
   "discord/mutations": typeof discord_mutations;
   "discord/queries": typeof discord_queries;
+  "onboarding/mutations": typeof onboarding_mutations;
+  "onboarding/queries": typeof onboarding_queries;
   "traderlaunchpad/actions": typeof traderlaunchpad_actions;
   "traderlaunchpad/lib/resolve": typeof traderlaunchpad_lib_resolve;
   "traderlaunchpad/mutations": typeof traderlaunchpad_mutations;
@@ -1088,7 +1092,9 @@ export declare const components: {
             escalationKeywords?: Array<string>;
             guildId: string;
             memberTradesChannelId?: string;
+            memberTradesTemplateId?: string;
             mentorTradesChannelId?: string;
+            mentorTradesTemplateId?: string;
             organizationId: string;
             supportAiDisabledMessageEnabled?: boolean;
             supportAiDisabledMessageText?: string;
@@ -1115,7 +1121,9 @@ export declare const components: {
             escalationKeywords?: Array<string>;
             guildId: string;
             memberTradesChannelId?: string;
+            memberTradesTemplateId?: string;
             mentorTradesChannelId?: string;
+            mentorTradesTemplateId?: string;
             organizationId: string;
             supportAiDisabledMessageEnabled?: boolean;
             supportAiDisabledMessageText?: string;
@@ -1488,12 +1496,45 @@ export declare const components: {
     };
     templates: {
       mutations: {
+        createTemplate: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            description?: string;
+            guildId?: string;
+            kind: string;
+            name: string;
+            organizationId: string;
+            template: string;
+          },
+          string
+        >;
+        deleteTemplate: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; templateId: string },
+          null
+        >;
+        updateTemplate: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            description?: string;
+            name?: string;
+            organizationId: string;
+            template?: string;
+            templateId: string;
+          },
+          null
+        >;
         upsertTemplate: FunctionReference<
           "mutation",
           "internal",
           {
+            description?: string;
             guildId?: string;
-            kind: "tradeidea";
+            kind: string;
+            name?: string;
             organizationId: string;
             template: string;
           },
@@ -1504,8 +1545,39 @@ export declare const components: {
         getTemplate: FunctionReference<
           "query",
           "internal",
-          { guildId?: string; kind: "tradeidea"; organizationId: string },
+          { guildId?: string; kind: string; organizationId: string },
           null | { template: string; updatedAt: number }
+        >;
+        getTemplateById: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; templateId: string },
+          null | {
+            _id: string;
+            createdAt?: number;
+            description?: string;
+            guildId?: string;
+            kind: string;
+            name?: string;
+            template: string;
+            updatedAt: number;
+          }
+        >;
+        listTemplates: FunctionReference<
+          "query",
+          "internal",
+          { guildId?: string; kind: string; organizationId: string },
+          Array<{
+            _id: string;
+            createdAt?: number;
+            description?: string;
+            guildId?: string;
+            kind: string;
+            name?: string;
+            scope: "org" | "guild";
+            template: string;
+            updatedAt: number;
+          }>
         >;
         renderTradeIdeaMessage: FunctionReference<
           "query",
@@ -1522,6 +1594,7 @@ export declare const components: {
             realizedPnl?: number;
             status: "open" | "closed";
             symbol: string;
+            templateId?: string;
           },
           { content: string }
         >;
@@ -1556,6 +1629,86 @@ export declare const components: {
           { discordUserId: string; linkedAt: number } | null
         >;
       };
+    };
+  };
+  launchthat_onboarding: {
+    mutations: {
+      markOnboardingComplete: FunctionReference<
+        "mutation",
+        "internal",
+        { organizationId: string; userId: string },
+        null
+      >;
+      setStepComplete: FunctionReference<
+        "mutation",
+        "internal",
+        { organizationId: string; stepId: string; userId: string },
+        null
+      >;
+      upsertOnboardingConfig: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          ctaLabel?: string;
+          ctaRoute?: string;
+          description?: string;
+          enabled: boolean;
+          organizationId: string;
+          steps: Array<{
+            description?: string;
+            id: string;
+            required?: boolean;
+            route?: string;
+            title: string;
+          }>;
+          title?: string;
+        },
+        null
+      >;
+    };
+    queries: {
+      getOnboardingConfig: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string },
+        null | {
+          createdAt: number;
+          ctaLabel?: string;
+          ctaRoute?: string;
+          description?: string;
+          enabled: boolean;
+          organizationId: string;
+          steps: Array<{
+            description?: string;
+            id: string;
+            required?: boolean;
+            route?: string;
+            title: string;
+          }>;
+          title?: string;
+          updatedAt: number;
+        }
+      >;
+      getOnboardingStatus: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string; userId: string },
+        {
+          ctaLabel?: string;
+          ctaRoute?: string;
+          description?: string;
+          enabled: boolean;
+          shouldBlock: boolean;
+          steps: Array<{
+            completed: boolean;
+            description?: string;
+            id: string;
+            route?: string;
+            title: string;
+          }>;
+          title?: string;
+        }
+      >;
     };
   };
 };

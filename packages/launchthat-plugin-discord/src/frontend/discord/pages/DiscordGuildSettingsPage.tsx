@@ -7,20 +7,34 @@ import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@acme/ui/select";
 import { Switch } from "@acme/ui/switch";
 
 import type { DiscordGuildSettingsPageProps } from "../types";
+
+const cx = (...classes: Array<string | undefined | false>) =>
+  classes.filter(Boolean).join(" ");
 
 type SettingsFormState = {
   supportAiEnabled: boolean;
   mentorTradesChannelId: string;
   memberTradesChannelId: string;
+  mentorTradesTemplateId: string;
+  memberTradesTemplateId: string;
 };
 
 const defaultState: SettingsFormState = {
   supportAiEnabled: true,
   mentorTradesChannelId: "",
   memberTradesChannelId: "",
+  mentorTradesTemplateId: "",
+  memberTradesTemplateId: "",
 };
 
 export function DiscordGuildSettingsPage({
@@ -28,10 +42,16 @@ export function DiscordGuildSettingsPage({
   organizationId,
   guildId,
   className,
+  ui,
 }: DiscordGuildSettingsPageProps) {
   const settings = useQuery(api.queries.getGuildSettings, {
     ...(organizationId ? { organizationId } : {}),
     guildId,
+  });
+  const templates = useQuery(api.queries.listTemplates, {
+    ...(organizationId ? { organizationId } : {}),
+    guildId,
+    kind: "tradeidea",
   });
   const upsertGuildSettings = useMutation(api.mutations.upsertGuildSettings);
   const [state, setState] = React.useState<SettingsFormState>(defaultState);
@@ -43,6 +63,8 @@ export function DiscordGuildSettingsPage({
       supportAiEnabled: settings.supportAiEnabled ?? true,
       mentorTradesChannelId: settings.mentorTradesChannelId ?? "",
       memberTradesChannelId: settings.memberTradesChannelId ?? "",
+      mentorTradesTemplateId: settings.mentorTradesTemplateId ?? "",
+      memberTradesTemplateId: settings.memberTradesTemplateId ?? "",
     });
   }, [settings]);
 
@@ -71,6 +93,8 @@ export function DiscordGuildSettingsPage({
         announcementEventKeys: settings?.announcementEventKeys ?? undefined,
         mentorTradesChannelId: state.mentorTradesChannelId || undefined,
         memberTradesChannelId: state.memberTradesChannelId || undefined,
+        mentorTradesTemplateId: state.mentorTradesTemplateId || undefined,
+        memberTradesTemplateId: state.memberTradesTemplateId || undefined,
       });
     } finally {
       setSaving(false);
@@ -78,22 +102,34 @@ export function DiscordGuildSettingsPage({
   };
 
   return (
-    <div className={className}>
+    <div className={cx(className, ui?.pageClassName)}>
       <div className="mb-6">
-        <h2 className="text-2xl font-semibold text-foreground">
+        <h2
+          className={cx(
+            "text-foreground text-2xl font-semibold",
+            ui?.titleClassName,
+          )}
+        >
           Guild settings
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p
+          className={cx(
+            "text-muted-foreground text-sm",
+            ui?.descriptionClassName,
+          )}
+        >
           Configure trade routing and automation for this Discord guild.
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Trade feed routing</CardTitle>
+        <Card className={ui?.cardClassName}>
+          <CardHeader className={ui?.cardHeaderClassName}>
+            <CardTitle className={ui?.cardTitleClassName}>
+              Trade feed routing
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className={cx("space-y-4", ui?.cardContentClassName)}>
             <div className="space-y-2">
               <Label htmlFor="mentorTradesChannelId">
                 Mentor trades channel ID
@@ -126,20 +162,68 @@ export function DiscordGuildSettingsPage({
                 placeholder="e.g. 9876543210"
               />
             </div>
+            <div className="space-y-2">
+              <Label>Mentor trades template</Label>
+              <Select
+                value={state.mentorTradesTemplateId || "default"}
+                onValueChange={(value) =>
+                  setState((prev) => ({
+                    ...prev,
+                    mentorTradesTemplateId: value === "default" ? "" : value,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select template" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Use default</SelectItem>
+                  {(templates ?? []).map((template: any) => (
+                    <SelectItem key={template._id} value={template._id}>
+                      {template.name ?? "Untitled template"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Member trades template</Label>
+              <Select
+                value={state.memberTradesTemplateId || "default"}
+                onValueChange={(value) =>
+                  setState((prev) => ({
+                    ...prev,
+                    memberTradesTemplateId: value === "default" ? "" : value,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select template" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Use default</SelectItem>
+                  {(templates ?? []).map((template: any) => (
+                    <SelectItem key={template._id} value={template._id}>
+                      {template.name ?? "Untitled template"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Support AI</CardTitle>
+        <Card className={ui?.cardClassName}>
+          <CardHeader className={ui?.cardHeaderClassName}>
+            <CardTitle className={ui?.cardTitleClassName}>Support AI</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className={cx("space-y-4", ui?.cardContentClassName)}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-foreground text-sm font-medium">
                   AI responses
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Toggle automated replies in support threads.
                 </p>
               </div>
@@ -158,7 +242,11 @@ export function DiscordGuildSettingsPage({
       </div>
 
       <div className="mt-6">
-        <Button onClick={handleSave} disabled={saving}>
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className={ui?.buttonClassName}
+        >
           {saving ? "Saving..." : "Save settings"}
         </Button>
       </div>

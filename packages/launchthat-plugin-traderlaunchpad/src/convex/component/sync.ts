@@ -1196,19 +1196,19 @@ export const syncTradeLockerConnection = action({
         : refreshToken;
 
       await ctx.runMutation(api.connections.mutations.upsertConnection as any, {
-        organizationId: args.organizationId,
-        userId: args.userId,
-        environment: secrets.environment === "live" ? "live" : "demo",
-        server: String(secrets.server ?? ""),
+          organizationId: args.organizationId,
+          userId: args.userId,
+          environment: secrets.environment === "live" ? "live" : "demo",
+          server: String(secrets.server ?? ""),
         jwtHost: jwtHost ?? undefined,
-        selectedAccountId: accountId,
-        selectedAccNum: accNum,
-        accessTokenEncrypted,
-        refreshTokenEncrypted,
-        accessTokenExpiresAt: res.expireDateMs,
-        refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
-        status: "connected",
-        lastError: undefined,
+          selectedAccountId: accountId,
+          selectedAccNum: accNum,
+          accessTokenEncrypted,
+          refreshTokenEncrypted,
+          accessTokenExpiresAt: res.expireDateMs,
+          refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
+          status: "connected",
+          lastError: undefined,
       });
 
       console.log("[tradelocker.sync.refresh_ok]", {
@@ -1719,17 +1719,17 @@ export const syncTradeLockerConnection = action({
     let ordersUpserted = 0;
     for (const o of orders) {
       await ctx.runMutation(api.raw.mutations.upsertTradeOrder as any, {
-        organizationId: args.organizationId,
-        userId: args.userId,
-        connectionId,
-        externalOrderId: o.externalOrderId,
-        symbol: o.symbol,
-        instrumentId: o.instrumentId,
-        side: o.side,
-        status: o.status,
-        createdAt: o.createdAt,
-        closedAt: o.closedAt,
-        raw: o.raw,
+          organizationId: args.organizationId,
+          userId: args.userId,
+          connectionId,
+          externalOrderId: o.externalOrderId,
+          symbol: o.symbol,
+          instrumentId: o.instrumentId,
+          side: o.side,
+          status: o.status,
+          createdAt: o.createdAt,
+          closedAt: o.closedAt,
+          raw: o.raw,
       });
       ordersUpserted++;
     }
@@ -1737,17 +1737,17 @@ export const syncTradeLockerConnection = action({
     let ordersHistoryUpserted = 0;
     for (const o of ordersHistory) {
       await ctx.runMutation(api.raw.mutations.upsertTradeOrderHistory as any, {
-        organizationId: args.organizationId,
-        userId: args.userId,
-        connectionId,
-        externalOrderId: o.externalOrderId,
-        symbol: o.symbol,
-        instrumentId: o.instrumentId,
-        side: o.side,
-        status: o.status,
-        createdAt: o.createdAt,
-        closedAt: o.closedAt,
-        raw: o.raw,
+          organizationId: args.organizationId,
+          userId: args.userId,
+          connectionId,
+          externalOrderId: o.externalOrderId,
+          symbol: o.symbol,
+          instrumentId: o.instrumentId,
+          side: o.side,
+          status: o.status,
+          createdAt: o.createdAt,
+          closedAt: o.closedAt,
+          raw: o.raw,
       });
       ordersHistoryUpserted++;
     }
@@ -1755,17 +1755,17 @@ export const syncTradeLockerConnection = action({
     let positionsUpserted = 0;
     for (const p of positions) {
       await ctx.runMutation(api.raw.mutations.upsertTradePosition as any, {
-        organizationId: args.organizationId,
-        userId: args.userId,
-        connectionId,
-        externalPositionId: p.externalPositionId,
-        symbol: p.symbol,
-        instrumentId: p.instrumentId,
-        side: p.side,
-        openedAt: p.openedAt,
-        qty: p.qty,
-        avgPrice: p.avgPrice,
-        raw: p.raw,
+          organizationId: args.organizationId,
+          userId: args.userId,
+          connectionId,
+          externalPositionId: p.externalPositionId,
+          symbol: p.symbol,
+          instrumentId: p.instrumentId,
+          side: p.side,
+          openedAt: p.openedAt,
+          qty: p.qty,
+          avgPrice: p.avgPrice,
+          raw: p.raw,
       });
       positionsUpserted++;
     }
@@ -1777,15 +1777,15 @@ export const syncTradeLockerConnection = action({
         accountDetailsColumns,
       );
       await ctx.runMutation(api.raw.mutations.upsertTradeAccountState as any, {
-        organizationId: args.organizationId,
-        userId: args.userId,
-        connectionId,
-        accountId: tradeAccountId,
-        raw: {
-          raw: accountState,
-          parsedAccountDetails,
-          accountDetailsColumns,
-        },
+          organizationId: args.organizationId,
+          userId: args.userId,
+          connectionId,
+          accountId: tradeAccountId,
+          raw: {
+            raw: accountState,
+            parsedAccountDetails,
+            accountDetailsColumns,
+          },
       });
     }
 

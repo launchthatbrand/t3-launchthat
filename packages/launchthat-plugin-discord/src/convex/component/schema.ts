@@ -74,6 +74,8 @@ export default defineSchema({
     // TraderLaunchpad trade feed routing (optional)
     mentorTradesChannelId: v.optional(v.string()),
     memberTradesChannelId: v.optional(v.string()),
+    mentorTradesTemplateId: v.optional(v.id("messageTemplates")),
+    memberTradesTemplateId: v.optional(v.id("messageTemplates")),
 
     updatedAt: v.number(),
   })
@@ -112,8 +114,11 @@ export default defineSchema({
   messageTemplates: defineTable({
     organizationId: v.string(),
     guildId: v.optional(v.string()),
-    kind: v.union(v.literal("tradeidea")),
+    kind: v.string(),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
     template: v.string(),
+    createdAt: v.optional(v.number()),
     updatedAt: v.number(),
   })
     .index("by_organizationId_and_kind", ["organizationId", "kind"])
@@ -121,6 +126,17 @@ export default defineSchema({
       "organizationId",
       "guildId",
       "kind",
+    ])
+    .index("by_organizationId_and_kind_and_updatedAt", [
+      "organizationId",
+      "kind",
+      "updatedAt",
+    ])
+    .index("by_organizationId_and_guildId_and_kind_and_updatedAt", [
+      "organizationId",
+      "guildId",
+      "kind",
+      "updatedAt",
     ]),
 
   supportThreads: defineTable({

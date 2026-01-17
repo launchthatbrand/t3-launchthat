@@ -4,11 +4,16 @@ export type DiscordUiApi = {
     listGuildConnectionsForOrg: any;
     getGuildSettings: any;
     getTemplate: any;
+    listTemplates: any;
+    getTemplateById: any;
     getMyDiscordLink: any;
   };
   mutations: {
     upsertGuildSettings: any;
     upsertTemplate: any;
+    createTemplate: any;
+    updateTemplate: any;
+    deleteTemplate: any;
     unlinkMyDiscordLink: any;
   };
   actions: {
@@ -18,11 +23,31 @@ export type DiscordUiApi = {
   };
 };
 
+export type DiscordUiTheme = {
+  pageClassName?: string;
+  headerClassName?: string;
+  titleClassName?: string;
+  descriptionClassName?: string;
+  cardClassName?: string;
+  cardHeaderClassName?: string;
+  cardTitleClassName?: string;
+  cardDescriptionClassName?: string;
+  cardContentClassName?: string;
+  listClassName?: string;
+  emptyStateClassName?: string;
+  badgeClassName?: string;
+  badgePositiveClassName?: string;
+  badgeNegativeClassName?: string;
+  buttonClassName?: string;
+  outlineButtonClassName?: string;
+};
+
 export type DiscordPageProps = {
   api: DiscordUiApi;
   organizationId?: string;
   basePath?: string;
   className?: string;
+  ui?: DiscordUiTheme;
 };
 
 export type DiscordGuildSettingsPageProps = DiscordPageProps & {
@@ -31,6 +56,23 @@ export type DiscordGuildSettingsPageProps = DiscordPageProps & {
 
 export type DiscordTemplatesPageProps = DiscordPageProps & {
   guildId?: string;
+  templateContexts?: DiscordTemplateContext[];
+  defaultTemplateKind?: string;
+};
+
+export type DiscordTemplateField = {
+  key: string;
+  label: string;
+  description?: string;
+  example?: string;
+};
+
+export type DiscordTemplateContext = {
+  kind: string;
+  label: string;
+  description?: string;
+  fields: DiscordTemplateField[];
+  defaultTemplate?: string;
 };
 
 export type DiscordLinkComponentProps = {

@@ -24,6 +24,8 @@ export const getGuildSettings = query({
       announcementEventKeys: v.optional(v.array(v.string())),
       mentorTradesChannelId: v.optional(v.string()),
       memberTradesChannelId: v.optional(v.string()),
+      mentorTradesTemplateId: v.optional(v.id("messageTemplates")),
+      memberTradesTemplateId: v.optional(v.id("messageTemplates")),
       updatedAt: v.number(),
     }),
   ),
@@ -96,6 +98,14 @@ export const getGuildSettings = query({
       memberTradesChannelId:
         typeof (row as any).memberTradesChannelId === "string"
           ? ((row as any).memberTradesChannelId as string)
+          : undefined,
+      mentorTradesTemplateId:
+        typeof (row as any).mentorTradesTemplateId === "string"
+          ? ((row as any).mentorTradesTemplateId as string)
+          : undefined,
+      memberTradesTemplateId:
+        typeof (row as any).memberTradesTemplateId === "string"
+          ? ((row as any).memberTradesTemplateId as string)
           : undefined,
       updatedAt: Number((row as any).updatedAt ?? 0),
     };

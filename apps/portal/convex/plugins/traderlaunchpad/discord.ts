@@ -148,6 +148,18 @@ export const upsertTradeIdeaDiscordMessage = internalAction({
     );
     if (!channelId) return { ok: true, mode: "skipped" as const };
 
+    const guildSettings = await ctx.runQuery(
+      discordComponent.guildSettings.queries.getGuildSettings as any,
+      {
+        organizationId: String(args.organizationId),
+        guildId,
+      },
+    );
+    const templateId =
+      kind === "mentors"
+        ? guildSettings?.mentorTradesTemplateId
+        : guildSettings?.memberTradesTemplateId;
+
     const botToken = await resolveOrgBotTokenForOrg(
       ctx,
       String(args.organizationId),
@@ -157,6 +169,7 @@ export const upsertTradeIdeaDiscordMessage = internalAction({
       {
         organizationId: String(args.organizationId),
         guildId,
+        templateId: templateId ?? undefined,
         symbol: String(group.symbol ?? ""),
         status: group.status === "closed" ? "closed" : "open",
         direction: group.direction === "short" ? "short" : "long",

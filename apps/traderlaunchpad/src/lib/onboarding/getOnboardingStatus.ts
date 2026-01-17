@@ -5,7 +5,8 @@ import { useQuery } from "convex/react";
 
 import { api } from "@convex-config/_generated/api";
 
-type OnboardingStatus = {
+export type OnboardingStatus = {
+  isLoading: boolean;
   connectedOk: boolean;
   syncOk: boolean;
   tradesOk: boolean;
@@ -28,6 +29,10 @@ export const useOnboardingStatus = (): OnboardingStatus => {
   }) as Array<any> | undefined;
 
   return useMemo(() => {
+    const isLoading =
+      connectionData === undefined ||
+      closedIdeas === undefined ||
+      nextToReview === undefined;
     const status = connectionData?.connection?.status;
     const connectedOk = status === "connected";
 
@@ -66,6 +71,7 @@ export const useOnboardingStatus = (): OnboardingStatus => {
           : null;
 
     return {
+      isLoading,
       connectedOk,
       syncOk,
       tradesOk,

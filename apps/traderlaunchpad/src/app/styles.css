@@ -3,6 +3,18 @@
 @import "@acme/tailwind-config/theme";
 
 @source "../../../../packages/ui/src/*.{ts,tsx}";
+@source "../../../../packages/ui/src/**/*.{ts,tsx}";
+@source "../../../../packages/launchthat-plugin-calendar/src/**/*.{ts,tsx}";
+@source "../../../../packages/launchthat-plugin-cms/src/**/*.{ts,tsx}";
+@source "../../../../packages/launchthat-plugin-ecommerce/src/**/*.{ts,tsx}";
+@source "../../../../packages/launchthat-plugin-core/src/**/*.{ts,tsx}";
+@source "../../../../packages/launchthat-plugin-helpdesk/src/**/*.{ts,tsx}";
+@source "../../../../packages/launchthat-plugin-lms/src/**/*.{ts,tsx}";
+@source "../../../../packages/launchthat-plugin-tasks/src/**/*.{ts,tsx}";
+@source "../../../../packages/launchthat-plugin-socialfeed/src/**/*.{ts,tsx}";
+@source "../../../../packages/launchthat-plugin-support/src/**/*.{ts,tsx}";
+@source "../../../../packages/launchthat-plugin-tasks/src/**/*.{ts,tsx}";
+@source "../../../../packages/launchthat-plugin-vimeo/src/**/*.{ts,tsx}";
 
 @custom-variant dark (&:where(.dark, .dark *));
 @custom-variant light (&:where(.light, .light *));

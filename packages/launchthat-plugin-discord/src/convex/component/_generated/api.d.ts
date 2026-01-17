@@ -159,7 +159,9 @@ export type Mounts = {
           escalationKeywords?: Array<string>;
           guildId: string;
           memberTradesChannelId?: string;
+          memberTradesTemplateId?: string;
           mentorTradesChannelId?: string;
+          mentorTradesTemplateId?: string;
           organizationId: string;
           supportAiDisabledMessageEnabled?: boolean;
           supportAiDisabledMessageText?: string;
@@ -186,7 +188,9 @@ export type Mounts = {
           escalationKeywords?: Array<string>;
           guildId: string;
           memberTradesChannelId?: string;
+          memberTradesTemplateId?: string;
           mentorTradesChannelId?: string;
+          mentorTradesTemplateId?: string;
           organizationId: string;
           supportAiDisabledMessageEnabled?: boolean;
           supportAiDisabledMessageText?: string;
@@ -551,12 +555,45 @@ export type Mounts = {
   };
   templates: {
     mutations: {
+      createTemplate: FunctionReference<
+        "mutation",
+        "public",
+        {
+          description?: string;
+          guildId?: string;
+          kind: string;
+          name: string;
+          organizationId: string;
+          template: string;
+        },
+        string
+      >;
+      deleteTemplate: FunctionReference<
+        "mutation",
+        "public",
+        { organizationId: string; templateId: string },
+        null
+      >;
+      updateTemplate: FunctionReference<
+        "mutation",
+        "public",
+        {
+          description?: string;
+          name?: string;
+          organizationId: string;
+          template?: string;
+          templateId: string;
+        },
+        null
+      >;
       upsertTemplate: FunctionReference<
         "mutation",
         "public",
         {
+          description?: string;
           guildId?: string;
-          kind: "tradeidea";
+          kind: string;
+          name?: string;
           organizationId: string;
           template: string;
         },
@@ -567,8 +604,39 @@ export type Mounts = {
       getTemplate: FunctionReference<
         "query",
         "public",
-        { guildId?: string; kind: "tradeidea"; organizationId: string },
+        { guildId?: string; kind: string; organizationId: string },
         null | { template: string; updatedAt: number }
+      >;
+      getTemplateById: FunctionReference<
+        "query",
+        "public",
+        { organizationId: string; templateId: string },
+        null | {
+          _id: string;
+          createdAt?: number;
+          description?: string;
+          guildId?: string;
+          kind: string;
+          name?: string;
+          template: string;
+          updatedAt: number;
+        }
+      >;
+      listTemplates: FunctionReference<
+        "query",
+        "public",
+        { guildId?: string; kind: string; organizationId: string },
+        Array<{
+          _id: string;
+          createdAt?: number;
+          description?: string;
+          guildId?: string;
+          kind: string;
+          name?: string;
+          scope: "org" | "guild";
+          template: string;
+          updatedAt: number;
+        }>
       >;
       renderTradeIdeaMessage: FunctionReference<
         "query",
@@ -585,6 +653,7 @@ export type Mounts = {
           realizedPnl?: number;
           status: "open" | "closed";
           symbol: string;
+          templateId?: string;
         },
         { content: string }
       >;
