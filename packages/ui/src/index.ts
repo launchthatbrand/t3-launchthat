@@ -46,3 +46,4 @@ export * from "./animated-tooltip";
 export * from "./noise-background";
 export * from "./dotted-glow-background";
 export * from "./features-section";
+export * from "./orbiting-circles";

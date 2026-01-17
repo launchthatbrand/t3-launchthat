@@ -11,8 +11,20 @@ export async function Header() {
     <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-black/50 backdrop-blur-md">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 font-bold text-white">
-            TL
+          {/* Logo Icon */}
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white font-bold text-black">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+            </svg>
           </div>
           <span className="text-lg font-bold tracking-tight text-white">
             TraderLaunchpad
@@ -23,14 +35,11 @@ export async function Header() {
           <Link href="#features" className="transition-colors hover:text-white">
             Features
           </Link>
-          <Link href="#pricing" className="transition-colors hover:text-white">
-            Pricing
+          <Link href="#about" className="transition-colors hover:text-white">
+            About
           </Link>
-          <Link
-            href="#testimonials"
-            className="transition-colors hover:text-white"
-          >
-            Reviews
+          <Link href="#blog" className="transition-colors hover:text-white">
+            Blog
           </Link>
         </nav>
 
@@ -39,9 +48,9 @@ export async function Header() {
             <Button
               asChild
               variant="default"
-              className="border-0 bg-blue-600 text-white hover:bg-blue-700"
+              className="rounded-full bg-white px-6 text-black hover:bg-gray-200"
             >
-              <Link href="/admin/dashboard">Go to Journal</Link>
+              <Link href="/admin/dashboard">Journal</Link>
             </Button>
           ) : (
             <>
@@ -54,7 +63,7 @@ export async function Header() {
               </Button>
               <Button
                 asChild
-                className="border-0 bg-white text-black hover:bg-gray-200"
+                className="rounded-full bg-white px-6 text-black hover:bg-gray-200"
               >
                 <Link href="/sign-up">Get Started</Link>
               </Button>
