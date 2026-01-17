@@ -93,7 +93,7 @@ export default function AdminLayout({
         </svg>
       </div>
 
-      <header className="bg-black/40 sticky top-0 z-40 border-b border-white/10 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-black/40 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-2 font-bold">
@@ -116,46 +116,46 @@ export default function AdminLayout({
 
             <nav className="mx-6 hidden items-center space-x-4 lg:flex lg:space-x-6">
               <Tabs value={activeTab} className="w-[680px]">
-                <TabsList className="bg-white/5 border-white/10 grid w-full grid-cols-6 border">
+                <TabsList className="grid w-full grid-cols-6 border border-white/10 bg-white/5">
                   <TabsTrigger
                     value="dashboard"
                     asChild
-                    className="data-[state=active]:bg-white/10 text-white/80 data-[state=active]:text-white"
+                    className="text-white/80 data-[state=active]:bg-white/10 data-[state=active]:text-white"
                   >
                     <Link href="/admin/dashboard">Dashboard</Link>
                   </TabsTrigger>
                   <TabsTrigger
                     value="tradeideas"
                     asChild
-                    className="data-[state=active]:bg-white/10 text-white/80 data-[state=active]:text-white"
+                    className="text-white/80 data-[state=active]:bg-white/10 data-[state=active]:text-white"
                   >
                     <Link href="/admin/tradeideas">TradeIdeas</Link>
                   </TabsTrigger>
                   <TabsTrigger
                     value="orders"
                     asChild
-                    className="data-[state=active]:bg-white/10 text-white/80 data-[state=active]:text-white"
+                    className="text-white/80 data-[state=active]:bg-white/10 data-[state=active]:text-white"
                   >
                     <Link href="/admin/orders">Orders</Link>
                   </TabsTrigger>
                   <TabsTrigger
                     value="analytics"
                     asChild
-                    className="data-[state=active]:bg-white/10 text-white/80 data-[state=active]:text-white"
+                    className="text-white/80 data-[state=active]:bg-white/10 data-[state=active]:text-white"
                   >
                     <Link href="/admin/analytics">Analytics</Link>
                   </TabsTrigger>
                   <TabsTrigger
                     value="integrations"
                     asChild
-                    className="data-[state=active]:bg-white/10 text-white/80 data-[state=active]:text-white"
+                    className="text-white/80 data-[state=active]:bg-white/10 data-[state=active]:text-white"
                   >
                     <Link href="/admin/integrations">Integrations</Link>
                   </TabsTrigger>
                   <TabsTrigger
                     value="settings"
                     asChild
-                    className="data-[state=active]:bg-white/10 text-white/80 data-[state=active]:text-white"
+                    className="text-white/80 data-[state=active]:bg-white/10 data-[state=active]:text-white"
                   >
                     <Link href="/admin/settings">Settings</Link>
                   </TabsTrigger>

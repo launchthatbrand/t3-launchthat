@@ -18,6 +18,7 @@ import { DottedGlowBackground, OrbitingCircles } from "@acme/ui";
 import { Button } from "@acme/ui/button";
 
 import { Header } from "../components/landing/Header";
+import { IphoneNotificationDemo } from "../components/landing/IphoneNotificationDemo";
 
 const GridLines = () => (
   <div className="pointer-events-none absolute inset-0 z-0 mx-auto h-full max-w-7xl">
@@ -411,6 +412,41 @@ export default function HomePage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Full-width Card: Live Alerts (AnimatedList) */}
+            <div className="group col-span-1 overflow-hidden rounded-3xl border border-white/10 bg-white/3 p-8 backdrop-blur-md transition-colors duration-300 hover:border-white/20 hover:bg-white/6 md:col-span-3">
+              <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-200">
+                    <Zap className="h-3.5 w-3.5" />
+                    Live trade alerts
+                  </div>
+                  <h3 className="text-xl font-semibold text-white">
+                    Signals you can act on, instantly
+                  </h3>
+                  <p className="mt-2 max-w-2xl text-sm text-gray-400">
+                    See strategy insights stream in real-time—entries, exits,
+                    risk notes, and automation events—so you never miss a move.
+                  </p>
+                </div>
+
+                <div className="mt-4 flex items-start md:mt-0">
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="rounded-full border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                  >
+                    <Link href="/sign-up">
+                      Get started <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex justify-center">
+                <IphoneNotificationDemo />
               </div>
             </div>
           </div>
