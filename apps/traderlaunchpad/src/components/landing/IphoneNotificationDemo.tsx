@@ -1,9 +1,5 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { XIcon } from "lucide-react";
-import { motion } from "motion/react";
-
 import {
   AnimatedList,
   Dialog,
@@ -14,11 +10,15 @@ import {
   DialogTitle,
   IphoneMock,
 } from "@acme/ui";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  NotificationTile,
-  type PhoneNotification,
-} from "./NotificationTile";
+import { NotificationTile } from "./NotificationTile";
+import type { PhoneNotification } from "./NotificationTile";
+import { TraderLaunchpadMobileMock } from "./TraderLaunchpadMobileMock";
+import type { TraderLaunchpadMobileRoute } from "./TraderLaunchpadMobileMock";
+import { XIcon } from "lucide-react";
+import { demoNotifications } from "@acme/demo-data";
+import { motion } from "motion/react";
 
 export const IphoneNotificationDemo = () => {
   const [now, setNow] = useState<Date>(() => new Date());
@@ -70,85 +70,8 @@ export const IphoneNotificationDemo = () => {
     }
   }, [now]);
 
-  const notifications = useMemo<Array<PhoneNotification>>(
-    () => [
-      {
-        id: "best-time",
-        app: "TraderLaunchpad",
-        time: "now",
-        title: "Best time to trade in 10 minutes",
-        body: "Volatility window opening • Setup aligns with your edge",
-        accent: true,
-        details: {
-          title: "Best time to trade in 10 minutes",
-          summary:
-            "We detected a high-probability window based on your preferred session, recent volatility, and historical performance for this setup.",
-          howCalculated:
-            "This alert blends: (1) session timing (your configured market hours), (2) recent volatility expansion vs. baseline, (3) trend + momentum alignment, and (4) your strategy’s historical win-rate at similar market conditions. The '10 minutes' estimate comes from the average time-to-breakout after a comparable compression pattern.",
-        },
-      },
-      {
-        id: "sync",
-        app: "TradeLocker",
-        time: "1m",
-        title: "Sync complete",
-        body: "Orders matched • Positions reconciled",
-        details: {
-          title: "TradeLocker sync complete",
-          summary:
-            "Your account snapshot and open positions were successfully synchronized.",
-        },
-      },
-      {
-        id: "discord",
-        app: "Discord",
-        time: "2m",
-        title: "Alert sent",
-        body: "Posted to #signals • 2.1k viewers reached",
-        details: {
-          title: "Discord alert sent",
-          summary:
-            "A formatted signal notification was delivered to your configured Discord channel.",
-        },
-      },
-      {
-        id: "backtest",
-        app: "Backtester",
-        time: "3m",
-        title: "Report ready",
-        body: "Win rate + expectancy calculated • Export available",
-        details: {
-          title: "Backtest report ready",
-          summary:
-            "We finished running the strategy across your selected time range and compiled a summary report.",
-        },
-      },
-      {
-        id: "risk",
-        app: "Risk Engine",
-        time: "now",
-        title: "Guard active",
-        body: "Drawdown protected • Exposure within limits",
-        accent: true,
-        details: {
-          title: "Risk guard active",
-          summary:
-            "Your risk rules are currently enforcing exposure limits and drawdown protection.",
-        },
-      },
-      {
-        id: "webhook",
-        app: "Webhooks",
-        time: "4m",
-        title: "Delivered",
-        body: "Latency 184ms • Subscriber acknowledged",
-        details: {
-          title: "Webhook delivered",
-          summary:
-            "The outbound webhook was delivered successfully and acknowledged by the subscriber endpoint.",
-        },
-      },
-    ],
+  const notifications = useMemo<PhoneNotification[]>(
+    () => demoNotifications as unknown as PhoneNotification[],
     [],
   );
 
@@ -163,7 +86,20 @@ export const IphoneNotificationDemo = () => {
   const [isPaused, setIsPaused] = useState(false);
   const resumeTimeoutRef = useRef<number | null>(null);
 
-  const handleNotificationClick = (
+  const screenRef = useRef<HTMLDivElement | null>(null);
+  const [scene, setScene] = useState<"lock" | "app">("lock");
+  const [appRoute, setAppRoute] = useState<TraderLaunchpadMobileRoute>({
+    kind: "tab",
+    tab: "home",
+  });
+  const [appOrigin, setAppOrigin] = useState<{
+    x: number;
+    y: number;
+    scale: number;
+    radius: number;
+  }>({ x: 0, y: 0, scale: 0.35, radius: 22 });
+
+  const handleNotificationInfoClick = (
     e: React.MouseEvent<HTMLButtonElement>,
     n: PhoneNotification,
   ) => {
@@ -196,6 +132,65 @@ export const IphoneNotificationDemo = () => {
     setIsOpen(true);
   };
 
+  const handleOpenAppFromNotification = (
+    e: React.MouseEvent<HTMLElement>,
+    n: PhoneNotification,
+  ) => {
+    // Pause notifications while "opening the app".
+    setIsPaused(true);
+
+    const containerRect = screenRef.current?.getBoundingClientRect();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const targetW = containerRect?.width ?? rect.width;
+    const targetH = containerRect?.height ?? rect.height;
+
+    const rectCenterX = rect.left + rect.width / 2;
+    const rectCenterY = rect.top + rect.height / 2;
+    const containerCenterX =
+      (containerRect?.left ?? 0) + (containerRect?.width ?? targetW) / 2;
+    const containerCenterY =
+      (containerRect?.top ?? 0) + (containerRect?.height ?? targetH) / 2;
+
+    const scale = Math.max(
+      0.18,
+      Math.min(0.95, Math.min(rect.width / targetW, rect.height / targetH)),
+    );
+
+    setAppOrigin({
+      x: rectCenterX - containerCenterX,
+      y: rectCenterY - containerCenterY,
+      scale,
+      radius: 22,
+    });
+
+    // Basic routing based on the notification.
+    if (n.id === "best-time") {
+      setAppRoute({ kind: "insight", insightId: "best-time" });
+    } else if (n.id === "plan-violation") {
+      setAppRoute({ kind: "tab", tab: "home" });
+    } else if (n.id === "sync") {
+      setAppRoute({ kind: "tab", tab: "settings" });
+    } else if (n.id === "discord") {
+      setAppRoute({ kind: "tab", tab: "signals" });
+    } else if (n.id === "backtest") {
+      setAppRoute({ kind: "tab", tab: "journal" });
+    } else if (n.id === "risk") {
+      setAppRoute({ kind: "tab", tab: "home" });
+    } else if (n.id === "webhook") {
+      setAppRoute({ kind: "tab", tab: "settings" });
+    } else {
+      setAppRoute({ kind: "tab", tab: "home" });
+    }
+
+    setScene("app");
+  };
+
+  const handleCloseApp = () => {
+    setScene("lock");
+    // Resume shortly after returning to lockscreen.
+    window.setTimeout(() => setIsPaused(false), 500);
+  };
+
   useEffect(() => {
     if (resumeTimeoutRef.current) {
       window.clearTimeout(resumeTimeoutRef.current);
@@ -217,58 +212,120 @@ export const IphoneNotificationDemo = () => {
   return (
     <>
       <IphoneMock>
-        {/* iOS-ish status + lockscreen header */}
-        <div className="flex items-center justify-between px-1 text-[11px] font-medium text-white/80">
-          <div>{timeText}</div>
-          <div className="flex items-center gap-1.5 text-white/70">
-            <div className="h-2 w-3 rounded-sm border border-white/30" />
-            <div className="h-2 w-2 rounded-full bg-white/70" />
-            <div className="h-2 w-4 rounded-sm bg-white/70" />
-          </div>
-        </div>
+        <div ref={screenRef} className="relative flex h-full w-full flex-col">
+          {/* Lockscreen */}
+          <motion.div
+            className="relative z-10"
+            animate={scene === "lock" ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {/* iOS-ish status + lockscreen header */}
+            <div className="flex items-center justify-between px-1 text-[11px] font-medium text-white/80">
+              <div>{timeText}</div>
+              <div className="flex items-center gap-1.5 text-white/70">
+                <div className="h-2 w-3 rounded-sm border border-white/30" />
+                <div className="h-2 w-2 rounded-full bg-white/70" />
+                <div className="h-2 w-4 rounded-sm bg-white/70" />
+              </div>
+            </div>
 
-        <div className="mt-6 mb-4 text-center">
-          <div className="text-[12px] text-white/60">{dateText}</div>
-          <div className="mt-1 text-5xl font-semibold tracking-tight text-white">
-            {timeText}
-          </div>
-        </div>
+            <div className="mt-6 mb-4 text-center">
+              <div className="text-[12px] text-white/60">{dateText}</div>
+              <div className="mt-1 text-5xl font-semibold tracking-tight text-white">
+                {timeText}
+              </div>
+            </div>
 
-        <div className="mb-2 flex items-center justify-between px-1 text-[11px] text-white/60">
-          <div className="font-medium">Notifications</div>
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-orange-500/70 shadow-[0_0_10px_rgba(249,115,22,0.45)]" />
-            <span className="font-medium text-white/70">Live</span>
-          </div>
-        </div>
+            <div className="mb-2 flex items-center justify-between px-1 text-[11px] text-white/60">
+              <div className="font-medium">Notifications</div>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-orange-500/70 shadow-[0_0_10px_rgba(249,115,22,0.45)]" />
+                <span className="font-medium text-white/70">Live</span>
+              </div>
+            </div>
 
-        <AnimatedList
-          // Slow down the pace a bit
-          delay={1800}
-          holdDelay={1800}
-          loop
-          paused={isPaused}
-          variant="iosPush"
-          stackAfter={3}
-          itemHeightPx={92}
-          itemGapPx={8}
-          stackOverlapPx={12}
-          stackScaleStep={0.02}
-          stackOpacityStep={0.12}
-          maxStackDepth={2}
-          itemMotionProps={{
-            transition: { duration: 0.75, ease: "easeOut" },
-          }}
-          className="w-full"
-        >
-          {notifications.map((n) => (
-            <NotificationTile
-              key={n.id}
-              notification={n}
-              onClickAction={handleNotificationClick}
-            />
-          ))}
-        </AnimatedList>
+            <AnimatedList
+              // Slow down the pace a bit
+              delay={1800}
+              holdDelay={1800}
+              loop
+              paused={isPaused || scene !== "lock"}
+              variant="iosPush"
+              stackAfter={3}
+              itemHeightPx={92}
+              itemGapPx={8}
+              stackOverlapPx={12}
+              stackScaleStep={0.02}
+              stackOpacityStep={0.12}
+              maxStackDepth={2}
+              itemMotionProps={{
+                transition: { duration: 0.75, ease: "easeOut" },
+              }}
+              className="w-full"
+            >
+              {notifications.map((n) => (
+                <NotificationTile
+                  key={n.id}
+                  notification={n}
+                  onOpenAppAction={handleOpenAppFromNotification}
+                  onOpenInfoAction={handleNotificationInfoClick}
+                />
+              ))}
+            </AnimatedList>
+          </motion.div>
+
+          {/* App scene */}
+          <motion.div
+            className="absolute inset-0 z-20"
+            style={{ pointerEvents: scene === "app" ? "auto" : "none" }}
+            initial={false}
+            animate={scene === "app" ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.div
+              className="absolute inset-0 overflow-hidden rounded-3xl"
+              initial={{
+                opacity: 0,
+                scale: appOrigin.scale,
+                x: appOrigin.x,
+                y: appOrigin.y,
+                borderRadius: appOrigin.radius,
+              }}
+              animate={
+                scene === "app"
+                  ? {
+                      opacity: 1,
+                      scale: 1,
+                      x: 0,
+                      y: 0,
+                      borderRadius: 24,
+                    }
+                  : {
+                      opacity: 0,
+                      scale: appOrigin.scale,
+                      x: appOrigin.x,
+                      y: appOrigin.y,
+                      borderRadius: appOrigin.radius,
+                    }
+              }
+              transition={{ duration: 0.45, ease: "easeOut" }}
+            >
+              <div className="absolute top-3 left-3 z-30">
+                <button
+                  type="button"
+                  onClick={handleCloseApp}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur-md transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-orange-400/50 focus-visible:outline-hidden"
+                >
+                  <span className="text-white/70">←</span> Lock screen
+                </button>
+              </div>
+              <TraderLaunchpadMobileMock
+                route={appRoute}
+                onNavigateAction={setAppRoute}
+              />
+            </motion.div>
+          </motion.div>
+        </div>
       </IphoneMock>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>

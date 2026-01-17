@@ -1,8 +1,9 @@
-import React from "react";
+import { ArrowRight } from "lucide-react";
+import { Button } from "@acme/ui/moving-border";
 import Link from "next/link";
+import React from "react";
+import { Button as UiButton } from "@acme/ui/button";
 import { auth } from "@clerk/nextjs/server";
-
-import { Button } from "@acme/ui/button";
 
 export async function Header() {
   const { userId } = await auth();
@@ -35,6 +36,12 @@ export async function Header() {
           <Link href="#features" className="transition-colors hover:text-white">
             Features
           </Link>
+          <Link href="/brokers" className="transition-colors hover:text-white">
+            Brokers
+          </Link>
+          <Link href="/firms" className="transition-colors hover:text-white">
+            Prop Firms
+          </Link>
           <Link href="#about" className="transition-colors hover:text-white">
             About
           </Link>
@@ -45,28 +52,45 @@ export async function Header() {
 
         <div className="flex items-center gap-4">
           {userId ? (
-            <Button
-              asChild
-              variant="default"
-              className="rounded-full bg-white px-6 text-black hover:bg-gray-200"
-            >
-              <Link href="/admin/dashboard">Journal</Link>
-            </Button>
+            <Link href="/admin/dashboard" className="inline-block">
+              <Button
+                as="div"
+                borderRadius="1.75rem"
+                containerClassName="h-10 w-auto min-w-[140px]"
+                className="bg-white text-black font-medium border-neutral-200 dark:border-slate-800 cursor-pointer"
+              >
+                <span className="flex w-full items-center justify-between gap-3 px-1">
+                  <span className="w-full text-center font-bold">Dashboard</span>
+                  <span className="flex min-h-7 min-w-7 items-center justify-center rounded-full bg-black text-white">
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </span>
+                </span>
+              </Button>
+            </Link>
           ) : (
             <>
-              <Button
+              <UiButton
                 asChild
                 variant="ghost"
                 className="text-gray-300 hover:bg-white/10 hover:text-white"
               >
                 <Link href="/sign-in">Sign In</Link>
-              </Button>
-              <Button
-                asChild
-                className="rounded-full bg-white px-6 text-black hover:bg-gray-200"
-              >
-                <Link href="/sign-up">Get Started</Link>
-              </Button>
+              </UiButton>
+              <Link href="/sign-up" className="inline-block">
+                <Button
+                  as="div"
+                  borderRadius="1.75rem"
+                  containerClassName="h-10 w-auto min-w-[160px]"
+                  className="bg-white text-black font-medium border-neutral-200 dark:border-slate-800 cursor-pointer"
+                >
+                  <span className="flex w-full items-center justify-between gap-3 px-1">
+                    <span>Get Started</span>
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black text-white">
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  </span>
+                </Button>
+              </Link>
             </>
           )}
         </div>

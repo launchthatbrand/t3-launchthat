@@ -1,12 +1,12 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
+import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { UserButton, useAuth } from "@clerk/nextjs";
 import { redirect, usePathname } from "next/navigation";
-import { useAuth, UserButton } from "@clerk/nextjs";
 
 import { DottedGlowBackground } from "@acme/ui";
-import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import Link from "next/link";
+import React from "react";
 
 const GridLines = () => (
   <div className="pointer-events-none absolute inset-0 z-0 mx-auto h-full max-w-7xl">
@@ -51,7 +51,7 @@ export default function AdminLayout({
   if (!isLoaded || !userId) return null;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#0A0A0A] text-white">
+    <div className="dark relative min-h-screen overflow-hidden bg-[#0A0A0A] text-white">
       {/* Background */}
       <div className="fixed inset-0 z-0">
         <DottedGlowBackground

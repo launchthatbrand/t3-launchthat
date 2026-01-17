@@ -171,3 +171,171 @@
     }
   }
 }
+
+@theme inline {
+  --animate-marquee: marquee var(--duration) infinite linear;
+  --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+ 
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(calc(-100% - var(--gap)));
+    }
+  }
+  @keyframes marquee-vertical {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(calc(-100% - var(--gap)));
+    }
+  }
+}
+
+@layer utilities {
+  /**
+   * Frosted-glass title plate for hero text.
+   * Inspired by Josh Comeau’s “extend + mask” backdrop-filter trick:
+   * https://www.joshwcomeau.com/css/backdrop-filter/
+   */
+  .tlp-frosted-title {
+    position: relative;
+    display: inline-block;
+    padding: 0.25em 0.55em;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.92);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+    /* Subtle “glass plate” silhouette */
+    clip-path: polygon(
+      8px 0%,
+      calc(100% - 8px) 0%,
+      100% 8px,
+      100% calc(100% - 8px),
+      calc(100% - 8px) 100%,
+      8px 100%,
+      0% calc(100% - 8px),
+      0% 8px
+    );
+  }
+
+  /**
+   * Frosted-glass *glyphs* (text itself).
+   * We apply backdrop-filter on a tight inline-block wrapper, then render
+   * semi-transparent “etched” letters (stroke + glow) so the blurred backdrop
+   * reads through the characters.
+   *
+   * Note: True “blur only inside letters” would require SVG masking; this is
+   * the best pure-CSS approximation.
+   */
+  .tlp-frosted-text {
+    position: relative;
+    display: inline-block;
+    padding: 0.06em 0.18em;
+    color: rgba(255, 255, 255, 0.26);
+    text-shadow:
+      0 1px 0 rgba(0, 0, 0, 0.25),
+      0 0 18px rgba(255, 255, 255, 0.18),
+      0 0 44px rgba(249, 115, 22, 0.18);
+    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.34);
+  }
+
+  @supports ((backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px))) {
+    .tlp-frosted-text {
+      background: rgba(255, 255, 255, 0.04);
+      -webkit-backdrop-filter: blur(16px) saturate(1.35) brightness(1.06);
+      backdrop-filter: blur(16px) saturate(1.35) brightness(1.06);
+    }
+  }
+
+  /* Extend blur influence for nearby dots/glow, per Josh Comeau */
+  @supports ((mask-image: none) or (-webkit-mask-image: none)) {
+    .tlp-frosted-text::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      height: 200%;
+      pointer-events: none;
+      -webkit-backdrop-filter: blur(16px) saturate(1.35) brightness(1.06);
+      backdrop-filter: blur(16px) saturate(1.35) brightness(1.06);
+      -webkit-mask-image: linear-gradient(
+        to bottom,
+        black 0% 50%,
+        transparent 50% 100%
+      );
+      mask-image: linear-gradient(
+        to bottom,
+        black 0% 50%,
+        transparent 50% 100%
+      );
+    }
+  }
+
+  /* Backdrop blur layer */
+  .tlp-frosted-title::before {
+    content: "";
+    position: absolute;
+    inset: -8px;
+    /* Extend the blur area so nearby dots/glows influence the blur */
+    height: calc(100% + 16px);
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.10),
+      rgba(255, 255, 255, 0.04)
+    );
+    opacity: 0;
+    /* Keep same chamfer silhouette */
+    clip-path: inherit;
+    transform: translateZ(0);
+  }
+
+  .tlp-frosted-title::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -2px;
+    height: 2px;
+    pointer-events: none;
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(255, 255, 255, 0.18),
+      transparent
+    );
+    opacity: 0.75;
+  }
+
+  @supports ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) {
+    .tlp-frosted-title {
+      background: rgba(0, 0, 0, 0.08);
+    }
+
+    .tlp-frosted-title::before {
+      opacity: 1;
+      -webkit-backdrop-filter: blur(14px) saturate(1.25);
+      backdrop-filter: blur(14px) saturate(1.25);
+    }
+  }
+
+  /* If mask-image is supported, extend the blur downward without changing visuals */
+  @supports ((mask-image: none) or (-webkit-mask-image: none)) {
+    .tlp-frosted-title::before {
+      /* 200% trick: blur includes nearby content */
+      height: 200%;
+      -webkit-mask-image: linear-gradient(
+        to bottom,
+        black 0% 50%,
+        transparent 50% 100%
+      );
+      mask-image: linear-gradient(
+        to bottom,
+        black 0% 50%,
+        transparent 50% 100%
+      );
+    }
+  }
+}

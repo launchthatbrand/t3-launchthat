@@ -1,11 +1,18 @@
 "use client";
 
 import React from "react";
+import { AlertTriangle, Smile } from "lucide-react";
 
 import { cn } from "@acme/ui";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+
+import {
+  getTradingCalendarRecommendations,
+  toDateKey,
+  weekdayLabel,
+} from "./tradingCalendarRecommendations";
 
 interface DailyStat {
   date: string;
@@ -15,11 +22,6 @@ interface DailyStat {
 }
 
 export type TradingCalendarDailyStat = DailyStat;
-
-const toKey = (date: Date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
-    date.getDate(),
-  ).padStart(2, "0")}`;
 
 const buildMonthDays = (monthOffset: number) => {
   const today = new Date();
@@ -70,6 +72,15 @@ export function TradingCalendarPanel({
 }) {
   const [monthOffset, setMonthOffset] = React.useState(0);
   const { days, label } = buildMonthDays(monthOffset);
+  const rec = React.useMemo(
+    () =>
+      getTradingCalendarRecommendations({
+        dailyStats,
+        minSamplesWeekday: 1,
+        minSamplesDayOfMonth: 1,
+      }),
+    [dailyStats],
+  );
 
   const dailyMap = React.useMemo(() => {
     const map: Record<string, DailyStat> = {};
@@ -92,6 +103,26 @@ export function TradingCalendarPanel({
           <p className="text-muted-foreground text-sm">
             Daily win/loss totals with quick drill-down.
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-white/60">
+            {rec.goodWeekdays.length > 0 ? (
+              <div className="flex items-center gap-1.5">
+                <Smile className="h-3.5 w-3.5 text-orange-300" />
+                <span className="font-medium">Projected strong:</span>
+                <span className="font-semibold text-white/80">
+                  {rec.goodWeekdays.map(weekdayLabel).join(", ")}
+                </span>
+              </div>
+            ) : null}
+            {rec.badWeekdays.length > 0 ? (
+              <div className="flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 text-red-300" />
+                <span className="font-medium">Projected weak:</span>
+                <span className="font-semibold text-white/80">
+                  {rec.badWeekdays.map(weekdayLabel).join(", ")}
+                </span>
+              </div>
+            ) : null}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -126,11 +157,14 @@ export function TradingCalendarPanel({
             </div>
           ))}
           {days.map(({ date, inMonth }) => {
-            const key = toKey(date);
+            const key = toDateKey(date);
             const stat = dailyMap[key];
             const isSelected = selectedDate === key;
             const pnl = stat?.pnl ?? 0;
             const hasTrades = Boolean(stat);
+            const isFuture = date.getTime() >= new Date().setHours(0, 0, 0, 0);
+            const isGood = isFuture && rec.goodDateKeys.has(key);
+            const isBad = isFuture && rec.badDateKeys.has(key);
 
             return (
               <button
@@ -144,12 +178,23 @@ export function TradingCalendarPanel({
                   "flex flex-col gap-1 rounded-md border border-white/10 bg-black/20 p-2 text-left transition hover:border-orange-500/60 hover:bg-white/5",
                   !inMonth && "bg-black/10 text-white/30",
                   isSelected && "border-orange-500 bg-orange-500/10",
+                  isGood &&
+                    !isSelected &&
+                    "border-orange-400/40 bg-linear-to-b from-orange-500/10 to-transparent shadow-[0_0_0_1px_rgba(249,115,22,0.15)]",
+                  isBad &&
+                    !isSelected &&
+                    "border-red-400/35 bg-linear-to-b from-red-500/10 to-transparent shadow-[0_0_0_1px_rgba(248,113,113,0.12)]",
                 )}
               >
                 <div className="flex items-center justify-between text-xs">
                   <span className={cn(!inMonth && "opacity-40")}>
                     {date.getDate()}
                   </span>
+                  {isGood ? (
+                    <Smile className="h-3.5 w-3.5 text-orange-300" />
+                  ) : isBad ? (
+                    <AlertTriangle className="h-3.5 w-3.5 text-red-300" />
+                  ) : null}
                 </div>
                 {hasTrades ? (
                   <div className="mt-1 space-y-1">

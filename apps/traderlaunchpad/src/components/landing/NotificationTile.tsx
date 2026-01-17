@@ -20,11 +20,16 @@ export interface PhoneNotification {
 
 export const NotificationTile = ({
   notification,
-  onClickAction,
+  onOpenAppAction,
+  onOpenInfoAction,
   heightClassName = "h-[92px]",
 }: {
   notification: PhoneNotification;
-  onClickAction?: (
+  onOpenAppAction?: (
+    e: React.MouseEvent<HTMLElement>,
+    n: PhoneNotification,
+  ) => void;
+  onOpenInfoAction?: (
     e: React.MouseEvent<HTMLButtonElement>,
     n: PhoneNotification,
   ) => void;
@@ -32,9 +37,16 @@ export const NotificationTile = ({
 }) => {
   const n = notification;
   return (
-    <button
-      type="button"
-      onClick={(e) => onClickAction?.(e, n)}
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={(e) => onOpenAppAction?.(e, n)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpenAppAction?.(e as unknown as React.MouseEvent<HTMLElement>, n);
+        }
+      }}
       className={[
         heightClassName,
         "w-full rounded-2xl border bg-white/10 px-3.5 py-3 text-left shadow-[0_12px_30px_rgba(0,0,0,0.35)] backdrop-blur-xl",
@@ -57,7 +69,21 @@ export const NotificationTile = ({
             {n.app}
           </div>
         </div>
-        <div className="shrink-0 text-[11px] text-white/55">{n.time}</div>
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="text-[11px] text-white/55">{n.time}</div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenInfoAction?.(e, n);
+            }}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/30 text-white/70 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-orange-400/50 focus-visible:outline-hidden"
+            aria-label={`More info: ${n.title}`}
+            title="More info"
+          >
+            i
+          </button>
+        </div>
       </div>
 
       <div className="mt-2">
@@ -68,6 +94,6 @@ export const NotificationTile = ({
           {n.body}
         </div>
       </div>
-    </button>
+    </div>
   );
 };

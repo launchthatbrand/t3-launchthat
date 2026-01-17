@@ -1,8 +1,5 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
   AlertCircle,
@@ -15,10 +12,7 @@ import {
   Target,
   TrendingUp,
 } from "lucide-react";
-
-import { cn } from "@acme/ui";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Card,
   CardContent,
@@ -26,10 +20,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { Progress } from "@acme/ui/progress";
+import {
+  demoCalendarDailyStats,
+  demoDashboardStats,
+  demoInsights,
+  demoReviewTrades,
+} from "@acme/demo-data";
 
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { DashboardHero } from "~/components/dashboard/DashboardHero";
+import Link from "next/link";
+import { Progress } from "@acme/ui/progress";
+import React from "react";
 import { TradingCalendarPanel } from "~/components/dashboard/TradingCalendarPanel";
 import { TradingTimingInsights } from "~/components/dashboard/TradingTimingInsights";
+import { cn } from "@acme/ui";
+import { createPortal } from "react-dom";
 import { useOnboardingStatus } from "~/lib/onboarding/getOnboardingStatus";
 import { useTradingCalendarStore } from "~/stores/tradingCalendarStore";
 
@@ -69,115 +76,50 @@ function TooltipIcon({
       <Button variant="ghost" size="icon" aria-label={title}>
         <HelpCircle className="h-3.5 w-3.5" />
       </Button>
-      <AnimatePresence>
-        {open ? (
-          <motion.div
-            initial={{ opacity: 0, y: 6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 6, scale: 0.98 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            className="pointer-events-none fixed inset-0 z-50"
-          >
-            <div className="pointer-events-none absolute inset-0 bg-black/60 backdrop-blur-sm" />
-            <div
-              className="pointer-events-auto absolute z-10 w-64 -translate-x-full rounded-lg border border-white/10 bg-black/85 p-3 shadow-xl backdrop-blur"
-              style={{
-                top: coords?.top ?? 0,
-                left: coords?.left ?? 0,
-              }}
-              onMouseEnter={() => setOpen(true)}
-              onMouseLeave={() => setOpen(false)}
-            >
-              <div className="text-sm font-semibold">{title}</div>
-              <div className="text-muted-foreground mt-1 text-xs">
-                {description}
-              </div>
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {typeof document !== "undefined"
+        ? createPortal(
+            <AnimatePresence>
+              {open ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="pointer-events-none fixed inset-0 z-50"
+                >
+                  <div className="pointer-events-none absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                  <div
+                    className="pointer-events-auto absolute z-10 w-64 -translate-x-full rounded-lg border border-white/10 bg-black/85 p-3 shadow-xl backdrop-blur"
+                    style={{
+                      top: coords?.top ?? 0,
+                      left: coords?.left ?? 0,
+                    }}
+                    onMouseEnter={() => setOpen(true)}
+                    onMouseLeave={() => setOpen(false)}
+                  >
+                    <div className="text-sm font-semibold">{title}</div>
+                    <div className="text-muted-foreground mt-1 text-xs">
+                      {description}
+                    </div>
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
 
-// Mock Data for Design
-const STATS = {
-  balance: 12450.0,
-  monthlyReturn: 12.5,
-  winRate: 68,
-  profitFactor: 2.4,
-  avgRiskReward: 1.8,
-  streak: 5,
+const INSIGHT_ICON: Record<
+  (typeof demoInsights)[number]["icon"],
+  { Icon: React.ComponentType<{ className?: string }>; color: string }
+> = {
+  trendingUp: { Icon: TrendingUp, color: "text-emerald-500" },
+  alertCircle: { Icon: AlertCircle, color: "text-amber-500" },
+  calendar: { Icon: Calendar, color: "text-blue-500" },
 };
-
-const INSIGHTS = [
-  {
-    id: 1,
-    type: "positive",
-    title: "On Fire",
-    description: "Your win rate on 'Breakout' setups is 80% this week.",
-    icon: TrendingUp,
-    color: "text-emerald-500",
-  },
-  {
-    id: 2,
-    type: "warning",
-    title: "Oversizing Warning",
-    description: "You risked >2% on your last 3 losing trades.",
-    icon: AlertCircle,
-    color: "text-amber-500",
-  },
-  {
-    id: 3,
-    type: "neutral",
-    title: "Consistency",
-    description: "You've journaled 100% of your trades for 5 days straight.",
-    icon: Calendar,
-    color: "text-blue-500",
-  },
-];
-
-const REVIEW_TRADES = [
-  {
-    id: "4",
-    symbol: "AAPL",
-    type: "Short",
-    date: "Yesterday",
-    reason: "Impulse entry?",
-    reviewed: false,
-    pnl: -90,
-    tradeDate: "2026-01-16",
-  },
-  {
-    id: "5",
-    symbol: "XAUUSD",
-    type: "Long",
-    date: "Yesterday",
-    reason: "Target missed",
-    reviewed: true,
-    pnl: 120,
-    tradeDate: "2026-01-15",
-  },
-  {
-    id: "6",
-    symbol: "EURUSD",
-    type: "Long",
-    date: "Today",
-    reason: "Great entry",
-    reviewed: false,
-    pnl: 240,
-    tradeDate: "2026-01-16",
-  },
-];
-
-const CALENDAR_STATS = [
-  { date: "2026-01-12", pnl: 320, wins: 2, losses: 0 },
-  { date: "2026-01-13", pnl: -140, wins: 0, losses: 1 },
-  { date: "2026-01-14", pnl: 420, wins: 3, losses: 1 },
-  { date: "2026-01-15", pnl: 90, wins: 1, losses: 0 },
-  { date: "2026-01-16", pnl: -60, wins: 1, losses: 2 },
-  { date: "2026-01-17", pnl: 780, wins: 3, losses: 0 },
-];
 
 export default function AdminDashboardPage() {
   const onboarding = useOnboardingStatus();
@@ -188,6 +130,12 @@ export default function AdminDashboardPage() {
   const setSelectedTradeDate = useTradingCalendarStore(
     (state) => state.setSelectedDate,
   );
+
+  const totalTrades = demoReviewTrades.length;
+  const avgPnl =
+    totalTrades > 0
+      ? demoReviewTrades.reduce((sum, t) => sum + t.pnl, 0) / totalTrades
+      : 0;
 
   React.useEffect(() => {
     try {
@@ -307,28 +255,21 @@ export default function AdminDashboardPage() {
         </Card>
       ) : null}
 
-      {/* Header Section */}
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="mt-1 text-white/70">
-            Welcome back. You're trading well today.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            className="gap-2 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
-          >
-            <Calendar className="h-4 w-4" />
-            <span>Jan 16, 2026</span>
-          </Button>
-          <Button className="gap-2 border-0 bg-orange-600 text-white hover:bg-orange-700">
-            <Activity className="h-4 w-4" />
-            Sync Account
-          </Button>
-        </div>
-      </div>
+      <DashboardHero
+        dateLabel="Jan 16, 2026"
+        onSyncAction={() => {
+          // mock action
+          console.log("sync account (mock)");
+        }}
+        profile={{
+          avatarUrl: "https://api.dicebear.com/9.x/thumbs/svg?seed=nova_trader",
+          title: "Your public profile",
+          subtitle: "Show stats, badges, broker, and your leaderboard ranks.",
+          totalTrades,
+          avgPnl,
+          editHref: "/admin/public-profile",
+        }}
+      />
 
       {/* KPI Grid */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -349,11 +290,11 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${STATS.balance.toLocaleString()}
+              ${demoDashboardStats.balance.toLocaleString()}
             </div>
             <p className="text-muted-foreground mt-1 text-xs">
               <span className="font-medium text-emerald-500">
-                +{STATS.monthlyReturn}%
+                +{demoDashboardStats.monthlyReturn}%
               </span>{" "}
               this month
             </p>
@@ -374,9 +315,11 @@ export default function AdminDashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{STATS.winRate}%</div>
+            <div className="text-2xl font-bold">
+              {demoDashboardStats.winRate}%
+            </div>
             <Progress
-              value={STATS.winRate}
+              value={demoDashboardStats.winRate}
               className="mt-2 h-1.5 bg-blue-100 dark:bg-blue-950"
             />
           </CardContent>
@@ -396,7 +339,9 @@ export default function AdminDashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{STATS.profitFactor}</div>
+            <div className="text-2xl font-bold">
+              {demoDashboardStats.profitFactor}
+            </div>
             <p className="text-muted-foreground mt-1 text-xs">
               Target: 2.0+{" "}
               <span className="ml-1 font-medium text-amber-500">
@@ -406,7 +351,7 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-purple-500">
+        <Card className="border-l-4 border-white/10 border-l-purple-500 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-muted-foreground text-sm font-medium">
               Journal Streak
@@ -420,7 +365,9 @@ export default function AdminDashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{STATS.streak} Days</div>
+            <div className="text-2xl font-bold">
+              {demoDashboardStats.streak} Days
+            </div>
             <p className="text-muted-foreground mt-1 text-xs">
               Keep it up! Consistency is key.
             </p>
@@ -433,7 +380,7 @@ export default function AdminDashboardPage() {
         {/* Left Column: Charts & Insights (2/3 width) */}
         <div className="space-y-8 lg:col-span-2">
           <TradingCalendarPanel
-            dailyStats={CALENDAR_STATS}
+            dailyStats={demoCalendarDailyStats}
             selectedDate={selectedTradeDate}
             onSelectDateAction={setSelectedTradeDate}
             className="min-h-[340px]"
@@ -489,27 +436,31 @@ export default function AdminDashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
-              {INSIGHTS.map((insight) => (
-                <div
-                  key={insight.id}
-                  className="flex items-start gap-4 rounded-lg border border-white/10 bg-white/3 p-4 transition-colors hover:bg-white/6"
-                >
+              {demoInsights.map((insight) => {
+                const meta = INSIGHT_ICON[insight.icon];
+                const Icon = meta.Icon;
+                return (
                   <div
-                    className={cn(
-                      "rounded-full border border-white/10 bg-black/30 p-2 shadow-sm",
-                      insight.color,
-                    )}
+                    key={insight.id}
+                    className="flex items-start gap-4 rounded-lg border border-white/10 bg-white/3 p-4 transition-colors hover:bg-white/6"
                   >
-                    <insight.icon className="h-5 w-5" />
+                    <div
+                      className={cn(
+                        "rounded-full border border-white/10 bg-black/30 p-2 shadow-sm",
+                        meta.color,
+                      )}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold">{insight.title}</h4>
+                      <p className="mt-1 text-sm leading-relaxed text-white/70">
+                        {insight.description}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-semibold">{insight.title}</h4>
-                    <p className="mt-1 text-sm leading-relaxed text-white/70">
-                      {insight.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
         </div>
@@ -538,10 +489,10 @@ export default function AdminDashboardPage() {
             <CardContent className="flex h-full flex-col gap-3">
               <div className="flex-1 space-y-2 overflow-y-auto pr-1">
                 {(selectedTradeDate
-                  ? REVIEW_TRADES.filter(
+                  ? demoReviewTrades.filter(
                       (trade) => trade.tradeDate === selectedTradeDate,
                     )
-                  : REVIEW_TRADES
+                  : demoReviewTrades
                 ).map((trade) => (
                   <div
                     key={trade.id}
@@ -655,14 +606,14 @@ export default function AdminDashboardPage() {
           </Card> */}
 
           {/* Quick Actions */}
-          <Card>
+          <Card className="border-white/10 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-2">
               <Button
-                variant="secondary"
-                className="flex h-auto flex-col items-center justify-center gap-1 py-3 text-xs"
+                variant="outline"
+                className="flex h-auto flex-col items-center justify-center gap-1 border-white/15 bg-transparent py-3 text-xs text-white hover:bg-white/10 hover:text-white"
                 asChild
               >
                 <Link href="/admin/journal">
@@ -671,8 +622,8 @@ export default function AdminDashboardPage() {
                 </Link>
               </Button>
               <Button
-                variant="secondary"
-                className="flex h-auto flex-col items-center justify-center gap-1 py-3 text-xs"
+                variant="outline"
+                className="flex h-auto flex-col items-center justify-center gap-1 border-white/15 bg-transparent py-3 text-xs text-white hover:bg-white/10 hover:text-white"
                 asChild
               >
                 <Link href="/admin/analytics">

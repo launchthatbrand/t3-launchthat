@@ -1,0 +1,251 @@
+"use client";
+
+import React from "react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Smile } from "lucide-react";
+
+import { cn } from "@acme/ui";
+
+import type { TradingCalendarDailyStat } from "./TradingCalendarPanel";
+import {
+  getTradingCalendarRecommendations,
+  toDateKey,
+  weekdayLabel,
+} from "./tradingCalendarRecommendations";
+
+const buildMonthDays = (monthOffset: number) => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth() + monthOffset;
+  const firstOfMonth = new Date(year, month, 1);
+  const lastOfMonth = new Date(year, month + 1, 0);
+  const startDay = firstOfMonth.getDay();
+  const totalDays = lastOfMonth.getDate();
+
+  const days: { date: Date; inMonth: boolean }[] = [];
+  for (let i = 0; i < startDay; i += 1) {
+    const date = new Date(year, month, -startDay + i + 1);
+    days.push({ date, inMonth: false });
+  }
+  for (let day = 1; day <= totalDays; day += 1) {
+    days.push({ date: new Date(year, month, day), inMonth: true });
+  }
+  while (days.length < 42) {
+    const date = new Date(
+      year,
+      month,
+      totalDays + (days.length - (startDay + totalDays)) + 1,
+    );
+    days.push({ date, inMonth: false });
+  }
+
+  const label = firstOfMonth.toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+
+  return { days, label };
+};
+
+export interface TradingCalendarMobileProps {
+  dailyStats: TradingCalendarDailyStat[];
+  selectedDate: string | null;
+  onSelectDateAction: (value: string | null) => void;
+  className?: string;
+}
+
+export const TradingCalendarMobile = ({
+  dailyStats,
+  selectedDate,
+  onSelectDateAction,
+  className,
+}: TradingCalendarMobileProps) => {
+  const [monthOffset, setMonthOffset] = React.useState(0);
+  const { days, label } = buildMonthDays(monthOffset);
+  const rec = React.useMemo(
+    () => getTradingCalendarRecommendations({ dailyStats }),
+    [dailyStats],
+  );
+
+  const dailyMap = React.useMemo(() => {
+    const map: Record<string, TradingCalendarDailyStat> = {};
+    for (const stat of dailyStats) {
+      map[stat.date] = stat;
+    }
+    return map;
+  }, [dailyStats]);
+
+  const selected = selectedDate ? dailyMap[selectedDate] : undefined;
+
+  return (
+    <div
+      className={cn(
+        "rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-md",
+        className,
+      )}
+    >
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <div className="text-xs font-medium text-white/60">
+            Trading calendar
+          </div>
+          <div className="text-base font-semibold text-white">{label}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-white/60">
+            {rec.goodWeekdays.length > 0 ? (
+              <div className="flex items-center gap-1.5">
+                <Smile className="h-3.5 w-3.5 text-orange-300" />
+                <span className="font-medium">Strong:</span>
+                <span className="font-semibold text-white/80">
+                  {rec.goodWeekdays.map(weekdayLabel).join(", ")}
+                </span>
+              </div>
+            ) : null}
+            {rec.badWeekdays.length > 0 ? (
+              <div className="flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 text-red-300" />
+                <span className="font-medium">Weak:</span>
+                <span className="font-semibold text-white/80">
+                  {rec.badWeekdays.map(weekdayLabel).join(", ")}
+                </span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setMonthOffset((v) => v - 1)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-black/30 text-white/80 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-orange-400/50 focus-visible:outline-hidden"
+            aria-label="Previous month"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setMonthOffset((v) => v + 1)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-black/30 text-white/80 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-orange-400/50 focus-visible:outline-hidden"
+            aria-label="Next month"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 text-[10px]">
+        {["S", "M", "Tu", "W", "Th", "F", "S"].map((d, idx) => (
+          <div
+            key={`${d}-${idx}`}
+            className="text-center font-medium text-white/45"
+          >
+            {d}
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-2 grid grid-cols-7 gap-1">
+        {days.map(({ date, inMonth }) => {
+          const key = toDateKey(date);
+          const stat = dailyMap[key];
+          const isSelected = selectedDate === key;
+          const pnl = stat?.pnl ?? 0;
+          const hasTrades = Boolean(stat);
+          const isFuture = date.getTime() >= new Date().setHours(0, 0, 0, 0);
+          const isGood = isFuture && rec.goodDateKeys.has(key);
+          const isBad = isFuture && rec.badDateKeys.has(key);
+
+          const indicatorClassName = hasTrades
+            ? pnl >= 0
+              ? "bg-orange-400/80"
+              : "bg-red-400/80"
+            : "bg-white/10";
+
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onSelectDateAction(isSelected ? null : key)}
+              className={cn(
+                "relative aspect-square rounded-xl border border-white/10 bg-black/25 p-1 text-left transition-colors hover:bg-white/6 focus-visible:ring-2 focus-visible:ring-orange-400/50 focus-visible:outline-hidden",
+                !inMonth && "opacity-50",
+                isSelected && "border-orange-500/40 bg-orange-500/10",
+                isGood &&
+                  !isSelected &&
+                  "border-orange-400/35 bg-linear-to-b from-orange-500/10 to-transparent",
+                isBad &&
+                  !isSelected &&
+                  "border-red-400/30 bg-linear-to-b from-red-500/10 to-transparent",
+              )}
+              aria-label={`Select ${key}`}
+            >
+              <div
+                className={cn(
+                  "text-[11px] font-medium text-white/80",
+                  !inMonth && "text-white/50",
+                )}
+              >
+                {date.getDate()}
+              </div>
+              {isGood ? (
+                <Smile className="absolute top-1 right-1 h-3.5 w-3.5 text-orange-300" />
+              ) : isBad ? (
+                <AlertTriangle className="absolute top-1 right-1 h-3.5 w-3.5 text-red-300" />
+              ) : null}
+              <div
+                className={cn(
+                  "absolute right-1 bottom-1 left-1 h-1 rounded-full",
+                  indicatorClassName,
+                )}
+              />
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-3">
+        {selectedDate ? (
+          selected ? (
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-medium text-white/60">
+                  Selected
+                </div>
+                <div className="text-sm font-semibold text-white">
+                  {selectedDate}
+                </div>
+                <div className="mt-1 text-xs text-white/60">
+                  {selected.wins}W / {selected.losses}L
+                </div>
+              </div>
+              <div
+                className={cn(
+                  "rounded-2xl border px-3 py-2 text-right",
+                  selected.pnl >= 0
+                    ? "border-orange-500/20 bg-orange-500/10"
+                    : "border-red-500/20 bg-red-500/10",
+                )}
+              >
+                <div className="text-[10px] font-medium text-white/60">PnL</div>
+                <div
+                  className={cn(
+                    "text-sm font-semibold",
+                    selected.pnl >= 0 ? "text-orange-200" : "text-red-200",
+                  )}
+                >
+                  {selected.pnl >= 0 ? "+" : ""}
+                  {selected.pnl}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm text-white/70">
+              No trades on {selectedDate}.
+            </div>
+          )
+        ) : (
+          <div className="text-sm text-white/70">
+            Tap a day to view your trades and daily stats.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

@@ -49,3 +49,9 @@ export * from "./noise-background";
 export * from "./dotted-glow-background";
 export * from "./features-section";
 export * from "./orbiting-circles";
+export * from "./marquee";
+export * from "./moving-border";// UI micro-interactions
+export * from "./components/ui/container-scroll-animation";
+export * from "./components/ui/flip-words";
+export * from "./components/ui/text-generate-effect";
+export * from "./safari";

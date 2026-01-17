@@ -33,7 +33,7 @@ export const IphoneMock = ({
 
         <div
           className={cn(
-            "relative flex h-full w-full flex-col px-4 pt-14 pb-5",
+            "relative flex h-full w-full flex-col",
             screenClassName,
           )}
         >

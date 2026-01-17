@@ -1,14 +1,14 @@
 import "~/app/styles.css";
 
-import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-
-import { cn } from "@acme/ui";
+import type { Metadata, Viewport } from "next";
 import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
-import { Toaster } from "@acme/ui/toast";
 
-import { env } from "~/env";
+import { GridLines } from "../components/background/GridLines";
 import { Providers } from "./providers";
+import { Toaster } from "@acme/ui/toast";
+import { cn } from "@acme/ui";
+import { env } from "~/env";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -59,6 +59,9 @@ export default function RootLayout(props: { children: React.ReactNode }) {
       >
         <Providers>
           <ThemeProvider>
+            <div className="pointer-events-none fixed inset-0 z-0">
+              <GridLines />
+            </div>
             {props.children}
             <div className="absolute right-4 bottom-4">
               <ThemeToggle />
