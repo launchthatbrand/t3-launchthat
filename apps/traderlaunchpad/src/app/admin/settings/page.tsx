@@ -1,9 +1,6 @@
 "use client";
 
-import React from "react";
-
 import { Avatar, AvatarFallback, AvatarImage } from "@acme/ui/avatar";
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -12,15 +9,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
+import { Button } from "@acme/ui/button";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
+import React from "react";
 import { TradeLockerConnectionCard } from "~/components/settings/TradeLockerConnectionCard";
 
 export default function AdminSettingsPage() {
   return (
-    <div className="animate-in fade-in mx-auto max-w-5xl space-y-8 duration-500">
+    <div className="animate-in fade-in mx-auto space-y-8 duration-500">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>

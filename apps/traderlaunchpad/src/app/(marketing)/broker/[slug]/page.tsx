@@ -2,6 +2,7 @@ import { ArrowLeft, ExternalLink } from "lucide-react";
 
 import { AffiliatePageShell } from "~/components/affiliates/AffiliatePageShell";
 import { AffiliateStars } from "~/components/affiliates/AffiliateStars";
+import { ReviewsSection } from "~/components/reviews/ReviewsSection";
 import { Button } from "@acme/ui/button";
 import Link from "next/link";
 import React from "react";
@@ -112,6 +113,14 @@ export default async function BrokerDetailPage({
                 </ul>
               </div>
             </div>
+          </div>
+
+          <div className="mt-6">
+            <ReviewsSection
+              target={{ kind: "broker", slug: broker.slug }}
+              title="Reviews"
+              subtitle={`What traders are saying about ${broker.name}`}
+            />
           </div>
         </div>
 

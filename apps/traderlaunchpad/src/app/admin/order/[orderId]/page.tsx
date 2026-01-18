@@ -11,7 +11,7 @@ import { NotesSection } from "~/components/admin/NotesSection";
 import React from "react";
 import { Separator } from "@acme/ui/separator";
 import { TraderLaunchpadOrderDetailPage } from "launchthat-plugin-traderlaunchpad/frontend/journal";
-import { TradingChartMock } from "~/components/charts/TradingChartMock";
+import { TradingChartCard } from "~/components/charts/TradingChartCard";
 import { api } from "@convex-config/_generated/api";
 
 const isLikelyConvexId = (id: string) => {
@@ -117,25 +117,13 @@ function MockOrderDetail(props: { orderId: string }) {
             </Card>
           </div>
 
-          <Card className="overflow-hidden border-white/10 bg-white/3 backdrop-blur-md">
-            <CardHeader className="border-b bg-muted/10 border-white/5 px-4 py-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium">Price Action</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="bg-background/20 border-white/10">15m</Badge>
-                  <Badge variant="outline" className="bg-background/20 border-white/10">1h</Badge>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="bg-black/40 p-0">
-              <TradingChartMock
-                symbol={symbol}
-                height={400}
-                showDefaultMarkers={false}
-                markers={[orderMarker]}
-              />
-            </CardContent>
-          </Card>
+          <TradingChartCard
+            title="Price Action"
+            symbol={symbol}
+            height={400}
+            markers={[orderMarker]}
+            timeframes={["15m", "1h", "4h"]}
+          />
 
           <Card className="border-white/10 bg-white/3 backdrop-blur-md">
             <CardHeader>

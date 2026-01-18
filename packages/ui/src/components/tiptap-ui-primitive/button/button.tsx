@@ -1,20 +1,18 @@
 "use client"
 
-import { forwardRef, Fragment, useMemo } from "react"
+import "./button-colors.scss"
+import "./button-group.scss"
+import "./button.scss"
 
+import { Fragment, forwardRef, useMemo } from "react"
 // --- Tiptap UI Primitive ---
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/tiptap-ui-primitive/tooltip"
-
+} from "../tooltip"
 // --- Lib ---
-import { cn, parseShortcutKeys } from "@/lib/tiptap-utils"
-
-import "@/components/tiptap-ui-primitive/button/button-colors.scss"
-import "@/components/tiptap-ui-primitive/button/button-group.scss"
-import "@/components/tiptap-ui-primitive/button/button.scss"
+import { cn, parseShortcutKeys } from "../../../lib/tiptap-utils"
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {

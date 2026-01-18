@@ -1,10 +1,18 @@
 import { ArrowLeft, ArrowRight, Award, Crown, Flame, Medal, Sparkles, Trophy } from "lucide-react";
 
 import { Button } from "@acme/ui/moving-border";
+import { LeaderboardEntriesClient } from "./LeaderboardEntriesClient";
 import Link from "next/link";
 import React from "react";
 import { demoPublicUsers } from "@acme/demo-data";
 import { notFound } from "next/navigation";
+
+const slugify = (value: string) =>
+    value
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
 
 // Helper to format users for the list
 const formatUser = (u: typeof demoPublicUsers[0], rank: number, value: string, streak: string) => ({
@@ -34,20 +42,59 @@ const getEntries = (slug: string) => {
                 .map((u, i) => formatUser(u, i + 1, `${u.stats.profitFactor} PF`, u.badges.some(b => b.id === 'b-risk') ? "Perfect" : "Good"));
         case "b-review":
             return demoPublicUsers
-                .filter(u => u.badges.some(b => b.id === 'b-review'))
-                .slice(0, 20)
-                .map((u, i) => formatUser(u, i + 1, `${u.stats.streak} reviews`, `${u.stats.streak} weeks`));
+                .filter((u) => u.badges.some((b) => b.id === "b-review"))
+                .map((u) => {
+                    const lb = u.leaderboards.find((x) => x.id === "lb-b-review");
+                    return {
+                        u,
+                        rank: lb?.rank ?? 9999,
+                        value: `${u.stats.streak} reviews`,
+                        streak: `${u.stats.streak} weeks`,
+                    };
+                })
+                .sort((a, b) => a.rank - b.rank)
+                .map(({ u, rank, value, streak }) => formatUser(u, rank, value, streak));
         case "b-overlap":
             return demoPublicUsers
-                .filter(u => u.badges.some(b => b.id === 'b-overlap'))
-                .slice(0, 20)
-                .map((u, i) => formatUser(u, i + 1, `${u.stats.winRate}% win rate`, "Session Pro"));
+                .filter((u) => u.badges.some((b) => b.id === "b-overlap"))
+                .map((u) => {
+                    const lb = u.leaderboards.find((x) => x.id === "lb-b-overlap");
+                    return {
+                        u,
+                        rank: lb?.rank ?? 9999,
+                        value: `${u.stats.winRate}% win rate`,
+                        streak: "Session Pro",
+                    };
+                })
+                .sort((a, b) => a.rank - b.rank)
+                .map(({ u, rank, value, streak }) => formatUser(u, rank, value, streak));
         default:
             return [];
     }
 };
 
-const leaderboardData = [
+const normalizeLeaderboardSlug = (slug: string) => {
+    switch (slug) {
+        case "session-specialist":
+            return "b-overlap";
+        case "weekly-review":
+            return "b-review";
+        default:
+            return slug;
+    }
+};
+
+interface LeaderboardMeta {
+    slug: string;
+    title: string;
+    type: "badge" | "performance" | "custom";
+    description: string;
+    metricLabel: string;
+    badgeRule?: string;
+    icon: typeof Award;
+}
+
+const leaderboardData: LeaderboardMeta[] = [
     {
         slug: "b-review",
         title: "Weekly review",
@@ -94,19 +141,66 @@ const leaderboardData = [
     },
 ];
 
+const findCustomLeaderboardBySlug = (slug: string) => {
+    for (const u of demoPublicUsers) {
+        for (const lb of u.leaderboards) {
+            if (slugify(lb.label) === slug) {
+                return { id: lb.id, label: lb.label };
+            }
+        }
+    }
+    return null;
+};
+
+const getCustomLeaderboardEntries = (leaderboardId: string) => {
+    return demoPublicUsers
+        .map((u) => {
+            const lb = u.leaderboards.find((x) => x.id === leaderboardId);
+            if (!lb) return null;
+            return {
+                u,
+                rank: lb.rank,
+                value: `${u.stats.monthlyReturn}% ROI`,
+                streak: `${u.stats.winRate}% win rate`,
+            };
+        })
+        .filter((x): x is NonNullable<typeof x> => Boolean(x))
+        .sort((a, b) => a.rank - b.rank)
+        .map(({ u, rank, value, streak }) => formatUser(u, rank, value, streak));
+};
+
 export default async function LeaderboardDetailPage({
     params,
 }: {
     params: Promise<{ slug: string }>;
 }) {
     const { slug } = await params;
-    const leaderboard = leaderboardData.find((item) => item.slug === slug);
+    const canonicalSlug = normalizeLeaderboardSlug(slug);
+    const leaderboard =
+        leaderboardData.find((item) => item.slug === canonicalSlug) ??
+        (() => {
+            const custom = findCustomLeaderboardBySlug(canonicalSlug);
+            if (!custom) return null;
+            const title = custom.label;
+            return {
+                slug: canonicalSlug,
+                title,
+                type: "custom" as const,
+                description: `Rankings for ${title.toLowerCase()} based on demo data.`,
+                metricLabel: "Metric",
+                icon: Trophy,
+                customLeaderboardId: custom.id,
+            };
+        })();
 
     if (!leaderboard) {
         notFound();
     }
 
-    const entries = getEntries(slug);
+    const entries =
+        "customLeaderboardId" in leaderboard
+            ? getCustomLeaderboardEntries(leaderboard.customLeaderboardId)
+            : getEntries(canonicalSlug);
     const Icon = leaderboard.icon;
     const isBadge = leaderboard.type === "badge";
 
@@ -156,28 +250,7 @@ export default async function LeaderboardDetailPage({
                                         </div>
                                         <div className="col-span-2 text-right">Streak</div>
                                     </div>
-                                    {entries.map((entry) => (
-                                        <Link
-                                            key={entry.rank}
-                                            href={`/u/${entry.username}`}
-                                            className="grid grid-cols-12 gap-2 border-t border-white/5 px-5 py-4 text-sm text-white/80 hover:bg-white/5 transition-colors cursor-pointer"
-                                        >
-                                            <div className="col-span-2 flex items-center gap-2">
-                                                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/5 text-xs font-bold text-white">
-                                                    {entry.rank}
-                                                </span>
-                                            </div>
-                                            <div className="col-span-6 font-semibold text-white">
-                                                {entry.name}
-                                            </div>
-                                            <div className="col-span-2 text-right font-semibold text-orange-200">
-                                                {entry.value}
-                                            </div>
-                                            <div className="col-span-2 text-right text-white/60">
-                                                {entry.streak}
-                                            </div>
-                                        </Link>
-                                    ))}
+                                    <LeaderboardEntriesClient entries={entries} />
                                 </div>
                             </div>
                         </div>

@@ -11,7 +11,7 @@ import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Separator } from "@acme/ui/separator";
 
-import { TradingChartMock } from "~/components/charts/TradingChartMock";
+import { TradingChartCard } from "~/components/charts/TradingChartCard";
 import { NotesSection } from "~/components/admin/NotesSection";
 import { api } from "@convex-config/_generated/api";
 import { demoAdminOrders } from "@acme/demo-data";
@@ -93,6 +93,15 @@ function MockTradeIdeaDetail(props: { tradeIdeaGroupId: string }) {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column */}
         <div className="space-y-6 lg:col-span-2">
+          <TradingChartCard
+            title="Chart Analysis"
+            symbol="AUDJPY"
+            height={400}
+            markers={ideaMarkers}
+            timeframes={["15m", "1h", "4h"]}
+            className="border-border/60 border-white/10"
+          />
+
           {/* Key Stats */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Card className="border-white/10 bg-white/3 backdrop-blur-md">
@@ -120,26 +129,6 @@ function MockTradeIdeaDetail(props: { tradeIdeaGroupId: string }) {
               </CardContent>
             </Card>
           </div>
-
-          <Card className="overflow-hidden border-border/60 border-white/10 bg-white/3 backdrop-blur-md">
-            <CardHeader className="border-b bg-muted/10 border-white/5 px-4 py-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium">Chart Analysis</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="bg-background/20 border-white/10">15m</Badge>
-                  <Badge variant="outline" className="bg-background/20 border-white/10">4h</Badge>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="bg-black/40 p-0">
-              <TradingChartMock
-                symbol="AUDJPY"
-                height={400}
-                showDefaultMarkers={false}
-                markers={ideaMarkers}
-              />
-            </CardContent>
-          </Card>
 
           <div className="grid gap-6 sm:grid-cols-2">
             <Card className="border-white/10 bg-white/3 backdrop-blur-md">

@@ -7,15 +7,16 @@ import {
   Shield,
   TrendingUp,
 } from "lucide-react";
-import { demoPublicProfiles, demoPublicUsers } from "@acme/demo-data";
+import { demoPublicProfiles, demoPublicUsers, demoReviewTrades } from "@acme/demo-data";
 
 import { AffiliatePageShell } from "../../../../components/affiliates/AffiliatePageShell";
 import { Button } from "@acme/ui/button";
 import Link from "next/link";
 import React from "react";
+import { ReviewsSection } from "~/components/reviews/ReviewsSection";
 import { notFound } from "next/navigation";
 
-type PublicUser = {
+interface PublicUser {
   username: string;
   displayName: string;
   avatarUrl?: string;
@@ -30,9 +31,9 @@ type PublicUser = {
     monthlyReturn: number;
     streak: number;
   };
-  badges: Array<{ id: string; label: string; description?: string; tone?: string }>;
-  leaderboards: Array<{ id: string; label: string; rank: number; total: number }>;
-  recentTrades: Array<{
+  badges: { id: string; label: string; description?: string; tone?: string }[];
+  leaderboards: { id: string; label: string; rank: number; total: number }[];
+  recentTrades: {
     id: string;
     symbol: string;
     side: "Long" | "Short";
@@ -40,8 +41,13 @@ type PublicUser = {
     pnl: number;
     rMultiple: number;
     setup: string;
-  }>;
-};
+  }[];
+}
+
+interface PublicProfileOnly {
+  username: string;
+  avatarUrl?: string;
+}
 
 const toneToClasses = (tone?: string) => {
   switch (tone) {
@@ -58,6 +64,22 @@ const toneToClasses = (tone?: string) => {
   }
 };
 
+const getTradeIdForPublicTrade = (t: { symbol: string; side: "Long" | "Short" }) => {
+  const match = demoReviewTrades.find((rt) => rt.symbol === t.symbol && rt.type === t.side);
+  if (match) return match.id;
+  const idx =
+    Math.abs(Array.from(t.symbol).reduce((acc, c) => acc + c.charCodeAt(0), 0)) %
+    demoReviewTrades.length;
+  return demoReviewTrades[idx]?.id ?? "1";
+};
+
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+
 export default async function PublicUserPage({
   params,
 }: {
@@ -70,9 +92,8 @@ export default async function PublicUserPage({
   const user = users.find((u) => u.username.toLowerCase() === decoded.toLowerCase());
 
   // Allow fallback to marquee-only profile for now.
-  const profileOnly = (demoPublicProfiles as unknown as Array<any>).find(
-    (p) => p.username.toLowerCase() === decoded.toLowerCase(),
-  );
+  const profiles = demoPublicProfiles as unknown as PublicProfileOnly[];
+  const profileOnly = profiles.find((p) => p.username.toLowerCase() === decoded.toLowerCase());
 
   if (!user && !profileOnly) return notFound();
   if (user && !user.isPublic) return notFound();
@@ -82,6 +103,12 @@ export default async function PublicUserPage({
   const bio =
     user?.bio ??
     "Public profile preview. Connect your broker, journal trades, and share your edge with the fleet.";
+  const badges = user?.badges ?? [];
+  const leaderboards = user?.leaderboards ?? [];
+  const recentTrades = user?.recentTrades ?? [];
+  const tradeIds = Array.from(
+    new Set(recentTrades.map((t) => getTradeIdForPublicTrade(t))),
+  );
 
   return (
     <AffiliatePageShell
@@ -155,7 +182,7 @@ export default async function PublicUserPage({
                 Badges
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                {(user?.badges ?? []).slice(0, 8).map((b) => (
+                {badges.slice(0, 8).map((b) => (
                   <Link
                     key={b.id}
                     href={`/leaderboard/${b.id}`}
@@ -168,7 +195,7 @@ export default async function PublicUserPage({
                     {b.label}
                   </Link>
                 ))}
-                {!user?.badges?.length ? (
+                {badges.length === 0 ? (
                   <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/60">
                     No badges yet
                   </span>
@@ -181,6 +208,59 @@ export default async function PublicUserPage({
         {/* Right: Stats + leaderboards + trades */}
         <div className="lg:col-span-2">
           <div className="grid gap-6">
+            {/* Quick navigation cards */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Link
+                href={`/u/${encodeURIComponent(decoded)}/trades`}
+                className="group rounded-3xl border border-white/10 bg-white/3 p-6 backdrop-blur-md transition-colors hover:bg-white/6"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-white/85">Trades</div>
+                    <div className="mt-1 text-sm text-white/55">
+                      View full public trade breakdowns.
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="text-2xl font-bold text-white tabular-nums">
+                      {tradeIds.length}
+                    </div>
+                    <div className="mt-2 inline-flex items-center gap-2 text-xs text-white/60 group-hover:text-white">
+                      View all
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/5">
+                        →
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+
+              <Link
+                href={`/u/${encodeURIComponent(decoded)}/tradeideas`}
+                className="group rounded-3xl border border-white/10 bg-white/3 p-6 backdrop-blur-md transition-colors hover:bg-white/6"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-white/85">TradeIdeas</div>
+                    <div className="mt-1 text-sm text-white/55">
+                      Browse the user&apos;s shared setups.
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="text-2xl font-bold text-white tabular-nums">
+                      {recentTrades.length}
+                    </div>
+                    <div className="mt-2 inline-flex items-center gap-2 text-xs text-white/60 group-hover:text-white">
+                      View all
+                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/5">
+                        →
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div className="rounded-3xl border border-white/10 bg-white/3 p-6 backdrop-blur-md">
                 <div className="flex items-center gap-2 text-sm font-semibold text-white/80">
@@ -216,10 +296,11 @@ export default async function PublicUserPage({
                 Leaderboards
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {(user?.leaderboards ?? []).slice(0, 6).map((lb) => (
-                  <div
+                {leaderboards.slice(0, 6).map((lb) => (
+                  <Link
                     key={lb.id}
-                    className="rounded-2xl border border-white/10 bg-white/3 p-4"
+                    href={`/leaderboard/${slugify(lb.label)}?user=${encodeURIComponent(decoded)}&rank=${lb.rank}`}
+                    className="rounded-2xl border border-white/10 bg-white/3 p-4 transition-colors hover:bg-white/6"
                   >
                     <div className="text-xs font-medium text-white/55">
                       {lb.label}
@@ -228,9 +309,9 @@ export default async function PublicUserPage({
                       Rank #{lb.rank}{" "}
                       <span className="text-white/40">/ {lb.total}</span>
                     </div>
-                  </div>
+                  </Link>
                 ))}
-                {!user?.leaderboards?.length ? (
+                {leaderboards.length === 0 ? (
                   <div className="rounded-2xl border border-white/10 bg-white/3 p-4 text-sm text-white/60">
                     No rankings yet
                   </div>
@@ -243,10 +324,11 @@ export default async function PublicUserPage({
                 Recent trades
               </div>
               <div className="mt-4 grid gap-3">
-                {(user?.recentTrades ?? []).slice(0, 8).map((t) => (
-                  <div
+                {recentTrades.slice(0, 8).map((t) => (
+                  <Link
                     key={t.id}
-                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/3 px-4 py-3"
+                    href={`/u/${encodeURIComponent(decoded)}/tradeidea/${getTradeIdForPublicTrade(t)}`}
+                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/3 px-4 py-3 transition-colors hover:bg-white/6"
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -275,15 +357,21 @@ export default async function PublicUserPage({
                         {t.rMultiple >= 0 ? `+${t.rMultiple}` : t.rMultiple}R
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 ))}
-                {!user?.recentTrades?.length ? (
+                {recentTrades.length === 0 ? (
                   <div className="rounded-2xl border border-white/10 bg-white/3 p-4 text-sm text-white/60">
                     No trades shared yet
                   </div>
                 ) : null}
               </div>
             </div>
+
+            <ReviewsSection
+              target={{ kind: "user", username: decoded }}
+              title="Reviews"
+              subtitle="Feedback from other traders"
+            />
           </div>
         </div>
       </div>

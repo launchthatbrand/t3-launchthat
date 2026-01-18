@@ -1,9 +1,10 @@
 "use client"
 
+import "./badge-colors.scss"
+import "./badge-group.scss"
+import "./badge.scss"
+
 import { forwardRef } from "react"
-import "@/components/tiptap-ui-primitive/badge/badge-colors.scss"
-import "@/components/tiptap-ui-primitive/badge/badge-group.scss"
-import "@/components/tiptap-ui-primitive/badge/badge.scss"
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: "ghost" | "white" | "gray" | "green" | "default"

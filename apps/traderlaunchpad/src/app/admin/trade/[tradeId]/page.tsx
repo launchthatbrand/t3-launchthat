@@ -6,7 +6,7 @@ import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import Link from "next/link";
 import { NotesSection } from "~/components/admin/NotesSection";
-import { TradingChartMock } from "~/components/charts/TradingChartMock";
+import { TradingChartCard } from "~/components/charts/TradingChartCard";
 import { cn } from "@acme/ui";
 import { notFound } from "next/navigation";
 
@@ -126,35 +126,13 @@ export default async function AdminTradeDetailPage({
                 {/* Left Column */}
                 <div className="space-y-6 lg:col-span-2">
                     {/* Chart Analysis */}
-                    <Card className="overflow-hidden border-white/10 bg-white/3 backdrop-blur-md">
-                        <CardHeader className="border-b bg-muted/10 border-white/5 px-4 py-3">
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-sm font-medium">Chart Analysis</CardTitle>
-                                <div className="flex items-center gap-2">
-                                    <Badge
-                                        variant="outline"
-                                        className="bg-background/20 border-white/10"
-                                    >
-                                        15m
-                                    </Badge>
-                                    <Badge
-                                        variant="outline"
-                                        className="bg-background/20 border-white/10"
-                                    >
-                                        1h
-                                    </Badge>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="bg-black/40 p-0">
-                            <TradingChartMock
-                                symbol={trade.symbol}
-                                height={400}
-                                showDefaultMarkers={false}
-                                markers={tradeMarkers}
-                            />
-                        </CardContent>
-                    </Card>
+                    <TradingChartCard
+                        title="Chart Analysis"
+                        symbol={trade.symbol}
+                        height={400}
+                        markers={tradeMarkers}
+                        timeframes={["15m", "1h", "4h"]}
+                    />
 
                     {/* Key Stats */}
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

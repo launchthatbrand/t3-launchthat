@@ -1,12 +1,13 @@
 import type {
   DashboardStats,
-  DemoAffiliateLink,
   DemoAdminOrder,
+  DemoAffiliateLink,
   DemoData,
   DemoInsight,
   DemoPhoneNotification,
   DemoPublicProfile,
   DemoPublicUserProfile,
+  DemoReview,
   DemoReviewTrade,
   TradingCalendarDailyStat,
 } from "./schemas";
@@ -22,6 +23,7 @@ export type {
   DemoPhoneNotification,
   DemoPublicProfile,
   DemoPublicUserProfile,
+  DemoReview,
   DemoReviewTrade,
   TradingCalendarDailyStat,
 };
@@ -517,7 +519,208 @@ export const demoPublicProfiles: DemoPublicProfile[] = [
 const logo = (seed: string) =>
   `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(seed)}`;
 
-export const demoPublicUsers: DemoPublicUserProfile[] = [
+const hashStringForDemo = (input: string) => {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+};
+
+const defaultTradeLabels = ["Today", "Yesterday", "2d ago", "3d ago"] as const;
+
+const makeRecentTradesForUser = (username: string, minTrades = 2) => {
+  const h = hashStringForDemo(username.toLowerCase());
+  const count = Math.max(minTrades, 2);
+  const trades: DemoPublicUserProfile["recentTrades"] = [];
+  for (let i = 0; i < count; i++) {
+    const base = demoReviewTrades[(h + i) % demoReviewTrades.length]!;
+    const pnlJitter = ((h >> (i * 3)) % 61) - 30; // -30..30
+    const pnl = base.pnl + pnlJitter;
+    const rMultiple = Math.round((pnl / 150) * 10) / 10;
+    trades.push({
+      id: `t-${base.id}-${username.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${i + 1}`,
+      symbol: base.symbol,
+      side: base.type,
+      dateLabel: defaultTradeLabels[i % defaultTradeLabels.length] ?? "Today",
+      pnl,
+      rMultiple,
+      setup: base.reason,
+    });
+  }
+  return trades;
+};
+
+const ensureUserHasBadgeLeaderboards = (
+  u: DemoPublicUserProfile,
+): DemoPublicUserProfile => {
+  const badges = u.badges ?? [];
+  const leaderboards = u.leaderboards ?? [];
+  if (badges.length === 0) return u;
+
+  const total = 2413;
+  const existingIds = new Set(leaderboards.map((lb) => lb.id));
+  const generated = badges
+    .filter((b) => !existingIds.has(`lb-${b.id}`))
+    .map((b) => {
+      const h = hashStringForDemo(`${u.username.toLowerCase()}:${b.id}`);
+      const rank = (h % total) + 1;
+      return {
+        id: `lb-${b.id}`,
+        label: b.label,
+        rank,
+        total,
+      };
+    });
+
+  return {
+    ...u,
+    leaderboards: leaderboards.concat(generated),
+  };
+};
+
+const recomputeBadgeLeaderboardRanks = (
+  users: DemoPublicUserProfile[],
+): DemoPublicUserProfile[] => {
+  const badgeIds = Array.from(
+    new Set(
+      users.flatMap((u) => (u.badges ?? []).map((b) => b.id)),
+    ),
+  );
+
+  const updatedByUsername = new Map<string, DemoPublicUserProfile>(
+    users.map((u) => [u.username, u]),
+  );
+
+  const compareForBadge = (badgeId: string, a: DemoPublicUserProfile, b: DemoPublicUserProfile) => {
+    // Higher score should come first; we'll invert for ascending comparator.
+    const cmp = (x: number, y: number) => (x === y ? 0 : x > y ? -1 : 1);
+    switch (badgeId) {
+      case "b-overlap": {
+        const byWinRate = cmp(a.stats.winRate, b.stats.winRate);
+        if (byWinRate !== 0) return byWinRate;
+        const byMonthly = cmp(a.stats.monthlyReturn, b.stats.monthlyReturn);
+        if (byMonthly !== 0) return byMonthly;
+        return a.username.localeCompare(b.username);
+      }
+      case "b-review": {
+        // We currently use stats.streak as the "review streak" stand-in.
+        const byReviews = cmp(a.stats.streak, b.stats.streak);
+        if (byReviews !== 0) return byReviews;
+        return a.username.localeCompare(b.username);
+      }
+      default: {
+        // Deterministic fallback: higher hash wins, then username.
+        const ha = hashStringForDemo(`${a.username.toLowerCase()}:${badgeId}`);
+        const hb = hashStringForDemo(`${b.username.toLowerCase()}:${badgeId}`);
+        const byHash = cmp(ha, hb);
+        if (byHash !== 0) return byHash;
+        return a.username.localeCompare(b.username);
+      }
+    }
+  };
+
+  for (const badgeId of badgeIds) {
+    const holders = users.filter((u) => (u.badges ?? []).some((b) => b.id === badgeId));
+    if (holders.length === 0) continue;
+
+    const total = holders.length;
+    const sorted = holders.slice().sort((a, b) => compareForBadge(badgeId, a, b));
+
+    for (let i = 0; i < sorted.length; i++) {
+      const u = sorted[i];
+      if (!u) continue;
+      const rank = i + 1;
+      const badge = (u.badges ?? []).find((b) => b.id === badgeId);
+      const label = badge?.label ?? badgeId;
+      const entryId = `lb-${badgeId}`;
+
+      const current = updatedByUsername.get(u.username);
+      if (!current) continue;
+
+      const existing = current.leaderboards ?? [];
+      const nextLeaderboards = existing.some((lb) => lb.id === entryId)
+        ? existing.map((lb) =>
+            lb.id === entryId ? { ...lb, label, rank, total } : lb,
+          )
+        : existing.concat({ id: entryId, label, rank, total });
+
+      updatedByUsername.set(u.username, { ...current, leaderboards: nextLeaderboards });
+    }
+  }
+
+  return users.map((u) => updatedByUsername.get(u.username) ?? u);
+};
+
+const recomputeStandardLeaderboards = (
+  users: DemoPublicUserProfile[],
+): DemoPublicUserProfile[] => {
+  const defs: Array<{
+    id: string;
+    label: string;
+    compare: (a: DemoPublicUserProfile, b: DemoPublicUserProfile) => number;
+  }> = [
+    {
+      id: "lb-edge",
+      label: "Edge days",
+      compare: (a, b) => {
+        if (a.stats.streak !== b.stats.streak) return b.stats.streak - a.stats.streak;
+        if (a.stats.winRate !== b.stats.winRate) return b.stats.winRate - a.stats.winRate;
+        if (a.stats.monthlyReturn !== b.stats.monthlyReturn) return b.stats.monthlyReturn - a.stats.monthlyReturn;
+        return a.username.localeCompare(b.username);
+      },
+    },
+    {
+      id: "lb-discipline",
+      label: "Discipline",
+      compare: (a, b) => {
+        if (a.stats.profitFactor !== b.stats.profitFactor) return b.stats.profitFactor - a.stats.profitFactor;
+        if (a.stats.winRate !== b.stats.winRate) return b.stats.winRate - a.stats.winRate;
+        return a.username.localeCompare(b.username);
+      },
+    },
+  ];
+
+  const updatedByUsername = new Map<string, DemoPublicUserProfile>(
+    users.map((u) => [u.username, u]),
+  );
+
+  for (const def of defs) {
+    const sorted = users.slice().sort(def.compare);
+    const total = sorted.length;
+
+    for (let i = 0; i < sorted.length; i++) {
+      const u = sorted[i];
+      if (!u) continue;
+
+      const rank = i + 1;
+      const current = updatedByUsername.get(u.username);
+      if (!current) continue;
+
+      const existing = current.leaderboards ?? [];
+      const next = existing.some((lb) => lb.id === def.id)
+        ? existing.map((lb) =>
+            lb.id === def.id ? { ...lb, label: def.label, rank, total } : lb,
+          )
+        : existing.concat({ id: def.id, label: def.label, rank, total });
+
+      updatedByUsername.set(u.username, { ...current, leaderboards: next });
+    }
+  }
+
+  return users.map((u) => updatedByUsername.get(u.username) ?? u);
+};
+
+const ensureUserHasTrades = (u: DemoPublicUserProfile): DemoPublicUserProfile => {
+  const existing = u.recentTrades ?? [];
+  if (existing.length >= 2) return u;
+  return {
+    ...u,
+    recentTrades: makeRecentTradesForUser(u.username, 2),
+  };
+};
+
+const demoPublicUsersBase: DemoPublicUserProfile[] = [
   {
     username: "nova_trader",
     displayName: "Nova Trader",
@@ -595,6 +798,7 @@ export const demoPublicUsers: DemoPublicUserProfile[] = [
     bio: "Trend pullbacks in London + NY overlap. Focus: fewer trades, higher quality.",
     isPublic: true,
     primaryBroker: "MetaTrader Broker",
+    reviewSettings: { canWriteReviews: true, allowProfileReviews: true },
     stats: {
       balance: 8420,
       winRate: 61,
@@ -639,6 +843,7 @@ export const demoPublicUsers: DemoPublicUserProfile[] = [
     bio: "Trend pullbacks in London + NY overlap. Focus: fewer trades, higher quality.",
     isPublic: true,
     primaryBroker: "MetaTrader Broker",
+    reviewSettings: { canWriteReviews: true, allowProfileReviews: true },
     stats: {
       balance: 8420,
       winRate: 61,
@@ -917,6 +1122,12 @@ export const demoPublicUsers: DemoPublicUserProfile[] = [
     recentTrades: []
   },
 ];
+
+export const demoPublicUsers: DemoPublicUserProfile[] = recomputeBadgeLeaderboardRanks(
+  recomputeStandardLeaderboards(
+    demoPublicUsersBase.map((u) => ensureUserHasTrades(ensureUserHasBadgeLeaderboards(u))),
+  ),
+);
 
 export const demoBrokers: DemoAffiliateLink[] = [
   {
@@ -1435,6 +1646,181 @@ export const demoPropFirms: DemoAffiliateLink[] = [
     pros: ["Good layout test", "Consistent schema"],
     cons: ["Demo data entry"],
   },
+];
+
+const hashString = (input: string) => {
+  // Deterministic small hash (non-crypto) for stable mock generation.
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+};
+
+const makeIsoDate = (seed: string, index: number) => {
+  const base = Date.UTC(2026, 0, 17, 20, 0, 0); // Jan 17 2026 20:00 UTC
+  const h = hashString(seed);
+  const daysBack = (h % 21) + index; // 0..22
+  const hours = (h % 12) + index; // 0..13
+  const ms = base - daysBack * 24 * 60 * 60 * 1000 - hours * 60 * 60 * 1000;
+  return new Date(ms).toISOString();
+};
+
+const reviewTemplates = {
+  firm: [
+    {
+      rating: 5,
+      title: "Solid rules and smooth onboarding",
+      body: "Clear objectives, consistent rule set, and onboarding that doesn’t waste time.",
+    },
+    {
+      rating: 4,
+      title: "Great overall, read the fine print",
+      body: "I like the structure and support, but always double-check rule changes and payout terms.",
+    },
+    {
+      rating: 3,
+      title: "Good concept, mixed experience",
+      body: "Some parts are excellent, others feel a bit rigid depending on your style.",
+    },
+  ],
+  broker: [
+    {
+      rating: 5,
+      title: "Execution feels consistent",
+      body: "Spreads/fees depend on account/tier, but overall execution has been reliable for me.",
+    },
+    {
+      rating: 4,
+      title: "Powerful platform, a bit complex",
+      body: "Once configured it’s smooth, but there’s a learning curve if you’re new.",
+    },
+    {
+      rating: 3,
+      title: "Decent, but UX could be cleaner",
+      body: "Works well enough, just wish the UI was a bit more focused and less noisy.",
+    },
+  ],
+  user: [
+    {
+      rating: 5,
+      title: "Clean plan + disciplined execution",
+      body: "Trades are consistent with the stated edge and the reviews are actually informative.",
+    },
+    {
+      rating: 4,
+      title: "Great setups, would love more detail",
+      body: "Strong ideas—more screenshots/notes on invalidations would make it even better.",
+    },
+    {
+      rating: 5,
+      title: "Quality over quantity",
+      body: "Love the focus on fewer trades and higher quality sessions. Good risk mindset.",
+    },
+  ],
+} as const;
+
+const getReviewAuthor = (seed: string, excludeUsername?: string) => {
+  const users = demoPublicUsers.filter((u) => u.isPublic);
+  if (users.length === 0) {
+    return { username: "demo", displayName: "Demo User", avatarUrl: undefined };
+  }
+  const filtered = excludeUsername
+    ? users.filter((u) => u.username.toLowerCase() !== excludeUsername.toLowerCase())
+    : users;
+  const pool = filtered.length > 0 ? filtered : users;
+  const idx = hashString(seed) % pool.length;
+  const u = pool[idx]!;
+  return { username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl };
+};
+
+const safeKey = (key: string) => key.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
+export const demoReviews: DemoReview[] = [
+  // Firms: 2 each
+  ...demoPropFirms.flatMap((f) => {
+    const k = `firm:${f.slug}`;
+    const t1 = reviewTemplates.firm[hashString(k) % reviewTemplates.firm.length]!;
+    const t2 =
+      reviewTemplates.firm[(hashString(k + ":2") + 1) % reviewTemplates.firm.length]!;
+    return [
+      {
+        id: `rev-firm-${safeKey(f.slug)}-1`,
+        target: { kind: "firm" as const, slug: f.slug },
+        rating: t1.rating,
+        title: t1.title,
+        body: t1.body,
+        createdAt: makeIsoDate(k, 0),
+        author: getReviewAuthor(k + ":a"),
+      },
+      {
+        id: `rev-firm-${safeKey(f.slug)}-2`,
+        target: { kind: "firm" as const, slug: f.slug },
+        rating: t2.rating,
+        title: t2.title,
+        body: t2.body,
+        createdAt: makeIsoDate(k, 1),
+        author: getReviewAuthor(k + ":b"),
+      },
+    ];
+  }),
+  // Brokers: 2 each
+  ...demoBrokers.flatMap((b) => {
+    const k = `broker:${b.slug}`;
+    const t1 =
+      reviewTemplates.broker[hashString(k) % reviewTemplates.broker.length]!;
+    const t2 =
+      reviewTemplates.broker[(hashString(k + ":2") + 1) % reviewTemplates.broker.length]!;
+    return [
+      {
+        id: `rev-broker-${safeKey(b.slug)}-1`,
+        target: { kind: "broker" as const, slug: b.slug },
+        rating: t1.rating,
+        title: t1.title,
+        body: t1.body,
+        createdAt: makeIsoDate(k, 0),
+        author: getReviewAuthor(k + ":a"),
+      },
+      {
+        id: `rev-broker-${safeKey(b.slug)}-2`,
+        target: { kind: "broker" as const, slug: b.slug },
+        rating: t2.rating,
+        title: t2.title,
+        body: t2.body,
+        createdAt: makeIsoDate(k, 1),
+        author: getReviewAuthor(k + ":b"),
+      },
+    ];
+  }),
+  // Users: 2 each (no self-reviews)
+  ...demoPublicUsers
+    .filter((u) => u.isPublic)
+    .flatMap((u) => {
+      const k = `user:${u.username.toLowerCase()}`;
+      const t1 = reviewTemplates.user[hashString(k) % reviewTemplates.user.length]!;
+      const t2 =
+        reviewTemplates.user[(hashString(k + ":2") + 1) % reviewTemplates.user.length]!;
+      return [
+        {
+          id: `rev-user-${safeKey(u.username)}-1`,
+          target: { kind: "user" as const, username: u.username },
+          rating: t1.rating,
+          title: t1.title,
+          body: t1.body,
+          createdAt: makeIsoDate(k, 0),
+          author: getReviewAuthor(k + ":a", u.username),
+        },
+        {
+          id: `rev-user-${safeKey(u.username)}-2`,
+          target: { kind: "user" as const, username: u.username },
+          rating: t2.rating,
+          title: t2.title,
+          body: t2.body,
+          createdAt: makeIsoDate(k, 1),
+          author: getReviewAuthor(k + ":b", u.username),
+        },
+      ];
+    }),
 ];
 
 export const demoData: DemoData = demoDataSchema.parse({

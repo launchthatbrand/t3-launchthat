@@ -5,6 +5,7 @@ import { AffiliateStars } from "~/components/affiliates/AffiliateStars";
 import { Button } from "@acme/ui/button";
 import Link from "next/link";
 import React from "react";
+import { ReviewsSection } from "~/components/reviews/ReviewsSection";
 import { demoPropFirms } from "@acme/demo-data";
 import { notFound } from "next/navigation";
 
@@ -112,6 +113,14 @@ export default async function FirmDetailPage({
                 </ul>
               </div>
             </div>
+          </div>
+
+          <div className="mt-6">
+            <ReviewsSection
+              target={{ kind: "firm", slug: firm.slug }}
+              title="Reviews"
+              subtitle={`What traders are saying about ${firm.name}`}
+            />
           </div>
         </div>
 

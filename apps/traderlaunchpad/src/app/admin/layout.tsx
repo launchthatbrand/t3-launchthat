@@ -2,12 +2,13 @@
 
 import { DottedGlowBackground, cn } from "@acme/ui";
 import { IconArrowLeft, IconBrandTabler, IconSettings, IconUserBolt } from "@tabler/icons-react";
+import React, { useState } from "react";
+import { Sidebar, SidebarBody, SidebarLink } from "~/components/ui/sidebar";
 import { UserButton, useAuth } from "@clerk/nextjs";
 import { redirect, usePathname } from "next/navigation";
 
 import Link from "next/link";
 import { NavItems } from "~/components/ui/resizable-navbar";
-import React from "react";
 import { motion } from "motion/react";
 
 const GridLines = () => (
@@ -26,6 +27,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const { userId, isLoaded } = useAuth();
+  const [open, setOpen] = useState(false);
 
   const navItems = [
     {
@@ -63,53 +65,36 @@ export default function AdminLayout({
 
   if (!isLoaded || !userId) return null;
 
+  const links = [
+    {
+      label: "Dashboard",
+      href: "/admin/dashboard",
+      icon: (
+        <IconBrandTabler className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+      ),
+    },
+    {
+      label: "Profile",
+      href: "#",
+      icon: (
+        <IconUserBolt className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+      ),
+    },
+    {
+      label: "Settings",
+      href: "/admin/settings",
+      icon: (
+        <IconSettings className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+      ),
+    },
+  ];
+
   return (
-    <div className="dark relative min-h-screen overflow-hidden bg-[#0A0A0A] text-white">
-      {/* Background */}
-      <div className="fixed inset-0 z-0">
-        <DottedGlowBackground
-          color="rgba(255, 100, 0, 0.15)"
-          glowColor="rgba(255, 120, 0, 0.6)"
-          gap={24}
-          radius={1.5}
-          speedMin={0.2}
-          speedMax={0.8}
-        />
-
-        <div className="absolute top-1/4 left-1/4 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-600/20 blur-[140px]" />
-        <div className="absolute right-0 bottom-0 h-[720px] w-[720px] translate-x-1/3 translate-y-1/3 rounded-full bg-orange-500/10 blur-[160px]" />
-
-        {/* Architectural Curve */}
-        <svg
-          className="pointer-events-none absolute inset-0 h-full w-full opacity-20"
-          preserveAspectRatio="none"
-        >
-          <path
-            d="M-100,0 C200,420 620,0 1200,820 S1780,420 2200,1200"
-            fill="none"
-            stroke="url(#adminCurveGradient)"
-            strokeWidth="1"
-          />
-          <defs>
-            <linearGradient
-              id="adminCurveGradient"
-              x1="0%"
-              y1="0%"
-              x2="100%"
-              y2="100%"
-            >
-              <stop offset="0%" stopColor="rgba(255,255,255,0)" />
-              <stop offset="50%" stopColor="rgba(249,115,22,0.5)" />
-              <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-            </linearGradient>
-          </defs>
-        </svg>
-      </div>
-
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-black/40 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2 font-bold">
+    <div className="max-h-screen h-full flex flex-1 overflow-hidden">
+      <Sidebar open={open} setOpen={setOpen}>
+        <SidebarBody className="justify-between gap-10 min-h-screen z-50 border-white/10! border-r bg-black/40! backdrop-blur-md">
+          <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
+            {open ? <Link href="/" className="flex items-center gap-2 font-bold">
               <div className="flex h-7 w-7 items-center justify-center rounded bg-white text-black">
                 <svg
                   width="16"
@@ -125,23 +110,65 @@ export default function AdminLayout({
                 </svg>
               </div>
               <span className="tracking-tight">TraderLaunchpad</span>
-            </Link>
-
-            <nav className="mx-6 hidden items-center space-x-4 lg:flex lg:space-x-6">
-              <NavItems items={navItems} />
-            </nav>
+            </Link> : <div className="flex h-7 w-7 items-center justify-center rounded bg-white text-black">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+              </svg>
+            </div>}
+            <div className="mt-8 flex flex-col gap-2">
+              {links.map((link, idx) => (
+                <SidebarLink key={idx} link={link} />
+              ))}
+            </div>
           </div>
+          <div>
+            <SidebarLink
+              link={{
+                label: "Manu Arora",
+                href: "#",
+                icon: (
+                  <img
+                    src="https://assets.aceternity.com/manu.png"
+                    className="h-7 w-7 shrink-0 rounded-full"
+                    width={50}
+                    height={50}
+                    alt="Avatar"
+                  />
+                ),
+              }}
+            />
+          </div>
+        </SidebarBody>
+      </Sidebar>
+      <div className="flex-1 overflow-y-scroll">
+        <header className="sticky top-0 z-40 border-b border-white/10 bg-black/40 backdrop-blur-md">
+          <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
+            <div className="flex items-center gap-4">
+              <nav className="mx-6 hidden items-center space-x-4 lg:flex lg:space-x-6">
+                <NavItems items={navItems} />
+              </nav>
+            </div>
 
-          <div className="relative z-10">
-            <UserButton afterSignOutUrl="/" />
+            <div className="relative z-10">
+              <UserButton afterSignOutUrl="/" />
+            </div>
+          </div>
+        </header>
+        <div className="w-full px-4 py-6">
+          <div className="mx-auto max-w-7xl">
+            {children}
           </div>
         </div>
-      </header>
-
-      <main className="relative z-10">
-        <GridLines />
-        <div className="mx-auto max-w-7xl px-4 py-6">{children}</div>
-      </main>
+      </div>
     </div>
   );
 }

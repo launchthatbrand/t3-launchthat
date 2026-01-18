@@ -1,8 +1,10 @@
 "use client";
-import { cn } from "~/lib/utils";
-import React, { useState, createContext, useContext } from "react";
+
 import { AnimatePresence, motion } from "motion/react";
 import { IconMenu2, IconX } from "@tabler/icons-react";
+import React, { createContext, useContext, useState } from "react";
+
+import { cn } from "~/lib/utils";
 
 interface Links {
   label: string;
@@ -92,7 +94,7 @@ export const DesktopSidebar = ({
           className
         )}
         animate={{
-          width: animate ? (open ? "300px" : "60px") : "300px",
+          width: animate ? (open ? "250px" : "60px") : "250px",
         }}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}

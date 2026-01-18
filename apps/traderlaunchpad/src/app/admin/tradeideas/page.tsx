@@ -1,7 +1,5 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
 import {
   AlertCircle,
   ArrowUpRight,
@@ -13,10 +11,6 @@ import {
   Plus,
   Search,
 } from "lucide-react";
-
-import { cn } from "@acme/ui";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@acme/ui/card";
 import {
   DropdownMenu,
@@ -24,9 +18,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@acme/ui/dropdown-menu";
-import { Input } from "@acme/ui/input";
-import { Separator } from "@acme/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { Input } from "@acme/ui/input";
+import Link from "next/link";
+import React from "react";
+import { Separator } from "@acme/ui/separator";
+import { cn } from "@acme/ui";
 
 const MOCK_IDEAS = [
   {
@@ -90,7 +90,7 @@ export default function AdminTradeIdeasPage() {
   const [view, setView] = React.useState<"grid" | "list">("grid");
 
   return (
-    <div className="relative animate-in fade-in space-y-8 text-white selection:bg-orange-500/30 duration-500">
+    <div className="container relative animate-in fade-in space-y-8 text-white selection:bg-orange-500/30 duration-500">
       {/* Header */}
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>

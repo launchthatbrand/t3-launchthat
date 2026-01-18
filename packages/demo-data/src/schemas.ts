@@ -113,6 +113,14 @@ export const publicUserProfileSchema = z.object({
   bio: z.string(),
   isPublic: z.boolean(),
   primaryBroker: z.string(),
+  reviewSettings: z
+    .object({
+      // Admin setting: can this user write reviews?
+      canWriteReviews: z.boolean().optional(),
+      // Admin setting: can this user's public profile receive reviews?
+      allowProfileReviews: z.boolean().optional(),
+    })
+    .optional(),
   stats: z.object({
     balance: z.number(),
     winRate: z.number(),
@@ -127,6 +135,28 @@ export const publicUserProfileSchema = z.object({
 });
 
 export const affiliateKindSchema = z.enum(["broker", "firm"]);
+
+export const reviewTargetKindSchema = z.enum(["broker", "firm", "user"]);
+
+export const reviewTargetSchema = z.union([
+  z.object({ kind: z.literal("broker"), slug: z.string() }),
+  z.object({ kind: z.literal("firm"), slug: z.string() }),
+  z.object({ kind: z.literal("user"), username: z.string() }),
+]);
+
+export const demoReviewSchema = z.object({
+  id: z.string(),
+  target: reviewTargetSchema,
+  rating: z.number().int().min(1).max(5),
+  title: z.string(),
+  body: z.string(),
+  createdAt: z.string(), // ISO date
+  author: z.object({
+    username: z.string(),
+    displayName: z.string(),
+    avatarUrl: z.string().optional(),
+  }),
+});
 
 export const affiliateLinkSchema = z.object({
   id: z.string(),
@@ -179,4 +209,6 @@ export type DemoPublicUserLeaderboardRank = z.infer<
 >;
 export type DemoAffiliateKind = z.infer<typeof affiliateKindSchema>;
 export type DemoAffiliateLink = z.infer<typeof affiliateLinkSchema>;
+export type DemoReviewTargetKind = z.infer<typeof reviewTargetKindSchema>;
+export type DemoReview = z.infer<typeof demoReviewSchema>;
 

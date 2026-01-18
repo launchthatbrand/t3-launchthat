@@ -44,6 +44,7 @@ import { HighlighterIcon } from "../../components/tiptap-icons/highlighter-icon"
 import { HorizontalRule } from "../../components/tiptap-node/horizontal-rule-node/horizontal-rule-node-extension"
 import { Image } from "@tiptap/extension-image"
 import { ImageUploadButton } from "../../components/tiptap-ui/image-upload-button"
+import { Link as TiptapLink } from "@tiptap/extension-link"
 // --- Tiptap Node ---
 import { ImageUploadNode } from "../../components/tiptap-node/image-upload-node/image-upload-node-extension"
 import { LinkIcon } from "../../components/tiptap-icons/link-icon"
@@ -214,6 +215,12 @@ export function SimpleEditor({
   const extensions = [
     StarterKit.configure({
       horizontalRule: false,
+    }),
+    // Link mark is required for LinkPopover (setMark("link"))
+    TiptapLink.configure({
+      openOnClick: false,
+      autolink: true,
+      linkOnPaste: true,
     }),
     HorizontalRule,
     TextAlign.configure({ types: ["heading", "paragraph"] }),

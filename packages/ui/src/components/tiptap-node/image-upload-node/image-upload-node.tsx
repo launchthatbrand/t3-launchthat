@@ -1,6 +1,6 @@
 "use client"
 
-import "@/components/tiptap-node/image-upload-node/image-upload-node.scss"
+import "./image-upload-node.scss"
 
 import { focusNextNode, isValidPosition } from "../../../lib/tiptap-utils"
 import { useRef, useState } from "react"

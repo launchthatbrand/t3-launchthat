@@ -1,9 +1,11 @@
 "use client"
 
-import { forwardRef } from "react"
+import "./dropdown-menu.scss"
+
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
-import { cn } from "@/lib/tiptap-utils"
-import "@/components/tiptap-ui-primitive/dropdown-menu/dropdown-menu.scss"
+
+import { cn } from "../../../lib/tiptap-utils"
+import { forwardRef } from "react"
 
 function DropdownMenu({
   ...props

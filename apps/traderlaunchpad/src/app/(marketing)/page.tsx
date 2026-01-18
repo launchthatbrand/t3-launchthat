@@ -31,6 +31,7 @@ import { Marquee } from "@acme/ui/marquee";
 import { PricingSection } from "../../components/landing/PricingSection";
 import React from "react";
 import { StrategyBuilderAnimation } from "../../components/landing/StrategyBuilderAnimation";
+import { auth } from "@clerk/nextjs/server";
 
 const PlusIcon = ({ className }: { className?: string }) => (
   <svg
@@ -45,7 +46,11 @@ const PlusIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { userId } = await auth();
+  const primaryCtaHref = userId ? "/admin/dashboard" : "/sign-up";
+  const primaryCtaLabel = userId ? "Dashboard" : "Get Started";
+
   const publicProfiles = demoPublicProfiles as unknown as {
     id: string;
     username: string;
@@ -68,35 +73,6 @@ export default function HomePage() {
 
   return (
     <div className="relative min-h-screen text-white selection:bg-orange-500/30">
-      {/* Background Effects */}
-      <div className="fixed inset-0 z-0 overflow-hidden">
-        {/* Architectural Curve - Large S-Curve */}
-        <svg
-          className="pointer-events-none absolute inset-0 h-full w-full opacity-20"
-          preserveAspectRatio="none"
-        >
-          <path
-            d="M-100,0 C200,400 600,0 1200,800 S1800,400 2200,1200"
-            fill="none"
-            stroke="url(#curveGradient)"
-            strokeWidth="1"
-          />
-          <defs>
-            <linearGradient
-              id="curveGradient"
-              x1="0%"
-              y1="0%"
-              x2="100%"
-              y2="100%"
-            >
-              <stop offset="0%" stopColor="rgba(255,255,255,0)" />
-              <stop offset="50%" stopColor="rgba(249,115,22,0.5)" />
-              <stop offset="100%" stopColor="rgba(255,255,255,0)" />
-            </linearGradient>
-          </defs>
-        </svg>
-      </div>
-
       <main className="relative z-10 pt-32">
 
         {/* Hero Section */}
@@ -145,7 +121,7 @@ export default function HomePage() {
                 />
 
                 <div className="mt-20 mb-20 flex justify-center">
-                  <Link href="/sign-up" className="inline-block">
+                  <Link href={primaryCtaHref} className="inline-block">
                     <Button
                       as="div"
                       borderRadius="1.75rem"
@@ -153,7 +129,7 @@ export default function HomePage() {
                       className="bg-white text-black text-lg font-bold border-neutral-200 dark:border-slate-800 transition-transform hover:scale-105 cursor-pointer"
                     >
                       <span className="flex w-full items-center justify-between gap-4 px-2">
-                        <span className="w-full">Get started</span>
+                        <span className="w-full">{primaryCtaLabel}</span>
                         <span className="flex min-h-8 min-w-8 items-center justify-center rounded-full bg-black text-white">
                           <ArrowRight className="h-4 w-4" />
                         </span>
@@ -519,14 +495,14 @@ export default function HomePage() {
                 </p>
 
                 <div className="mt-7 flex flex-wrap items-center gap-3">
-                  <Link href="/sign-up" className="inline-block">
+                  <Link href={primaryCtaHref} className="inline-block">
                     <Button
                       as="div"
                       borderRadius="1.75rem"
                       containerClassName="h-12 w-auto min-w-[160px]"
                       className="bg-white text-black font-medium border-neutral-200 dark:border-slate-800 cursor-pointer"
                     >
-                      Get started <ArrowRight className="ml-2 h-4 w-4" />
+                      {primaryCtaLabel} <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>
                   <Link href="/admin/dashboard" className="inline-block">
@@ -580,45 +556,7 @@ export default function HomePage() {
 
         <PricingSection />
 
-        {/* Footer Minimal */}
-        <footer className="border-t border-white/5 bg-black/40 py-12 backdrop-blur-sm">
-          <div className="container mx-auto max-w-7xl px-4 text-center">
-            <div className="mb-8 flex items-center justify-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded bg-white text-xs font-bold text-black">
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                </svg>
-              </div>
-              <span className="text-xl font-bold text-white">
-                TraderLaunchpad
-              </span>
-            </div>
-            <div className="flex justify-center gap-8 text-sm text-gray-500">
-              <Link href="#" className="hover:text-white">
-                Privacy
-              </Link>
-              <Link href="#" className="hover:text-white">
-                Terms
-              </Link>
-              <Link href="#" className="hover:text-white">
-                Contact
-              </Link>
-            </div>
-            <p className="mt-8 text-xs text-gray-600">
-              © {new Date().getFullYear()} TraderLaunchpad. All rights
-              reserved.
-            </p>
-          </div>
-        </footer>
+
       </main>
     </div>
   );

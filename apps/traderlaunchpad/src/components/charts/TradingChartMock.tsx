@@ -10,7 +10,9 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 
-type Marker = {
+export type TradingTimeframe = "5m" | "15m" | "1h" | "4h" | "1d";
+
+export type TradingChartMarker = {
   time: number; // ms or seconds
   position: "aboveBar" | "belowBar" | "inBar";
   color: string;
@@ -28,7 +30,8 @@ type Props = {
   symbol?: string;
   height?: number;
   className?: string;
-  markers?: Marker[];
+  timeframe?: TradingTimeframe;
+  markers?: TradingChartMarker[];
   showDefaultMarkers?: boolean;
 };
 
@@ -57,11 +60,46 @@ const toUtcSeconds = (time: number): UTCTimestamp => {
   return sec as UTCTimestamp;
 };
 
-const generateCandles = (seed: number, count: number) => {
+const timeframeToIntervalSec = (timeframe: TradingTimeframe): number => {
+  switch (timeframe) {
+    case "5m":
+      return 60 * 5;
+    case "15m":
+      return 60 * 15;
+    case "1h":
+      return 60 * 60;
+    case "4h":
+      return 60 * 60 * 4;
+    case "1d":
+      return 60 * 60 * 24;
+    default:
+      return 60 * 15;
+  }
+};
+
+const snapToNearestTime = (t: UTCTimestamp, times: UTCTimestamp[]): UTCTimestamp => {
+  if (times.length === 0) return t;
+  const target = Number(t);
+  let lo = 0;
+  let hi = times.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const v = Number(times[mid]!);
+    if (v === target) return times[mid]!;
+    if (v < target) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  const right = Math.min(lo, times.length - 1);
+  const left = Math.max(0, right - 1);
+  const dl = Math.abs(Number(times[left]!) - target);
+  const dr = Math.abs(Number(times[right]!) - target);
+  return dl <= dr ? times[left]! : times[right]!;
+};
+
+const generateCandles = (seed: number, count: number, intervalSec: number) => {
   const rand = mulberry32(seed);
   const nowSec = Math.floor(Date.now() / 1000);
-  const interval = 60 * 15; // 15m
-  const start = nowSec - interval * count;
+  const start = nowSec - intervalSec * count;
 
   let price = 100 + rand() * 50;
   const data: Array<{
@@ -73,7 +111,7 @@ const generateCandles = (seed: number, count: number) => {
   }> = [];
 
   for (let i = 0; i < count; i++) {
-    const t = (start + i * interval) as UTCTimestamp;
+    const t = (start + i * intervalSec) as UTCTimestamp;
     const drift = (rand() - 0.5) * 1.2;
     const vol = 0.2 + rand() * 1.8;
     const open = price;
@@ -97,9 +135,12 @@ export const TradingChartMock = (props: Props) => {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const chartRef = React.useRef<IChartApi | null>(null);
   const seriesRef = React.useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const resizeObserverRef = React.useRef<ResizeObserver | null>(null);
 
   const symbol = (props.symbol ?? "MARKET").trim() || "MARKET";
   const height = clamp(props.height ?? 360, 220, 720);
+  const timeframe = props.timeframe ?? "15m";
+  const intervalSec = timeframeToIntervalSec(timeframe);
 
   React.useEffect(() => {
     const el = containerRef.current;
@@ -146,8 +187,37 @@ export const TradingChartMock = (props: Props) => {
       wickDownColor: "rgba(239,68,68,0.9)",
     });
 
-    const candles = generateCandles(seedFromString(symbol), 160);
+    chartRef.current = chart;
+    seriesRef.current = series;
+
+    const ro = new ResizeObserver(() => {
+      const nextWidth = el.clientWidth;
+      chart.applyOptions({ width: nextWidth });
+    });
+    ro.observe(el);
+    resizeObserverRef.current = ro;
+
+    return () => {
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
+      chart.remove();
+      chartRef.current = null;
+      seriesRef.current = null;
+    };
+  }, [height]);
+
+  React.useEffect(() => {
+    chartRef.current?.applyOptions({ height });
+  }, [height]);
+
+  React.useEffect(() => {
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    if (!chart || !series) return;
+
+    const candles = generateCandles(seedFromString(symbol), 160, intervalSec);
     series.setData(candles);
+    const candleTimes = candles.map((c) => c.time);
 
     const shouldShowDefaultMarkers =
       props.showDefaultMarkers !== false &&
@@ -156,8 +226,7 @@ export const TradingChartMock = (props: Props) => {
     const defaultMarkers = shouldShowDefaultMarkers
       ? [
           {
-            time:
-              candles[Math.floor(candles.length * 0.35)]?.time ?? candles[0]!.time,
+            time: candles[Math.floor(candles.length * 0.35)]?.time ?? candles[0]!.time,
             position: "belowBar" as const,
             color: "#3B82F6",
             shape: "arrowUp" as const,
@@ -177,36 +246,23 @@ export const TradingChartMock = (props: Props) => {
 
     const userMarkers = Array.isArray(props.markers)
       ? props.markers
-          .map((m) => ({
-            time: toUtcSeconds(m.time),
-            position: m.position,
-            color: m.color,
-            shape: m.shape,
-            text: m.text,
-          }))
+          .map((m) => {
+            const raw = toUtcSeconds(m.time);
+            const snapped = snapToNearestTime(raw, candleTimes);
+            return {
+              time: snapped,
+              position: m.position,
+              color: m.color,
+              shape: m.shape,
+              text: m.text,
+            };
+          })
           .filter((m) => Boolean(m.time))
       : [];
 
     series.setMarkers([...defaultMarkers, ...userMarkers]);
-
     chart.timeScale().fitContent();
-
-    chartRef.current = chart;
-    seriesRef.current = series;
-
-    const ro = new ResizeObserver(() => {
-      const nextWidth = el.clientWidth;
-      chart.applyOptions({ width: nextWidth });
-    });
-    ro.observe(el);
-
-    return () => {
-      ro.disconnect();
-      chart.remove();
-      chartRef.current = null;
-      seriesRef.current = null;
-    };
-  }, [height, props.markers, symbol]);
+  }, [intervalSec, props.markers, props.showDefaultMarkers, symbol]);
 
   return (
     <div className={props.className}>
