@@ -88,20 +88,15 @@ export function TradingCalendarPanel({
     const parsed = new Date(`${selectedDate}T00:00:00`);
     if (Number.isNaN(parsed.getTime())) return;
 
-    // If the selected date is not in the currently displayed month, jump to it.
-    if (
-      parsed.getFullYear() === monthStart.getFullYear() &&
-      parsed.getMonth() === monthStart.getMonth()
-    ) {
-      return;
-    }
-
     const today = new Date();
     const diffMonths =
       (parsed.getFullYear() - today.getFullYear()) * 12 +
       (parsed.getMonth() - today.getMonth());
     setMonthOffset(diffMonths);
-  }, [selectedDate, monthStart]);
+    // Important: do NOT depend on the currently displayed month here.
+    // If we re-run this effect when the user clicks Prev/Next (monthOffset changes),
+    // it will snap back to the selected month and make month navigation feel broken.
+  }, [selectedDate]);
 
   const dailyMap = React.useMemo(() => {
     const map: Record<string, DailyStat> = {};

@@ -35,6 +35,22 @@ export const reviewTradeSchema = z.object({
   tradeDate: z.string(), // YYYY-MM-DD
 });
 
+export const adminOrderSchema = z.object({
+  id: z.string(),
+  symbol: z.string(),
+  type: z.enum(["Buy", "Sell"]),
+  qty: z.number(),
+  price: z.number(),
+  status: z.enum(["Filled", "Pending", "Cancelled", "Rejected"]),
+  time: z.string(),
+  date: z.string(),
+  pnl: z.number().nullable(),
+  // Optional link to a trade review item (e.g. demoReviewTrades[id])
+  tradeId: z.string().optional(),
+  // Optional metadata for display
+  role: z.enum(["Entry", "Exit", "Stop", "TP"]).optional(),
+});
+
 export const notificationDetailsSchema = z.object({
   title: z.string(),
   summary: z.string(),
@@ -152,6 +168,7 @@ export type DashboardStats = z.infer<typeof dashboardStatsSchema>;
 export type TradingCalendarDailyStat = z.infer<typeof tradingCalendarDailyStatSchema>;
 export type DemoInsight = z.infer<typeof insightSchema>;
 export type DemoReviewTrade = z.infer<typeof reviewTradeSchema>;
+export type DemoAdminOrder = z.infer<typeof adminOrderSchema>;
 export type DemoPhoneNotification = z.infer<typeof phoneNotificationSchema>;
 export type DemoPublicProfile = z.infer<typeof publicProfileSchema>;
 export type DemoPublicUserProfile = z.infer<typeof publicUserProfileSchema>;

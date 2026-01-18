@@ -1,14 +1,21 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { Plus, StickyNote, Trash2 } from "lucide-react";
+import { Pencil, Plus, StickyNote, Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@acme/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@acme/ui/dialog";
 import { ScrollArea } from "@acme/ui/scroll-area";
-import { Textarea } from "@acme/ui/textarea";
 import { cn } from "@acme/ui";
 import { format } from "date-fns";
+import { SimpleEditor } from "@acme/ui";
 
 export interface Note {
     id: string;
@@ -34,8 +41,11 @@ export function NotesSection({
     className,
 }: NotesSectionProps) {
     const [notes, setNotes] = useState<Note[]>([]);
-    const [newNote, setNewNote] = useState("");
     const [mounted, setMounted] = useState(false);
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [draftHtml, setDraftHtml] = useState<string>("");
+    const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
+    const [editorKey, setEditorKey] = useState(0);
 
     // Stabilize relatedEntities dependency
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,30 +107,77 @@ export function NotesSection({
         return () => window.removeEventListener("storage", loadNotes);
     }, [entityId, stableRelatedEntities, entityLabel]);
 
-    const addNote = () => {
-        if (!newNote.trim()) return;
+    const isHtmlLike = (value: string) => /<\/?[a-z][\s\S]*>/i.test(value);
+    const htmlToPlain = (value: string) =>
+        value
+            .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, "")
+            .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+            .replace(/<[^>]*>/g, " ")
+            .replace(/&nbsp;/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
 
-        const note: Note = {
-            id: crypto.randomUUID(),
-            content: newNote,
-            timestamp: Date.now(),
-            entityId,
-        };
+    const openCreateDialog = () => {
+        setActiveNoteId(null);
+        setDraftHtml("");
+        setEditorKey((k) => k + 1);
+        setDialogOpen(true);
+    };
 
-        // Update local storage for THIS entity only
-        const currentStorage = localStorage.getItem(`notes-${entityId}`);
-        const currentNotes = currentStorage ? JSON.parse(currentStorage) : [];
-        const updatedNotes = [...currentNotes, note];
-        localStorage.setItem(`notes-${entityId}`, JSON.stringify(updatedNotes));
+    const openEditDialog = (noteId: string) => {
+        const note = notes.find((n) => n.id === noteId);
+        if (!note) return;
+        if (note.entityId !== entityId) return; // only edit own notes for now
+        setActiveNoteId(noteId);
+        setDraftHtml(note.content ?? "");
+        setEditorKey((k) => k + 1);
+        setDialogOpen(true);
+    };
 
-        // Update state (re-merge with related to keep sort)
-        setNewNote("");
+    const persistNotesForEntity = (next: Note[]) => {
+        const slim = next.map(({ id, content, timestamp }) => ({ id, content, timestamp }));
+        localStorage.setItem(`notes-${entityId}`, JSON.stringify(slim));
+    };
 
-        // Trigger a reload of all notes to include the new one properly sorted
-        // (Or just optimistically add it, but re-running the load logic is safer for consistency)
-        const relNotes = notes.filter(n => n.entityId !== entityId);
-        const myNotes = updatedNotes.map((n: any) => ({ ...n, entityId, entityLabel }));
-        setNotes([...myNotes, ...relNotes].sort((a, b) => b.timestamp - a.timestamp));
+    const handleSave = () => {
+        const plain = htmlToPlain(draftHtml);
+        if (!plain) return;
+
+        const now = Date.now();
+
+        if (!activeNoteId) {
+            const note: Note = {
+                id: crypto.randomUUID(),
+                content: draftHtml,
+                timestamp: now,
+                entityId,
+                entityLabel,
+            };
+
+            const next = [
+                // new note first
+                note,
+                // keep existing notes but dedupe
+                ...notes.filter((n) => n.id !== note.id),
+            ].sort((a, b) => b.timestamp - a.timestamp);
+
+            // Persist only own notes
+            persistNotesForEntity(next.filter((n) => n.entityId === entityId));
+            setNotes(next);
+        } else {
+            const next = notes
+                .map((n) =>
+                    n.id === activeNoteId && n.entityId === entityId
+                        ? { ...n, content: draftHtml, timestamp: now }
+                        : n,
+                )
+                .sort((a, b) => b.timestamp - a.timestamp);
+
+            persistNotesForEntity(next.filter((n) => n.entityId === entityId));
+            setNotes(next);
+        }
+
+        setDialogOpen(false);
     };
 
     const deleteNote = (noteId: string, noteEntityId: string) => {
@@ -142,10 +199,16 @@ export function NotesSection({
     return (
         <Card className={cn("flex flex-col h-[500px]", className)}>
             <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                    <StickyNote className="h-4 w-4" />
-                    Notes & Activity
-                </CardTitle>
+                <div className="flex items-center justify-between gap-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                        <StickyNote className="h-4 w-4" />
+                        Notes & Activity
+                    </CardTitle>
+                    <Button size="sm" onClick={openCreateDialog}>
+                        <Plus className="mr-2 h-3.5 w-3.5" />
+                        Add Note
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col gap-4 min-h-[300px]">
                 <ScrollArea className="flex-1 pr-4 -mr-4">
@@ -173,45 +236,75 @@ export function NotesSection({
                                             )}
                                         </span>
                                         {note.entityId === entityId && (
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-5 w-5 -mr-1 text-muted-foreground hover:text-destructive"
-                                                onClick={() => deleteNote(note.id, note.entityId)}
-                                            >
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
+                                            <div className="flex items-center gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-7 w-7 text-muted-foreground hover:text-white"
+                                                    onClick={() => openEditDialog(note.id)}
+                                                >
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                                    onClick={() => deleteNote(note.id, note.entityId)}
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
                                         )}
                                     </div>
-                                    <p className="whitespace-pre-wrap leading-relaxed text-foreground/90">
-                                        {note.content}
-                                    </p>
+                                    {isHtmlLike(note.content) ? (
+                                        <div
+                                            className="prose prose-invert max-w-none text-foreground/90"
+                                            // Notes are authored by the current user in-app (localStorage).
+                                            // We also strip scripts/styles in edit validation for safety.
+                                            dangerouslySetInnerHTML={{ __html: note.content }}
+                                        />
+                                    ) : (
+                                        <p className="whitespace-pre-wrap leading-relaxed text-foreground/90">
+                                            {note.content}
+                                        </p>
+                                    )}
                                 </div>
                             ))
                         )}
                     </div>
                 </ScrollArea>
 
-                <div className="pt-2 gap-2 flex flex-col">
-                    <Textarea
-                        placeholder="Add a note..."
-                        value={newNote}
-                        onChange={(e) => setNewNote(e.target.value)}
-                        className="min-h-20 resize-none"
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                addNote();
-                            }
-                        }}
-                    />
-                    <div className="flex justify-end">
-                        <Button size="sm" onClick={addNote} disabled={!newNote.trim()}>
-                            <Plus className="mr-2 h-3.5 w-3.5" />
-                            Add Note
-                        </Button>
-                    </div>
-                </div>
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                    <DialogContent className="max-w-[900px] border-white/10 bg-black/80 text-white backdrop-blur">
+                        <DialogHeader>
+                            <DialogTitle>
+                                {activeNoteId ? "Edit note" : "Add note"}
+                            </DialogTitle>
+                        </DialogHeader>
+
+                        <div className="rounded-lg border border-white/10 bg-black/30">
+                            <SimpleEditor
+                                key={editorKey}
+                                variant="note"
+                                initialContent={draftHtml || "<p></p>"}
+                                onChange={(html) => setDraftHtml(html)}
+                            />
+                        </div>
+
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                                onClick={() => setDialogOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button onClick={handleSave} disabled={!htmlToPlain(draftHtml)}>
+                                Save
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </CardContent>
         </Card>
     );

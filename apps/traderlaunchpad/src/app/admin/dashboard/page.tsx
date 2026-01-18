@@ -127,12 +127,16 @@ const INSIGHT_ICON: Record<
 export default function AdminDashboardPage() {
   const onboarding = useOnboardingStatus();
   const [isDismissed, setIsDismissed] = React.useState(false);
+  const [openTradeId, setOpenTradeId] = React.useState<string | null>(null);
   const selectedTradeDate = useTradingCalendarStore(
     (state) => state.selectedDate,
   );
   const setSelectedTradeDate = useTradingCalendarStore(
     (state) => state.setSelectedDate,
   );
+  React.useEffect(() => {
+    setOpenTradeId(null);
+  }, [selectedTradeDate]);
 
   const totalTrades = demoReviewTrades.length;
   const avgPnl =
@@ -639,48 +643,101 @@ export default function AdminDashboardPage() {
                   )
                   : demoReviewTrades
                 ).map((trade) => (
-                  <div
+                  <Popover
                     key={trade.id}
-                    className="bg-card group flex cursor-pointer items-center justify-between rounded-md border p-3 transition-colors hover:border-blue-500/50"
+                    open={openTradeId === trade.id}
+                    onOpenChange={(next) =>
+                      setOpenTradeId(next ? trade.id : null)
+                    }
                   >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm font-medium">
-                        {trade.symbol}
-                        <span
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="bg-card group flex w-full items-center justify-between rounded-md border p-3 text-left transition-colors hover:border-blue-500/50"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-sm font-medium">
+                            {trade.symbol}
+                            <span
+                              className={cn(
+                                "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
+                                trade.type === "Long"
+                                  ? "bg-emerald-500/10 text-emerald-500"
+                                  : "bg-red-500/10 text-red-500",
+                              )}
+                            >
+                              {trade.type}
+                            </span>
+                            <span
+                              className={cn(
+                                "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
+                                trade.reviewed
+                                  ? "bg-emerald-500/10 text-emerald-500"
+                                  : "bg-amber-500/10 text-amber-500",
+                              )}
+                            >
+                              {trade.reviewed ? "Reviewed" : "Needs Review"}
+                            </span>
+                          </div>
+                          <div className="text-muted-foreground text-xs">
+                            {trade.date} • {trade.reason}
+                          </div>
+                        </div>
+                        <div
                           className={cn(
-                            "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
-                            trade.type === "Long"
-                              ? "bg-emerald-500/10 text-emerald-500"
-                              : "bg-red-500/10 text-red-500",
+                            "text-sm font-semibold",
+                            trade.pnl >= 0 ? "text-emerald-500" : "text-red-500",
                           )}
                         >
-                          {trade.type}
-                        </span>
-                        <span
+                          {trade.pnl >= 0 ? "+" : ""}
+                          {trade.pnl}
+                        </div>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[320px] border-white/10 bg-black/80 p-3 text-white backdrop-blur">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold">
+                            {trade.symbol} • {trade.type}
+                          </div>
+                          <div className="mt-0.5 text-xs text-white/60">
+                            {trade.tradeDate} • {trade.reason}
+                          </div>
+                        </div>
+                        <div
                           className={cn(
-                            "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
-                            trade.reviewed
-                              ? "bg-emerald-500/10 text-emerald-500"
-                              : "bg-amber-500/10 text-amber-500",
+                            "shrink-0 text-sm font-semibold tabular-nums",
+                            trade.pnl >= 0 ? "text-emerald-300" : "text-rose-300",
                           )}
                         >
-                          {trade.reviewed ? "Reviewed" : "Needs Review"}
-                        </span>
+                          {trade.pnl >= 0 ? "+" : ""}
+                          {trade.pnl}
+                        </div>
                       </div>
-                      <div className="text-muted-foreground text-xs">
-                        {trade.date} • {trade.reason}
+
+                      <div className="mt-3 flex items-center justify-between">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "border-white/15 text-[10px]",
+                            trade.reviewed ? "text-emerald-200" : "text-amber-200",
+                          )}
+                        >
+                          {trade.reviewed ? "Reviewed" : "Needs review"}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          className="h-8 bg-orange-600 px-2 text-xs text-white hover:bg-orange-700"
+                          asChild
+                        >
+                          <Link href={`/admin/trade/${trade.id}`}>
+                            View Trade{" "}
+                            <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+                          </Link>
+                        </Button>
                       </div>
-                    </div>
-                    <div
-                      className={cn(
-                        "text-sm font-semibold",
-                        trade.pnl >= 0 ? "text-emerald-500" : "text-red-500",
-                      )}
-                    >
-                      {trade.pnl >= 0 ? "+" : ""}
-                      {trade.pnl}
-                    </div>
-                  </div>
+                    </PopoverContent>
+                  </Popover>
                 ))}
               </div>
               <Button

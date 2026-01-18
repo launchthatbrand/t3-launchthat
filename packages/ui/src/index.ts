@@ -55,3 +55,4 @@ export * from "./components/ui/container-scroll-animation";
 export * from "./components/ui/flip-words";
 export * from "./components/ui/text-generate-effect";
 export * from "./safari";
+export * from "./tiptap-templates/simple/simple-editor";

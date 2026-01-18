@@ -31,76 +31,9 @@ import Link from "next/link";
 import React from "react";
 import { cn } from "@acme/ui";
 import { useRouter } from "next/navigation";
+import { demoAdminOrders } from "@acme/demo-data";
 
-// Mock Data
-const ORDERS = [
-  {
-    id: "mock-ord-001",
-    symbol: "EURUSD",
-    type: "Buy",
-    qty: 1.0,
-    price: 1.085,
-    status: "Filled",
-    time: "10:30 AM",
-    date: "Jan 16",
-    pnl: null,
-  },
-  {
-    id: "mock-ord-002",
-    symbol: "NAS100",
-    type: "Sell",
-    qty: 0.5,
-    price: 16850.0,
-    status: "Filled",
-    time: "09:45 AM",
-    date: "Jan 16",
-    pnl: 450.0,
-  },
-  {
-    id: "mock-ord-003",
-    symbol: "US30",
-    type: "Buy",
-    qty: 2.0,
-    price: 37500.0,
-    status: "Cancelled",
-    time: "09:30 AM",
-    date: "Jan 16",
-    pnl: null,
-  },
-  {
-    id: "mock-ord-004",
-    symbol: "XAUUSD",
-    type: "Sell",
-    qty: 0.1,
-    price: 2045.5,
-    status: "Filled",
-    time: "02:15 PM",
-    date: "Jan 15",
-    pnl: -50.0,
-  },
-  {
-    id: "mock-ord-005",
-    symbol: "GBPUSD",
-    type: "Buy",
-    qty: 1.5,
-    price: 1.268,
-    status: "Filled",
-    time: "01:00 PM",
-    date: "Jan 15",
-    pnl: 120.0,
-  },
-  {
-    id: "mock-ord-006",
-    symbol: "BTCUSD",
-    type: "Buy",
-    qty: 0.05,
-    price: 42500.0,
-    status: "Filled",
-    time: "11:20 AM",
-    date: "Jan 14",
-    pnl: 890.0,
-  },
-];
+const ORDERS = demoAdminOrders;
 
 export default function AdminOrdersPage() {
   const router = useRouter();

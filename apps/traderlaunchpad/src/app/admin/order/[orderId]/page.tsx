@@ -27,6 +27,15 @@ function MockOrderDetail(props: { orderId: string }) {
   const isBuy = props.orderId.charCodeAt(props.orderId.length - 1) % 2 !== 0;
   const symbol = isBuy ? "EURUSD" : "NAS100";
   const pnl = isBuy ? 450.0 : -120.5;
+  const nowSec = Math.floor(Date.now() / 1000);
+  const markerTime = nowSec - 60 * 15 * 40; // within the generated candle range
+  const orderMarker = {
+    time: markerTime,
+    position: (isBuy ? "belowBar" : "aboveBar") as const,
+    color: isBuy ? "#10B981" : "#F43F5E",
+    shape: (isBuy ? "arrowUp" : "arrowDown") as const,
+    text: isBuy ? "Buy" : "Sell",
+  };
 
   return (
     <div className="animate-in fade-in space-y-6 duration-500 pb-10">
@@ -108,7 +117,7 @@ function MockOrderDetail(props: { orderId: string }) {
             </Card>
           </div>
 
-          <Card className="overflow-hidden border-border/60 border-white/10 bg-white/3 backdrop-blur-md">
+          <Card className="overflow-hidden border-white/10 bg-white/3 backdrop-blur-md">
             <CardHeader className="border-b bg-muted/10 border-white/5 px-4 py-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium">Price Action</CardTitle>
@@ -119,7 +128,12 @@ function MockOrderDetail(props: { orderId: string }) {
               </div>
             </CardHeader>
             <CardContent className="bg-black/40 p-0">
-              <TradingChartMock symbol={symbol} height={400} />
+              <TradingChartMock
+                symbol={symbol}
+                height={400}
+                showDefaultMarkers={false}
+                markers={[orderMarker]}
+              />
             </CardContent>
           </Card>
 

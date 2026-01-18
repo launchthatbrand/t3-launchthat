@@ -14,6 +14,7 @@ import { Separator } from "@acme/ui/separator";
 import { TradingChartMock } from "~/components/charts/TradingChartMock";
 import { NotesSection } from "~/components/admin/NotesSection";
 import { api } from "@convex-config/_generated/api";
+import { demoAdminOrders } from "@acme/demo-data";
 
 const isLikelyConvexId = (id: string) => {
   const trimmed = id.trim();
@@ -30,6 +31,27 @@ function MockTradeIdeaDetail(props: { tradeIdeaGroupId: string }) {
     { id: "mock-ord-001", label: "Order #001 (EURUSD)" },
     { id: "mock-ord-002", label: "Order #002 (NAS100)" },
   ];
+  interface AdminOrderLite {
+    id: string;
+    symbol: string;
+    type: "Buy" | "Sell";
+    role?: string;
+  }
+
+  const linkedOrders = (demoAdminOrders as unknown as AdminOrderLite[]).filter(
+    (o) => relatedOrders.some((r) => r.id === o.id),
+  );
+  const nowSec = Math.floor(Date.now() / 1000);
+  const ideaMarkers = linkedOrders.map((o, idx) => {
+    const isBuy = o.type === "Buy";
+    return {
+      time: nowSec - 60 * 15 * (80 - idx * 18),
+      position: (isBuy ? "belowBar" : "aboveBar") as const,
+      color: isBuy ? "#10B981" : "#F43F5E",
+      shape: (isBuy ? "arrowUp" : "arrowDown") as const,
+      text: o.role ?? (isBuy ? "Buy" : "Sell"),
+    };
+  });
 
   return (
     <div className="animate-in fade-in space-y-6 duration-500 pb-10">
@@ -110,7 +132,12 @@ function MockTradeIdeaDetail(props: { tradeIdeaGroupId: string }) {
               </div>
             </CardHeader>
             <CardContent className="bg-black/40 p-0">
-              <TradingChartMock symbol="AUDJPY" height={400} />
+              <TradingChartMock
+                symbol="AUDJPY"
+                height={400}
+                showDefaultMarkers={false}
+                markers={ideaMarkers}
+              />
             </CardContent>
           </Card>
 

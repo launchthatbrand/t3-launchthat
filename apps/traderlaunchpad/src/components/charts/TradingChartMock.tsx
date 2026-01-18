@@ -29,6 +29,7 @@ type Props = {
   height?: number;
   className?: string;
   markers?: Marker[];
+  showDefaultMarkers?: boolean;
 };
 
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
@@ -148,23 +149,31 @@ export const TradingChartMock = (props: Props) => {
     const candles = generateCandles(seedFromString(symbol), 160);
     series.setData(candles);
 
-    // Default markers + any passed markers
-    const defaultMarkers = [
-      {
-        time: candles[Math.floor(candles.length * 0.35)]?.time ?? candles[0]!.time,
-        position: "belowBar" as const,
-        color: "#3B82F6",
-        shape: "arrowUp" as const,
-        text: "Entry",
-      },
-      {
-        time: candles[Math.floor(candles.length * 0.75)]?.time ?? candles[candles.length - 1]!.time,
-        position: "aboveBar" as const,
-        color: "#22C55E",
-        shape: "arrowDown" as const,
-        text: "Exit",
-      },
-    ];
+    const shouldShowDefaultMarkers =
+      props.showDefaultMarkers !== false &&
+      (!Array.isArray(props.markers) || props.markers.length === 0);
+
+    const defaultMarkers = shouldShowDefaultMarkers
+      ? [
+          {
+            time:
+              candles[Math.floor(candles.length * 0.35)]?.time ?? candles[0]!.time,
+            position: "belowBar" as const,
+            color: "#3B82F6",
+            shape: "arrowUp" as const,
+            text: "Entry",
+          },
+          {
+            time:
+              candles[Math.floor(candles.length * 0.75)]?.time ??
+              candles[candles.length - 1]!.time,
+            position: "aboveBar" as const,
+            color: "#22C55E",
+            shape: "arrowDown" as const,
+            text: "Exit",
+          },
+        ]
+      : [];
 
     const userMarkers = Array.isArray(props.markers)
       ? props.markers
