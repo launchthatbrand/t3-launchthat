@@ -35,8 +35,30 @@
   * {
     @apply border-border;
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     letter-spacing: var(--tracking-normal);
+  }
+}
+
+/* TraderLaunchpad: global "glass card" styling (applies everywhere `Card` is used)
+   NOTE: Must live in utilities layer (and use !important) to override Tailwind utilities like `bg-card`. */
+@layer utilities {
+  .dark [data-slot="card"] {
+    border-radius: 1.5rem !important; /* ~ rounded-3xl */
+    border-color: rgba(255, 255, 255, 0.10) !important;
+    background-color: rgba(255, 255, 255, 0.03) !important; /* see-through by default */
+    box-shadow: none !important;
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    transition: border-color 200ms ease, background-color 200ms ease;
+  }
+
+  .dark [data-slot="card"]:hover {
+    border-color: rgba(255, 255, 255, 0.22) !important;
+    background-color: rgba(255, 255, 255, 0.08) !important; /* more solid on hover */
   }
 }
 

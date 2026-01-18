@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { demoPublicProfiles, demoPublicUsers } from "@acme/demo-data";
 
-import { AffiliatePageShell } from "../../../components/affiliates/AffiliatePageShell";
+import { AffiliatePageShell } from "../../../../components/affiliates/AffiliatePageShell";
 import { Button } from "@acme/ui/button";
 import Link from "next/link";
 import React from "react";
@@ -67,11 +67,11 @@ export default async function PublicUserPage({
   const decoded = decodeURIComponent(username);
 
   const users = demoPublicUsers as unknown as PublicUser[];
-  const user = users.find((u) => u.username === decoded);
+  const user = users.find((u) => u.username.toLowerCase() === decoded.toLowerCase());
 
   // Allow fallback to marquee-only profile for now.
   const profileOnly = (demoPublicProfiles as unknown as Array<any>).find(
-    (p) => p.username === decoded,
+    (p) => p.username.toLowerCase() === decoded.toLowerCase(),
   );
 
   if (!user && !profileOnly) return notFound();
@@ -156,16 +156,17 @@ export default async function PublicUserPage({
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {(user?.badges ?? []).slice(0, 8).map((b) => (
-                  <span
+                  <Link
                     key={b.id}
+                    href={`/leaderboard/${b.id}`}
                     className={[
-                      "rounded-full border px-2.5 py-1 text-[11px] font-medium",
+                      "rounded-full border px-2.5 py-1 text-[11px] font-medium transition hover:opacity-80",
                       toneToClasses(b.tone),
                     ].join(" ")}
                     title={b.description ?? b.label}
                   >
                     {b.label}
-                  </span>
+                  </Link>
                 ))}
                 {!user?.badges?.length ? (
                   <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/60">
@@ -291,4 +292,3 @@ export default async function PublicUserPage({
     </AffiliatePageShell>
   );
 }
-

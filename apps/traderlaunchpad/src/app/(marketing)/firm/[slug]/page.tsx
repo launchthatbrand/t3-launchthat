@@ -1,7 +1,7 @@
 import { ArrowLeft, ExternalLink } from "lucide-react";
 
-import { AffiliatePageShell } from "../../../components/affiliates/AffiliatePageShell";
-import { AffiliateStars } from "../../../components/affiliates/AffiliateStars";
+import { AffiliatePageShell } from "~/components/affiliates/AffiliatePageShell";
+import { AffiliateStars } from "~/components/affiliates/AffiliateStars";
 import { Button } from "@acme/ui/button";
 import Link from "next/link";
 import React from "react";

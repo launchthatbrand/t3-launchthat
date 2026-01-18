@@ -1,16 +1,18 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
+import { ArrowLeft, Calendar, Clock, DollarSign, Hash, Layers } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { useParams, useSearchParams } from "next/navigation";
-import { api } from "@convex-config/_generated/api";
-import { TraderLaunchpadOrderDetailPage } from "launchthat-plugin-traderlaunchpad/frontend/journal";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-
+import Link from "next/link";
+import { NotesSection } from "~/components/admin/NotesSection";
+import React from "react";
+import { Separator } from "@acme/ui/separator";
+import { TraderLaunchpadOrderDetailPage } from "launchthat-plugin-traderlaunchpad/frontend/journal";
 import { TradingChartMock } from "~/components/charts/TradingChartMock";
+import { api } from "@convex-config/_generated/api";
 
 const isLikelyConvexId = (id: string) => {
   const trimmed = id.trim();
@@ -21,109 +23,182 @@ const isLikelyConvexId = (id: string) => {
 
 function MockOrderDetail(props: { orderId: string }) {
   const short = props.orderId.replace(/^mock-ord-/, "").toUpperCase();
+  // Simple deterministic toggle based on ID char code
+  const isBuy = props.orderId.charCodeAt(props.orderId.length - 1) % 2 !== 0;
+  const symbol = isBuy ? "EURUSD" : "NAS100";
+  const pnl = isBuy ? 450.0 : -120.5;
 
   return (
-    <div className="animate-in fade-in space-y-6 duration-500">
-      <div className="flex flex-wrap items-center gap-3">
-        <Button variant="ghost" asChild>
-          <Link href="/admin/orders">Back to Orders</Link>
-        </Button>
-        <div className="text-lg font-semibold">Order (Preview)</div>
-        <Badge variant="outline">mock</Badge>
-      </div>
-
-      <Card className="overflow-hidden">
-        <CardHeader className="border-b">
-          <CardTitle className="flex flex-wrap items-center justify-between gap-3">
+    <div className="animate-in fade-in space-y-6 duration-500 pb-10">
+      {/* Header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" asChild className="h-9 w-9">
+            <Link href="/admin/orders">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
             <div className="flex items-center gap-3">
-              <div className="text-muted-foreground font-mono text-sm">
-                {short ? `ORD-${short}` : "ORD"}
-              </div>
-              <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/10">
+              <h1 className="text-xl font-bold tracking-tight">
+                Order {short ? `#${short}` : ""}
+              </h1>
+              <Badge variant="outline" className="font-mono text-xs">
+                {props.orderId}
+              </Badge>
+              <Badge className="bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25 border-0">
                 Filled
               </Badge>
             </div>
-            <div className="text-sm font-semibold text-emerald-500">
-              +$450.00
+            <div className="text-muted-foreground mt-1 flex items-center gap-2 text-sm">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Jan 16, 2024</span>
+              <span className="text-muted-foreground/40">•</span>
+              <Clock className="h-3.5 w-3.5" />
+              <span>10:30 AM</span>
             </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6 pt-6">
-          <Card className="overflow-hidden">
-            <CardHeader className="border-b">
-              <CardTitle className="flex items-center justify-between gap-3 text-base">
-                <span>Chart (Preview)</span>
-                <Badge variant="outline">15m</Badge>
-              </CardTitle>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary">Download Ticket</Button>
+          <Button>Edit Order</Button>
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Left Column: Chart & Stats */}
+        <div className="space-y-6 lg:col-span-2">
+          {/* Key Stats Cards */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+              <CardContent className="p-4">
+                <div className="text-muted-foreground text-xs font-medium">Symbol</div>
+                <div className="mt-1 text-lg font-bold">{symbol}</div>
+              </CardContent>
+            </Card>
+            <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+              <CardContent className="p-4">
+                <div className="text-muted-foreground text-xs font-medium">Side</div>
+                <div
+                  className={`mt-1 text-lg font-bold ${isBuy ? "text-emerald-500" : "text-rose-500"
+                    }`}
+                >
+                  {isBuy ? "Buy" : "Sell"}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+              <CardContent className="p-4">
+                <div className="text-muted-foreground text-xs font-medium">Size</div>
+                <div className="mt-1 text-lg font-bold">1.00</div>
+              </CardContent>
+            </Card>
+            <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+              <CardContent className="p-4">
+                <div className="text-muted-foreground text-xs font-medium">
+                  Realized P&L
+                </div>
+                <div
+                  className={`mt-1 text-lg font-bold ${pnl >= 0 ? "text-emerald-500" : "text-rose-500"
+                    }`}
+                >
+                  {pnl >= 0 ? "+" : "-"}${Math.abs(pnl).toFixed(2)}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="overflow-hidden border-border/60 border-white/10 bg-white/3 backdrop-blur-md">
+            <CardHeader className="border-b bg-muted/10 border-white/5 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">Price Action</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-background/20 border-white/10">15m</Badge>
+                  <Badge variant="outline" className="bg-background/20 border-white/10">1h</Badge>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="bg-black p-2">
-              <TradingChartMock symbol="EURUSD" height={340} />
+            <CardContent className="bg-black/40 p-0">
+              <TradingChartMock symbol={symbol} height={400} />
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-            <div className="bg-muted/20 rounded-lg border p-4">
-              <div className="text-muted-foreground text-xs">Symbol</div>
-              <div className="mt-1 text-lg font-semibold">EURUSD</div>
-            </div>
-            <div className="bg-muted/20 rounded-lg border p-4">
-              <div className="text-muted-foreground text-xs">Side</div>
-              <div className="mt-1 text-lg font-semibold text-emerald-500">
-                Buy
+          <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+            <CardHeader>
+              <CardTitle className="text-base">Execution Details</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-6 sm:grid-cols-2">
+              <div className="space-y-4">
+                <div className="flex justify-between border-b border-white/5 pb-2 text-sm">
+                  <span className="text-muted-foreground">Order Type</span>
+                  <span className="font-medium">Market</span>
+                </div>
+                <div className="flex justify-between border-b border-white/5 pb-2 text-sm">
+                  <span className="text-muted-foreground">Fill Price</span>
+                  <span className="font-medium font-mono">1.08502</span>
+                </div>
+                <div className="flex justify-between border-b border-white/5 pb-2 text-sm">
+                  <span className="text-muted-foreground">Slippage</span>
+                  <span className="font-medium text-rose-500">-0.2 pips</span>
+                </div>
               </div>
-            </div>
-            <div className="bg-muted/20 rounded-lg border p-4">
-              <div className="text-muted-foreground text-xs">Qty</div>
-              <div className="mt-1 text-lg font-semibold">1.00</div>
-            </div>
-            <div className="bg-muted/20 rounded-lg border p-4">
-              <div className="text-muted-foreground text-xs">Avg Fill</div>
-              <div className="mt-1 text-lg font-semibold">1.0850</div>
-            </div>
-          </div>
+              <div className="space-y-4">
+                <div className="flex justify-between border-b border-white/5 pb-2 text-sm">
+                  <span className="text-muted-foreground">Commission</span>
+                  <span className="font-medium">$7.00</span>
+                </div>
+                <div className="flex justify-between border-b border-white/5 pb-2 text-sm">
+                  <span className="text-muted-foreground">Swap</span>
+                  <span className="font-medium">$0.00</span>
+                </div>
+                <div className="flex justify-between border-b border-white/5 pb-2 text-sm">
+                  <span className="text-muted-foreground">Ticket ID</span>
+                  <span className="font-medium font-mono text-xs">#{props.orderId}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">
-                  Execution Summary (Preview)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-muted-foreground space-y-3 text-sm">
-                <div className="bg-background flex items-center justify-between rounded-md border p-3">
-                  <span>Filled At</span>
-                  <span className="font-mono">10:30 AM</span>
-                </div>
-                <div className="bg-background flex items-center justify-between rounded-md border p-3">
-                  <span>Slippage</span>
-                  <span className="font-mono">0.2 pips</span>
-                </div>
-                <div className="bg-background flex items-center justify-between rounded-md border p-3">
-                  <span>Fees</span>
-                  <span className="font-mono">$0.13</span>
-                </div>
-              </CardContent>
-            </Card>
+        {/* Right Column: Notes & Meta */}
+        <div className="space-y-6">
+          <NotesSection
+            entityId={props.orderId}
+            entityLabel={`Order ${short}`}
+            className="border-white/10 bg-white/3 backdrop-blur-md"
+            initialNotes={[
+              {
+                id: "mock-note-1",
+                content: "Entry executed perfectly at the VWAP retest.",
+                timestamp: Date.now() - 1000 * 60 * 60 * 2, // 2 hours ago
+                entityId: props.orderId,
+                entityLabel: `Order ${short}`
+              }
+            ]}
+          />
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Notes (Preview)</CardTitle>
-              </CardHeader>
-              <CardContent className="text-muted-foreground text-sm">
-                <div className="bg-background rounded-md border p-3">
-                  Use this space to capture the “why”, the trigger, and whether
-                  the entry matched your plan.
+          <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Layers className="h-4 w-4" />
+                Linked Trade Idea
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <Badge variant="outline" className="border-white/10 bg-white/5">mock-1</Badge>
+                  <span className="text-xs text-muted-foreground">Active</span>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="text-muted-foreground text-xs">
-            This is a UI preview. Real order details will appear when you open
-            an order with a real Convex document id.
-          </div>
-        </CardContent>
-      </Card>
+                <div className="font-medium text-sm">AUDJPY Breakout Strategy</div>
+                <Button variant="link" asChild className="h-auto p-0 mt-2 text-xs text-orange-200 hover:text-orange-100">
+                  <Link href="/admin/tradeidea/mock-1">View Trade Idea →</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

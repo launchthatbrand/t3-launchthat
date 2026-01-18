@@ -71,7 +71,7 @@ export function TradingCalendarPanel({
   contentClassName?: string;
 }) {
   const [monthOffset, setMonthOffset] = React.useState(0);
-  const { days, label } = buildMonthDays(monthOffset);
+  const { days, label, monthStart } = buildMonthDays(monthOffset);
   const rec = React.useMemo(
     () =>
       getTradingCalendarRecommendations({
@@ -81,6 +81,27 @@ export function TradingCalendarPanel({
       }),
     [dailyStats],
   );
+
+  // Keep the displayed month in sync with the currently selected date (used as a page-wide filter).
+  React.useEffect(() => {
+    if (!selectedDate) return;
+    const parsed = new Date(`${selectedDate}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return;
+
+    // If the selected date is not in the currently displayed month, jump to it.
+    if (
+      parsed.getFullYear() === monthStart.getFullYear() &&
+      parsed.getMonth() === monthStart.getMonth()
+    ) {
+      return;
+    }
+
+    const today = new Date();
+    const diffMonths =
+      (parsed.getFullYear() - today.getFullYear()) * 12 +
+      (parsed.getMonth() - today.getMonth());
+    setMonthOffset(diffMonths);
+  }, [selectedDate, monthStart]);
 
   const dailyMap = React.useMemo(() => {
     const map: Record<string, DailyStat> = {};

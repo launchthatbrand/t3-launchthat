@@ -49,10 +49,10 @@ const geistMono = Geist_Mono({
 
 export default function RootLayout(props: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="bg-[#0A0A0A]">
       <body
         className={cn(
-          "bg-background text-foreground min-h-screen font-sans antialiased",
+          "bg-[#0A0A0A] text-foreground min-h-screen font-sans antialiased",
           geistSans.variable,
           geistMono.variable,
         )}

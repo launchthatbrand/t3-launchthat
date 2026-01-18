@@ -1,12 +1,36 @@
 import { ArrowRight } from "lucide-react";
 import { Button } from "@acme/ui/moving-border";
 import Link from "next/link";
+import { NavItems } from "~/components/ui/resizable-navbar";
 import React from "react";
 import { Button as UiButton } from "@acme/ui/button";
 import { auth } from "@clerk/nextjs/server";
 
 export async function Header() {
   const { userId } = await auth();
+
+  const navItems = [
+    {
+      name: "Features",
+      link: "/#features",
+    },
+    {
+      name: "Brokers",
+      link: "/brokers",
+    },
+    {
+      name: "Prop Firms",
+      link: "/firms",
+    },
+    {
+      name: "Leaderboards",
+      link: "/leaderboards",
+    },
+    {
+      name: "Blog",
+      link: "#blog",
+    },
+  ];
 
   return (
     <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-black/50 backdrop-blur-md">
@@ -32,22 +56,8 @@ export async function Header() {
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-8 text-sm font-medium text-gray-400 md:flex">
-          <Link href="#features" className="transition-colors hover:text-white">
-            Features
-          </Link>
-          <Link href="/brokers" className="transition-colors hover:text-white">
-            Brokers
-          </Link>
-          <Link href="/firms" className="transition-colors hover:text-white">
-            Prop Firms
-          </Link>
-          <Link href="#about" className="transition-colors hover:text-white">
-            About
-          </Link>
-          <Link href="#blog" className="transition-colors hover:text-white">
-            Blog
-          </Link>
+        <nav className="hidden items-center gap-8 text-sm font-medium md:flex">
+          <NavItems items={navItems} className="relative hidden w-auto md:flex" />
         </nav>
 
         <div className="flex items-center gap-4">

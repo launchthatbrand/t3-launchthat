@@ -90,17 +90,17 @@ export default function AdminTradeIdeasPage() {
   const [view, setView] = React.useState<"grid" | "list">("grid");
 
   return (
-    <div className="animate-in fade-in space-y-8 duration-500">
+    <div className="relative animate-in fade-in space-y-8 text-white selection:bg-orange-500/30 duration-500">
       {/* Header */}
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Trade Ideas</h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="mt-1 text-white/60">
             Manage your setups and review your execution.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button>
+          <Button className="bg-white text-black hover:bg-white/90">
             <Plus className="mr-2 h-4 w-4" />
             New Idea
           </Button>
@@ -108,16 +108,20 @@ export default function AdminTradeIdeasPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="bg-card flex flex-col items-center justify-between gap-4 rounded-lg border p-4 sm:flex-row">
+      <Card className="flex flex-col items-center justify-between gap-4 p-4 sm:flex-row">
         <div className="flex w-full items-center gap-2 sm:w-auto">
           <div className="relative w-full sm:w-64">
-            <Search className="text-muted-foreground absolute top-2.5 left-2.5 h-4 w-4" />
+            <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-white/40" />
             <Input
               placeholder="Search symbol, tag..."
-              className="bg-background pl-9"
+              className="border-white/10 bg-black/20 pl-9 text-white placeholder:text-white/30 focus-visible:ring-orange-500/40"
             />
           </div>
-          <Button variant="outline" size="icon">
+          <Button
+            variant="outline"
+            size="icon"
+            className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+          >
             <Filter className="h-4 w-4" />
           </Button>
         </div>
@@ -127,17 +131,17 @@ export default function AdminTradeIdeasPage() {
             value={view}
             onValueChange={(v) => setView(v as "grid" | "list")}
           >
-            <TabsList>
-              <TabsTrigger value="grid">
+            <TabsList className="border border-white/10 bg-black/20">
+              <TabsTrigger value="grid" className="data-[state=active]:bg-white/10">
                 <LayoutGrid className="h-4 w-4" />
               </TabsTrigger>
-              <TabsTrigger value="list">
+              <TabsTrigger value="list" className="data-[state=active]:bg-white/10">
                 <List className="h-4 w-4" />
               </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
-      </div>
+      </Card>
 
       {/* Grid View Content */}
       <div
@@ -151,7 +155,7 @@ export default function AdminTradeIdeasPage() {
         {MOCK_IDEAS.map((idea) => (
           <Card
             key={idea.id}
-            className="group relative overflow-hidden transition-colors hover:border-blue-500/50"
+            className="group relative overflow-hidden transition-colors hover:border-white/20 hover:bg-white/5"
           >
             {/* Status Stripe */}
             <div
@@ -188,11 +192,11 @@ export default function AdminTradeIdeasPage() {
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10">
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent align="end" className="border-white/10 bg-black/70 text-white">
                     <DropdownMenuItem>Edit Details</DropdownMenuItem>
                     <DropdownMenuItem>View Chart</DropdownMenuItem>
                     <Separator className="my-1" />
@@ -210,7 +214,7 @@ export default function AdminTradeIdeasPage() {
                   <Badge
                     key={tag}
                     variant="secondary"
-                    className="text-xs font-normal"
+                    className="border border-white/10 bg-white/5 text-xs font-normal text-white/80"
                   >
                     {tag}
                   </Badge>
@@ -236,21 +240,21 @@ export default function AdminTradeIdeasPage() {
                   </span>
                 </div>
                 {idea.status === "Open" && (
-                  <Badge className="animate-pulse bg-blue-500 hover:bg-blue-600">
+                  <Badge className="animate-pulse bg-orange-500/20 text-orange-200 hover:bg-orange-500/30 border border-orange-500/25">
                     Live
                   </Badge>
                 )}
               </div>
             </CardContent>
 
-            <CardFooter className="bg-muted/30 flex items-center justify-between border-t pt-3 pb-3 pl-6">
+            <CardFooter className="flex items-center justify-between border-t border-white/10 bg-black/20 pt-3 pb-3 pl-6">
               {idea.reviewed ? (
-                <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-500">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-200">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   Reviewed
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5 text-xs font-medium text-amber-500">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-orange-200">
                   <AlertCircle className="h-3.5 w-3.5" />
                   Needs Review
                 </div>
@@ -259,7 +263,7 @@ export default function AdminTradeIdeasPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="ml-auto h-7 text-xs"
+                className="ml-auto h-7 text-xs hover:bg-white/10"
                 asChild
               >
                 <Link href={`/admin/tradeidea/${idea.id}`}>
@@ -271,8 +275,8 @@ export default function AdminTradeIdeasPage() {
         ))}
 
         {/* Add New Placeholder Card */}
-        <button className="text-muted-foreground hover:bg-muted/50 hover:border-primary/50 flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-8 transition-all">
-          <div className="bg-muted flex h-10 w-10 items-center justify-center rounded-full">
+        <button className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-white/15 bg-white/3 p-8 text-white/60 transition-all hover:border-white/25 hover:bg-white/5">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
             <Plus className="h-5 w-5" />
           </div>
           <span className="text-sm font-medium">Add New Idea</span>

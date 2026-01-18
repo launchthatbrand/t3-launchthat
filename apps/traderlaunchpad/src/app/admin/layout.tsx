@@ -1,12 +1,14 @@
 "use client";
 
-import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { DottedGlowBackground, cn } from "@acme/ui";
+import { IconArrowLeft, IconBrandTabler, IconSettings, IconUserBolt } from "@tabler/icons-react";
 import { UserButton, useAuth } from "@clerk/nextjs";
 import { redirect, usePathname } from "next/navigation";
 
-import { DottedGlowBackground } from "@acme/ui";
 import Link from "next/link";
+import { NavItems } from "~/components/ui/resizable-navbar";
 import React from "react";
+import { motion } from "motion/react";
 
 const GridLines = () => (
   <div className="pointer-events-none absolute inset-0 z-0 mx-auto h-full max-w-7xl">
@@ -23,8 +25,34 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
   const { userId, isLoaded } = useAuth();
+
+  const navItems = [
+    {
+      name: "Dashboard",
+      link: "/admin/dashboard",
+    },
+    {
+      name: "TradeIdeas",
+      link: "/admin/tradeideas",
+    },
+    {
+      name: "Orders",
+      link: "/admin/orders",
+    },
+    {
+      name: "Analytics",
+      link: "/admin/analytics",
+    },
+    {
+      name: "Integrations",
+      link: "/admin/integrations",
+    },
+    {
+      name: "Settings",
+      link: "/admin/settings",
+    },
+  ];
 
   // Protect the route client-side (redundant with middleware but safe)
   React.useEffect(() => {
@@ -32,21 +60,6 @@ export default function AdminLayout({
       redirect("/sign-in");
     }
   }, [isLoaded, userId]);
-
-  // Determine active tab based on path
-  const activeTab = React.useMemo(() => {
-    if (pathname.startsWith("/admin/integrations")) return "integrations";
-    if (
-      pathname.startsWith("/admin/tradeideas") ||
-      pathname.startsWith("/admin/tradeidea")
-    ) {
-      return "tradeideas";
-    }
-    if (pathname.startsWith("/admin/analytics")) return "analytics";
-    if (pathname.startsWith("/admin/orders")) return "orders";
-    if (pathname.startsWith("/admin/settings")) return "settings";
-    return "dashboard";
-  }, [pathname]);
 
   if (!isLoaded || !userId) return null;
 
@@ -115,52 +128,7 @@ export default function AdminLayout({
             </Link>
 
             <nav className="mx-6 hidden items-center space-x-4 lg:flex lg:space-x-6">
-              <Tabs value={activeTab} className="w-[680px]">
-                <TabsList className="grid w-full grid-cols-6 border border-white/10 bg-white/5">
-                  <TabsTrigger
-                    value="dashboard"
-                    asChild
-                    className="text-white/80 data-[state=active]:bg-white/10 data-[state=active]:text-white"
-                  >
-                    <Link href="/admin/dashboard">Dashboard</Link>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="tradeideas"
-                    asChild
-                    className="text-white/80 data-[state=active]:bg-white/10 data-[state=active]:text-white"
-                  >
-                    <Link href="/admin/tradeideas">TradeIdeas</Link>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="orders"
-                    asChild
-                    className="text-white/80 data-[state=active]:bg-white/10 data-[state=active]:text-white"
-                  >
-                    <Link href="/admin/orders">Orders</Link>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="analytics"
-                    asChild
-                    className="text-white/80 data-[state=active]:bg-white/10 data-[state=active]:text-white"
-                  >
-                    <Link href="/admin/analytics">Analytics</Link>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="integrations"
-                    asChild
-                    className="text-white/80 data-[state=active]:bg-white/10 data-[state=active]:text-white"
-                  >
-                    <Link href="/admin/integrations">Integrations</Link>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="settings"
-                    asChild
-                    className="text-white/80 data-[state=active]:bg-white/10 data-[state=active]:text-white"
-                  >
-                    <Link href="/admin/settings">Settings</Link>
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <NavItems items={navItems} />
             </nav>
           </div>
 

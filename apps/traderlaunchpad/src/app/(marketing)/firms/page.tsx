@@ -1,8 +1,9 @@
-import { AffiliateCard } from "../../components/affiliates/AffiliateCard";
-import { AffiliatePageShell } from "../../components/affiliates/AffiliatePageShell";
+import { AffiliateCard } from "~/components/affiliates/AffiliateCard";
+import { AffiliatePageShell } from "~/components/affiliates/AffiliatePageShell";
 import { Marquee } from "@acme/ui/marquee";
 import React from "react";
 import { demoPropFirms } from "@acme/demo-data";
+import Link from "next/link";
 
 export default function FirmsArchivePage() {
   const topRated = [...demoPropFirms]
@@ -20,19 +21,20 @@ export default function FirmsArchivePage() {
         </div>
         <Marquee className="[--duration:44s] [--gap:2.5rem]" repeat={3}>
           {topRated.map((f) => (
-            <div
-              key={f.id}
-              className="flex items-center gap-3 rounded-full border border-white/10 bg-white/3 px-3 py-2 text-sm text-white/80 backdrop-blur-md"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={f.logoUrl ?? ""}
-                alt={f.name}
-                className="h-6 w-6 rounded-full border border-white/10 bg-black/30"
-              />
-              <span className="font-semibold">{f.name}</span>
-              <span className="text-xs text-white/40">{f.rating.toFixed(1)}</span>
-            </div>
+            <Link key={f.id} href={`/firm/${f.slug}`}>
+              <div
+                className="flex items-center gap-3 rounded-full border border-white/10 bg-white/3 px-3 py-2 text-sm text-white/80 backdrop-blur-md transition-colors hover:bg-white/10 cursor-pointer"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={f.logoUrl ?? ""}
+                  alt={f.name}
+                  className="h-6 w-6 rounded-full border border-white/10 bg-black/30"
+                />
+                <span className="font-semibold">{f.name}</span>
+                <span className="text-xs text-white/40">{f.rating.toFixed(1)}</span>
+              </div>
+            </Link>
           ))}
         </Marquee>
       </div>

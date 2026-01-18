@@ -13,7 +13,6 @@ import {
   AvatarFallback,
   AvatarImage,
   ContainerScroll,
-  DottedGlowBackground,
   FlipWords,
   OrbitingCircles,
   Safari,
@@ -21,19 +20,17 @@ import {
 } from "@acme/ui";
 import { demoBrokers, demoPropFirms, demoPublicProfiles } from "@acme/demo-data";
 
-import { BrokersPlatformsHoverAnimation } from "../components/landing/BrokersPlatformsHoverAnimation";
+import { BrokersPlatformsHoverAnimation } from "../../components/landing/BrokersPlatformsHoverAnimation";
 import { Button } from "@acme/ui/moving-border";
-import { GlassTitle } from "../components/landing/GlassTitle";
-import { GridLines } from "../components/background/GridLines";
-import { Header } from "../components/landing/Header";
-import { IphoneInteractiveHint } from "../components/landing/IphoneInteractiveHint";
-import { IphoneNotificationDemo } from "../components/landing/IphoneNotificationDemo";
-import { JournalAnalyticsAnimation } from "../components/landing/JournalAnalyticsAnimation";
+import { GlassTitle } from "../../components/landing/GlassTitle";
+import { IphoneInteractiveHint } from "../../components/landing/IphoneInteractiveHint";
+import { IphoneNotificationDemo } from "../../components/landing/IphoneNotificationDemo";
+import { JournalAnalyticsAnimation } from "../../components/landing/JournalAnalyticsAnimation";
 import Link from "next/link";
 import { Marquee } from "@acme/ui/marquee";
-import { PricingSection } from "../components/landing/PricingSection";
+import { PricingSection } from "../../components/landing/PricingSection";
 import React from "react";
-import { StrategyBuilderAnimation } from "../components/landing/StrategyBuilderAnimation";
+import { StrategyBuilderAnimation } from "../../components/landing/StrategyBuilderAnimation";
 
 const PlusIcon = ({ className }: { className?: string }) => (
   <svg
@@ -70,21 +67,9 @@ export default function HomePage() {
   const topFirms = [...firms].sort((a, b) => b.rating - a.rating).slice(0, 10);
 
   return (
-    <div className="relative min-h-screen bg-[#0A0A0A] text-white selection:bg-orange-500/30">
+    <div className="relative min-h-screen text-white selection:bg-orange-500/30">
       {/* Background Effects */}
       <div className="fixed inset-0 z-0 overflow-hidden">
-        <DottedGlowBackground
-          color="rgba(255, 100, 0, 0.15)"
-          glowColor="rgba(255, 120, 0, 0.6)"
-          gap={24}
-          radius={1.5}
-          speedMin={0.2}
-          speedMax={0.8}
-        />
-        {/* Large orange glow blobs */}
-        <div className="absolute top-1/4 left-1/4 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-600/20 blur-[120px]" />
-        <div className="absolute right-0 bottom-0 h-[600px] w-[600px] translate-x-1/3 translate-y-1/3 rounded-full bg-orange-500/10 blur-[120px]" />
-
         {/* Architectural Curve - Large S-Curve */}
         <svg
           className="pointer-events-none absolute inset-0 h-full w-full opacity-20"
@@ -112,10 +97,7 @@ export default function HomePage() {
         </svg>
       </div>
 
-      <Header />
-
       <main className="relative z-10 pt-32">
-        <GridLines />
 
         {/* Hero Section */}
         <section className="relative container mx-auto max-w-7xl px-4 text-center">
@@ -179,12 +161,6 @@ export default function HomePage() {
                     </Button>
                   </Link>
                 </div>
-                {/* <h2 className="text-4xl font-semibold text-white">
-                  Unleash the power of <br />
-                  <span className="mt-1 block text-4xl font-bold leading-none md:text-[6rem]">
-                    Scroll Animations
-                  </span>
-                </h2> */}
               </>
             }
           >
@@ -360,7 +336,10 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="relative container mx-auto mt-24 mb-24 max-w-7xl px-4 md:mt-32">
+        <section
+          id="features"
+          className="relative container mx-auto mt-24 mb-24 max-w-7xl px-4 scroll-mt-24 md:mt-32"
+        >
           {/* Bottom Grid */}
           <div className="grid gap-6 md:grid-cols-3">
             {/* Large Card: Trading Plan Builder */}
@@ -596,7 +575,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Features Bento Grid */}
+
 
 
         <PricingSection />
