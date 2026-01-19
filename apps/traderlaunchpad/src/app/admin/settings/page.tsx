@@ -16,6 +16,7 @@ import { Button } from "@acme/ui/button";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import React from "react";
+import { PriceDataSourceSetupCard } from "~/components/settings/PriceDataSourceSetupCard";
 import { TradeLockerConnectionCard } from "~/components/settings/TradeLockerConnectionCard";
 import { TradeLockerDeveloperKeyTest } from "~/components/settings/TradeLockerDeveloperKeyTest";
 import { TradeLockerUserConfigTest } from "~/components/settings/TradeLockerUserConfigTest";
@@ -139,6 +140,7 @@ export default function AdminSettingsPage() {
 
         <TabsContent value="connections" className="space-y-6">
           <TradeLockerConnectionCard />
+          <PriceDataSourceSetupCard />
           <TradeLockerDeveloperKeyTest />
           <TradeLockerUserConfigTest />
           <TradeLockerUserInstrumentsTest />

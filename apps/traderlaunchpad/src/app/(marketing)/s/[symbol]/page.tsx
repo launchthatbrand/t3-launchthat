@@ -5,7 +5,7 @@ import { AffiliatePageShell } from "../../../../components/affiliates/AffiliateP
 import { Button } from "@acme/ui/button";
 import Link from "next/link";
 import React from "react";
-import { notFound } from "next/navigation";
+import { PublicSymbolPricePanel } from "~/components/price/PublicSymbolPricePanel";
 
 const normalizeSymbol = (value: string) => value.trim().toUpperCase();
 
@@ -30,17 +30,6 @@ export default async function SymbolDetailPage({
   const decoded = decodeURIComponent(symbol);
   const canonical = normalizeSymbol(decoded);
 
-  const allSymbols = new Set<string>([
-    ...demoPublicUsers.flatMap((u) =>
-      (u.recentTrades ?? []).map((t) => normalizeSymbol(t.symbol)),
-    ),
-    ...demoReviewTrades.map((t) => normalizeSymbol(t.symbol)),
-  ]);
-
-  if (!allSymbols.has(canonical)) {
-    notFound();
-  }
-
   const tradesByUser = demoPublicUsers
     .map((u) => {
       const trades = (u.recentTrades ?? []).filter(
@@ -61,8 +50,10 @@ export default async function SymbolDetailPage({
   return (
     <AffiliatePageShell
       title={canonical}
-      subtitle="Symbol overview • Public demo data"
+      subtitle="Symbol overview • Public cache + demo fallbacks"
     >
+      <PublicSymbolPricePanel symbol={canonical} />
+
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Button
           asChild

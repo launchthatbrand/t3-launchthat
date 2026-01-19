@@ -1124,6 +1124,420 @@ export declare const components: {
       };
     };
   };
+  launchthat_pricedata: {
+    bars: {
+      index: {
+        getBarChunks: FunctionReference<
+          "query",
+          "internal",
+          {
+            fromMs: number;
+            resolution: string;
+            sourceKey: string;
+            toMs: number;
+            tradableInstrumentId: string;
+          },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            bars: Array<{
+              c: number;
+              h: number;
+              l: number;
+              o: number;
+              t: number;
+              v: number;
+            }>;
+            chunkEndMs: number;
+            chunkStartMs: number;
+            createdAt: number;
+            resolution: string;
+            sourceKey: string;
+            tradableInstrumentId: string;
+            updatedAt: number;
+          }>
+        >;
+        upsertBarChunk: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            bars: Array<{
+              c: number;
+              h: number;
+              l: number;
+              o: number;
+              t: number;
+              v: number;
+            }>;
+            chunkEndMs: number;
+            chunkStartMs: number;
+            resolution: string;
+            sourceKey: string;
+            tradableInstrumentId: string;
+          },
+          { chunkId: string }
+        >;
+      };
+      mutations: {
+        upsertBarChunk: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            bars: Array<{
+              c: number;
+              h: number;
+              l: number;
+              o: number;
+              t: number;
+              v: number;
+            }>;
+            chunkEndMs: number;
+            chunkStartMs: number;
+            resolution: string;
+            sourceKey: string;
+            tradableInstrumentId: string;
+          },
+          { chunkId: string }
+        >;
+      };
+      queries: {
+        getBarChunks: FunctionReference<
+          "query",
+          "internal",
+          {
+            fromMs: number;
+            resolution: string;
+            sourceKey: string;
+            toMs: number;
+            tradableInstrumentId: string;
+          },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            bars: Array<{
+              c: number;
+              h: number;
+              l: number;
+              o: number;
+              t: number;
+              v: number;
+            }>;
+            chunkEndMs: number;
+            chunkStartMs: number;
+            createdAt: number;
+            resolution: string;
+            sourceKey: string;
+            tradableInstrumentId: string;
+            updatedAt: number;
+          }>
+        >;
+      };
+    };
+    instruments: {
+      index: {
+        getInstrumentBySymbol: FunctionReference<
+          "query",
+          "internal",
+          { sourceKey: string; symbol: string },
+          null | {
+            _creationTime: number;
+            _id: string;
+            createdAt: number;
+            infoRouteId?: number;
+            metadata?: any;
+            sourceKey: string;
+            symbol: string;
+            tradableInstrumentId: string;
+            updatedAt: number;
+          }
+        >;
+        listInstrumentsForSource: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; sourceKey: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            createdAt: number;
+            infoRouteId?: number;
+            metadata?: any;
+            sourceKey: string;
+            symbol: string;
+            tradableInstrumentId: string;
+            updatedAt: number;
+          }>
+        >;
+        upsertInstrument: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            infoRouteId?: number;
+            metadata?: any;
+            sourceKey: string;
+            symbol: string;
+            tradableInstrumentId: string;
+          },
+          { instrumentId: string }
+        >;
+      };
+      mutations: {
+        upsertInstrument: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            infoRouteId?: number;
+            metadata?: any;
+            sourceKey: string;
+            symbol: string;
+            tradableInstrumentId: string;
+          },
+          { instrumentId: string }
+        >;
+      };
+      queries: {
+        getInstrumentBySymbol: FunctionReference<
+          "query",
+          "internal",
+          { sourceKey: string; symbol: string },
+          null | {
+            _creationTime: number;
+            _id: string;
+            createdAt: number;
+            infoRouteId?: number;
+            metadata?: any;
+            sourceKey: string;
+            symbol: string;
+            tradableInstrumentId: string;
+            updatedAt: number;
+          }
+        >;
+        listInstrumentsForSource: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; sourceKey: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            createdAt: number;
+            infoRouteId?: number;
+            metadata?: any;
+            sourceKey: string;
+            symbol: string;
+            tradableInstrumentId: string;
+            updatedAt: number;
+          }>
+        >;
+      };
+    };
+    sources: {
+      index: {
+        getDefaultSource: FunctionReference<
+          "query",
+          "internal",
+          {},
+          null | {
+            _creationTime: number;
+            _id: string;
+            baseUrlHost?: string;
+            createdAt: number;
+            environment: "demo" | "live";
+            isDefault?: boolean;
+            jwtHost?: string;
+            provider: "tradelocker";
+            seedRef?: { organizationId: string; userId: string };
+            server: string;
+            sourceKey: string;
+            updatedAt: number;
+          }
+        >;
+        getSourceByKey: FunctionReference<
+          "query",
+          "internal",
+          { sourceKey: string },
+          null | {
+            _creationTime: number;
+            _id: string;
+            baseUrlHost?: string;
+            createdAt: number;
+            environment: "demo" | "live";
+            isDefault?: boolean;
+            jwtHost?: string;
+            provider: "tradelocker";
+            seedRef?: { organizationId: string; userId: string };
+            server: string;
+            sourceKey: string;
+            updatedAt: number;
+          }
+        >;
+        upsertSource: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            baseUrlHost?: string;
+            environment: "demo" | "live";
+            isDefault?: boolean;
+            jwtHost?: string;
+            provider: "tradelocker";
+            seedRef?: { organizationId: string; userId: string };
+            server: string;
+            sourceKey: string;
+          },
+          { sourceId: string }
+        >;
+      };
+      mutations: {
+        upsertSource: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            baseUrlHost?: string;
+            environment: "demo" | "live";
+            isDefault?: boolean;
+            jwtHost?: string;
+            provider: "tradelocker";
+            seedRef?: { organizationId: string; userId: string };
+            server: string;
+            sourceKey: string;
+          },
+          { sourceId: string }
+        >;
+      };
+      queries: {
+        getDefaultSource: FunctionReference<
+          "query",
+          "internal",
+          {},
+          null | {
+            _creationTime: number;
+            _id: string;
+            baseUrlHost?: string;
+            createdAt: number;
+            environment: "demo" | "live";
+            isDefault?: boolean;
+            jwtHost?: string;
+            provider: "tradelocker";
+            seedRef?: { organizationId: string; userId: string };
+            server: string;
+            sourceKey: string;
+            updatedAt: number;
+          }
+        >;
+        getSourceByKey: FunctionReference<
+          "query",
+          "internal",
+          { sourceKey: string },
+          null | {
+            _creationTime: number;
+            _id: string;
+            baseUrlHost?: string;
+            createdAt: number;
+            environment: "demo" | "live";
+            isDefault?: boolean;
+            jwtHost?: string;
+            provider: "tradelocker";
+            seedRef?: { organizationId: string; userId: string };
+            server: string;
+            sourceKey: string;
+            updatedAt: number;
+          }
+        >;
+      };
+    };
+    tradelocker: {
+      actions: {
+        fetchAllAccounts: FunctionReference<
+          "action",
+          "internal",
+          {
+            accessToken: string;
+            baseUrl: string;
+            developerKey?: string;
+            refreshToken?: string;
+          },
+          {
+            accounts: Array<any>;
+            accountsPreview: Array<any>;
+            error?: string;
+            ok: boolean;
+            refreshed?: {
+              accessToken: string;
+              expireDateMs?: number;
+              refreshToken: string;
+            };
+            status: number;
+            textPreview?: string;
+          }
+        >;
+        fetchHistory: FunctionReference<
+          "action",
+          "internal",
+          {
+            accNum: number;
+            accessToken: string;
+            baseUrl: string;
+            developerKey?: string;
+            fromMs: number;
+            infoRouteId: number;
+            refreshToken?: string;
+            resolution: string;
+            toMs: number;
+            tradableInstrumentId: string;
+          },
+          {
+            bars: Array<{
+              c: number;
+              h: number;
+              l: number;
+              o: number;
+              t: number;
+              v: number;
+            }>;
+            error?: string;
+            ok: boolean;
+            refreshed?: {
+              accessToken: string;
+              expireDateMs?: number;
+              refreshToken: string;
+            };
+            routeId: number;
+            status: number;
+            textPreview?: string;
+            tradableInstrumentId: string;
+          }
+        >;
+        fetchInstruments: FunctionReference<
+          "action",
+          "internal",
+          {
+            accNum: number;
+            accessToken: string;
+            accountId: string;
+            baseUrl: string;
+            developerKey?: string;
+            refreshToken?: string;
+          },
+          {
+            count: number;
+            error?: string;
+            instruments: Array<{
+              infoRouteId?: number;
+              raw: any;
+              symbol: string;
+              tradableInstrumentId: string;
+            }>;
+            ok: boolean;
+            refreshed?: {
+              accessToken: string;
+              expireDateMs?: number;
+              refreshToken: string;
+            };
+            status: number;
+            textPreview?: string;
+          }
+        >;
+      };
+    };
+  };
   launchthat_discord: {
     guildConnections: {
       mutations: {

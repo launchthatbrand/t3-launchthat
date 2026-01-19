@@ -22,6 +22,10 @@ const traderlaunchpadDraftMutations =
   componentsUntyped.launchthat_traderlaunchpad.connections.drafts;
 const traderlaunchpadJournalMutations =
   componentsUntyped.launchthat_traderlaunchpad.journal.mutations;
+const traderlaunchpadConnectionsQueries =
+  componentsUntyped.launchthat_traderlaunchpad.connections.queries;
+const traderlaunchpadConnectionsInternal =
+  componentsUntyped.launchthat_traderlaunchpad.connections.internalQueries;
 
 const textEncoder = new TextEncoder();
 
@@ -95,6 +99,43 @@ const encryptSecret = async (
   };
   const encoded = base64Encode(textEncoder.encode(JSON.stringify(payload)));
   return `enc_v1:${encoded}`;
+};
+
+const requireTradeLockerSecretsKey = (override?: string): string => {
+  const key = override?.trim() || env.TRADELOCKER_SECRETS_KEY;
+  if (!key) {
+    throw new Error("Missing TRADELOCKER_SECRETS_KEY");
+  }
+  return key;
+};
+
+const decryptSecret = async (
+  encrypted: string,
+  keyMaterial: string,
+): Promise<string> => {
+  const trimmed = String(encrypted ?? "");
+  if (!trimmed) return "";
+  if (!trimmed.startsWith("enc_v1:")) return trimmed;
+  const b64 = trimmed.slice("enc_v1:".length);
+  const decoded = Buffer.from(b64, "base64").toString("utf8");
+  const payload = JSON.parse(decoded) as {
+    ivB64: string;
+    tagB64: string;
+    dataB64: string;
+  };
+
+  const key = await deriveAesKey(keyMaterial);
+  const iv = Buffer.from(payload.ivB64, "base64");
+  const tag = Buffer.from(payload.tagB64, "base64");
+  const data = Buffer.from(payload.dataB64, "base64");
+  const combined = Buffer.concat([data, tag]);
+
+  const plaintext = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: toArrayBuffer(new Uint8Array(iv)) },
+    key,
+    toArrayBuffer(new Uint8Array(combined)),
+  );
+  return Buffer.from(new Uint8Array(plaintext)).toString("utf8");
 };
 
 const baseUrlForEnv = (env: "demo" | "live"): string => {
@@ -456,6 +497,625 @@ export const probeMyTradeLockerHistoryForInstrument = action({
       },
     );
     return result;
+  },
+});
+
+export const getMyDefaultPriceDataSource = action({
+  args: {},
+  returns: v.any(),
+  handler: async (ctx) => {
+    const source = await ctx.runQuery(
+      componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
+      {},
+    );
+    return source;
+  },
+});
+
+export const setDefaultPriceDataSourceFromMyTradeLocker = action({
+  args: {},
+  returns: v.object({
+    ok: v.boolean(),
+    sourceKey: v.string(),
+  }),
+  handler: async (ctx) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+
+    const connection = await ctx.runQuery(traderlaunchpadConnectionsQueries.getMyConnection, {
+      organizationId,
+      userId,
+    });
+    if (!connection || connection.status !== "connected") {
+      throw new Error("TradeLocker not connected. Connect TradeLocker first.");
+    }
+
+    const environment =
+      connection.environment === "live" ? ("live" as const) : ("demo" as const);
+    const jwtHost =
+      typeof connection.jwtHost === "string" && connection.jwtHost.trim()
+        ? connection.jwtHost.trim()
+        : undefined;
+    const baseUrlHost = jwtHost ?? `${environment}.tradelocker.com`;
+    const server =
+      typeof connection.server === "string" && connection.server.trim()
+        ? connection.server.trim()
+        : "unknown";
+
+    const sourceKey = `tradelocker:${environment}:${baseUrlHost}:${server}`
+      .toLowerCase()
+      .trim();
+
+    await ctx.runMutation(
+      componentsUntyped.launchthat_pricedata.sources.mutations.upsertSource,
+      {
+        sourceKey,
+        provider: "tradelocker",
+        environment,
+        server,
+        jwtHost,
+        baseUrlHost,
+        isDefault: true,
+        seedRef: { organizationId, userId },
+      },
+    );
+
+    return { ok: true, sourceKey };
+  },
+});
+
+const normalizeSymbol = (value: string) => value.trim().toUpperCase();
+const DAY_MS = 24 * 60 * 60 * 1000;
+const utcDayStartMs = (tMs: number) => {
+  const d = new Date(tMs);
+  d.setUTCHours(0, 0, 0, 0);
+  return d.getTime();
+};
+
+export const pricedataListPublicSymbols = action({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  returns: v.object({
+    sourceKey: v.optional(v.string()),
+    symbols: v.array(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const source = await ctx.runQuery(
+      componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
+      {},
+    );
+    const sourceKey =
+      typeof source?.sourceKey === "string" ? String(source.sourceKey) : "";
+    if (!sourceKey) return { sourceKey: undefined, symbols: [] };
+
+    const rows = await ctx.runQuery(
+      componentsUntyped.launchthat_pricedata.instruments.queries.listInstrumentsForSource,
+      { sourceKey, limit: args.limit },
+    );
+
+    const symbols = Array.isArray(rows)
+      ? rows
+          .map((r: any) => (typeof r?.symbol === "string" ? r.symbol : ""))
+          .filter(Boolean)
+      : [];
+
+    return { sourceKey, symbols };
+  },
+});
+
+export const pricedataGetPublicBars = action({
+  args: {
+    symbol: v.string(),
+    resolution: v.string(),
+    lookbackDays: v.number(),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    sourceKey: v.optional(v.string()),
+    symbol: v.string(),
+    resolution: v.string(),
+    bars: v.array(
+      v.object({
+        t: v.number(),
+        o: v.number(),
+        h: v.number(),
+        l: v.number(),
+        c: v.number(),
+        v: v.number(),
+      }),
+    ),
+    error: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const symbol = normalizeSymbol(args.symbol);
+    const resolution = args.resolution.trim();
+    const lookbackDays = Math.max(1, Math.min(30, Math.floor(args.lookbackDays)));
+
+    const source = await ctx.runQuery(
+      componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
+      {},
+    );
+    const sourceKey =
+      typeof source?.sourceKey === "string" ? String(source.sourceKey) : "";
+    if (!sourceKey) {
+      return { ok: false, sourceKey: undefined, symbol, resolution, bars: [], error: "No default price source configured." };
+    }
+
+    const instrument = await ctx.runQuery(
+      componentsUntyped.launchthat_pricedata.instruments.queries.getInstrumentBySymbol,
+      { sourceKey, symbol },
+    );
+    if (!instrument || typeof instrument.tradableInstrumentId !== "string") {
+      return { ok: false, sourceKey, symbol, resolution, bars: [], error: "Symbol is not mapped for the default source yet." };
+    }
+
+    const toMs = Date.now();
+    const fromMs = toMs - lookbackDays * DAY_MS;
+
+    const chunks = await ctx.runQuery(
+      componentsUntyped.launchthat_pricedata.bars.queries.getBarChunks,
+      {
+        sourceKey,
+        tradableInstrumentId: instrument.tradableInstrumentId,
+        resolution,
+        fromMs,
+        toMs,
+      },
+    );
+
+    const bars = (Array.isArray(chunks) ? chunks : [])
+      .flatMap((c: any) => (Array.isArray(c?.bars) ? c.bars : []))
+      .map((b: any) => ({
+        t: Number(b?.t),
+        o: Number(b?.o),
+        h: Number(b?.h),
+        l: Number(b?.l),
+        c: Number(b?.c),
+        v: Number(b?.v),
+      }))
+      .filter(
+        (b) =>
+          Number.isFinite(b.t) &&
+          Number.isFinite(b.o) &&
+          Number.isFinite(b.h) &&
+          Number.isFinite(b.l) &&
+          Number.isFinite(b.c) &&
+          Number.isFinite(b.v),
+      )
+      .sort((a, b) => a.t - b.t);
+
+    return { ok: true, sourceKey, symbol, resolution, bars };
+  },
+});
+
+export const pricedataEnsurePublicBarsCached = action({
+  args: {
+    symbol: v.string(),
+    resolution: v.string(),
+    lookbackDays: v.number(),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    sourceKey: v.optional(v.string()),
+    symbol: v.string(),
+    resolution: v.string(),
+    barsStored: v.optional(v.number()),
+    error: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const symbol = normalizeSymbol(args.symbol);
+    const resolution = args.resolution.trim();
+    const lookbackDays = Math.max(1, Math.min(30, Math.floor(args.lookbackDays)));
+
+    const source = await ctx.runQuery(
+      componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
+      {},
+    );
+    const sourceKey =
+      typeof source?.sourceKey === "string" ? String(source.sourceKey) : "";
+    if (!sourceKey) {
+      return {
+        ok: false,
+        sourceKey: undefined,
+        symbol,
+        resolution,
+        error: "No default price source configured. Set it in Admin → Settings → Connections.",
+      };
+    }
+
+    console.log("[pricedataEnsurePublicBarsCached] start", {
+      symbol,
+      resolution,
+      lookbackDays,
+      sourceKey,
+    });
+
+    const seedRef = source?.seedRef;
+    const seedOrg =
+      typeof seedRef?.organizationId === "string" ? seedRef.organizationId : "";
+    const seedUser = typeof seedRef?.userId === "string" ? seedRef.userId : "";
+    if (!seedOrg || !seedUser) {
+      return {
+        ok: false,
+        sourceKey,
+        symbol,
+        resolution,
+        error: "Default price source has no seedRef. Set it in Admin → Settings → Connections.",
+      };
+    }
+
+    console.log("[pricedataEnsurePublicBarsCached] seedRef", { seedOrg, seedUser });
+
+    // 1) Load seed connection secrets to get TradeLocker tokens + account identifiers
+    const secrets = await ctx.runQuery(
+      traderlaunchpadConnectionsInternal.getConnectionSecrets,
+      { organizationId: seedOrg, userId: seedUser },
+    );
+    if (!secrets || secrets.status !== "connected") {
+      return {
+        ok: false,
+        sourceKey,
+        symbol,
+        resolution,
+        error: "Seed TradeLocker connection is not connected.",
+      };
+    }
+
+    const keyMaterial = requireTradeLockerSecretsKey();
+    let accessToken = await decryptSecret(
+      String((secrets as any).accessTokenEncrypted ?? ""),
+      keyMaterial,
+    );
+    let refreshToken = await decryptSecret(
+      String((secrets as any).refreshTokenEncrypted ?? ""),
+      keyMaterial,
+    );
+
+    const jwtHost =
+      typeof (secrets as any).jwtHost === "string"
+        ? String((secrets as any).jwtHost)
+        : extractJwtHost(accessToken);
+    const baseUrl = jwtHost
+      ? `https://${jwtHost}/backend-api`
+      : baseUrlForEnv(secrets.environment === "live" ? "live" : "demo");
+
+    let accNum = Number((secrets as any).selectedAccNum ?? 0);
+    let accountId = String((secrets as any).selectedAccountId ?? "").trim();
+    if (!Number.isFinite(accNum) || accNum <= 0 || !accountId) {
+      return {
+        ok: false,
+        sourceKey,
+        symbol,
+        resolution,
+        error: "Seed TradeLocker connection missing account identifiers.",
+      };
+    }
+
+    console.log("[pricedataEnsurePublicBarsCached] seed connection identifiers", {
+      environment: secrets.environment,
+      server: String((secrets as any).server ?? ""),
+      jwtHost,
+      baseUrl,
+      accNum,
+      accountId,
+    });
+
+    // Self-heal: if stored account identifiers are stale, resolve them via /auth/jwt/all-accounts.
+    // This endpoint does NOT require accNum, and helps map accountId<->accNum correctly for the broker/server.
+    const accountsRes = await ctx.runAction(
+      componentsUntyped.launchthat_pricedata.tradelocker.actions.fetchAllAccounts,
+      {
+        baseUrl,
+        accessToken,
+        refreshToken,
+        developerKey: env.TRADELOCKER_DEVELOPER_API_KEY,
+      },
+    );
+    if (accountsRes?.ok && Array.isArray(accountsRes?.accounts) && accountsRes.accounts.length > 0) {
+      if (accountsRes?.refreshed?.accessToken && accountsRes?.refreshed?.refreshToken) {
+        accessToken = accountsRes.refreshed.accessToken;
+        refreshToken = accountsRes.refreshed.refreshToken;
+      }
+
+      const accounts: any[] = accountsRes.accounts;
+      const matched =
+        accounts.find(
+          (a) =>
+            String(a?.accountId ?? a?.id ?? a?._id ?? "") === accountId ||
+            String(a?.accNum ?? a?.acc_num ?? a?.accountNumber ?? "") === accountId ||
+            Number(a?.accNum ?? a?.acc_num ?? a?.accountNumber ?? 0) === accNum ||
+            Number(a?.accountId ?? a?.id ?? 0) === accNum,
+        ) ?? accounts[0];
+
+      const resolvedAccountId = String(matched?.accountId ?? matched?.id ?? matched?._id ?? accountId).trim();
+      const resolvedAccNum = Number(matched?.accNum ?? matched?.acc_num ?? matched?.accountNumber ?? accNum);
+
+      if (resolvedAccountId && Number.isFinite(resolvedAccNum) && resolvedAccNum > 0) {
+        const changed = resolvedAccountId !== accountId || resolvedAccNum !== accNum;
+        if (changed) {
+          console.log("[pricedataEnsurePublicBarsCached] resolved account identifiers", {
+            from: { accountId, accNum },
+            to: { accountId: resolvedAccountId, accNum: resolvedAccNum },
+          });
+          accountId = resolvedAccountId;
+          accNum = resolvedAccNum;
+
+          // Persist corrected selection to the seed connection (best effort).
+          await ctx.runMutation(traderlaunchpadConnectionsMutations.upsertConnection, {
+            organizationId: seedOrg,
+            userId: seedUser,
+            environment: secrets.environment === "live" ? "live" : "demo",
+            server: String((secrets as any).server ?? ""),
+            jwtHost: extractJwtHost(accessToken),
+            selectedAccountId: accountId,
+            selectedAccNum: accNum,
+            accessTokenEncrypted: (secrets as any).accessTokenEncrypted,
+            refreshTokenEncrypted: (secrets as any).refreshTokenEncrypted,
+            accessTokenExpiresAt: (secrets as any).accessTokenExpiresAt,
+            refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
+            status: "connected",
+            lastError: undefined,
+          });
+        }
+      }
+    } else {
+      console.log("[pricedataEnsurePublicBarsCached] fetchAllAccounts unavailable", {
+        ok: Boolean(accountsRes?.ok),
+        status: accountsRes?.status,
+        error: accountsRes?.error,
+        textPreview: (accountsRes as any)?.textPreview,
+      });
+    }
+
+    // 2) Ensure symbol mapping exists
+    let instrument = await ctx.runQuery(
+      componentsUntyped.launchthat_pricedata.instruments.queries.getInstrumentBySymbol,
+      { sourceKey, symbol },
+    );
+
+    if (!instrument) {
+      const instrumentsRes = await ctx.runAction(
+        componentsUntyped.launchthat_pricedata.tradelocker.actions.fetchInstruments,
+        {
+          baseUrl,
+          accessToken,
+          refreshToken,
+          accNum,
+          accountId,
+          developerKey: env.TRADELOCKER_DEVELOPER_API_KEY,
+        },
+      );
+
+      console.log("[pricedataEnsurePublicBarsCached] fetchInstruments", {
+        ok: Boolean(instrumentsRes?.ok),
+        status: instrumentsRes?.status,
+        count: instrumentsRes?.count,
+        error: instrumentsRes?.error,
+        textPreview: (instrumentsRes as any)?.textPreview,
+      });
+
+      if (!instrumentsRes?.ok) {
+        return {
+          ok: false,
+          sourceKey,
+          symbol,
+          resolution,
+          error: `Failed to fetch instruments from TradeLocker (status ${String(instrumentsRes?.status ?? "unknown")}). baseUrl=${baseUrl} accNum=${String(accNum)} accountId=${accountId}`,
+        };
+      }
+
+      // Persist refreshed tokens (best effort)
+      if (instrumentsRes?.refreshed?.accessToken && instrumentsRes?.refreshed?.refreshToken) {
+        accessToken = instrumentsRes.refreshed.accessToken;
+        refreshToken = instrumentsRes.refreshed.refreshToken;
+
+        const tokenStorage = env.TRADELOCKER_TOKEN_STORAGE ?? "raw";
+        const accessToStore =
+          tokenStorage === "enc"
+            ? await encryptSecret(instrumentsRes.refreshed.accessToken, keyMaterial)
+            : instrumentsRes.refreshed.accessToken;
+        const refreshToStore =
+          tokenStorage === "enc"
+            ? await encryptSecret(instrumentsRes.refreshed.refreshToken, keyMaterial)
+            : instrumentsRes.refreshed.refreshToken;
+
+        await ctx.runMutation(traderlaunchpadConnectionsMutations.upsertConnection, {
+          organizationId: seedOrg,
+          userId: seedUser,
+          environment: secrets.environment === "live" ? "live" : "demo",
+          server: String((secrets as any).server ?? ""),
+          selectedAccountId: accountId,
+          selectedAccNum: accNum,
+          accessTokenEncrypted: accessToStore,
+          refreshTokenEncrypted: refreshToStore,
+          accessTokenExpiresAt: instrumentsRes.refreshed.expireDateMs,
+          refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
+          status: "connected",
+          lastError: undefined,
+          jwtHost: extractJwtHost(instrumentsRes.refreshed.accessToken),
+        });
+      }
+
+      const list: any[] = Array.isArray(instrumentsRes?.instruments)
+        ? instrumentsRes.instruments
+        : [];
+      if (list.length === 0) {
+        return {
+          ok: false,
+          sourceKey,
+          symbol,
+          resolution,
+          error: `Fetched instruments from TradeLocker but none were parsed. (status ${String(instrumentsRes?.status ?? "unknown")}) ${String((instrumentsRes as any)?.textPreview ?? "")}`,
+        };
+      }
+      for (const row of list) {
+        if (!row || typeof row.symbol !== "string") continue;
+        const tid =
+          typeof row.tradableInstrumentId === "string"
+            ? row.tradableInstrumentId
+            : typeof row.tradableInstrumentId === "number"
+              ? String(row.tradableInstrumentId)
+              : "";
+        if (!tid) continue;
+        await ctx.runMutation(
+          componentsUntyped.launchthat_pricedata.instruments.mutations.upsertInstrument,
+          {
+            sourceKey,
+            symbol: normalizeSymbol(row.symbol),
+            tradableInstrumentId: tid,
+            infoRouteId: typeof row.infoRouteId === "number" ? row.infoRouteId : undefined,
+            metadata: row.raw,
+          },
+        );
+      }
+
+      instrument = await ctx.runQuery(
+        componentsUntyped.launchthat_pricedata.instruments.queries.getInstrumentBySymbol,
+        { sourceKey, symbol },
+      );
+
+      if (!instrument) {
+        const sample = list
+          .slice(0, 25)
+          .map((r) => String(r?.symbol ?? ""))
+          .filter(Boolean)
+          .join(", ");
+        return {
+          ok: false,
+          sourceKey,
+          symbol,
+          resolution,
+          error: `Symbol "${symbol}" was not found in the TradeLocker instruments list for the selected account. Sample symbols: ${sample}`,
+        };
+      }
+    }
+
+    const tradableInstrumentId =
+      typeof instrument?.tradableInstrumentId === "string"
+        ? instrument.tradableInstrumentId
+        : "";
+    const infoRouteId =
+      typeof instrument?.infoRouteId === "number" ? instrument.infoRouteId : NaN;
+    if (!tradableInstrumentId || !Number.isFinite(infoRouteId)) {
+      return {
+        ok: false,
+        sourceKey,
+        symbol,
+        resolution,
+        error: "Symbol mapping is missing tradableInstrumentId/infoRouteId.",
+      };
+    }
+
+    // 3) Fetch bars
+    const toMs = Date.now();
+    const fromMs = toMs - lookbackDays * DAY_MS;
+
+    const history = await ctx.runAction(
+      componentsUntyped.launchthat_pricedata.tradelocker.actions.fetchHistory,
+      {
+        baseUrl,
+        accessToken,
+        refreshToken,
+        accNum,
+        tradableInstrumentId,
+        infoRouteId,
+        resolution,
+        fromMs,
+        toMs,
+        developerKey: env.TRADELOCKER_DEVELOPER_API_KEY,
+      },
+    );
+
+    if (!history?.ok) {
+      return {
+        ok: false,
+        sourceKey,
+        symbol,
+        resolution,
+        error: String(history?.error ?? "TradeLocker history fetch failed."),
+      };
+    }
+
+    // Persist refreshed tokens (best effort)
+    if (history?.refreshed?.accessToken && history?.refreshed?.refreshToken) {
+      const tokenStorage = env.TRADELOCKER_TOKEN_STORAGE ?? "raw";
+      const accessToStore =
+        tokenStorage === "enc"
+          ? await encryptSecret(history.refreshed.accessToken, keyMaterial)
+          : history.refreshed.accessToken;
+      const refreshToStore =
+        tokenStorage === "enc"
+          ? await encryptSecret(history.refreshed.refreshToken, keyMaterial)
+          : history.refreshed.refreshToken;
+
+      await ctx.runMutation(traderlaunchpadConnectionsMutations.upsertConnection, {
+        organizationId: seedOrg,
+        userId: seedUser,
+        environment: secrets.environment === "live" ? "live" : "demo",
+        server: String((secrets as any).server ?? ""),
+        selectedAccountId: accountId,
+        selectedAccNum: accNum,
+        accessTokenEncrypted: accessToStore,
+        refreshTokenEncrypted: refreshToStore,
+        accessTokenExpiresAt: history.refreshed.expireDateMs,
+        refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
+        status: "connected",
+        lastError: undefined,
+        jwtHost: extractJwtHost(history.refreshed.accessToken),
+      });
+    }
+
+    const bars: any[] = Array.isArray(history?.bars) ? history.bars : [];
+
+    // 4) Chunk + store bars by UTC day
+    const buckets = new Map<number, any[]>();
+    for (const b of bars) {
+      const t = Number(b?.t);
+      if (!Number.isFinite(t)) continue;
+      const start = utcDayStartMs(t);
+      const list = buckets.get(start);
+      if (list) list.push(b);
+      else buckets.set(start, [b]);
+    }
+
+    let stored = 0;
+    for (const [chunkStartMs, chunkBars] of buckets) {
+      const normalizedBars = chunkBars
+        .map((b) => ({
+          t: Number(b?.t),
+          o: Number(b?.o),
+          h: Number(b?.h),
+          l: Number(b?.l),
+          c: Number(b?.c),
+          v: Number(b?.v),
+        }))
+        .filter(
+          (b) =>
+            Number.isFinite(b.t) &&
+            Number.isFinite(b.o) &&
+            Number.isFinite(b.h) &&
+            Number.isFinite(b.l) &&
+            Number.isFinite(b.c) &&
+            Number.isFinite(b.v),
+        )
+        .sort((a, b) => a.t - b.t);
+
+      await ctx.runMutation(
+        componentsUntyped.launchthat_pricedata.bars.mutations.upsertBarChunk,
+        {
+          sourceKey,
+          tradableInstrumentId,
+          resolution,
+          chunkStartMs,
+          chunkEndMs: chunkStartMs + DAY_MS,
+          bars: normalizedBars,
+        },
+      );
+      stored += normalizedBars.length;
+    }
+
+    return { ok: true, sourceKey, symbol, resolution, barsStored: stored };
   },
 });
 
