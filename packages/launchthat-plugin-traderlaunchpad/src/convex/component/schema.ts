@@ -67,6 +67,46 @@ export default defineSchema({
       "lastBrokerActivityAt",
     ]),
 
+  // Multiple TradeLocker accounts under a single user connection.
+  // We store the "customerAccess" snapshot from /trade/config so the UI can show
+  // which accounts are blocked from instruments/trade data.
+  tradelockerConnectionAccounts: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+    connectionId: v.id("tradelockerConnections"),
+
+    accountId: v.string(),
+    accNum: v.number(),
+    name: v.optional(v.string()),
+    currency: v.optional(v.string()),
+    status: v.optional(v.string()),
+
+    customerAccess: v.optional(
+      v.object({
+        orders: v.boolean(),
+        ordersHistory: v.boolean(),
+        filledOrders: v.boolean(),
+        positions: v.boolean(),
+        symbolInfo: v.boolean(),
+        marketDepth: v.boolean(),
+      }),
+    ),
+    lastConfigOk: v.optional(v.boolean()),
+    lastConfigCheckedAt: v.optional(v.number()),
+    lastConfigError: v.optional(v.string()),
+    lastConfigRaw: v.optional(v.any()),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_connectionId", ["connectionId"])
+    .index("by_org_user_and_connectionId", [
+      "organizationId",
+      "userId",
+      "connectionId",
+    ])
+    .index("by_org_user_and_accNum", ["organizationId", "userId", "accNum"]),
+
   tradeOrders: defineTable({
     organizationId: v.string(),
     userId: v.string(),

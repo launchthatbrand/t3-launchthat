@@ -111,6 +111,7 @@ export const getMyTradeLockerConnection = query({
     v.null(),
     v.object({
       connection: v.any(),
+      accounts: v.array(v.any()),
       polling: v.object({
         now: v.number(),
         isMentor: v.boolean(),
@@ -132,6 +133,15 @@ export const getMyTradeLockerConnection = query({
       userId,
     });
     if (!connection) return null;
+
+    const accounts = await ctx.runQuery(
+      connectionsQueries.listMyConnectionAccounts,
+      {
+        organizationId,
+        userId,
+        connectionId: (connection as any)._id,
+      } as any,
+    );
 
     const now = Date.now();
 
@@ -162,6 +172,7 @@ export const getMyTradeLockerConnection = query({
 
     return {
       connection,
+      accounts: Array.isArray(accounts) ? accounts : [],
       polling: {
         now,
         isMentor,

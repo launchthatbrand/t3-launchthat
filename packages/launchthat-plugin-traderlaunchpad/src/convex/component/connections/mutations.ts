@@ -126,6 +126,124 @@ export const deleteConnection = mutation({
   },
 });
 
+export const upsertConnectionAccount = mutation({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    connectionId: v.id("tradelockerConnections"),
+    accountId: v.string(),
+    accNum: v.number(),
+    name: v.optional(v.string()),
+    currency: v.optional(v.string()),
+    status: v.optional(v.string()),
+  },
+  returns: v.id("tradelockerConnectionAccounts"),
+  handler: async (ctx, args) => {
+    const conn = await ctx.db.get(args.connectionId);
+    if (!conn) throw new Error("Connection not found");
+    if (conn.organizationId !== args.organizationId || conn.userId !== args.userId) {
+      throw new Error("Unauthorized");
+    }
+
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("tradelockerConnectionAccounts")
+      .withIndex("by_connectionId", (q: any) => q.eq("connectionId", args.connectionId))
+      .filter((q: any) =>
+        q.and(
+          q.eq(q.field("accNum"), args.accNum),
+          q.eq(q.field("accountId"), args.accountId),
+        ),
+      )
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        name: args.name,
+        currency: args.currency,
+        status: args.status,
+        updatedAt: now,
+      });
+      return existing._id;
+    }
+
+    return await ctx.db.insert("tradelockerConnectionAccounts", {
+      organizationId: args.organizationId,
+      userId: args.userId,
+      connectionId: args.connectionId,
+      accountId: args.accountId,
+      accNum: args.accNum,
+      name: args.name,
+      currency: args.currency,
+      status: args.status,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+export const setConnectionSelectedAccount = mutation({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    connectionId: v.id("tradelockerConnections"),
+    selectedAccountId: v.string(),
+    selectedAccNum: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const conn = await ctx.db.get(args.connectionId);
+    if (!conn) throw new Error("Connection not found");
+    if (conn.organizationId !== args.organizationId || conn.userId !== args.userId) {
+      throw new Error("Unauthorized");
+    }
+    await ctx.db.patch(args.connectionId, {
+      selectedAccountId: args.selectedAccountId,
+      selectedAccNum: args.selectedAccNum,
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const updateConnectionAccountDebug = mutation({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    accountRowId: v.id("tradelockerConnectionAccounts"),
+    lastConfigOk: v.boolean(),
+    customerAccess: v.optional(
+      v.object({
+        orders: v.boolean(),
+        ordersHistory: v.boolean(),
+        filledOrders: v.boolean(),
+        positions: v.boolean(),
+        symbolInfo: v.boolean(),
+        marketDepth: v.boolean(),
+      }),
+    ),
+    lastConfigError: v.optional(v.string()),
+    lastConfigRaw: v.optional(v.any()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get(args.accountRowId);
+    if (!row) throw new Error("Account not found");
+    if (row.organizationId !== args.organizationId || row.userId !== args.userId) {
+      throw new Error("Unauthorized");
+    }
+    await ctx.db.patch(args.accountRowId, {
+      lastConfigOk: args.lastConfigOk,
+      customerAccess: args.customerAccess,
+      lastConfigError: args.lastConfigError,
+      lastConfigRaw: args.lastConfigRaw,
+      lastConfigCheckedAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
 export const claimSyncLeases = mutation({
   args: {
     connectionIds: v.array(v.id("tradelockerConnections")),

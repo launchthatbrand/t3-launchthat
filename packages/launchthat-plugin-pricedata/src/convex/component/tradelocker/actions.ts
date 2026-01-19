@@ -263,13 +263,16 @@ export const fetchInstruments = action({
   }),
   handler: async (_ctx, args) => {
     let accessToken = args.accessToken;
-    let res = await tradeLockerApi({
-      baseUrl: args.baseUrl,
-      accessToken,
-      accNum: args.accNum,
-      path: `/trade/accounts/${encodeURIComponent(args.accountId)}/instruments`,
-      developerKey: args.developerKey,
-    });
+    const requestOnce = async (accountId: string) =>
+      await tradeLockerApi({
+        baseUrl: args.baseUrl,
+        accessToken,
+        accNum: args.accNum,
+        path: `/trade/accounts/${encodeURIComponent(accountId)}/instruments`,
+        developerKey: args.developerKey,
+      });
+
+    let res = await requestOnce(args.accountId);
 
     let refreshed:
       | { accessToken: string; refreshToken: string; expireDateMs?: number }
@@ -287,28 +290,55 @@ export const fetchInstruments = action({
           expireDateMs: refreshRes.expireDateMs,
         };
         accessToken = refreshRes.accessToken;
-        res = await tradeLockerApi({
-          baseUrl: args.baseUrl,
-          accessToken,
-          accNum: args.accNum,
-          path: `/trade/accounts/${encodeURIComponent(args.accountId)}/instruments`,
-          developerKey: args.developerKey,
-        });
+        res = await requestOnce(args.accountId);
       }
     }
 
     // TradeLocker sometimes returns HTTP 200 with an error JSON payload like:
     // {"s":"error","errmsg":"Account not found!"}
-    const apiErrMsg =
+    let apiErrMsg =
       typeof res.json?.errmsg === "string"
         ? String(res.json.errmsg)
         : typeof res.json?.error === "string"
           ? String(res.json.error)
           : null;
-    const apiErrTag =
+    let apiErrTag =
       typeof res.json?.s === "string" ? String(res.json.s) : null;
-    const hasErrorPayload =
+    let hasErrorPayload =
       (apiErrTag && apiErrTag.toLowerCase() === "error") || Boolean(apiErrMsg);
+
+    // Some brokers expect an int-like account identifier here; accNum can work even when
+    // the /auth/jwt/all-accounts id returns "Account not found!" for this endpoint.
+    const normalizedErr = String(apiErrMsg ?? "").toLowerCase();
+    const shouldRetryWithAccNum =
+      res.status === 200 &&
+      hasErrorPayload &&
+      (normalizedErr.includes("account not found") ||
+        normalizedErr.includes("accountid must be of type int"));
+
+    const accNumAsAccountId = String(args.accNum);
+    if (
+      shouldRetryWithAccNum &&
+      accNumAsAccountId &&
+      accNumAsAccountId !== args.accountId
+    ) {
+      console.log("[pricedata.tradelocker.fetchInstruments] retry_with_accNum", {
+        baseUrl: args.baseUrl,
+        accountId: args.accountId,
+        accNum: args.accNum,
+        apiErrMsg,
+      });
+      res = await requestOnce(accNumAsAccountId);
+      apiErrMsg =
+        typeof res.json?.errmsg === "string"
+          ? String(res.json.errmsg)
+          : typeof res.json?.error === "string"
+            ? String(res.json.error)
+            : null;
+      apiErrTag = typeof res.json?.s === "string" ? String(res.json.s) : null;
+      hasErrorPayload =
+        (apiErrTag && apiErrTag.toLowerCase() === "error") || Boolean(apiErrMsg);
+    }
 
     if (hasErrorPayload) {
       console.log("[pricedata.tradelocker.fetchInstruments] API error payload", {

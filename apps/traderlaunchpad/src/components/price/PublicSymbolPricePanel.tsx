@@ -1,10 +1,11 @@
 "use client";
 
-import React from "react";
-import { useAction } from "convex/react";
-import { api } from "@convex-config/_generated/api";
 import { Button } from "@acme/ui/button";
+import React from "react";
 import { RefreshCw } from "lucide-react";
+import { TradingChartReal } from "~/components/charts/TradingChartReal";
+import { api } from "@convex-config/_generated/api";
+import { useAction } from "convex/react";
 
 type Resolution = "15m" | "1H" | "4H";
 
@@ -16,6 +17,31 @@ interface Bar {
   c: number;
   v: number;
 }
+
+const parseBars = (value: unknown): Bar[] => {
+  if (!Array.isArray(value)) return [];
+  const result: Bar[] = [];
+  for (const row of value) {
+    const r = row as Partial<Bar>;
+    if (
+      typeof r?.t === "number" &&
+      typeof r?.o === "number" &&
+      typeof r?.h === "number" &&
+      typeof r?.l === "number" &&
+      typeof r?.c === "number"
+    ) {
+      result.push({
+        t: r.t,
+        o: r.o,
+        h: r.h,
+        l: r.l,
+        c: r.c,
+        v: typeof r.v === "number" ? r.v : 0,
+      });
+    }
+  }
+  return result;
+};
 
 export function PublicSymbolPricePanel({ symbol }: { symbol: string }) {
   const getBars = useAction(api.traderlaunchpad.actions.pricedataGetPublicBars);
@@ -29,6 +55,7 @@ export function PublicSymbolPricePanel({ symbol }: { symbol: string }) {
   const [sourceKey, setSourceKey] = React.useState<string | null>(null);
   const [bars, setBars] = React.useState<Bar[]>([]);
   const [error, setError] = React.useState<string | null>(null);
+  const [showRaw, setShowRaw] = React.useState(false);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -42,7 +69,7 @@ export function PublicSymbolPricePanel({ symbol }: { symbol: string }) {
         error?: string;
       };
       setSourceKey(typeof r.sourceKey === "string" ? r.sourceKey : null);
-      setBars(Array.isArray(r.bars) ? r.bars : []);
+      setBars(parseBars(r.bars));
       if (r.ok === false) setError(r.error ?? "No cached data.");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -87,6 +114,10 @@ export function PublicSymbolPricePanel({ symbol }: { symbol: string }) {
 
   const last = bars.length > 0 ? bars[bars.length - 1] : null;
   const lastTime = last ? new Date(last.t).toISOString() : null;
+  const first = bars.length > 0 ? bars[0] : null;
+  const change = first && last ? last.c - first.o : null;
+  const changePct =
+    first && last && first.o !== 0 ? ((last.c - first.o) / first.o) * 100 : null;
 
   return (
     <div className="rounded-3xl border border-white/10 bg-white/3 p-6 backdrop-blur-md">
@@ -145,6 +176,18 @@ export function PublicSymbolPricePanel({ symbol }: { symbol: string }) {
             <RefreshCw className="mr-2 h-4 w-4" />
             {syncing ? "Syncing..." : "Sync"}
           </Button>
+
+          {bars.length > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-9"
+              onClick={() => setShowRaw((v) => !v)}
+              disabled={loading || syncing}
+            >
+              {showRaw ? "Hide raw" : "Show raw"}
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -160,6 +203,22 @@ export function PublicSymbolPricePanel({ symbol }: { symbol: string }) {
             Last: <span className="font-mono text-white/75">{lastTime}</span>
           </span>
         ) : null}
+        {last ? (
+          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
+            Close:{" "}
+            <span className="font-mono text-white/75">{last.c.toFixed(3)}</span>
+          </span>
+        ) : null}
+        {change !== null && changePct !== null ? (
+          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
+            Δ{" "}
+            <span className={change >= 0 ? "font-mono text-emerald-200" : "font-mono text-rose-200"}>
+              {change >= 0 ? "+" : "-"}
+              {Math.abs(change).toFixed(3)} ({changePct >= 0 ? "+" : "-"}
+              {Math.abs(changePct).toFixed(2)}%)
+            </span>
+          </span>
+        ) : null}
       </div>
 
       {error ? (
@@ -169,9 +228,15 @@ export function PublicSymbolPricePanel({ symbol }: { symbol: string }) {
       ) : null}
 
       {bars.length > 0 ? (
-        <pre className="mt-4 max-h-80 overflow-auto whitespace-pre-wrap rounded-xl border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
-          {JSON.stringify(bars.slice(Math.max(0, bars.length - 30)), null, 2)}
-        </pre>
+        <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+          <TradingChartReal bars={bars} height={360} className="w-full" />
+
+          {showRaw ? (
+            <pre className="max-h-80 overflow-auto whitespace-pre-wrap border-t border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+              {JSON.stringify(bars.slice(Math.max(0, bars.length - 100)), null, 2)}
+            </pre>
+          ) : null}
+        </div>
       ) : (
         <div className="mt-4 text-sm text-white/60">
           No cached bars yet. Click <span className="font-semibold text-white/80">Sync</span> to fetch and store them.

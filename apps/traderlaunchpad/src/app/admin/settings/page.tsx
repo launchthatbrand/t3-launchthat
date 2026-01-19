@@ -15,12 +15,14 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@acme/ui/button";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
-import React from "react";
 import { PriceDataSourceSetupCard } from "~/components/settings/PriceDataSourceSetupCard";
+import React from "react";
 import { TradeLockerConnectionCard } from "~/components/settings/TradeLockerConnectionCard";
 import { TradeLockerDeveloperKeyTest } from "~/components/settings/TradeLockerDeveloperKeyTest";
+import { TradeLockerUserAllAccountsTest } from "~/components/settings/TradeLockerUserAllAccountsTest";
 import { TradeLockerUserConfigTest } from "~/components/settings/TradeLockerUserConfigTest";
 import { TradeLockerUserHistoryTest } from "~/components/settings/TradeLockerUserHistoryTest";
+import { TradeLockerUserInstrumentsCandidatesTest } from "~/components/settings/TradeLockerUserInstrumentsCandidatesTest";
 import { TradeLockerUserInstrumentsTest } from "~/components/settings/TradeLockerUserInstrumentsTest";
 
 export default function AdminSettingsPage() {
@@ -143,7 +145,9 @@ export default function AdminSettingsPage() {
           <PriceDataSourceSetupCard />
           <TradeLockerDeveloperKeyTest />
           <TradeLockerUserConfigTest />
+          <TradeLockerUserAllAccountsTest />
           <TradeLockerUserInstrumentsTest />
+          <TradeLockerUserInstrumentsCandidatesTest />
           <TradeLockerUserHistoryTest />
 
           <Card className="border-dashed opacity-70">

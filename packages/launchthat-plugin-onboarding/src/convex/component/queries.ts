@@ -1,6 +1,18 @@
+import { query } from "./server";
 import { v } from "convex/values";
 
-import { query } from "./server";
+interface OnboardingConfigStep {
+  id: string;
+  title: string;
+  description?: string;
+  route?: string;
+  required?: boolean;
+}
+
+interface OnboardingProgressStep {
+  id: string;
+  completedAt: number;
+}
 
 export const getOnboardingConfig = query({
   args: { organizationId: v.string() },
@@ -96,20 +108,28 @@ export const getOnboardingStatus = query({
       )
       .unique();
 
+    const progressSteps: OnboardingProgressStep[] = Array.isArray(progress?.steps)
+      ? (progress?.steps as OnboardingProgressStep[])
+      : [];
     const completedIds = new Set(
-      (progress?.steps ?? []).map((step) => step.id),
+      progressSteps.map((step: OnboardingProgressStep) => step.id),
     );
-    const steps = config.steps.map((step) => ({
+
+    const configSteps: OnboardingConfigStep[] = Array.isArray((config as any)?.steps)
+      ? ((config as any).steps as OnboardingConfigStep[])
+      : [];
+
+    const steps = configSteps.map((step: OnboardingConfigStep) => ({
       id: step.id,
       title: step.title,
       description: step.description ?? undefined,
       route: step.route ?? undefined,
       completed: completedIds.has(step.id),
     }));
-    const requiredSteps = config.steps.filter(
-      (step) => step.required !== false,
+    const requiredSteps = configSteps.filter(
+      (step: OnboardingConfigStep) => step.required !== false,
     );
-    const requiredComplete = requiredSteps.every((step) =>
+    const requiredComplete = requiredSteps.every((step: OnboardingConfigStep) =>
       completedIds.has(step.id),
     );
     const isComplete = progress?.completed || requiredComplete;

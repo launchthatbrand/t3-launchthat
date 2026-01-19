@@ -155,6 +155,39 @@ export declare const components: {
           { organizationId: string; userId: string },
           null
         >;
+        setConnectionSelectedAccount: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            connectionId: string;
+            organizationId: string;
+            selectedAccNum: number;
+            selectedAccountId: string;
+            userId: string;
+          },
+          null
+        >;
+        updateConnectionAccountDebug: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accountRowId: string;
+            customerAccess?: {
+              filledOrders: boolean;
+              marketDepth: boolean;
+              orders: boolean;
+              ordersHistory: boolean;
+              positions: boolean;
+              symbolInfo: boolean;
+            };
+            lastConfigError?: string;
+            lastConfigOk: boolean;
+            lastConfigRaw?: any;
+            organizationId: string;
+            userId: string;
+          },
+          null
+        >;
         updateConnectionSyncState: FunctionReference<
           "mutation",
           "internal",
@@ -190,6 +223,21 @@ export declare const components: {
           },
           string
         >;
+        upsertConnectionAccount: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accNum: number;
+            accountId: string;
+            connectionId: string;
+            currency?: string;
+            name?: string;
+            organizationId: string;
+            status?: string;
+            userId: string;
+          },
+          string
+        >;
       };
       queries: {
         getMyConnection: FunctionReference<
@@ -216,6 +264,37 @@ export declare const components: {
             updatedAt: number;
             userId: string;
           } | null
+        >;
+        listMyConnectionAccounts: FunctionReference<
+          "query",
+          "internal",
+          { connectionId: string; organizationId: string; userId: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            accNum: number;
+            accountId: string;
+            connectionId: string;
+            createdAt: number;
+            currency?: string;
+            customerAccess?: {
+              filledOrders: boolean;
+              marketDepth: boolean;
+              orders: boolean;
+              ordersHistory: boolean;
+              positions: boolean;
+              symbolInfo: boolean;
+            };
+            lastConfigCheckedAt?: number;
+            lastConfigError?: string;
+            lastConfigOk?: boolean;
+            lastConfigRaw?: any;
+            name?: string;
+            organizationId: string;
+            status?: string;
+            updatedAt: number;
+            userId: string;
+          }>
         >;
       };
     };
@@ -661,6 +740,27 @@ export declare const components: {
         },
         { instrumentId: string; raw: any; symbol?: string } | null
       >;
+      probeAllAccountsForUser: FunctionReference<
+        "action",
+        "internal",
+        {
+          organizationId: string;
+          secretsKey: string;
+          tokenStorage?: "raw" | "enc";
+          userId: string;
+        },
+        {
+          accounts: Array<any>;
+          accountsPreview: Array<any>;
+          baseUrl: string;
+          count: number;
+          error?: string;
+          jwtHost?: string;
+          ok: boolean;
+          status: number;
+          textPreview: string;
+        }
+      >;
       probeHistoryForInstrument: FunctionReference<
         "action",
         "internal",
@@ -714,6 +814,34 @@ export declare const components: {
           textPreview?: string;
         }
       >;
+      probeInstrumentsForAllAccounts: FunctionReference<
+        "action",
+        "internal",
+        {
+          organizationId: string;
+          secretsKey: string;
+          tokenStorage?: "raw" | "enc";
+          userId: string;
+        },
+        {
+          accNum: number;
+          accountsPreview: Array<any>;
+          attempts: Array<{
+            apiErrmsg?: string;
+            apiS?: string;
+            candidateType: string;
+            candidateValue: string;
+            httpOk: boolean;
+            instrumentsCount: number;
+            status: number;
+            textPreview: string;
+          }>;
+          baseUrl: string;
+          jwtHost?: string;
+          ok: boolean;
+          storedSelectedAccountId: string;
+        }
+      >;
       probeInstrumentsForSelectedAccount: FunctionReference<
         "action",
         "internal",
@@ -740,6 +868,26 @@ export declare const components: {
         "action",
         "internal",
         {
+          organizationId: string;
+          secretsKey: string;
+          tokenStorage?: "raw" | "enc";
+          userId: string;
+        },
+        {
+          accNum: number;
+          baseUrl: string;
+          error?: string;
+          json?: any;
+          ok: boolean;
+          status?: number;
+          textPreview?: string;
+        }
+      >;
+      probeTradeConfigForAccNum: FunctionReference<
+        "action",
+        "internal",
+        {
+          accNum: number;
           organizationId: string;
           secretsKey: string;
           tokenStorage?: "raw" | "enc";

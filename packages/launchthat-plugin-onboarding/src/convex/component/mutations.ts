@@ -2,6 +2,19 @@ import { v } from "convex/values";
 
 import { mutation } from "./server";
 
+interface OnboardingConfigStep {
+  id: string;
+  title: string;
+  description?: string;
+  route?: string;
+  required?: boolean;
+}
+
+interface OnboardingProgressStep {
+  id: string;
+  completedAt: number;
+}
+
 const stepValidator = v.object({
   id: v.string(),
   title: v.string(),
@@ -71,8 +84,10 @@ export const setStepComplete = mutation({
       )
       .unique();
 
-    const steps = progress?.steps ?? [];
-    if (!steps.some((step) => step.id === args.stepId)) {
+    const steps: OnboardingProgressStep[] = Array.isArray(progress?.steps)
+      ? (progress?.steps as OnboardingProgressStep[])
+      : [];
+    if (!steps.some((step: OnboardingProgressStep) => step.id === args.stepId)) {
       steps.push({ id: args.stepId, completedAt: now });
     }
 
@@ -82,13 +97,18 @@ export const setStepComplete = mutation({
         q.eq("organizationId", args.organizationId),
       )
       .unique();
-    const requiredSteps = config?.steps.filter(
-      (step) => step.required !== false,
+    const configSteps: OnboardingConfigStep[] = Array.isArray((config as any)?.steps)
+      ? ((config as any).steps as OnboardingConfigStep[])
+      : [];
+    const requiredSteps = configSteps.filter(
+      (step: OnboardingConfigStep) => step.required !== false,
     );
-    const completedIds = new Set(steps.map((step) => step.id));
+    const completedIds = new Set(steps.map((step: OnboardingProgressStep) => step.id));
     const requiredComplete =
       requiredSteps && requiredSteps.length > 0
-        ? requiredSteps.every((step) => completedIds.has(step.id))
+        ? requiredSteps.every((step: OnboardingConfigStep) =>
+            completedIds.has(step.id),
+          )
         : false;
 
     if (progress) {

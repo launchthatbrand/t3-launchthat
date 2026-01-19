@@ -510,13 +510,45 @@ const tradeLockerInstrumentsForAccount = async (args: {
   json: any;
   text: string;
 }> => {
-  const res = await tradeLockerApi({
-    baseUrl: args.baseUrl,
-    accessToken: args.accessToken,
-    accNum: args.accNum,
-    path: `/trade/accounts/${encodeURIComponent(args.accountId)}/instruments`,
-  });
-  return { ok: res.ok, status: res.status, json: res.json, text: res.text };
+  const requestOnce = async (accountId: string) => {
+    const res = await tradeLockerApi({
+      baseUrl: args.baseUrl,
+      accessToken: args.accessToken,
+      accNum: args.accNum,
+      path: `/trade/accounts/${encodeURIComponent(accountId)}/instruments`,
+    });
+    return { ok: res.ok, status: res.status, json: res.json, text: res.text };
+  };
+
+  // TradeLocker can return HTTP 200 with {"s":"error","errmsg":"Account not found!"}
+  // if the path param isn't the expected int-like account identifier for this endpoint.
+  // When that happens, retry using accNum (often the int expected in the path).
+  const first = await requestOnce(args.accountId);
+  const apiS = typeof first.json?.s === "string" ? String(first.json.s) : "";
+  const apiErrmsg =
+    typeof first.json?.errmsg === "string"
+      ? String(first.json.errmsg)
+      : typeof first.json?.error === "string"
+        ? String(first.json.error)
+        : "";
+  const normalizedErr = apiErrmsg.toLowerCase();
+
+  const shouldRetryWithAccNum =
+    first.status === 200 &&
+    apiS.toLowerCase() === "error" &&
+    (normalizedErr.includes("account not found") ||
+      normalizedErr.includes("accountid must be of type int"));
+
+  const accNumAsAccountId = String(args.accNum);
+  if (
+    shouldRetryWithAccNum &&
+    accNumAsAccountId &&
+    accNumAsAccountId !== args.accountId
+  ) {
+    return await requestOnce(accNumAsAccountId);
+  }
+
+  return first;
 };
 
 const findInstrumentIdBySymbol = (
@@ -724,10 +756,13 @@ export const probeHistoryForSymbol = action({
     const baseUrlFallback = baseUrlForEnv(
       secrets.environment === "live" ? "live" : "demo",
     );
-    const baseUrl = jwtHost ? `https://${jwtHost}/backend-api` : baseUrlFallback;
+    // NOTE: For debugging broker connectivity issues, prefer the environment host
+    // (demo.tradelocker.com/live.tradelocker.com) over the JWT host (e.g. bsb.tradelocker.com).
+    // The settings UI "Instruments (user token)" probe should be able to compare behavior.
+    const baseUrl = baseUrlFallback;
 
-    const accNum = Number(secrets.selectedAccNum ?? 0);
-    const accountId = String(secrets.selectedAccountId ?? "").trim();
+    let accNum = Number(secrets.selectedAccNum ?? 0);
+    let accountId = String(secrets.selectedAccountId ?? "").trim();
     if (!Number.isFinite(accNum) || accNum <= 0 || !accountId) {
       return {
         ok: false,
@@ -979,10 +1014,13 @@ export const probeHistoryForInstrument = action({
     const baseUrlFallback = baseUrlForEnv(
       secrets.environment === "live" ? "live" : "demo",
     );
+    // IMPORTANT: Use the JWT shard host when available (e.g. bsb.tradelocker.com).
+    // Many TradeLocker JWTs are only valid on that host; using demo.tradelocker.com
+    // can yield 403 "JWT validation failed or server not found".
     const baseUrl = jwtHost ? `https://${jwtHost}/backend-api` : baseUrlFallback;
 
-    const accNum = Number(secrets.selectedAccNum ?? 0);
-    const accountId = String(secrets.selectedAccountId ?? "").trim();
+    let accNum = Number(secrets.selectedAccNum ?? 0);
+    let accountId = String(secrets.selectedAccountId ?? "").trim();
     if (!Number.isFinite(accNum) || accNum <= 0 || !accountId) {
       return {
         ok: false,
@@ -1199,10 +1237,13 @@ export const probeTradeConfig = action({
     const baseUrlFallback = baseUrlForEnv(
       secrets.environment === "live" ? "live" : "demo",
     );
+    // IMPORTANT: Use the JWT shard host when available (e.g. bsb.tradelocker.com).
+    // Many TradeLocker JWTs are only valid on that host; using demo.tradelocker.com
+    // can yield 403 "JWT validation failed or server not found".
     const baseUrl = jwtHost ? `https://${jwtHost}/backend-api` : baseUrlFallback;
 
-    const accNum = Number(secrets.selectedAccNum ?? 0);
-    const accountId = String(secrets.selectedAccountId ?? "").trim();
+    let accNum = Number(secrets.selectedAccNum ?? 0);
+    let accountId = String(secrets.selectedAccountId ?? "").trim();
     if (!Number.isFinite(accNum) || accNum <= 0 || !accountId) {
       return {
         ok: false,
@@ -1251,6 +1292,130 @@ export const probeTradeConfig = action({
     }
 
     // TradeLocker returns HTTP 200 for app-level errors; normalize.
+    const apiStatus = String(cfg.json?.s ?? "");
+    const apiOk = apiStatus === "ok";
+
+    return {
+      ok: cfg.ok && apiOk,
+      baseUrl,
+      accNum,
+      status: cfg.status,
+      textPreview: cfg.text?.slice(0, 500) ?? "",
+      json: cfg.json ?? undefined,
+      error:
+        cfg.ok && !apiOk
+          ? String(cfg.json?.errmsg ?? cfg.json?.error ?? "TradeLocker returned s!=ok")
+          : cfg.ok
+            ? undefined
+            : "TradeLocker /trade/config request failed.",
+    };
+  },
+});
+
+export const probeTradeConfigForAccNum = action({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    accNum: v.number(),
+    secretsKey: v.string(),
+    tokenStorage: v.optional(v.union(v.literal("raw"), v.literal("enc"))),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    baseUrl: v.string(),
+    accNum: v.number(),
+    status: v.optional(v.number()),
+    textPreview: v.optional(v.string()),
+    json: v.optional(v.any()),
+    error: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const secrets = await ctx.runQuery(
+      api.connections.internalQueries.getConnectionSecrets as any,
+      { organizationId: args.organizationId, userId: args.userId },
+    );
+    if (!secrets || secrets.status !== "connected") {
+      return {
+        ok: false,
+        baseUrl: "",
+        accNum: args.accNum,
+        error: "TradeLocker not connected for this user.",
+      };
+    }
+
+    const accNum = Number(args.accNum);
+    if (!Number.isFinite(accNum) || accNum <= 0) {
+      return {
+        ok: false,
+        baseUrl: "",
+        accNum: Number.isFinite(accNum) ? accNum : 0,
+        error: "Invalid accNum.",
+      };
+    }
+
+    const keyMaterial = requireTradeLockerSecretsKey(args.secretsKey);
+    let accessToken = await decryptSecret(
+      String((secrets as any).accessTokenEncrypted ?? ""),
+      keyMaterial,
+    );
+    let refreshToken = await decryptSecret(
+      String((secrets as any).refreshTokenEncrypted ?? ""),
+      keyMaterial,
+    );
+
+    const storedEncrypted =
+      String((secrets as any).accessTokenEncrypted ?? "").startsWith("enc_v1:") ||
+      String((secrets as any).refreshTokenEncrypted ?? "").startsWith("enc_v1:");
+    const requestedTokenStorage = args.tokenStorage === "enc" ? "enc" : "raw";
+    const shouldEncrypt = requestedTokenStorage === "enc" || storedEncrypted;
+
+    const jwtHost =
+      typeof (secrets as any).jwtHost === "string"
+        ? String((secrets as any).jwtHost)
+        : extractJwtHost(accessToken);
+    const baseUrlFallback = baseUrlForEnv(
+      secrets.environment === "live" ? "live" : "demo",
+    );
+    const baseUrl = jwtHost ? `https://${jwtHost}/backend-api` : baseUrlFallback;
+
+    const rotateTokens = async (): Promise<boolean> => {
+      const res = await tradeLockerRefreshTokens({ baseUrl, refreshToken });
+      if (!res.ok || !res.accessToken || !res.refreshToken) return false;
+      accessToken = res.accessToken;
+      refreshToken = res.refreshToken;
+
+      const accessTokenEncrypted = shouldEncrypt
+        ? await encryptSecret(accessToken, keyMaterial)
+        : accessToken;
+      const refreshTokenEncrypted = shouldEncrypt
+        ? await encryptSecret(refreshToken, keyMaterial)
+        : refreshToken;
+
+      await ctx.runMutation(api.connections.mutations.upsertConnection as any, {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        environment: secrets.environment === "live" ? "live" : "demo",
+        server: String(secrets.server ?? ""),
+        jwtHost: extractJwtHost(accessToken),
+        selectedAccountId: String((secrets as any).selectedAccountId ?? ""),
+        selectedAccNum: Number((secrets as any).selectedAccNum ?? 0),
+        accessTokenEncrypted,
+        refreshTokenEncrypted,
+        accessTokenExpiresAt: res.expireDateMs,
+        refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
+        status: "connected",
+        lastError: undefined,
+      });
+
+      return true;
+    };
+
+    let cfg = await tradeLockerConfig({ baseUrl, accessToken, accNum });
+    if (cfg.status === 401 || cfg.status === 403) {
+      const refreshed = await rotateTokens();
+      if (refreshed) cfg = await tradeLockerConfig({ baseUrl, accessToken, accNum });
+    }
+
     const apiStatus = String(cfg.json?.s ?? "");
     const apiOk = apiStatus === "ok";
 
@@ -1328,10 +1493,13 @@ export const probeInstrumentsForSelectedAccount = action({
     const baseUrlFallback = baseUrlForEnv(
       secrets.environment === "live" ? "live" : "demo",
     );
+    // IMPORTANT: Use the JWT shard host when available (e.g. bsb.tradelocker.com).
+    // Many TradeLocker JWTs are only valid on that host; using demo.tradelocker.com
+    // can yield 403 "JWT validation failed or server not found".
     const baseUrl = jwtHost ? `https://${jwtHost}/backend-api` : baseUrlFallback;
 
-    const accNum = Number(secrets.selectedAccNum ?? 0);
-    const accountId = String(secrets.selectedAccountId ?? "").trim();
+    let accNum = Number(secrets.selectedAccNum ?? 0);
+    let accountId = String(secrets.selectedAccountId ?? "").trim();
     if (!Number.isFinite(accNum) || accNum <= 0 || !accountId) {
       return {
         ok: false,
@@ -1392,6 +1560,67 @@ export const probeInstrumentsForSelectedAccount = action({
       }
     }
 
+    // TradeLocker returns HTTP 200 for app-level errors; normalize.
+    const apiStatus = String(listRes.json?.s ?? "");
+    const apiOk = apiStatus === "ok";
+    const apiErr = String(listRes.json?.errmsg ?? listRes.json?.error ?? "");
+
+    // If the stored accountId/accNum got stale, resolve via all-accounts and retry once.
+    if (listRes.ok && !apiOk && apiErr.toLowerCase().includes("account not found")) {
+      const allAccountsRes = await tradeLockerAllAccounts({ baseUrl, accessToken });
+      const accounts = allAccountsRes.accounts;
+      const matched =
+        accounts.find(
+          (a) =>
+            String(a?.accountId ?? a?.id ?? a?._id ?? "") === accountId ||
+            String(a?.accNum ?? a?.acc_num ?? a?.accountNumber ?? "") === accountId ||
+            Number(a?.accNum ?? a?.acc_num ?? a?.accountNumber ?? 0) === accNum ||
+            Number(a?.accountId ?? a?.id ?? 0) === accNum,
+        ) ?? null;
+
+      if (matched) {
+        const resolvedAccountId = String(
+          matched?.accountId ?? matched?.id ?? matched?._id ?? accountId,
+        ).trim();
+        const resolvedAccNum = Number(
+          matched?.accNum ?? matched?.acc_num ?? matched?.accountNumber ?? accNum,
+        );
+
+        if (
+          resolvedAccountId &&
+          Number.isFinite(resolvedAccNum) &&
+          resolvedAccNum > 0 &&
+          (resolvedAccountId !== accountId || resolvedAccNum !== accNum)
+        ) {
+          accountId = resolvedAccountId;
+          accNum = resolvedAccNum;
+
+          await ctx.runMutation(api.connections.mutations.upsertConnection as any, {
+            organizationId: args.organizationId,
+            userId: args.userId,
+            environment: secrets.environment === "live" ? "live" : "demo",
+            server: String(secrets.server ?? ""),
+            jwtHost: extractJwtHost(accessToken),
+            selectedAccountId: accountId,
+            selectedAccNum: accNum,
+            accessTokenEncrypted: (secrets as any).accessTokenEncrypted,
+            refreshTokenEncrypted: (secrets as any).refreshTokenEncrypted,
+            accessTokenExpiresAt: (secrets as any).accessTokenExpiresAt,
+            refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
+            status: "connected",
+            lastError: undefined,
+          });
+        }
+
+        listRes = await tradeLockerInstrumentsForAccount({
+          baseUrl,
+          accessToken,
+          accNum,
+          accountId,
+        });
+      }
+    }
+
     const root =
       listRes.json?.d && typeof listRes.json.d === "object"
         ? listRes.json.d
@@ -1405,7 +1634,7 @@ export const probeInstrumentsForSelectedAccount = action({
           : [];
 
     return {
-      ok: listRes.ok,
+      ok: listRes.ok && String(listRes.json?.s ?? "") === "ok",
       baseUrl,
       accountId,
       accNum,
@@ -1414,7 +1643,378 @@ export const probeInstrumentsForSelectedAccount = action({
       instruments,
       instrumentsPreview: instruments.slice(0, 50),
       textPreview: listRes.text?.slice(0, 500) ?? "",
-      error: listRes.ok ? undefined : "TradeLocker instruments request failed.",
+      error:
+        listRes.ok && String(listRes.json?.s ?? "") !== "ok"
+          ? String(listRes.json?.errmsg ?? listRes.json?.error ?? "TradeLocker returned s!=ok")
+          : listRes.ok
+            ? undefined
+            : "TradeLocker instruments request failed.",
+    };
+  },
+});
+
+export const probeAllAccountsForUser = action({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    secretsKey: v.string(),
+    tokenStorage: v.optional(v.union(v.literal("raw"), v.literal("enc"))),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    baseUrl: v.string(),
+    jwtHost: v.optional(v.string()),
+    status: v.number(),
+    count: v.number(),
+    accounts: v.array(v.any()),
+    accountsPreview: v.array(v.any()),
+    textPreview: v.string(),
+    error: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const secrets = await ctx.runQuery(
+      api.connections.internalQueries.getConnectionSecrets as any,
+      { organizationId: args.organizationId, userId: args.userId },
+    );
+    if (!secrets || secrets.status !== "connected") {
+      return {
+        ok: false,
+        baseUrl: "",
+        jwtHost: undefined,
+        status: 0,
+        count: 0,
+        accounts: [],
+        accountsPreview: [],
+        textPreview: "",
+        error: "TradeLocker not connected for this user.",
+      };
+    }
+
+    const keyMaterial = requireTradeLockerSecretsKey(args.secretsKey);
+    let accessToken = await decryptSecret(
+      String((secrets as any).accessTokenEncrypted ?? ""),
+      keyMaterial,
+    );
+    let refreshToken = await decryptSecret(
+      String((secrets as any).refreshTokenEncrypted ?? ""),
+      keyMaterial,
+    );
+
+    const storedEncrypted =
+      String((secrets as any).accessTokenEncrypted ?? "").startsWith("enc_v1:") ||
+      String((secrets as any).refreshTokenEncrypted ?? "").startsWith("enc_v1:");
+    const requestedTokenStorage = args.tokenStorage === "enc" ? "enc" : "raw";
+    const shouldEncrypt = requestedTokenStorage === "enc" || storedEncrypted;
+
+    const jwtHost =
+      typeof (secrets as any).jwtHost === "string"
+        ? String((secrets as any).jwtHost)
+        : extractJwtHost(accessToken);
+    const baseUrlFallback = baseUrlForEnv(
+      secrets.environment === "live" ? "live" : "demo",
+    );
+    const baseUrl = jwtHost ? `https://${jwtHost}/backend-api` : baseUrlFallback;
+
+    const rotateTokens = async (reason: string): Promise<boolean> => {
+      const res = await tradeLockerRefreshTokens({ baseUrl, refreshToken });
+      if (!res.ok || !res.accessToken || !res.refreshToken) return false;
+      accessToken = res.accessToken;
+      refreshToken = res.refreshToken;
+
+      const accessTokenEncrypted = shouldEncrypt
+        ? await encryptSecret(accessToken, keyMaterial)
+        : accessToken;
+      const refreshTokenEncrypted = shouldEncrypt
+        ? await encryptSecret(refreshToken, keyMaterial)
+        : refreshToken;
+
+      await ctx.runMutation(api.connections.mutations.upsertConnection as any, {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        environment: secrets.environment === "live" ? "live" : "demo",
+        server: String(secrets.server ?? ""),
+        jwtHost: extractJwtHost(accessToken),
+        selectedAccountId: String(secrets.selectedAccountId ?? ""),
+        selectedAccNum: Number(secrets.selectedAccNum ?? 0),
+        accessTokenEncrypted,
+        refreshTokenEncrypted,
+        accessTokenExpiresAt: res.expireDateMs,
+        refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
+        status: "connected",
+        lastError: undefined,
+      });
+
+      console.log("[tradelocker.probeAllAccounts.refresh_ok]", {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        reason,
+      });
+      return true;
+    };
+
+    let allAccountsRes = await tradeLockerAllAccounts({ baseUrl, accessToken });
+    if (allAccountsRes.status === 401 || allAccountsRes.status === 403) {
+      const refreshed = await rotateTokens("all-accounts_401_403");
+      if (refreshed) {
+        allAccountsRes = await tradeLockerAllAccounts({ baseUrl, accessToken });
+      }
+    }
+
+    const preview = (Array.isArray(allAccountsRes.accounts) ? allAccountsRes.accounts : []).slice(0, 50);
+
+    return {
+      ok: allAccountsRes.ok,
+      baseUrl,
+      jwtHost: jwtHost ?? undefined,
+      status: allAccountsRes.status,
+      count: Array.isArray(allAccountsRes.accounts) ? allAccountsRes.accounts.length : 0,
+      accounts: Array.isArray(allAccountsRes.accounts) ? allAccountsRes.accounts : [],
+      accountsPreview: preview,
+      textPreview: allAccountsRes.text?.slice(0, 500) ?? "",
+      error: allAccountsRes.ok ? undefined : "TradeLocker all-accounts request failed.",
+    };
+  },
+});
+
+export const probeInstrumentsForAllAccounts = action({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    secretsKey: v.string(),
+    tokenStorage: v.optional(v.union(v.literal("raw"), v.literal("enc"))),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    baseUrl: v.string(),
+    jwtHost: v.optional(v.string()),
+    accNum: v.number(),
+    storedSelectedAccountId: v.string(),
+    accountsPreview: v.array(v.any()),
+    attempts: v.array(
+      v.object({
+        candidateType: v.string(),
+        candidateValue: v.string(),
+        status: v.number(),
+        httpOk: v.boolean(),
+        apiS: v.optional(v.string()),
+        apiErrmsg: v.optional(v.string()),
+        instrumentsCount: v.number(),
+        textPreview: v.string(),
+      }),
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const secrets = await ctx.runQuery(
+      api.connections.internalQueries.getConnectionSecrets as any,
+      { organizationId: args.organizationId, userId: args.userId },
+    );
+    if (!secrets || secrets.status !== "connected") {
+      return {
+        ok: false,
+        baseUrl: "",
+        jwtHost: undefined,
+        accNum: 0,
+        storedSelectedAccountId: "",
+        accountsPreview: [],
+        attempts: [],
+      };
+    }
+
+    const keyMaterial = requireTradeLockerSecretsKey(args.secretsKey);
+    let accessToken = await decryptSecret(
+      String((secrets as any).accessTokenEncrypted ?? ""),
+      keyMaterial,
+    );
+    let refreshToken = await decryptSecret(
+      String((secrets as any).refreshTokenEncrypted ?? ""),
+      keyMaterial,
+    );
+
+    const storedEncrypted =
+      String((secrets as any).accessTokenEncrypted ?? "").startsWith("enc_v1:") ||
+      String((secrets as any).refreshTokenEncrypted ?? "").startsWith("enc_v1:");
+    const requestedTokenStorage = args.tokenStorage === "enc" ? "enc" : "raw";
+    const shouldEncrypt = requestedTokenStorage === "enc" || storedEncrypted;
+
+    const jwtHost =
+      typeof (secrets as any).jwtHost === "string"
+        ? String((secrets as any).jwtHost)
+        : extractJwtHost(accessToken);
+    const baseUrlFallback = baseUrlForEnv(
+      secrets.environment === "live" ? "live" : "demo",
+    );
+    const baseUrl = jwtHost ? `https://${jwtHost}/backend-api` : baseUrlFallback;
+
+    const rotateTokens = async (reason: string): Promise<boolean> => {
+      const res = await tradeLockerRefreshTokens({ baseUrl, refreshToken });
+      if (!res.ok || !res.accessToken || !res.refreshToken) return false;
+      accessToken = res.accessToken;
+      refreshToken = res.refreshToken;
+
+      const accessTokenEncrypted = shouldEncrypt
+        ? await encryptSecret(accessToken, keyMaterial)
+        : accessToken;
+      const refreshTokenEncrypted = shouldEncrypt
+        ? await encryptSecret(refreshToken, keyMaterial)
+        : refreshToken;
+
+      await ctx.runMutation(api.connections.mutations.upsertConnection as any, {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        environment: secrets.environment === "live" ? "live" : "demo",
+        server: String(secrets.server ?? ""),
+        jwtHost: extractJwtHost(accessToken),
+        selectedAccountId: String(secrets.selectedAccountId ?? ""),
+        selectedAccNum: Number(secrets.selectedAccNum ?? 0),
+        accessTokenEncrypted,
+        refreshTokenEncrypted,
+        accessTokenExpiresAt: res.expireDateMs,
+        refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
+        status: "connected",
+        lastError: undefined,
+      });
+
+      console.log("[tradelocker.probeInstrumentsForAllAccounts.refresh_ok]", {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        reason,
+      });
+      return true;
+    };
+
+    let allAccountsRes = await tradeLockerAllAccounts({ baseUrl, accessToken });
+    if (allAccountsRes.status === 401 || allAccountsRes.status === 403) {
+      const refreshed = await rotateTokens("all-accounts_401_403");
+      if (refreshed) {
+        allAccountsRes = await tradeLockerAllAccounts({ baseUrl, accessToken });
+      }
+    }
+
+    const storedAccNum = Number(secrets.selectedAccNum ?? 0);
+    const storedSelectedAccountId = String(secrets.selectedAccountId ?? "").trim();
+    const accNum =
+      Number.isFinite(storedAccNum) && storedAccNum > 0 ? storedAccNum : 1;
+
+    const accounts = Array.isArray(allAccountsRes.accounts) ? allAccountsRes.accounts : [];
+    const accountsPreview = accounts.slice(0, 25);
+
+    // Candidates to try for /trade/accounts/{accountId}/instruments.
+    const candidates: Array<{ type: string; value: string }> = [];
+    const pushCandidate = (type: string, value: unknown) => {
+      const v = String(value ?? "").trim();
+      if (!v) return;
+      if (candidates.some((c) => c.value === v)) return;
+      candidates.push({ type, value: v });
+    };
+    pushCandidate("stored.selectedAccountId", storedSelectedAccountId);
+    // Also try accNum as the path param (TradeLocker sometimes uses this for {accountId}).
+    pushCandidate("stored.accNum_as_accountId", String(accNum));
+    const first = accounts[0];
+    if (first) {
+      pushCandidate("all-accounts.id", (first as any).id);
+      pushCandidate("all-accounts.accountId", (first as any).accountId);
+      pushCandidate("all-accounts._id", (first as any)._id);
+      pushCandidate("all-accounts.name", (first as any).name);
+      pushCandidate("all-accounts.accNum_as_accountId", (first as any).accNum);
+    }
+    for (const a of accounts.slice(0, 5)) {
+      pushCandidate("all-accounts.id", (a as any).id);
+      pushCandidate("all-accounts.accountId", (a as any).accountId);
+      pushCandidate("all-accounts._id", (a as any)._id);
+      pushCandidate("all-accounts.name", (a as any).name);
+      pushCandidate("all-accounts.accNum_as_accountId", (a as any).accNum);
+    }
+
+    const attempts: Array<{
+      candidateType: string;
+      candidateValue: string;
+      status: number;
+      httpOk: boolean;
+      apiS?: string;
+      apiErrmsg?: string;
+      instrumentsCount: number;
+      textPreview: string;
+    }> = [];
+
+    for (const c of candidates.slice(0, 12)) {
+      // Avoid spamming obvious invalid candidates (e.g. name strings) into a path param
+      // that TradeLocker expects to be int-like.
+      if (!/^\d+$/.test(c.value)) {
+        attempts.push({
+          candidateType: c.type,
+          candidateValue: c.value,
+          status: 0,
+          httpOk: false,
+          apiS: "skipped",
+          apiErrmsg: "Skipped non-numeric candidate",
+          instrumentsCount: 0,
+          textPreview: "",
+        });
+        continue;
+      }
+
+      let listRes = await tradeLockerInstrumentsForAccount({
+        baseUrl,
+        accessToken,
+        accNum,
+        accountId: c.value,
+      });
+      if (listRes.status === 401 || listRes.status === 403) {
+        const refreshed = await rotateTokens("instruments_401_403");
+        if (refreshed) {
+          listRes = await tradeLockerInstrumentsForAccount({
+            baseUrl,
+            accessToken,
+            accNum,
+            accountId: c.value,
+          });
+        }
+      }
+
+      const apiS =
+        typeof listRes.json?.s === "string" ? String(listRes.json.s) : undefined;
+      const apiErrmsg =
+        typeof listRes.json?.errmsg === "string"
+          ? String(listRes.json.errmsg)
+          : typeof listRes.json?.error === "string"
+            ? String(listRes.json.error)
+            : undefined;
+
+      const root =
+        listRes.json?.d && typeof listRes.json.d === "object"
+          ? listRes.json.d
+          : listRes.json;
+      const instruments: any[] = Array.isArray(root)
+        ? root
+        : Array.isArray(root?.instruments)
+          ? root.instruments
+          : Array.isArray(root?.data)
+            ? root.data
+            : [];
+
+      attempts.push({
+        candidateType: c.type,
+        candidateValue: c.value,
+        status: listRes.status,
+        httpOk: Boolean(listRes.ok),
+        apiS,
+        apiErrmsg,
+        instrumentsCount: instruments.length,
+        textPreview: listRes.text?.slice(0, 200) ?? "",
+      });
+
+      // If we're rate-limited, bail early to avoid making it worse.
+      if (listRes.status === 429) break;
+    }
+
+    return {
+      ok: allAccountsRes.ok,
+      baseUrl,
+      jwtHost: jwtHost ?? undefined,
+      accNum,
+      storedSelectedAccountId,
+      accountsPreview,
+      attempts,
     };
   },
 });

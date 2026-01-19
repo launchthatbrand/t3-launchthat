@@ -64,3 +64,70 @@ export const getMyConnection = query({
     };
   },
 });
+
+export const listMyConnectionAccounts = query({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    connectionId: v.id("tradelockerConnections"),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("tradelockerConnectionAccounts"),
+      _creationTime: v.number(),
+      organizationId: v.string(),
+      userId: v.string(),
+      connectionId: v.id("tradelockerConnections"),
+      accountId: v.string(),
+      accNum: v.number(),
+      name: v.optional(v.string()),
+      currency: v.optional(v.string()),
+      status: v.optional(v.string()),
+      customerAccess: v.optional(
+        v.object({
+          orders: v.boolean(),
+          ordersHistory: v.boolean(),
+          filledOrders: v.boolean(),
+          positions: v.boolean(),
+          symbolInfo: v.boolean(),
+          marketDepth: v.boolean(),
+        }),
+      ),
+      lastConfigOk: v.optional(v.boolean()),
+      lastConfigCheckedAt: v.optional(v.number()),
+      lastConfigError: v.optional(v.string()),
+      lastConfigRaw: v.optional(v.any()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("tradelockerConnectionAccounts")
+      .withIndex("by_connectionId", (q: any) => q.eq("connectionId", args.connectionId))
+      .collect();
+
+    return rows
+      .filter((r) => r.organizationId === args.organizationId && r.userId === args.userId)
+      .sort((a, b) => (a.accNum ?? 0) - (b.accNum ?? 0))
+      .map((r) => ({
+        _id: r._id,
+        _creationTime: r._creationTime,
+        organizationId: r.organizationId,
+        userId: r.userId,
+        connectionId: r.connectionId,
+        accountId: r.accountId,
+        accNum: r.accNum,
+        name: r.name,
+        currency: r.currency,
+        status: r.status,
+        customerAccess: r.customerAccess,
+        lastConfigOk: r.lastConfigOk,
+        lastConfigCheckedAt: r.lastConfigCheckedAt,
+        lastConfigError: r.lastConfigError,
+        lastConfigRaw: r.lastConfigRaw,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+      }));
+  },
+});

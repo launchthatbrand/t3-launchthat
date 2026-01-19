@@ -165,12 +165,21 @@ export const startTradeLockerConnect = action({
     server: v.string(),
     email: v.string(),
     password: v.string(),
+    // DEV-ONLY: allow returning raw tokens to the caller for debugging/copying.
+    // This is intentionally gated in the handler (never returned in production).
+    debugReturnTokens: v.optional(v.boolean()),
   },
   returns: v.object({
     // NOTE: this id belongs to the *component* table `tradelockerConnectDrafts`,
     // so it must be treated as an opaque string at the app boundary.
     draftId: v.string(),
     accounts: v.array(v.any()),
+    debugTokens: v.optional(
+      v.object({
+        accessToken: v.string(),
+        refreshToken: v.string(),
+      }),
+    ),
   }),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
@@ -270,7 +279,13 @@ export const startTradeLockerConnect = action({
       },
     );
 
-    return { draftId, accounts };
+    const isDev = process.env.NODE_ENV !== "production";
+    const debugTokens =
+      isDev && args.debugReturnTokens
+        ? { accessToken, refreshToken }
+        : undefined;
+
+    return { draftId, accounts, debugTokens };
   },
 });
 
@@ -281,6 +296,9 @@ export const connectTradeLocker = action({
     draftId: v.string(),
     selectedAccountId: v.string(),
     selectedAccNum: v.number(),
+    selectedAccountName: v.optional(v.string()),
+    selectedAccountCurrency: v.optional(v.string()),
+    selectedAccountStatus: v.optional(v.string()),
   },
   returns: v.object({
     ok: v.boolean(),
@@ -310,7 +328,7 @@ export const connectTradeLocker = action({
       throw new Error("Connect session expired. Please try again.");
     }
 
-    await ctx.runMutation(
+    const connectionId = await ctx.runMutation(
       traderlaunchpadConnectionsMutations.upsertConnection,
       {
         organizationId,
@@ -328,6 +346,113 @@ export const connectTradeLocker = action({
         lastError: undefined,
       },
     );
+
+    // Add/update account row for this connection
+    const accountRowId = await ctx.runMutation(traderlaunchpadConnectionsMutations.upsertConnectionAccount, {
+      organizationId,
+      userId,
+      connectionId,
+      accountId,
+      accNum,
+      name: args.selectedAccountName,
+      currency: args.selectedAccountCurrency,
+      status: args.selectedAccountStatus,
+    } as any);
+
+    // Best-effort: fetch /trade/config for this account and cache customerAccess flags.
+    try {
+      const cfg = await ctx.runAction(
+        componentsUntyped.launchthat_traderlaunchpad.sync.probeTradeConfigForAccNum,
+        {
+          organizationId,
+          userId,
+          accNum,
+          secretsKey: env.TRADELOCKER_SECRETS_KEY,
+          tokenStorage: env.TRADELOCKER_TOKEN_STORAGE,
+        },
+      );
+
+      const customerAccessRaw =
+        cfg?.json?.d && typeof cfg.json.d === "object"
+          ? (cfg.json.d as any).customerAccess
+          : undefined;
+
+      const customerAccess =
+        customerAccessRaw && typeof customerAccessRaw === "object"
+          ? {
+              orders: Boolean((customerAccessRaw as any).orders),
+              ordersHistory: Boolean((customerAccessRaw as any).ordersHistory),
+              filledOrders: Boolean((customerAccessRaw as any).filledOrders),
+              positions: Boolean((customerAccessRaw as any).positions),
+              symbolInfo: Boolean((customerAccessRaw as any).symbolInfo),
+              marketDepth: Boolean((customerAccessRaw as any).marketDepth),
+            }
+          : undefined;
+
+      await ctx.runMutation(traderlaunchpadConnectionsMutations.updateConnectionAccountDebug, {
+        organizationId,
+        userId,
+        accountRowId,
+        lastConfigOk: Boolean(cfg?.ok),
+        customerAccess,
+        lastConfigError: typeof cfg?.error === "string" ? cfg.error : undefined,
+        lastConfigRaw: cfg?.json,
+      } as any);
+    } catch {
+      // ignore debug cache errors
+    }
+
+    return { ok: true };
+  },
+});
+
+export const refreshMyTradeLockerAccountConfig = action({
+  args: {
+    accountRowId: v.string(),
+    accNum: v.number(),
+  },
+  returns: v.object({ ok: v.boolean() }),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+
+    const cfg = await ctx.runAction(
+      componentsUntyped.launchthat_traderlaunchpad.sync.probeTradeConfigForAccNum,
+      {
+        organizationId,
+        userId,
+        accNum: args.accNum,
+        secretsKey: env.TRADELOCKER_SECRETS_KEY,
+        tokenStorage: env.TRADELOCKER_TOKEN_STORAGE,
+      },
+    );
+
+    const customerAccessRaw =
+      cfg?.json?.d && typeof cfg.json.d === "object"
+        ? (cfg.json.d as any).customerAccess
+        : undefined;
+
+    const customerAccess =
+      customerAccessRaw && typeof customerAccessRaw === "object"
+        ? {
+            orders: Boolean((customerAccessRaw as any).orders),
+            ordersHistory: Boolean((customerAccessRaw as any).ordersHistory),
+            filledOrders: Boolean((customerAccessRaw as any).filledOrders),
+            positions: Boolean((customerAccessRaw as any).positions),
+            symbolInfo: Boolean((customerAccessRaw as any).symbolInfo),
+            marketDepth: Boolean((customerAccessRaw as any).marketDepth),
+          }
+        : undefined;
+
+    await ctx.runMutation(traderlaunchpadConnectionsMutations.updateConnectionAccountDebug, {
+      organizationId,
+      userId,
+      accountRowId: args.accountRowId as any,
+      lastConfigOk: Boolean(cfg?.ok),
+      customerAccess,
+      lastConfigError: typeof cfg?.error === "string" ? cfg.error : undefined,
+      lastConfigRaw: cfg?.json,
+    } as any);
 
     return { ok: true };
   },
@@ -461,6 +586,44 @@ export const probeMyTradeLockerInstruments = action({
     const userId = await resolveViewerUserId(ctx);
     const result = await ctx.runAction(
       componentsUntyped.launchthat_traderlaunchpad.sync.probeInstrumentsForSelectedAccount,
+      {
+        organizationId,
+        userId,
+        secretsKey: env.TRADELOCKER_SECRETS_KEY,
+        tokenStorage: env.TRADELOCKER_TOKEN_STORAGE,
+      },
+    );
+    return result;
+  },
+});
+
+export const probeMyTradeLockerAllAccounts = action({
+  args: {},
+  returns: v.any(),
+  handler: async (ctx) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const result = await ctx.runAction(
+      componentsUntyped.launchthat_traderlaunchpad.sync.probeAllAccountsForUser,
+      {
+        organizationId,
+        userId,
+        secretsKey: env.TRADELOCKER_SECRETS_KEY,
+        tokenStorage: env.TRADELOCKER_TOKEN_STORAGE,
+      },
+    );
+    return result;
+  },
+});
+
+export const probeMyTradeLockerInstrumentsCandidates = action({
+  args: {},
+  returns: v.any(),
+  handler: async (ctx) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const result = await ctx.runAction(
+      componentsUntyped.launchthat_traderlaunchpad.sync.probeInstrumentsForAllAccounts,
       {
         organizationId,
         userId,
