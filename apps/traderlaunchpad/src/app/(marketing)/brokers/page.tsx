@@ -22,18 +22,18 @@ export default function BrokersArchivePage() {
         <Marquee className="[--duration:42s] [--gap:2.5rem]" repeat={3}>
           {topRated.map((b) => (
             <Link key={b.id} href={`/broker/${b.slug}`}>
-              <div
+            <div
                 className="flex items-center gap-3 rounded-full border border-white/10 bg-white/3 px-3 py-2 text-sm text-white/80 backdrop-blur-md transition-colors hover:bg-white/10 cursor-pointer"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={b.logoUrl ?? ""}
-                  alt={b.name}
-                  className="h-6 w-6 rounded-full border border-white/10 bg-black/30"
-                />
-                <span className="font-semibold">{b.name}</span>
-                <span className="text-xs text-white/40">{b.rating.toFixed(1)}</span>
-              </div>
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={b.logoUrl ?? ""}
+                alt={b.name}
+                className="h-6 w-6 rounded-full border border-white/10 bg-black/30"
+              />
+              <span className="font-semibold">{b.name}</span>
+              <span className="text-xs text-white/40">{b.rating.toFixed(1)}</span>
+            </div>
             </Link>
           ))}
         </Marquee>

@@ -159,7 +159,7 @@ export default async function HomePage() {
         </section>
 
         {/* Logo Ticker */}
-        <section className="relative container mx-auto mt-20 max-w-7xl px-4 md:mt-32">
+        <section className="relative container mx-auto mt-20 pt-10 max-w-7xl px-4 md:mt-32">
           <p className="mb-8 text-center text-sm font-medium text-gray-500">
             Members of the fleet
           </p>

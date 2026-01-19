@@ -1,25 +1,15 @@
 "use client";
 
-import { DottedGlowBackground, cn } from "@acme/ui";
-import { IconArrowLeft, IconBrandTabler, IconSettings, IconUserBolt } from "@tabler/icons-react";
+import { IconBrandTabler, IconSettings, IconUserBolt } from "@tabler/icons-react";
 import React, { useState } from "react";
 import { Sidebar, SidebarBody, SidebarLink } from "~/components/ui/sidebar";
 import { UserButton, useAuth } from "@clerk/nextjs";
-import { redirect, usePathname } from "next/navigation";
 
+import { Grid } from "lucide-react";
+import { GridLines } from "~/components/background/GridLines";
 import Link from "next/link";
 import { NavItems } from "~/components/ui/resizable-navbar";
-import { motion } from "motion/react";
-
-const GridLines = () => (
-  <div className="pointer-events-none absolute inset-0 z-0 mx-auto h-full max-w-7xl">
-    <div className="absolute top-0 left-4 h-full w-px bg-white/5" />
-    <div className="absolute top-0 right-4 h-full w-px bg-white/5" />
-    <div className="absolute top-0 left-1/4 hidden h-full w-px bg-white/5 md:block" />
-    <div className="absolute top-0 left-2/4 hidden h-full w-px bg-white/5 md:block" />
-    <div className="absolute top-0 left-3/4 hidden h-full w-px bg-white/5 md:block" />
-  </div>
-);
+import { redirect } from "next/navigation";
 
 export default function AdminLayout({
   children,
@@ -33,6 +23,10 @@ export default function AdminLayout({
     {
       name: "Dashboard",
       link: "/admin/dashboard",
+    },
+    {
+      name: "Trading Plan",
+      link: "/admin/tradingplan",
     },
     {
       name: "TradeIdeas",
@@ -74,8 +68,22 @@ export default function AdminLayout({
       ),
     },
     {
-      label: "Profile",
+      label: "Trading Journal",
       href: "#",
+      icon: (
+        <IconUserBolt className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+      ),
+    },
+    {
+      label: "Trade Ideas",
+      href: "#",
+      icon: (
+        <IconUserBolt className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+      ),
+    },
+    {
+      label: "Trading Plan",
+      href: "/admin/tradingplan",
       icon: (
         <IconUserBolt className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
       ),
@@ -150,6 +158,7 @@ export default function AdminLayout({
         </SidebarBody>
       </Sidebar>
       <div className="flex-1 overflow-y-scroll">
+
         <header className="sticky top-0 z-40 border-b border-white/10 bg-black/40 backdrop-blur-md">
           <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
             <div className="flex items-center gap-4">
@@ -164,8 +173,14 @@ export default function AdminLayout({
           </div>
         </header>
         <div className="w-full px-4 py-6">
-          <div className="mx-auto max-w-7xl">
-            {children}
+          <div className="relative">
+            <div className="pointer-events-none absolute inset-0">
+              <GridLines columns={3} />
+            </div>
+
+            <div className="relative z-10 mx-auto max-w-7xl">
+              {children}
+            </div>
           </div>
         </div>
       </div>

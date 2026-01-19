@@ -1,15 +1,15 @@
 "use node";
 
+import { resolveOrganizationId, resolveViewerUserId } from "./lib/resolve";
+
+import { action } from "../_generated/server";
+import { env } from "../../src/env";
 /* eslint-disable
   @typescript-eslint/no-explicit-any,
   @typescript-eslint/no-unsafe-assignment,
   @typescript-eslint/no-unsafe-member-access
 */
 import { v } from "convex/values";
-
-import { action } from "../_generated/server";
-import { env } from "../../src/env";
-import { resolveOrganizationId, resolveViewerUserId } from "./lib/resolve";
 
 // IMPORTANT: Avoid importing the typed Convex `api`/`components` here — it can trigger TS
 // "type instantiation is excessively deep". Pull via require() to keep it `any`.
@@ -101,6 +101,13 @@ const baseUrlForEnv = (env: "demo" | "live"): string => {
   return `https://${env}.tradelocker.com/backend-api`;
 };
 
+const developerKeyHeader = () => {
+  const key = env.TRADELOCKER_DEVELOPER_API_KEY;
+  if (!key) return {};
+  // TradeLocker Public API docs refer to this header for developer program access/rate limits.
+  return { "tl-developer-api-key": key } as Record<string, string>;
+};
+
 interface JwtTokenResponse {
   accessToken?: string;
   refreshToken?: string;
@@ -138,7 +145,7 @@ export const startTradeLockerConnect = action({
     const baseUrl = baseUrlForEnv(args.environment);
     const res = await fetch(`${baseUrl}/auth/jwt/token`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", ...developerKeyHeader() },
       body: JSON.stringify({ email, password, server }),
     });
     if (!res.ok) {
@@ -179,7 +186,7 @@ export const startTradeLockerConnect = action({
       `${baseUrlResolved}/auth/jwt/all-accounts`,
       {
       method: "GET",
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${accessToken}`, ...developerKeyHeader() },
       },
     );
     if (!allAccountsRes.ok) {
@@ -353,6 +360,97 @@ export const getMyTradeLockerInstrumentDetails = action({
         organizationId,
         userId,
         instrumentId: args.instrumentId,
+        secretsKey: env.TRADELOCKER_SECRETS_KEY,
+        tokenStorage: env.TRADELOCKER_TOKEN_STORAGE,
+      },
+    );
+    return result;
+  },
+});
+
+export const probeMyTradeLockerHistoryForEurUsd = action({
+  args: {
+    resolution: v.optional(v.string()), // e.g. "1H", "4H", "15m"
+    lookbackDays: v.optional(v.number()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const result = await ctx.runAction(
+      componentsUntyped.launchthat_traderlaunchpad.sync.probeHistoryForSymbol,
+      {
+        organizationId,
+        userId,
+        symbol: "EURUSD",
+        resolution: args.resolution,
+        lookbackDays: args.lookbackDays,
+        secretsKey: env.TRADELOCKER_SECRETS_KEY,
+        tokenStorage: env.TRADELOCKER_TOKEN_STORAGE,
+      },
+    );
+    return result;
+  },
+});
+
+export const probeMyTradeLockerConfig = action({
+  args: {},
+  returns: v.any(),
+  handler: async (ctx) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const result = await ctx.runAction(
+      componentsUntyped.launchthat_traderlaunchpad.sync.probeTradeConfig,
+      {
+        organizationId,
+        userId,
+        secretsKey: env.TRADELOCKER_SECRETS_KEY,
+        tokenStorage: env.TRADELOCKER_TOKEN_STORAGE,
+      },
+    );
+    return result;
+  },
+});
+
+export const probeMyTradeLockerInstruments = action({
+  args: {},
+  returns: v.any(),
+  handler: async (ctx) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const result = await ctx.runAction(
+      componentsUntyped.launchthat_traderlaunchpad.sync.probeInstrumentsForSelectedAccount,
+      {
+        organizationId,
+        userId,
+        secretsKey: env.TRADELOCKER_SECRETS_KEY,
+        tokenStorage: env.TRADELOCKER_TOKEN_STORAGE,
+      },
+    );
+    return result;
+  },
+});
+
+export const probeMyTradeLockerHistoryForInstrument = action({
+  args: {
+    tradableInstrumentId: v.string(),
+    routeId: v.optional(v.number()),
+    resolution: v.optional(v.string()),
+    lookbackDays: v.optional(v.number()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const result = await ctx.runAction(
+      componentsUntyped.launchthat_traderlaunchpad.sync.probeHistoryForInstrument,
+      {
+        organizationId,
+        userId,
+        tradableInstrumentId: args.tradableInstrumentId,
+        routeId: args.routeId,
+        resolution: args.resolution,
+        lookbackDays: args.lookbackDays,
         secretsKey: env.TRADELOCKER_SECRETS_KEY,
         tokenStorage: env.TRADELOCKER_TOKEN_STORAGE,
       },

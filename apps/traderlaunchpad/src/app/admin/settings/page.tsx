@@ -10,14 +10,45 @@ import {
   CardTitle,
 } from "@acme/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@acme/ui/button";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import React from "react";
 import { TradeLockerConnectionCard } from "~/components/settings/TradeLockerConnectionCard";
+import { TradeLockerDeveloperKeyTest } from "~/components/settings/TradeLockerDeveloperKeyTest";
+import { TradeLockerUserConfigTest } from "~/components/settings/TradeLockerUserConfigTest";
+import { TradeLockerUserHistoryTest } from "~/components/settings/TradeLockerUserHistoryTest";
+import { TradeLockerUserInstrumentsTest } from "~/components/settings/TradeLockerUserInstrumentsTest";
 
 export default function AdminSettingsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const allowedTabs = React.useMemo(
+    () => new Set(["account", "connections", "notifications", "billing"]),
+    [],
+  );
+
+  const activeTab = React.useMemo(() => {
+    const raw = searchParams.get("tab");
+    if (!raw) return "account";
+    return allowedTabs.has(raw) ? raw : "account";
+  }, [allowedTabs, searchParams]);
+
+  const handleTabChange = React.useCallback(
+    (next: string) => {
+      const tab = allowedTabs.has(next) ? next : "account";
+      const params = new URLSearchParams(searchParams);
+      params.set("tab", tab);
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname);
+    },
+    [allowedTabs, pathname, router, searchParams],
+  );
+
   return (
     <div className="animate-in fade-in mx-auto space-y-8 duration-500">
       {/* Header */}
@@ -28,7 +59,7 @@ export default function AdminSettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="account" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="flex w-full overflow-x-auto md:w-auto">
           <TabsTrigger value="account" className="flex-1 md:flex-none">
             Account
@@ -108,6 +139,10 @@ export default function AdminSettingsPage() {
 
         <TabsContent value="connections" className="space-y-6">
           <TradeLockerConnectionCard />
+          <TradeLockerDeveloperKeyTest />
+          <TradeLockerUserConfigTest />
+          <TradeLockerUserInstrumentsTest />
+          <TradeLockerUserHistoryTest />
 
           <Card className="border-dashed opacity-70">
             <CardHeader>

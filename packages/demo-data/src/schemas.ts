@@ -24,6 +24,58 @@ export const insightSchema = z.object({
   icon: z.enum(["trendingUp", "alertCircle", "calendar"]),
 });
 
+export const tradingPlanRuleSchema = z.object({
+  id: z.string(),
+  category: z.enum(["Entry", "Risk", "Exit", "Process", "Psychology"]),
+  severity: z.enum(["hard", "soft"]),
+  title: z.string(),
+  description: z.string(),
+});
+
+export const tradingPlanSessionSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  days: z.array(z.enum(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])),
+  start: z.string(), // e.g. "07:00"
+  end: z.string(), // e.g. "11:00"
+  timezone: z.string(), // e.g. "America/New_York"
+});
+
+export const tradingPlanSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  version: z.string(),
+  createdAt: z.string(), // ISO date
+  strategySummary: z.string(),
+  markets: z.array(z.string()),
+  sessions: z.array(tradingPlanSessionSchema),
+  risk: z.object({
+    maxRiskPerTradePct: z.number(),
+    maxDailyLossPct: z.number(),
+    maxWeeklyLossPct: z.number(),
+    maxOpenPositions: z.number().int().positive(),
+    maxTradesPerDay: z.number().int().positive(),
+  }),
+  rules: z.array(tradingPlanRuleSchema),
+  kpis: z.object({
+    adherencePct: z.number().min(0).max(100),
+    journalCompliancePct: z.number().min(0).max(100),
+    violations7d: z.number().int().nonnegative(),
+    avgRiskPerTradePct7d: z.number().min(0).max(100),
+    sessionDisciplinePct7d: z.number().min(0).max(100),
+  }),
+});
+
+export const tradingPlanViolationSchema = z.object({
+  id: z.string(),
+  date: z.string(), // YYYY-MM-DD
+  ruleId: z.string(),
+  ruleTitle: z.string(),
+  severity: z.enum(["hard", "soft"]),
+  tradeId: z.string().optional(),
+  note: z.string().optional(),
+});
+
 export const reviewTradeSchema = z.object({
   id: z.string(),
   symbol: z.string(),
@@ -211,4 +263,8 @@ export type DemoAffiliateKind = z.infer<typeof affiliateKindSchema>;
 export type DemoAffiliateLink = z.infer<typeof affiliateLinkSchema>;
 export type DemoReviewTargetKind = z.infer<typeof reviewTargetKindSchema>;
 export type DemoReview = z.infer<typeof demoReviewSchema>;
+export type DemoTradingPlan = z.infer<typeof tradingPlanSchema>;
+export type DemoTradingPlanRule = z.infer<typeof tradingPlanRuleSchema>;
+export type DemoTradingPlanSession = z.infer<typeof tradingPlanSessionSchema>;
+export type DemoTradingPlanViolation = z.infer<typeof tradingPlanViolationSchema>;
 

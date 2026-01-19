@@ -113,7 +113,7 @@ export default function RootLayout(props: { children: React.ReactNode }) {
                   </linearGradient>
                 </defs>
               </svg>
-              <GridLines />
+              {/* <GridLines /> */}
             </div>
             <div className="flex-1 flex w-full">{props.children}</div>
             <div className="absolute right-4 bottom-4">

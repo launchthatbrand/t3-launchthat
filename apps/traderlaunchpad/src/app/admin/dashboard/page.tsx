@@ -27,6 +27,7 @@ import {
   demoDashboardStats,
   demoInsights,
   demoReviewTrades,
+  demoTradingPlan,
 } from "@acme/demo-data";
 
 import { Badge } from "@acme/ui/badge";
@@ -615,6 +616,67 @@ export default function AdminDashboardPage() {
 
         {/* Right Column: Actions & Recent (1/3 width) */}
         <div className="space-y-8">
+
+          {/* Trading Plan Summary */}
+          <Card className="border-white/10 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Target className="h-4 w-4 text-orange-300" />
+                  Trading Plan
+                </CardTitle>
+                <Badge
+                  variant="secondary"
+                  className="bg-orange-500/10 text-orange-300 hover:bg-orange-500/20"
+                >
+                  {demoTradingPlan.kpis.adherencePct}% adherence
+                </Badge>
+              </div>
+              <CardDescription className="text-white/60">
+                Monitor rules, risk, and consistency (separate from platform dashboard).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-white/60">Plan</span>
+                  <span className="font-semibold text-white/90">{demoTradingPlan.version}</span>
+                </div>
+                <div className="mt-2 text-sm font-semibold text-white">
+                  {demoTradingPlan.name}
+                </div>
+                <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] text-white/60">
+                  <div className="rounded-md border border-white/10 bg-white/3 p-2">
+                    <div className="text-white/60">Violations (7d)</div>
+                    <div className="mt-1 font-semibold text-white/90 tabular-nums">
+                      {demoTradingPlan.kpis.violations7d}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-white/10 bg-white/3 p-2">
+                    <div className="text-white/60">Avg risk</div>
+                    <div className="mt-1 font-semibold text-white/90 tabular-nums">
+                      {demoTradingPlan.kpis.avgRiskPerTradePct7d}%
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-white/10 bg-white/3 p-2">
+                    <div className="text-white/60">Journal</div>
+                    <div className="mt-1 font-semibold text-white/90 tabular-nums">
+                      {demoTradingPlan.kpis.journalCompliancePct}%
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                asChild
+                className="w-full border-0 bg-orange-600 text-white hover:bg-orange-700"
+              >
+                <Link href="/admin/tradingplan">
+                  Open Trading Plan <ArrowUpRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
 
           <Card className="min-h-[530px] border-l-4 border-white/10 border-l-orange-500 bg-white/3 shadow-lg shadow-orange-500/5 backdrop-blur-md transition-colors hover:bg-white/6">
             <CardHeader className="pb-3">

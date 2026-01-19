@@ -7,6 +7,8 @@ import type {
   DemoPhoneNotification,
   DemoPublicProfile,
   DemoPublicUserProfile,
+  DemoTradingPlan,
+  DemoTradingPlanViolation,
   DemoReview,
   DemoReviewTrade,
   TradingCalendarDailyStat,
@@ -23,6 +25,8 @@ export type {
   DemoPhoneNotification,
   DemoPublicProfile,
   DemoPublicUserProfile,
+  DemoTradingPlan,
+  DemoTradingPlanViolation,
   DemoReview,
   DemoReviewTrade,
   TradingCalendarDailyStat,
@@ -68,6 +72,110 @@ export const demoInsights: DemoInsight[] = [
     title: "Consistency",
     description: "You've journaled 100% of your trades for 5 days straight.",
     icon: "calendar",
+  },
+];
+
+export const demoTradingPlan: DemoTradingPlan = {
+  id: "tp-001",
+  name: "Momentum Breakout + Retest (A-Setups Only)",
+  version: "v1.0",
+  createdAt: "2026-01-01T00:00:00.000Z",
+  strategySummary:
+    "Trade only A setups: breakout + retest in-direction of HTF bias. No chasing. One clean entry, defined invalidation, and pre-planned exits.",
+  markets: ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "NAS100"],
+  sessions: [
+    {
+      id: "session-london",
+      label: "London",
+      days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+      start: "02:00",
+      end: "05:30",
+      timezone: "America/New_York",
+    },
+    {
+      id: "session-ny-open",
+      label: "NY Open",
+      days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+      start: "09:00",
+      end: "11:00",
+      timezone: "America/New_York",
+    },
+  ],
+  risk: {
+    maxRiskPerTradePct: 1.0,
+    maxDailyLossPct: 2.0,
+    maxWeeklyLossPct: 5.0,
+    maxOpenPositions: 2,
+    maxTradesPerDay: 3,
+  },
+  rules: [
+    {
+      id: "r-entry-1",
+      category: "Entry",
+      severity: "hard",
+      title: "Only A setups",
+      description:
+        "Enter only if checklist is complete (HTF bias aligned, breakout + retest, clear invalidation).",
+    },
+    {
+      id: "r-risk-1",
+      category: "Risk",
+      severity: "hard",
+      title: "Max 1% risk per trade",
+      description: "Never exceed 1.0% risk per trade. If unsure, size down.",
+    },
+    {
+      id: "r-risk-2",
+      category: "Risk",
+      severity: "hard",
+      title: "Stop after max daily loss",
+      description:
+        "If daily P/L hits -2% or 2 losses in a row, stop trading for the day.",
+    },
+    {
+      id: "r-process-1",
+      category: "Process",
+      severity: "soft",
+      title: "Journal within 30 minutes",
+      description:
+        "Review and journal each trade within 30 minutes of exit (tag setup, emotions, screenshots).",
+    },
+    {
+      id: "r-psych-1",
+      category: "Psychology",
+      severity: "soft",
+      title: "No revenge trades",
+      description:
+        "After a loss, wait 10 minutes and re-run checklist before taking another position.",
+    },
+  ],
+  kpis: {
+    adherencePct: 84,
+    journalCompliancePct: 92,
+    violations7d: 2,
+    avgRiskPerTradePct7d: 0.78,
+    sessionDisciplinePct7d: 88,
+  },
+};
+
+export const demoTradingPlanViolations: DemoTradingPlanViolation[] = [
+  {
+    id: "tpv-001",
+    date: "2026-01-13",
+    ruleId: "r-psych-1",
+    ruleTitle: "No revenge trades",
+    severity: "soft",
+    tradeId: "3",
+    note: "Took a second entry immediately after a stop-out.",
+  },
+  {
+    id: "tpv-002",
+    date: "2026-01-16",
+    ruleId: "r-process-1",
+    ruleTitle: "Journal within 30 minutes",
+    severity: "soft",
+    tradeId: "11",
+    note: "Journaled at end of day instead of right after the session.",
   },
 ];
 

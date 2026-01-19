@@ -101,7 +101,7 @@ export const FlipWords = ({
               </motion.span>
             ))}
             {wordIndex < wordParts.length - 1 ? (
-              <span className="inline-block">&nbsp;</span>
+            <span className="inline-block">&nbsp;</span>
             ) : null}
           </motion.span>
         ))}

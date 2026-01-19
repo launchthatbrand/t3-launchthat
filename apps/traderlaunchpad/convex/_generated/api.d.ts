@@ -661,6 +661,100 @@ export declare const components: {
         },
         { instrumentId: string; raw: any; symbol?: string } | null
       >;
+      probeHistoryForInstrument: FunctionReference<
+        "action",
+        "internal",
+        {
+          lookbackDays?: number;
+          organizationId: string;
+          resolution?: string;
+          routeId?: number;
+          secretsKey: string;
+          tokenStorage?: "raw" | "enc";
+          tradableInstrumentId: string;
+          userId: string;
+        },
+        {
+          accNum: number;
+          accountId: string;
+          barsPreview?: any;
+          baseUrl: string;
+          error?: string;
+          instrumentId: string;
+          ok: boolean;
+          requestPath?: string;
+          routeId: number;
+          status?: number;
+          textPreview?: string;
+        }
+      >;
+      probeHistoryForSymbol: FunctionReference<
+        "action",
+        "internal",
+        {
+          lookbackDays?: number;
+          organizationId: string;
+          resolution?: string;
+          secretsKey: string;
+          symbol: string;
+          tokenStorage?: "raw" | "enc";
+          userId: string;
+        },
+        {
+          accNum: number;
+          barsPreview?: any;
+          baseUrl: string;
+          error?: string;
+          instrumentId?: string;
+          ok: boolean;
+          requestPath?: string;
+          routeId: number;
+          status?: number;
+          symbol: string;
+          textPreview?: string;
+        }
+      >;
+      probeInstrumentsForSelectedAccount: FunctionReference<
+        "action",
+        "internal",
+        {
+          organizationId: string;
+          secretsKey: string;
+          tokenStorage?: "raw" | "enc";
+          userId: string;
+        },
+        {
+          accNum: number;
+          accountId: string;
+          baseUrl: string;
+          count?: number;
+          error?: string;
+          instruments?: any;
+          instrumentsPreview?: any;
+          ok: boolean;
+          status?: number;
+          textPreview?: string;
+        }
+      >;
+      probeTradeConfig: FunctionReference<
+        "action",
+        "internal",
+        {
+          organizationId: string;
+          secretsKey: string;
+          tokenStorage?: "raw" | "enc";
+          userId: string;
+        },
+        {
+          accNum: number;
+          baseUrl: string;
+          error?: string;
+          json?: any;
+          ok: boolean;
+          status?: number;
+          textPreview?: string;
+        }
+      >;
       syncTradeLockerConnection: FunctionReference<
         "action",
         "internal",

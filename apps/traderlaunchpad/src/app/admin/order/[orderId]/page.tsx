@@ -46,7 +46,7 @@ function MockOrderDetail(props: { orderId: string }) {
             <Link href="/admin/orders">
               <ArrowLeft className="h-4 w-4" />
             </Link>
-          </Button>
+        </Button>
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-bold tracking-tight">
@@ -66,13 +66,13 @@ function MockOrderDetail(props: { orderId: string }) {
               <Clock className="h-3.5 w-3.5" />
               <span>10:30 AM</span>
             </div>
-          </div>
-        </div>
+              </div>
+            </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary">Download Ticket</Button>
           <Button>Edit Order</Button>
-        </div>
-      </div>
+            </div>
+          </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column: Chart & Stats */}
@@ -196,9 +196,9 @@ function MockOrderDetail(props: { orderId: string }) {
                 <Button variant="link" asChild className="h-auto p-0 mt-2 text-xs text-orange-200 hover:text-orange-100">
                   <Link href="/admin/tradeidea/mock-1">View Trade Idea →</Link>
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
+          </div>
+        </CardContent>
+      </Card>
         </div>
       </div>
     </div>

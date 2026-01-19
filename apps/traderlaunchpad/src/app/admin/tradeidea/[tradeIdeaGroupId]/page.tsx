@@ -62,7 +62,7 @@ function MockTradeIdeaDetail(props: { tradeIdeaGroupId: string }) {
             <Link href="/admin/tradeideas">
               <ArrowLeft className="h-4 w-4" />
             </Link>
-          </Button>
+        </Button>
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-bold tracking-tight">
@@ -72,8 +72,8 @@ function MockTradeIdeaDetail(props: { tradeIdeaGroupId: string }) {
                 {props.tradeIdeaGroupId}
               </Badge>
               <Badge className="bg-amber-500/15 text-amber-500 hover:bg-amber-500/25 border-0">
-                Needs Review
-              </Badge>
+              Needs Review
+            </Badge>
             </div>
             <div className="text-muted-foreground mt-1 flex items-center gap-2 text-sm">
               <Calendar className="h-3.5 w-3.5" />
@@ -145,7 +145,7 @@ function MockTradeIdeaDetail(props: { tradeIdeaGroupId: string }) {
                   <div key={i} className="flex items-center gap-3">
                     <div className="h-4 w-4 rounded border border-primary/50" />
                     <span className="text-sm text-muted-foreground">{item}</span>
-                  </div>
+                </div>
                 ))}
               </CardContent>
             </Card>
@@ -164,12 +164,12 @@ function MockTradeIdeaDetail(props: { tradeIdeaGroupId: string }) {
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center">
                         <BarChart2 className="h-4 w-4 text-muted-foreground" />
-                      </div>
+                  </div>
                       <div>
                         <div className="text-sm font-medium">{order.label}</div>
                         <div className="text-xs text-muted-foreground">Filled • Jan 16</div>
-                      </div>
-                    </div>
+                  </div>
+                </div>
                     <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
                   </Link>
                 ))}
@@ -217,9 +217,9 @@ function MockTradeIdeaDetail(props: { tradeIdeaGroupId: string }) {
                 <Button variant="outline" size="sm" className="h-5 rounded-full text-xs px-2 border-white/20 hover:bg-white/10">
                   + Add
                 </Button>
-              </div>
-            </CardContent>
-          </Card>
+          </div>
+        </CardContent>
+      </Card>
         </div>
       </div>
     </div>
