@@ -4,6 +4,7 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "paths": {
       "@acme/ui": ["../ui/src/index.ts"],
       "@acme/ui/*": ["../ui/src/*"]
