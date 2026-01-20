@@ -32,6 +32,7 @@ const PricingCta = ({ href, isCompact, children }: PricingCtaProps) => {
         <Button
           borderRadius="1.75rem"
           className="bg-white dark:bg-slate-900 text-black dark:text-white border-neutral-200 dark:border-slate-800"
+          containerClassName="p-1"
         >
           Borders are cool
         </Button>
@@ -100,8 +101,8 @@ export const PricingSection = () => {
 
   const yes = <Check className="h-5 w-5 text-emerald-400" />;
   const freePrice = "$0";
-  const standardPrice = "$49.99";
-  const freePeriodLabel = "";
+  const standardPrice = "$19.99";
+  const freePeriodLabel = "Forever";
 
   const features: FeatureRow[] = [
     { label: "Analytics dashboard", basic: yes, pro: yes },
@@ -289,7 +290,8 @@ export const PricingSection = () => {
                     <Button
                       borderRadius="2rem"
                       containerClassName="w-full"
-                      className="bg-white p-2 flex gap-2 dark:bg-slate-900 text-black dark:text-white border-neutral-200 dark:border-slate-800"
+                      duration={5000}
+                      className="bg-white p-1 flex gap-2 dark:bg-slate-900 text-black dark:text-white border-neutral-200 dark:border-slate-800"
                     >
                       <span className="w-full font-bold">Get Started</span>
                       <span
@@ -378,6 +380,7 @@ export const PricingSection = () => {
                       <Button
                         borderRadius="2rem"
                         containerClassName="w-full"
+                        duration={5000}
                         className="bg-white p-2 dark:bg-slate-900 text-black dark:text-white border-neutral-200 dark:border-slate-800"
                       >
                         <span className="w-full font-bold">Get Started</span>

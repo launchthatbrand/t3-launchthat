@@ -30,9 +30,9 @@ import Link from "next/link";
 import { Marquee } from "@acme/ui/marquee";
 import { PricingSection } from "../../components/landing/PricingSection";
 import React from "react";
+import { SpinningSphere } from "~/components/landing/SpinningSphere";
 import { StrategyBuilderAnimation } from "../../components/landing/StrategyBuilderAnimation";
 import { auth } from "@clerk/nextjs/server";
-import { SpinningSphere } from "~/components/landing/SpinningSphere";
 
 const PlusIcon = ({ className }: { className?: string }) => (
   <svg
@@ -93,7 +93,7 @@ export default async function HomePage() {
             titleComponent={
               <>
                 <div className="mx-auto w-fit rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-1.5 text-xs font-medium text-orange-200 backdrop-blur-sm">
-                  Innovative Web3 Solutions
+                  Free Trading Journal and AI Powered Analytics
                 </div>
                 <h1 className="mx-auto max-w-5xl text-5xl font-bold tracking-tight md:text-7xl lg:text-8xl">
                   <span className="block leading-none">
@@ -210,9 +210,9 @@ export default async function HomePage() {
         </section>
 
         {/* Affiliate directories teaser */}
-        <section className="relative container mx-auto mt-20 max-w-7xl px-4 md:mt-28">
+        {/* <section className="relative container mx-auto mt-20 max-w-7xl px-4 md:mt-28">
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Brokers */}
+             // Brokers 
             <div className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/3 p-8 backdrop-blur-md transition-colors duration-300 hover:border-white/20 hover:bg-white/6">
               <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-orange-500/10 via-transparent to-white/6 opacity-70" />
               <div className="relative">
@@ -250,7 +250,7 @@ export default async function HomePage() {
                         key={b.id}
                         className="flex items-center gap-3 rounded-full border border-white/10 bg-white/3 px-3 py-2 text-sm text-white/80 backdrop-blur-md"
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                  
                         <img
                           src={b.logoUrl ?? ""}
                           alt={b.name}
@@ -267,62 +267,63 @@ export default async function HomePage() {
               </div>
             </div>
 
-            {/* Prop firms */}
-            <div className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/3 p-8 backdrop-blur-md transition-colors duration-300 hover:border-white/20 hover:bg-white/6">
-              <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-orange-500/10 via-transparent to-white/6 opacity-70" />
-              <div className="relative">
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs font-medium text-white/70 backdrop-blur-sm">
-                  Top rated prop firms
-                </div>
-                <h3 className="text-2xl font-bold tracking-tight text-white">
-                  Prop firms directory
-                </h3>
-                <p className="mt-2 text-sm text-white/60">
-                  Compare eval styles and rules, then share affiliate links you trust.
-                </p>
-                <div className="mt-5 flex items-center gap-3">
-                  <Link href="/firms" className="inline-block">
-                    <Button
-                      as="div"
-                      borderRadius="1.75rem"
-                      containerClassName="h-12 w-auto min-w-[160px]"
-                      className="bg-white text-black font-medium border-neutral-200 dark:border-slate-800 cursor-pointer"
-                    >
-                      <span className="flex w-full items-center justify-between gap-3 px-1">
-                        <span className="w-full text-center font-bold">View prop firms</span>
-                        <span className="flex min-h-7 min-w-7 items-center justify-center rounded-full bg-black text-white">
-                          <ArrowRight className="h-3.5 w-3.5" />
-                        </span>
-                      </span>
-                    </Button>
-                  </Link>
-                </div>
+            // Prop firms 
+        <div className="group relative overflow-hidden rounded-3xl border border-white/10 bg-white/3 p-8 backdrop-blur-md transition-colors duration-300 hover:border-white/20 hover:bg-white/6">
+          <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-orange-500/10 via-transparent to-white/6 opacity-70" />
+          <div className="relative">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-xs font-medium text-white/70 backdrop-blur-sm">
+              Top rated prop firms
+            </div>
+            <h3 className="text-2xl font-bold tracking-tight text-white">
+              Prop firms directory
+            </h3>
+            <p className="mt-2 text-sm text-white/60">
+              Compare eval styles and rules, then share affiliate links you trust.
+            </p>
+            <div className="mt-5 flex items-center gap-3">
+              <Link href="/firms" className="inline-block">
+                <Button
+                  as="div"
+                  borderRadius="1.75rem"
+                  containerClassName="h-12 w-auto min-w-[160px]"
+                  className="bg-white text-black font-medium border-neutral-200 dark:border-slate-800 cursor-pointer"
+                >
+                  <span className="flex w-full items-center justify-between gap-3 px-1">
+                    <span className="w-full text-center font-bold">View prop firms</span>
+                    <span className="flex min-h-7 min-w-7 items-center justify-center rounded-full bg-black text-white">
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                  </span>
+                </Button>
+              </Link>
+            </div>
 
-                <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-black/20 py-3 backdrop-blur-md">
-                  <Marquee className="[--duration:48s] [--gap:2.25rem]" repeat={3}>
-                    {topFirms.map((f) => (
-                      <div
-                        key={f.id}
-                        className="flex items-center gap-3 rounded-full border border-white/10 bg-white/3 px-3 py-2 text-sm text-white/80 backdrop-blur-md"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={f.logoUrl ?? ""}
-                          alt={f.name}
-                          className="h-6 w-6 rounded-full border border-white/10 bg-black/30"
-                        />
-                        <span className="font-semibold">{f.name}</span>
-                        <span className="text-xs text-white/40">
-                          {f.rating.toFixed(1)}
-                        </span>
-                      </div>
-                    ))}
-                  </Marquee>
-                </div>
-              </div>
+            <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-black/20 py-3 backdrop-blur-md">
+              <Marquee className="[--duration:48s] [--gap:2.25rem]" repeat={3}>
+                {topFirms.map((f) => (
+                  <div
+                    key={f.id}
+                    className="flex items-center gap-3 rounded-full border border-white/10 bg-white/3 px-3 py-2 text-sm text-white/80 backdrop-blur-md"
+                  >
+                  
+                    <img
+                      src={f.logoUrl ?? ""}
+                      alt={f.name}
+                      className="h-6 w-6 rounded-full border border-white/10 bg-black/30"
+                    />
+                    <span className="font-semibold">{f.name}</span>
+                    <span className="text-xs text-white/40">
+                      {f.rating.toFixed(1)}
+                    </span>
+                  </div>
+                ))}
+              </Marquee>
             </div>
           </div>
-        </section>
+        </div>
+    </div>
+        </section > */
+        }
 
         <section
           id="features"
@@ -569,7 +570,7 @@ export default async function HomePage() {
         <PricingSection />
 
 
-      </main>
-    </div>
+      </main >
+    </div >
   );
 }
