@@ -55,6 +55,7 @@
     "typecheck": "tsc --noEmit --emitDeclarationOnly false"
   },
   "dependencies": {
+    "@acme/ui": "workspace:*",
     "convex": "^1.23.0",
     "launchthat-plugin-core": "workspace:*"
   },
@@ -62,10 +63,11 @@
     "@acme/eslint-config": "workspace:*",
     "@acme/prettier-config": "workspace:*",
     "@acme/tsconfig": "workspace:*",
-    "@acme/ui": "workspace:*",
     "@types/node": "catalog:",
+    "@types/react": "catalog:react19",
     "eslint": "catalog:",
     "prettier": "catalog:",
+    "react": "catalog:react19",
     "typescript": "catalog:"
   },
   "peerDependencies": {

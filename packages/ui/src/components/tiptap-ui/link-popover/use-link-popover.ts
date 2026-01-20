@@ -129,7 +129,9 @@ export function useLinkHandler(props: LinkHandlerProps) {
 
     let chain = editor.chain().focus()
 
-    chain = chain.extendMarkRange("link").setLink({ href: url })
+    // Use `setMark("link", ...)` instead of `setLink(...)` to avoid command-type
+    // augmentation issues when Tiptap packages are on mixed versions.
+    chain = chain.extendMarkRange("link").setMark("link", { href: url })
 
     if (isEmpty) {
       chain = chain.insertContent({ type: "text", text: url })
@@ -148,7 +150,9 @@ export function useLinkHandler(props: LinkHandlerProps) {
       .chain()
       .focus()
       .extendMarkRange("link")
-      .unsetLink()
+      // Use `unsetMark("link")` instead of `unsetLink()` to avoid command-type
+      // augmentation issues when Tiptap packages are on mixed versions.
+      .unsetMark("link")
       .setMeta("preventAutolink", true)
       .run()
     setUrl("")

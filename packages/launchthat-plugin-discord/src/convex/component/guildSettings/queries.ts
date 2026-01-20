@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 
 import { query } from "../server";
+import type { Id } from "../_generated/dataModel";
 
 export const getGuildSettings = query({
   args: { organizationId: v.string(), guildId: v.string() },
@@ -101,11 +102,11 @@ export const getGuildSettings = query({
           : undefined,
       mentorTradesTemplateId:
         typeof (row as any).mentorTradesTemplateId === "string"
-          ? ((row as any).mentorTradesTemplateId as string)
+          ? ((row as any).mentorTradesTemplateId as Id<"messageTemplates">)
           : undefined,
       memberTradesTemplateId:
         typeof (row as any).memberTradesTemplateId === "string"
-          ? ((row as any).memberTradesTemplateId as string)
+          ? ((row as any).memberTradesTemplateId as Id<"messageTemplates">)
           : undefined,
       updatedAt: Number((row as any).updatedAt ?? 0),
     };

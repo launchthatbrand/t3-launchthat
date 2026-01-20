@@ -1,21 +1,18 @@
 {
   "extends": "@acme/tsconfig/compiled-package.json",
   "compilerOptions": {
+    "lib": ["ES2022", "dom", "dom.iterable"],
     "jsx": "react-jsx",
     "baseUrl": ".",
     "moduleResolution": "bundler",
     "paths": {
       "launchthat-plugin-core": ["../launchthat-plugin-core/src/index"],
-      "@acme/ui": ["../ui/src/index.ts"],
-      "@acme/ui/*": ["../ui/src/*"],
-      "@portal/*": ["../../apps/portal/*"],
       "@portal/convexspec": ["../../apps/portal/convexspec.ts"],
-      "@convex-config/*": ["../../apps/portal/convex/*"],
-      "@convex-config/_generated/*": ["../../apps/portal/convex/_generated/*"],
-      "@/convex/_generated/*": ["../../apps/portal/convex/_generated/*"],
-      "@/convex/*": ["../../apps/portal/convex/*"]
+      "@acme/ui": ["../ui/src/index"],
+      "@acme/ui/*": ["../ui/src/*"],
+      "@/*": ["../ui/src/*"]
     }
   },
   "include": ["src"],
-  "exclude": ["dist", "node_modules"]
+  "exclude": ["node_modules"]
 }

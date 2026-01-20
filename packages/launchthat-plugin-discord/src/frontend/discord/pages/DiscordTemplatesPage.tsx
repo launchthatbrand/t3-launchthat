@@ -1,10 +1,5 @@
 "use client";
 
-import React from "react";
-import { useMutation, useQuery } from "convex/react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -12,9 +7,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
+import type {
+  DiscordTemplateContext,
+  DiscordTemplatesPageProps,
+} from "../types";
 import {
   Select,
   SelectContent,
@@ -22,12 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { Textarea } from "@acme/ui/textarea";
+import { useMutation, useQuery } from "convex/react";
 
-import type {
-  DiscordTemplateContext,
-  DiscordTemplatesPageProps,
-} from "../types";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { EntityList } from "@acme/ui/entity-list";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
+import React from "react";
+import { Textarea } from "@acme/ui/textarea";
 
 const cx = (...classes: Array<string | undefined | false>) =>
   classes.filter(Boolean).join(" ");

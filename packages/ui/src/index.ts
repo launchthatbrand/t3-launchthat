@@ -11,7 +11,6 @@ export * from "./breadcrumb";
 export * from "./button";
 export * from "./calendar";
 export * from "./command";
-export * from "./button";
 export * from "./card";
 export * from "./dialog";
 export * from "./drawer";
@@ -24,8 +23,6 @@ export * from "./table";
 export * from "./tabs";
 export * from "./textarea";
 export * from "./toast";
-export * from "./toast";
-export * from "./label";
 export * from "./menubar";
 export * from "./pagination";
 export * from "./popover";
@@ -36,10 +33,7 @@ export * from "./sidebar";
 export * from "./skeleton";
 export * from "./spinner";
 export * from "./switch";
-export * from "./table";
-export * from "./separator";
 export * from "./theme";
-export * from "./toast";
 export * from "./entity-list";
 export * from "./json-view";
 export * from "./animated-tooltip";
@@ -50,8 +44,11 @@ export * from "./dotted-glow-background";
 export * from "./features-section";
 export * from "./orbiting-circles";
 export * from "./marquee";
-export * from "./moving-border";// UI micro-interactions
-export * from "./components/ui/container-scroll-animation";
+
+// UI micro-interactions (avoid name collisions with shadcn `Button`/`Card`)
+export { Button as MovingBorderButton, MovingBorder } from "./moving-border";
+export { ContainerScroll } from "./components/ui/container-scroll-animation";
+
 export * from "./components/ui/flip-words";
 export * from "./components/ui/text-generate-effect";
 export * from "./safari";
