@@ -32,6 +32,7 @@ import { PricingSection } from "../../components/landing/PricingSection";
 import React from "react";
 import { StrategyBuilderAnimation } from "../../components/landing/StrategyBuilderAnimation";
 import { auth } from "@clerk/nextjs/server";
+import { SpinningSphere } from "~/components/landing/SpinningSphere";
 
 const PlusIcon = ({ className }: { className?: string }) => (
   <svg
@@ -77,6 +78,17 @@ export default async function HomePage() {
 
         {/* Hero Section */}
         <section className="relative container mx-auto max-w-7xl px-4 text-center">
+          <div
+            className="pointer-events-none absolute top-0 right-0 z-0 opacity-70 blur-[0.2px]"
+            style={{
+              width: "clamp(180px, 28vw, 420px)",
+              height: "clamp(180px, 28vw, 420px)",
+              transform: "translate(18%, -18%)",
+            }}
+          >
+            <SpinningSphere />
+          </div>
+
           <ContainerScroll
             titleComponent={
               <>
