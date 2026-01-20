@@ -5,7 +5,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import type { Metadata, Viewport } from "next";
 import { ThemeProvider, ThemeToggle } from "@acme/ui/theme";
 
-import { GridLines } from "~/components/background/GridLines";
 import { Providers } from "./providers";
 import { Toaster } from "@acme/ui/toast";
 import { env } from "~/env";
@@ -13,21 +12,21 @@ import { env } from "~/env";
 export const metadata: Metadata = {
   metadataBase: new URL(
     env.VERCEL_ENV === "production"
-      ? "https://turbo.t3.gg"
+      ? "https://traderlaunchpad.com"
       : "http://localhost:3000",
   ),
-  title: "Create T3 Turbo",
-  description: "Simple monorepo with shared backend for web & mobile apps",
+  title: "Trader Launchpad",
+  description: "Trader Launchpad - Mission Control for serious traders",
   openGraph: {
-    title: "Create T3 Turbo",
-    description: "Simple monorepo with shared backend for web & mobile apps",
-    url: "https://create-t3-turbo.vercel.app",
-    siteName: "Create T3 Turbo",
+    title: "Trader Launchpad",
+    description: "Trader Launchpad - Mission Control for serious traders",
+    url: "https://traderlaunchpad.vercel.app",
+    siteName: "Trader Launchpad",
   },
   twitter: {
     card: "summary_large_image",
-    site: "@jullerino",
-    creator: "@jullerino",
+    site: "@launchthat",
+    creator: "@launchthat",
   },
 };
 
@@ -113,7 +112,7 @@ export default function RootLayout(props: { children: React.ReactNode }) {
                   </linearGradient>
                 </defs>
               </svg>
-              {/* <GridLines /> */}
+
             </div>
             <div className="flex-1 flex w-full">{props.children}</div>
             <div className="absolute right-4 bottom-4">
