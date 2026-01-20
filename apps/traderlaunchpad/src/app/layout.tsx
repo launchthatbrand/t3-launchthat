@@ -28,6 +28,9 @@ export const metadata: Metadata = {
     site: "@launchthat",
     creator: "@launchthat",
   },
+  icons: {
+    icon: '/icon.png', // Reference to the file in the public directory
+  },
 };
 
 export const viewport: Viewport = {
