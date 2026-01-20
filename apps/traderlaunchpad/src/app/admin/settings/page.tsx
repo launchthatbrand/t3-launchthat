@@ -1,10 +1,12 @@
-import { Suspense } from "react";
-import AdminSettingsClientPage from "./page.client";
+import { redirect } from "next/navigation";
 
-export default function AdminSettingsPage() {
-  return (
-    <Suspense fallback={null}>
-      <AdminSettingsClientPage />
-    </Suspense>
-  );
+const allowedTabs = new Set(["account", "connections", "notifications", "billing"]);
+
+export default async function AdminSettingsPage(props: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const searchParams = (await props.searchParams) ?? {};
+  const raw = searchParams.tab;
+  const tab = typeof raw === "string" && allowedTabs.has(raw) ? raw : "account";
+  redirect(`/admin/settings/${tab}`);
 }

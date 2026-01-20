@@ -177,13 +177,20 @@ export const SidebarLink = ({
       {link.icon}
 
       <motion.span
+        initial={{ opacity: 0, width: 0 }}
         animate={{
-          display: animate ? (open ? "inline-block" : "none") : "inline-block",
           opacity: animate ? (open ? 1 : 0) : 1,
+          width: animate ? (open ? "auto" : 0) : "auto",
         }}
-        className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+        transition={{
+          duration: 0.2,
+          ease: "easeInOut",
+        }}
+        className="inline-block whitespace-pre overflow-hidden !p-0 !m-0"
       >
-        {link.label}
+        <span className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 inline-block">
+          {link.label}
+        </span>
       </motion.span>
     </a>
   );

@@ -26,8 +26,16 @@ import { Label } from "@acme/ui/label";
 import React from "react";
 import { api } from "@convex-config/_generated/api";
 import { useRouter } from "next/navigation";
+import { TradeLockerProviderCard } from "./tradelocker/TradeLockerProviderCard";
 
 export function TradeLockerConnectionCard() {
+  // Backwards-compatible wrapper (used in onboarding + older pages).
+  // New Settings Connections UI uses route-based list/detail.
+  return <TradeLockerProviderCard showAccounts />;
+}
+
+// Legacy implementation retained below (can be deleted once no longer referenced).
+export function TradeLockerConnectionCard_Legacy() {
   const router = useRouter();
   const data = useQuery(api.traderlaunchpad.queries.getMyTradeLockerConnection);
   const disconnect = useAction(api.traderlaunchpad.actions.disconnectTradeLocker);

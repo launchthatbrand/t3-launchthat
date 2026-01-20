@@ -7,10 +7,11 @@ import {
   useScroll,
 } from "motion/react";
 import { IconMenu2, IconX } from "@tabler/icons-react";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import Link from "next/link";
 import { cn } from "~/lib/utils";
+import { usePathname } from "next/navigation";
 
 interface NavbarProps {
   children: React.ReactNode;
@@ -116,32 +117,63 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => {
 
 export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
   const [hovered, setHovered] = useState<number | null>(null);
+  const [lockedHref, setLockedHref] = useState<string | null>(null);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (lockedHref && pathname === lockedHref) {
+      setLockedHref(null);
+      setHovered(null);
+    }
+  }, [lockedHref, pathname]);
 
   return (
     <motion.div
-      onMouseLeave={() => setHovered(null)}
+      onMouseLeave={() => {
+        if (lockedHref) return;
+        setHovered(null);
+      }}
       className={cn(
-        "absolute inset-0 hidden flex-1 flex-row items-center justify-center space-x-2 text-sm font-medium text-zinc-600 transition duration-200 hover:text-zinc-800 lg:flex lg:space-x-2",
+        "relative hidden flex-1 flex-row items-center justify-center space-x-2 text-sm font-medium text-zinc-600 transition duration-200 hover:text-zinc-800 lg:flex lg:space-x-2",
         className,
       )}
     >
-      {items.map((item, idx) => (
-        <Link
-          onMouseEnter={() => setHovered(idx)}
-          onClick={onItemClick}
-          className="relative px-4 py-2 text-neutral-600 dark:text-neutral-300"
-          key={`link-${idx}`}
-          href={item.link}
-        >
-          {hovered === idx && (
-            <motion.div
-              layoutId="hovered"
-              className="absolute inset-0 h-full w-full rounded-full bg-gray-100 dark:bg-neutral-800"
-            />
-          )}
-          <span className="relative z-20">{item.name}</span>
-        </Link>
-      ))}
+      {items.map((item, idx) => {
+        const isActive = pathname === item.link;
+        const isHovered = hovered === idx;
+        const shouldHighlight = lockedHref
+          ? lockedHref === item.link
+          : isHovered || (hovered === null && isActive);
+
+        return (
+          <Link
+            onMouseEnter={() => {
+              if (lockedHref) return;
+              setHovered(idx);
+            }}
+            onClick={() => {
+              setLockedHref(item.link);
+              setHovered(idx);
+              onItemClick?.();
+            }}
+            className={cn(
+              "relative px-4 py-2 text-neutral-600 dark:text-neutral-300",
+              isActive && "text-neutral-900 dark:text-neutral-100",
+            )}
+            key={`link-${idx}`}
+            href={item.link}
+            aria-current={isActive ? "page" : undefined}
+          >
+            {shouldHighlight && (
+              <motion.div
+                layoutId="hovered"
+                className="absolute inset-0 h-full w-full rounded-full bg-gray-100 dark:bg-neutral-800"
+              />
+            )}
+            <span className="relative z-20">{item.name}</span>
+          </Link>
+        );
+      })}
     </motion.div>
   );
 };

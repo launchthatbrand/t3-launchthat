@@ -187,6 +187,52 @@ export const getMyTradeLockerConnection = query({
   },
 });
 
+export const getMyConnectionAccountById = query({
+  args: {
+    accountRowId: v.string(),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      provider: v.string(),
+      connection: v.any(),
+      account: v.any(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+
+    const connection = await ctx.runQuery(connectionsQueries.getMyConnection, {
+      organizationId,
+      userId,
+    });
+    if (!connection) return null;
+
+    const accounts = await ctx.runQuery(
+      connectionsQueries.listMyConnectionAccounts,
+      {
+        organizationId,
+        userId,
+        connectionId: (connection as any)._id,
+      } as any,
+    );
+
+    const list = Array.isArray(accounts) ? accounts : [];
+    const account =
+      list.find((row: any) => String(row?._id ?? "") === args.accountRowId) ??
+      null;
+
+    if (!account) return null;
+
+    return {
+      provider: "tradelocker",
+      connection,
+      account,
+    };
+  },
+});
+
 export const getMyJournalProfile = query({
   args: {},
   returns: v.object({

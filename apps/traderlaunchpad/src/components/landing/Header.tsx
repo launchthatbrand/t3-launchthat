@@ -36,24 +36,26 @@ export async function Header() {
   return (
     <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-black/50 backdrop-blur-md">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2">
-          {/* Logo Icon */}
-          <Image
-            src="/images/tl-logo-1.png"
-            alt="Trader Launchpad"
-            width={100}
-            height={100}
-            className="h-12 w-12"
-            priority
-          />
-          <span className="text-lg font-bold tracking-tight text-white">
-            Trader Launchpad
-          </span>
-        </Link>
+        <div className="flex items-center gap-8">
+          <Link href="/" className="flex items-center gap-2">
+            {/* Logo Icon */}
+            <Image
+              src="/images/tl-logo-1.png"
+              alt="Trader Launchpad"
+              width={100}
+              height={100}
+              className="h-12 w-12"
+              priority
+            />
+            <span className="text-lg font-bold tracking-tight text-white">
+              Trader Launchpad
+            </span>
+          </Link>
 
-        <nav className="hidden items-center gap-8 text-sm font-medium md:flex">
-          <NavItems items={navItems} className="relative hidden w-auto md:flex" />
-        </nav>
+          <nav className="hidden items-center gap-8 text-sm font-medium md:flex">
+            <NavItems items={navItems} className="relative hidden w-auto md:flex" />
+          </nav>
+        </div>
 
         <div className="flex items-center gap-4">
           {userId ? (

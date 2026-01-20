@@ -5,10 +5,11 @@ import React, { useState } from "react";
 import { Sidebar, SidebarBody, SidebarLink } from "~/components/ui/sidebar";
 import { UserButton, useAuth } from "@clerk/nextjs";
 
-import { Grid } from "lucide-react";
 import { GridLines } from "~/components/background/GridLines";
+import Image from "next/image";
 import Link from "next/link";
 import { NavItems } from "~/components/ui/resizable-navbar";
+import { motion } from "motion/react";
 import { redirect } from "next/navigation";
 
 export default function AdminLayout({
@@ -102,36 +103,41 @@ export default function AdminLayout({
       <Sidebar open={open} setOpen={setOpen}>
         <SidebarBody className="justify-between gap-10 min-h-screen z-50 border-white/10! border-r bg-black/40! backdrop-blur-md">
           <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
-            {open ? <Link href="/" className="flex items-center gap-2 font-bold">
-              <div className="flex h-7 w-7 items-center justify-center rounded bg-white text-black">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                </svg>
-              </div>
-              <span className="tracking-tight">TraderLaunchpad</span>
-            </Link> : <div className="flex h-7 w-7 items-center justify-center rounded bg-white text-black">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            {open ? <Link href="/" className="flex items-center gap-2">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center gap-2"
               >
-                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-              </svg>
-            </div>}
+                {/* Logo Icon */}
+                <Image
+                  src="/images/tl-logo-1.png"
+                  alt="Trader Launchpad"
+                  width={100}
+                  height={100}
+                  className="h-12 w-12"
+                  priority
+                />
+                <span className="text-lg font-bold tracking-tight text-white">
+                  Trader Launchpad
+                </span>
+              </motion.div>
+            </Link> : <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.2 }}
+              className="flex h-7 w-7 items-center justify-center rounded bg-white text-black"
+            >
+              <Image
+                src="/images/tl-logo-1.png"
+                alt="Trader Launchpad"
+                width={100}
+                height={100}
+                className="h-8 w-8"
+                priority
+              />
+            </motion.div>}
             <div className="mt-8 flex flex-col gap-2">
               {links.map((link, idx) => (
                 <SidebarLink key={idx} link={link} />
@@ -160,9 +166,9 @@ export default function AdminLayout({
       <div className="flex-1 overflow-y-scroll">
 
         <header className="sticky top-0 z-40 border-b border-white/10 bg-black/40 backdrop-blur-md">
-          <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
+          <div className="mx-auto flex h-14 max-w-7xl items-center justify-between">
             <div className="flex items-center gap-4">
-              <nav className="mx-6 hidden items-center space-x-4 lg:flex lg:space-x-6">
+              <nav className="hidden items-center space-x-4 lg:flex lg:space-x-6">
                 <NavItems items={navItems} />
               </nav>
             </div>
