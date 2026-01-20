@@ -4,6 +4,7 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "paths": {
       "launchthat-plugin-core": ["../launchthat-plugin-core/src/index"],
       "@acme/ui": ["../ui/src/index.ts"],
