@@ -1,6 +1,5 @@
-import { v } from "convex/values";
-
 import { query } from "../server";
+import { v } from "convex/values";
 
 export const listExecutionsForUser = query({
   args: {
@@ -372,7 +371,7 @@ export const getOrderById = query({
         history.organizationId === args.organizationId &&
         history.userId === args.userId
       ) {
-        return { kind: "history", order: history };
+        return { kind: "history" as const, order: history };
       }
       return null;
     }
@@ -383,7 +382,7 @@ export const getOrderById = query({
       order.organizationId === args.organizationId &&
       order.userId === args.userId
     ) {
-      return { kind: "order", order };
+      return { kind: "order" as const, order };
     }
     const history = await ctx.db.get(orderId as any);
     if (
@@ -391,7 +390,7 @@ export const getOrderById = query({
       history.organizationId === args.organizationId &&
       history.userId === args.userId
     ) {
-      return { kind: "history", order: history };
+      return { kind: "history" as const, order: history };
     }
     return null;
   },
