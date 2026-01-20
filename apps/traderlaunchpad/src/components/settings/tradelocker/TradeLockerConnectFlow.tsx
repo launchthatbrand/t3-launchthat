@@ -56,8 +56,8 @@ const toAccountOptions = (rows: Array<unknown>): Array<AccountOption> => {
 };
 
 export function TradeLockerConnectFlow(props: {
-  open: boolean;
-  onOpenChange: (next: boolean) => void;
+  onCancel?: () => void;
+  onSuccess?: () => void;
 }) {
   const startConnect = useAction(api.traderlaunchpad.actions.startTradeLockerConnect);
   const finishConnect = useAction(api.traderlaunchpad.actions.connectTradeLocker);
@@ -91,15 +91,6 @@ export function TradeLockerConnectFlow(props: {
     setDebugTokens(null);
     setRevealDebugTokens(false);
   };
-
-  React.useEffect(() => {
-    if (!props.open) {
-      setError(null);
-      setConnecting(false);
-      reset();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.open]);
 
   const handleStartConnect = async () => {
     setConnecting(true);
@@ -157,7 +148,7 @@ export function TradeLockerConnectFlow(props: {
         selectedAccountCurrency: selectedMeta?.currency,
         selectedAccountStatus: selectedMeta?.status,
       });
-      props.onOpenChange(false);
+      props.onSuccess?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -172,8 +163,6 @@ export function TradeLockerConnectFlow(props: {
       setError(e instanceof Error ? e.message : String(e));
     }
   };
-
-  if (!props.open) return null;
 
   return (
     <div className="space-y-3 rounded-lg border border-white/10 bg-black/20 p-4">
@@ -261,7 +250,7 @@ export function TradeLockerConnectFlow(props: {
           type="button"
           variant="outline"
           className="h-9"
-          onClick={() => props.onOpenChange(false)}
+          onClick={() => props.onCancel?.()}
           disabled={connecting}
         >
           Cancel

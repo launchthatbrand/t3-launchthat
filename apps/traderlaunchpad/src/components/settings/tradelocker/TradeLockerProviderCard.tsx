@@ -10,6 +10,7 @@ import { Button } from "@acme/ui/button";
 import { Plug } from "lucide-react";
 import { TradeLockerAccountsList } from "./TradeLockerAccountsList";
 import { TradeLockerConnectFlow } from "./TradeLockerConnectFlow";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@acme/ui/dialog";
 
 export type TradeLockerProviderCardProps = {
   showAccounts?: boolean;
@@ -132,7 +133,20 @@ export function TradeLockerProviderCard(props: TradeLockerProviderCardProps) {
           />
         ) : null}
 
-        <TradeLockerConnectFlow open={showConnect} onOpenChange={setShowConnect} />
+        <Dialog open={showConnect} onOpenChange={setShowConnect}>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Connect TradeLocker</DialogTitle>
+              <DialogDescription>
+                Enter your TradeLocker credentials to fetch accounts, then select one to connect.
+              </DialogDescription>
+            </DialogHeader>
+            <TradeLockerConnectFlow
+              onCancel={() => setShowConnect(false)}
+              onSuccess={() => setShowConnect(false)}
+            />
+          </DialogContent>
+        </Dialog>
 
         {error ? (
           <div className="rounded-lg border border-white/10 bg-black/30 p-3 text-sm text-white/70">

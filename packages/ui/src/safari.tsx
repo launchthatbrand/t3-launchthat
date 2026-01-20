@@ -1,11 +1,16 @@
 import type { HTMLAttributes } from "react"
 
-const SAFARI_WIDTH = 1203
-const SAFARI_HEIGHT = 753
+// IMPORTANT:
+// The SVG in this component uses a ~1202 x 753 coordinate space (see path extents like 1202/753).
+// These constants MUST match that coordinate system; otherwise the media overlay (% math) will
+// not align with the browser “screen” cutout.
+const SAFARI_WIDTH = 1202
+const SAFARI_HEIGHT = 723
 const SCREEN_X = 1
 const SCREEN_Y = 52
 const SCREEN_WIDTH = 1200
-const SCREEN_HEIGHT = 700
+// Screen cutout: y=52 down to ~741 in the mask paths.
+const SCREEN_HEIGHT = 720
 
 // Calculated percentages
 const LEFT_PCT = (SCREEN_X / SAFARI_WIDTH) * 100

@@ -142,7 +142,7 @@ export default async function HomePage() {
           >
 
             <div>
-              <Safari url="traderlaunchpad.com" />
+              <Safari url="traderlaunchpad.com" imageSrc="/images/traderlaunchpad-backend.jpg" className="" />
             </div>
           </ContainerScroll>
 
