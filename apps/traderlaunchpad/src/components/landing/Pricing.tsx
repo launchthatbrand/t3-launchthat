@@ -1,7 +1,7 @@
-import React from "react";
-import Link from "next/link";
 import { Button } from "@acme/ui/button";
 import { Check } from "lucide-react";
+import Link from "next/link";
+import React from "react";
 
 const plans = [
   {
@@ -19,9 +19,9 @@ const plans = [
     period: "/mo",
     description: "Automate your edge with full sync & AI insights.",
     features: [
-      "Real-time Auto Sync", 
-      "AI Trade Insights", 
-      "Unlimited Accounts", 
+      "Real-time Auto Sync",
+      "AI Trade Insights",
+      "Unlimited Accounts",
       "Unlimited History",
       "Advanced Analytics"
     ],
@@ -61,20 +61,19 @@ export function Pricing() {
 
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {plans.map((plan, i) => (
-            <div 
-              key={i} 
-              className={`relative flex flex-col p-8 rounded-2xl border ${
-                plan.popular 
-                  ? "bg-white/5 border-blue-500/50 shadow-2xl shadow-blue-900/20" 
+            <div
+              key={i}
+              className={`relative flex flex-col p-8 rounded-2xl border ${plan.popular
+                  ? "bg-white/5 border-blue-500/50 shadow-2xl shadow-blue-900/20"
                   : "bg-[#0A0A0A] border-white/10"
-              }`}
+                }`}
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-blue-600 text-white text-sm font-medium rounded-full">
                   Most Popular
                 </div>
               )}
-              
+
               <div className="mb-8">
                 <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
                 <div className="flex items-baseline gap-1 mb-4">
@@ -95,12 +94,12 @@ export function Pricing() {
                 </ul>
               </div>
 
-              <Button 
-                asChild 
+              <Button
+                asChild
                 variant={plan.variant === "default" ? "default" : "outline"}
                 className={`w-full ${plan.variant === "default" ? "bg-blue-600 hover:bg-blue-700 text-white" : "border-white/10 text-white hover:bg-white/5"}`}
               >
-                <Link href="/sign-up">{plan.cta}</Link>
+                <Link href="/sign-in">{plan.cta}</Link>
               </Button>
             </div>
           ))}

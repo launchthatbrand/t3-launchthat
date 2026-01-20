@@ -1,64 +1,61 @@
 "use client";
 
-import { ArrowRight, Check } from "lucide-react";
-import { Button, MovingBorder } from "@acme/ui/moving-border";
+import { ArrowRight, Check, Info } from "lucide-react";
 
+import { Button } from "@acme/ui/moving-border";
 import Link from "next/link";
 import React from "react";
+import { Tooltip as TooltipCard } from "@acme/ui/components/ui/tooltip-card";
 import { cn } from "@acme/ui";
 import { motion } from "framer-motion";
 
+const FEATURE_TOOLTIPS: Record<string, React.ReactNode> = {
+  "Analytics dashboard":
+    "Your performance overview: win rate, profit factor, expectancy, and key streaks.",
+  "Number of broker accounts":
+    "How many broker accounts you can link and sync trades from under your plan.",
+  "Storage amount":
+    "Total space for screenshots, attachments, and notes stored with your trades.",
+  "Calendar view":
+    "See performance by day/week/month with a heatmap + session summaries.",
+  "Notes & comments":
+    "Add context to trades, tag patterns, and keep post-session review notes.",
+  "Winning percentage":
+    "Automatic win rate calculation based on your synced or logged trades.",
+  "Customizable trade log":
+    "Filter/sort columns, customize fields, and export your log when needed.",
+  "Automatic trade imports":
+    "Pull trades from your broker so you don’t have to enter everything manually.",
+  "Trading plan pairs":
+    "How many symbols/pairs you can include in your trading plan rules and tracking.",
+  "AI insights & reminders":
+    "AI insights, nudges, and reminders based on your journal + trading plan.",
+  "AI credit (monthly)":
+    "Free tier includes a small monthly AI credit to cover basic insights and reminders.",
+  "Session timing heatmaps":
+    "Highlight which hours/days you perform best so you can focus on your edge windows.",
+  "Signal stream":
+    "Central feed for trade events + key alerts (entries, exits, rule violations).",
+  "Alerts (push + Discord)":
+    "Get notified for important events and guardrails; Discord is great for realtime workflows.",
+  "Risk guardrails":
+    "Optional limits like max daily loss, max trades/day, and “stop trading” triggers.",
+  "Backtest exports":
+    "Export your data for analysis elsewhere (CSV now; PDFs later for shareable reports).",
+  "Organization leaderboards":
+    "Let members join your organization and view private, org-scoped leaderboards.",
+  "Discord trade stream bot":
+    "Streams your org’s trades to Discord with community-focused automations and moderation-friendly controls.",
+  "Customizable AI (org)":
+    "Create and fine-tune AI trading plan templates that your organization members can apply.",
+};
+
 interface FeatureRow {
   label: string;
-  basic: React.ReactNode;
+  free: React.ReactNode;
+  standard: React.ReactNode;
   pro: React.ReactNode;
 }
-
-interface PricingCtaProps {
-  href: string;
-  isCompact: boolean;
-  children: React.ReactNode;
-}
-
-const PricingCta = ({ href, isCompact, children }: PricingCtaProps) => {
-  return (
-    <div
-      className={cn(
-        "relative overflow-hidden rounded-full bg-transparent p-1.5",
-        isCompact ? "h-9 w-auto" : "h-11 w-full",
-      )}
-    >
-      <div className="pointer-events-none absolute inset-0 rounded-full">
-        <Button
-          borderRadius="1.75rem"
-          className="bg-white dark:bg-slate-900 text-black dark:text-white border-neutral-200 dark:border-slate-800"
-          containerClassName="p-1"
-        >
-          Borders are cool
-        </Button>
-      </div>
-      <Link
-        href={href}
-        className={cn(
-          "relative flex h-full w-full items-center justify-between rounded-full bg-white text-sm font-semibold text-black",
-          "shadow-[0_0_0_1px_rgba(255,255,255,0.12),0_18px_40px_rgba(0,0,0,0.35)]",
-          "transition-transform hover:scale-[1.01] hover:bg-gray-100",
-          isCompact ? "gap-3 px-4" : "gap-4 px-5",
-        )}
-      >
-        <span className="truncate">{children}</span>
-        <span
-          className={cn(
-            "flex items-center justify-center rounded-full bg-black text-white",
-            isCompact ? "h-7 w-7" : "h-8 w-8",
-          )}
-        >
-          <ArrowRight className={cn(isCompact ? "h-3.5 w-3.5" : "h-4 w-4")} />
-        </span>
-      </Link>
-    </div>
-  );
-};
 
 const useStickyCompact = (topOffsetPx: number) => {
   // A sentinel placed at the top of the comparison table. We shrink the pricing
@@ -101,78 +98,140 @@ export const PricingSection = () => {
 
   const yes = <Check className="h-5 w-5 text-emerald-400" />;
   const freePrice = "$0";
-  const standardPrice = "$19.99";
+  const standardPrice = "$9.99";
+  const proPrice = "$29.99";
   const freePeriodLabel = "Forever";
 
-  const features: FeatureRow[] = [
-    { label: "Analytics dashboard", basic: yes, pro: yes },
+  type FeatureEntry =
+    | { kind: "section"; title: string }
+    | { kind: "feature"; row: FeatureRow };
+
+  const entries: FeatureEntry[] = [
+    { kind: "section", title: "Trading Journal" },
+    { kind: "feature", row: { label: "Analytics dashboard", free: yes, standard: yes, pro: yes } },
+    { kind: "feature", row: { label: "Calendar view", free: yes, standard: yes, pro: yes } },
+    { kind: "feature", row: { label: "Notes & comments", free: yes, standard: yes, pro: yes } },
+    { kind: "feature", row: { label: "Winning percentage", free: yes, standard: yes, pro: yes } },
+    { kind: "feature", row: { label: "Customizable trade log", free: yes, standard: yes, pro: yes } },
     {
-      label: "Number of connected accounts",
-      basic: (
-        <span className="text-sm font-medium text-white/85">2 accounts</span>
-      ),
-      pro: (
-        <span className="text-sm font-medium text-white/85">5 accounts</span>
-      ),
+      kind: "feature",
+      row: {
+        label: "Storage amount",
+        free: <span className="text-sm font-medium text-white/85">2 GB</span>,
+        standard: <span className="text-sm font-medium text-white/85">10 GB</span>,
+        pro: <span className="text-sm font-medium text-orange-200">50 GB</span>,
+      },
     },
     {
-      label: "Storage amount",
-      basic: <span className="text-sm font-medium text-white/85">2 GB</span>,
-      pro: <span className="text-sm font-medium text-white/85">10 GB</span>,
-    },
-    { label: "Calendar view", basic: yes, pro: yes },
-    { label: "Notes & comments", basic: yes, pro: yes },
-    { label: "Winning percentage", basic: yes, pro: yes },
-    { label: "Customizable trade log", basic: yes, pro: yes },
-    {
-      label: "Automatic trade imports",
-      basic: <span className="text-sm font-medium text-white/70">Limited</span>,
-      pro: (
-        <span className="text-sm font-medium text-orange-200">Unlimited</span>
-      ),
-    },
-    // Extra rows to make the section ~2x longer
-    { label: "AI trading coach insights", basic: yes, pro: yes },
-    { label: "Session timing heatmaps", basic: yes, pro: yes },
-    {
-      label: "Signal stream",
-      basic: <span className="text-sm font-medium text-white/70">Basic</span>,
-      pro: (
-        <span className="text-sm font-medium text-orange-200">Advanced</span>
-      ),
+      kind: "feature",
+      row: {
+        label: "Number of broker accounts",
+        free: <span className="text-sm font-medium text-white/85">2 accounts</span>,
+        standard: <span className="text-sm font-medium text-white/85">5 accounts</span>,
+        pro: <span className="text-sm font-medium text-orange-200">10 accounts</span>,
+      },
     },
     {
-      label: "Alerts (push + Discord)",
-      basic: (
-        <span className="text-sm font-medium text-white/70">Standard</span>
-      ),
-      pro: (
-        <span className="text-sm font-medium text-orange-200">Priority</span>
-      ),
+      kind: "feature",
+      row: {
+        label: "Automatic trade imports",
+        free: <span className="text-sm font-medium text-white/70">Limited</span>,
+        standard: <span className="text-sm font-medium text-orange-200">Unlimited</span>,
+        pro: <span className="text-sm font-medium text-orange-200">Unlimited</span>,
+      },
     },
     {
-      label: "Risk guardrails",
-      basic: <span className="text-sm font-medium text-white/70">Core</span>,
-      pro: (
-        <span className="text-sm font-medium text-orange-200">Advanced</span>
-      ),
+      kind: "feature",
+      row: {
+        label: "Backtest exports",
+        free: <span className="text-sm font-medium text-white/70">CSV</span>,
+        standard: <span className="text-sm font-medium text-white/70">CSV</span>,
+        pro: <span className="text-sm font-medium text-orange-200">CSV + PDF</span>,
+      },
+    },
+
+    { kind: "section", title: "Trading Plan" },
+    {
+      kind: "feature",
+      row: {
+        label: "Trading plan pairs",
+        free: <span className="text-sm font-medium text-white/85">Max 5</span>,
+        standard: <span className="text-sm font-medium text-white/85">Max 10</span>,
+        pro: <span className="text-sm font-medium text-orange-200">Max 10</span>,
+      },
     },
     {
-      label: "Backtest exports",
-      basic: <span className="text-sm font-medium text-white/70">CSV</span>,
-      pro: (
-        <span className="text-sm font-medium text-orange-200">CSV + PDF</span>
-      ),
+      kind: "feature",
+      row: {
+        label: "AI credit (monthly)",
+        free: <span className="text-sm font-medium text-white/85">$5 / mo</span>,
+        standard: <span className="text-sm font-medium text-orange-200">Unlimited</span>,
+        pro: <span className="text-sm font-medium text-orange-200">Unlimited</span>,
+      },
     },
     {
-      label: "Webhook automations",
-      basic: <span className="text-sm font-medium text-white/70">—</span>,
-      pro: yes,
+      kind: "feature",
+      row: {
+        label: "AI insights & reminders",
+        free: <span className="text-sm font-medium text-white/70">Limited</span>,
+        standard: <span className="text-sm font-medium text-orange-200">Standard AI</span>,
+        pro: <span className="text-sm font-medium text-orange-200">Customizable</span>,
+      },
+    },
+    { kind: "feature", row: { label: "Session timing heatmaps", free: yes, standard: yes, pro: yes } },
+    {
+      kind: "feature",
+      row: {
+        label: "Risk guardrails",
+        free: <span className="text-sm font-medium text-white/70">Core</span>,
+        standard: <span className="text-sm font-medium text-orange-200">Advanced</span>,
+        pro: <span className="text-sm font-medium text-orange-200">Advanced</span>,
+      },
     },
     {
-      label: "Multi-account summaries",
-      basic: <span className="text-sm font-medium text-white/70">—</span>,
-      pro: yes,
+      kind: "feature",
+      row: {
+        label: "Alerts (push + Discord)",
+        free: <span className="text-sm font-medium text-white/70">Standard</span>,
+        standard: <span className="text-sm font-medium text-orange-200">Standard</span>,
+        pro: <span className="text-sm font-medium text-orange-200">Priority</span>,
+      },
+    },
+    {
+      kind: "feature",
+      row: {
+        label: "Signal stream",
+        free: <span className="text-sm font-medium text-white/70">Basic</span>,
+        standard: <span className="text-sm font-medium text-orange-200">Advanced</span>,
+        pro: <span className="text-sm font-medium text-orange-200">Advanced</span>,
+      },
+    },
+    {
+      kind: "feature",
+      row: {
+        label: "Organization leaderboards",
+        free: <span className="text-sm font-medium text-white/70">—</span>,
+        standard: <span className="text-sm font-medium text-white/70">—</span>,
+        pro: yes,
+      },
+    },
+    {
+      kind: "feature",
+      row: {
+        label: "Discord trade stream bot",
+        free: <span className="text-sm font-medium text-white/70">—</span>,
+        standard: <span className="text-sm font-medium text-white/70">—</span>,
+        pro: yes,
+      },
+    },
+    {
+      kind: "feature",
+      row: {
+        label: "Customizable AI (org)",
+        free: <span className="text-sm font-medium text-white/70">—</span>,
+        standard: <span className="text-sm font-medium text-white/70">—</span>,
+        pro: yes,
+      },
     },
   ];
 
@@ -189,7 +248,7 @@ export const PricingSection = () => {
       </div>
 
       {/* Sticky header (pricing cards) */}
-      <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
+      <div className="grid gap-6 lg:grid-cols-4 lg:items-start">
         {/* Left spacer / description (NOT sticky) */}
         <div className="hidden lg:block">
           <div
@@ -222,10 +281,10 @@ export const PricingSection = () => {
           </div>
         </div>
 
-        {/* Basic + Pro (single glass panel) - sticky */}
+        {/* Free + Standard + Pro (single glass panel) - sticky */}
         <div
           className={[
-            "z-30 lg:col-span-2",
+            "z-30 lg:col-span-3",
             "sticky self-start",
             "transition-[padding,transform,filter] duration-500 ease-in-out",
             isCompact ? "py-2" : "py-0",
@@ -233,8 +292,8 @@ export const PricingSection = () => {
           style={{ top: stickyTop }}
         >
           <div className="rounded-3xl border border-white/12 bg-white/4 backdrop-blur-md">
-            <div className="grid grid-cols-1 divide-y divide-white/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-              {/* Basic */}
+            <div className="grid grid-cols-1 divide-y divide-white/10 md:grid-cols-3 md:divide-x md:divide-y-0">
+              {/* Free */}
               <div
                 className={[
                   "transition-[padding] duration-500 ease-in-out",
@@ -252,7 +311,7 @@ export const PricingSection = () => {
                   }}
                   transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                 >
-                  For more basic traders.
+                  Basic access + a small AI credit to get started.
                 </motion.div>
 
                 <motion.div
@@ -287,49 +346,39 @@ export const PricingSection = () => {
                     className={isCompact ? "" : "mt-5"}
                     transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                   >
-                    <Button
-                      borderRadius="2rem"
-                      containerClassName="w-full"
-                      duration={5000}
-                      className="bg-white p-1 flex gap-2 dark:bg-slate-900 text-black dark:text-white border-neutral-200 dark:border-slate-800"
-                    >
-                      <span className="w-full font-bold">Get Started</span>
-                      <span
-                        className={cn(
-                          "flex items-center justify-center rounded-full bg-black text-white",
-                          isCompact ? "min-h-7 min-w-7" : "min-h-8 min-w-8",
-                        )}
+                    <Link href="/sign-in" className="block">
+                      <Button
+                        as="div"
+                        borderRadius="2rem"
+                        containerClassName="w-full"
+                        duration={5000}
+                        className="bg-white gap-2 p-1 px-3 flex dark:bg-slate-900 text-black dark:text-white border-neutral-200 dark:border-slate-800 cursor-pointer"
                       >
-                        <ArrowRight className={cn(isCompact ? "h-3.5 w-3.5" : "h-4 w-4")} />
-                      </span>
-                    </Button>
+                        <span className="w-full text-center font-bold">Get Started</span>
+                        <span
+                          className={cn(
+                            "flex items-center justify-center rounded-full bg-black text-white",
+                            isCompact ? "min-h-7 min-w-7" : "min-h-8 min-w-8",
+                          )}
+                        >
+                          <ArrowRight className={cn(isCompact ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                        </span>
+                      </Button>
+                    </Link>
                   </motion.div>
                 </motion.div>
               </div>
 
-              {/* Pro */}
+              {/* Standard */}
               <div
                 className={[
                   "transition-[padding] duration-500 ease-in-out",
                   isCompact ? "p-5" : "p-8",
                 ].join(" ")}
               >
-                <div className="pointer-events-none absolute inset-0 rounded-3xl bg-linear-to-br from-orange-500/12 via-transparent to-white/6 opacity-80" />
                 <div className="relative">
                   <div className="flex items-center justify-between">
                     <div className="text-base font-semibold text-white">Standard</div>
-                    <motion.div
-                      layout
-                      className="rounded-full border border-orange-500/25 bg-orange-500/10 px-2.5 py-1 text-[11px] font-medium text-orange-200"
-                      animate={{
-                        opacity: isCompact ? 0 : 1,
-                        maxHeight: isCompact ? 0 : 32,
-                        y: isCompact ? -4 : 0,
-                      }}
-                      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                    >
-                      Most popular
-                    </motion.div>
                   </div>
 
                   <motion.div
@@ -342,7 +391,7 @@ export const PricingSection = () => {
                     }}
                     transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                   >
-                    For more advanced traders.
+                    Standard AI + more accounts and plan pairs.
                   </motion.div>
 
                   <motion.div
@@ -377,22 +426,119 @@ export const PricingSection = () => {
                       className={isCompact ? "" : "mt-5"}
                       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                     >
-                      <Button
-                        borderRadius="2rem"
-                        containerClassName="w-full"
-                        duration={5000}
-                        className="bg-white p-2 dark:bg-slate-900 text-black dark:text-white border-neutral-200 dark:border-slate-800"
-                      >
-                        <span className="w-full font-bold">Get Started</span>
-                        <span
-                          className={cn(
-                            "flex items-center justify-center rounded-full bg-black text-white",
-                            isCompact ? "min-h-7 min-w-7" : "min-h-8 min-w-8",
-                          )}
+                      <Link href="/sign-in" className="block">
+                        <Button
+                          as="div"
+                          borderRadius="2rem"
+                          containerClassName="w-full"
+                          duration={5000}
+                          className="bg-white gap-2 p-1 px-3 flex dark:bg-slate-900 text-black dark:text-white border-neutral-200 dark:border-slate-800 cursor-pointer"
                         >
-                          <ArrowRight className={cn(isCompact ? "h-3.5 w-3.5" : "h-4 w-4")} />
-                        </span>
-                      </Button>
+                          <span className="w-full text-center font-bold">Get Started</span>
+                          <span
+                            className={cn(
+                              "flex items-center justify-center rounded-full bg-black text-white",
+                              isCompact ? "min-h-7 min-w-7" : "min-h-8 min-w-8",
+                            )}
+                          >
+                            <ArrowRight className={cn(isCompact ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                          </span>
+                        </Button>
+                      </Link>
+                    </motion.div>
+                  </motion.div>
+                </div>
+              </div>
+
+              {/* Pro */}
+              <div
+                className={[
+                  "transition-[padding] duration-500 ease-in-out",
+                  isCompact ? "p-5" : "p-8",
+                ].join(" ")}
+              >
+                <div className="pointer-events-none absolute inset-0 rounded-3xl bg-linear-to-br from-orange-500/12 via-transparent to-white/6 opacity-80" />
+                <div className="relative">
+                  <div className="flex items-center justify-between">
+                    <div className="text-base font-semibold text-white">Pro</div>
+                    <motion.div
+                      layout
+                      className="rounded-full border border-orange-500/25 bg-orange-500/10 px-2.5 py-1 text-[11px] font-medium text-orange-200"
+                      animate={{
+                        opacity: isCompact ? 0 : 1,
+                        maxHeight: isCompact ? 0 : 32,
+                        y: isCompact ? -4 : 0,
+                      }}
+                      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      Community owners
+                    </motion.div>
+                  </div>
+
+                  <motion.div
+                    layout
+                    className="mt-2 overflow-hidden text-sm text-white/60"
+                    animate={{
+                      opacity: isCompact ? 0 : 1,
+                      maxHeight: isCompact ? 0 : 40,
+                      y: isCompact ? -4 : 0,
+                    }}
+                    transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    Orgs + Discord upgrades + customizable AI templates.
+                  </motion.div>
+
+                  <motion.div
+                    layout
+                    className={isCompact ? "mt-3 flex items-center justify-between gap-3" : "mt-4"}
+                    transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <motion.div
+                      layout
+                      className={isCompact ? "text-2xl font-bold text-white" : "flex items-end gap-2"}
+                      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <motion.div
+                        layout
+                        className={isCompact ? "text-2xl font-bold text-white" : "text-4xl font-bold text-white"}
+                        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                      >
+                        {proPrice}
+                      </motion.div>
+                      <motion.div
+                        layout
+                        className="pb-1 text-sm text-white/50"
+                        animate={{ opacity: isCompact ? 0 : 1, maxHeight: isCompact ? 0 : 24 }}
+                        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                      >
+                        per month
+                      </motion.div>
+                    </motion.div>
+
+                    <motion.div
+                      layout
+                      className={isCompact ? "" : "mt-5"}
+                      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <Link href="/sign-in" className="block">
+                        <Button
+                          as="div"
+                          borderRadius="2rem"
+                          containerClassName="w-full"
+                          duration={5000}
+                          className="bg-white gap-2 p-1 px-3 flex dark:bg-slate-900 text-black dark:text-white border-neutral-200 dark:border-slate-800 cursor-pointer"
+                        >
+                          <span className="w-full text-center font-bold">Get Started</span>
+                          <span
+                            className={cn(
+                              "flex items-center justify-center rounded-full bg-black text-white",
+                              isCompact ? "min-h-7 min-w-7" : "min-h-8 min-w-8",
+                            )}
+                          >
+                            <ArrowRight className={cn(isCompact ? "h-3.5 w-3.5" : "h-4 w-4")} />
+                          </span>
+                        </Button>
+                      </Link>
                     </motion.div>
                   </motion.div>
                 </div>
@@ -401,11 +547,11 @@ export const PricingSection = () => {
           </div>
         </div>
         {/* Comparison table (div-based) */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-4">
           {/* Sentinel: used to trigger compact mode once the table reaches the sticky header */}
           <div ref={tableStartRef} className="h-px w-full" aria-hidden="true" />
           <div className="mt-2 overflow-hidden rounded-3xl border border-white/10 bg-black/30 backdrop-blur-md">
-            <div className="grid grid-cols-1 lg:grid-cols-3">
+            <div className="grid grid-cols-1 lg:grid-cols-4">
               <div className="hidden border-b border-white/10 px-6 py-5 text-sm font-medium text-white/70 lg:block">
                 Features
               </div>
@@ -415,24 +561,47 @@ export const PricingSection = () => {
               <div className="hidden border-b border-white/10 px-6 py-5 text-sm font-medium text-white/70 lg:block">
                 Standard
               </div>
+              <div className="hidden border-b border-white/10 px-6 py-5 text-sm font-medium text-white/70 lg:block">
+                Pro
+              </div>
 
-              {features.map((row) => (
-                <React.Fragment key={row.label}>
-                  <div className="border-b border-white/10 px-6 py-5 text-sm text-white/70">
-                    {row.label}
-                  </div>
-                  <div className="border-b border-white/10 px-6 py-5">
-                    <div className="flex items-center justify-start">
-                      {row.basic}
+              {entries.map((entry) => {
+                if (entry.kind === "section") {
+                  return (
+                    <div
+                      key={`section:${entry.title}`}
+                      className="col-span-1 border-b border-white/10 bg-white/4 px-6 py-4 text-sm font-semibold text-white/80 lg:col-span-4"
+                    >
+                      {entry.title}
                     </div>
-                  </div>
-                  <div className="border-b border-white/10 px-6 py-5">
-                    <div className="flex items-center justify-start">
-                      {row.pro}
+                  );
+                }
+
+                const row = entry.row;
+                return (
+                  <React.Fragment key={row.label}>
+                    <div className="border-b border-white/10 px-6 py-5 text-sm text-white/70">
+                      <TooltipCard
+                        content={FEATURE_TOOLTIPS[row.label] ?? "Details coming soon."}
+                      >
+                        <div className="inline-flex cursor-default items-center gap-2">
+                          <span className="hover:text-white/90">{row.label}</span>
+                          <Info className="h-4 w-4 text-white/35 hover:text-white/70" />
+                        </div>
+                      </TooltipCard>
                     </div>
-                  </div>
-                </React.Fragment>
-              ))}
+                    <div className="border-b border-white/10 px-6 py-5">
+                      <div className="flex items-center justify-start">{row.free}</div>
+                    </div>
+                    <div className="border-b border-white/10 px-6 py-5">
+                      <div className="flex items-center justify-start">{row.standard}</div>
+                    </div>
+                    <div className="border-b border-white/10 px-6 py-5">
+                      <div className="flex items-center justify-start">{row.pro}</div>
+                    </div>
+                  </React.Fragment>
+                );
+              })}
             </div>
           </div>
         </div>

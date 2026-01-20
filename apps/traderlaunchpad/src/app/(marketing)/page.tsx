@@ -49,7 +49,7 @@ const PlusIcon = ({ className }: { className?: string }) => (
 
 export default async function HomePage() {
   const { userId } = await auth();
-  const primaryCtaHref = userId ? "/admin/dashboard" : "/sign-up";
+  const primaryCtaHref = userId ? "/admin/dashboard" : "/sign-in";
   const primaryCtaLabel = userId ? "Dashboard" : "Get Started";
 
   const publicProfiles = demoPublicProfiles as unknown as {
@@ -67,10 +67,10 @@ export default async function HomePage() {
   }
   const brokers = demoBrokers as unknown as AffiliateTeaserItem[];
   const firms = demoPropFirms as unknown as AffiliateTeaserItem[];
-  const topBrokers = [...brokers]
+  const _topBrokers = [...brokers]
     .sort((a, b) => b.rating - a.rating)
     .slice(0, 10);
-  const topFirms = [...firms].sort((a, b) => b.rating - a.rating).slice(0, 10);
+  const _topFirms = [...firms].sort((a, b) => b.rating - a.rating).slice(0, 10);
 
   return (
     <div className="relative min-h-screen text-white selection:bg-orange-500/30">
@@ -154,7 +154,7 @@ export default async function HomePage() {
           >
 
             <div>
-              <Safari url="traderlaunchpad.com" imageSrc="/images/traderlaunchpad-backend.jpg" className="" />
+              <Safari url="traderlaunchpad.com/admin" imageSrc="/images/traderlaunchpad-backend.jpg" className="" />
             </div>
           </ContainerScroll>
 

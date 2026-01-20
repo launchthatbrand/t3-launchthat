@@ -1,16 +1,22 @@
 "use client";
 
-import { IconBrandTabler, IconSettings, IconUserBolt } from "@tabler/icons-react";
+import {
+  IconBrandTabler,
+  IconBulb,
+  IconNotebook,
+  IconSettings,
+  IconTargetArrow,
+} from "@tabler/icons-react";
 import React, { useState } from "react";
 import { Sidebar, SidebarBody, SidebarLink } from "~/components/ui/sidebar";
-import { UserButton, useAuth } from "@clerk/nextjs";
 
 import { GridLines } from "~/components/background/GridLines";
 import Image from "next/image";
-import Link from "next/link";
 import { NavItems } from "~/components/ui/resizable-navbar";
+import { TraderLaunchpadNavUser } from "~/components/auth/TraderLaunchpadNavUser";
 import { motion } from "motion/react";
 import { redirect } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 
 export default function AdminLayout({
   children,
@@ -70,23 +76,23 @@ export default function AdminLayout({
     },
     {
       label: "Trading Journal",
-      href: "#",
+      href: "/admin/dashboard",
       icon: (
-        <IconUserBolt className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+        <IconNotebook className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
       ),
     },
     {
       label: "Trade Ideas",
-      href: "#",
+      href: "/admin/tradeideas",
       icon: (
-        <IconUserBolt className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+        <IconBulb className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
       ),
     },
     {
       label: "Trading Plan",
       href: "/admin/tradingplan",
       icon: (
-        <IconUserBolt className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
+        <IconTargetArrow className="h-5 w-5 shrink-0 text-neutral-700 dark:text-neutral-200" />
       ),
     },
     {
@@ -98,68 +104,22 @@ export default function AdminLayout({
     },
   ];
 
+
+
+  
+
   return (
     <div className="max-h-screen h-full flex flex-1 overflow-hidden">
       <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className="justify-between gap-10 min-h-screen z-50 border-white/10! border-r bg-black/40! backdrop-blur-md">
-          <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
-            {open ? <Link href="/" className="flex items-center gap-2">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.2 }}
-                className="flex items-center gap-2"
-              >
-                {/* Logo Icon */}
-                <Image
-                  src="/images/tl-logo-1.png"
-                  alt="Trader Launchpad"
-                  width={100}
-                  height={100}
-                  className="h-12 w-12"
-                  priority
-                />
-                <span className="bg-linear-to-b from-white via-orange-200 to-orange-500 bg-clip-text text-lg font-bold tracking-tight text-transparent">
-                  Trader Launchpad
-                </span>
-              </motion.div>
-            </Link> : <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.2 }}
-              className="flex h-7 w-7 items-center justify-center rounded bg-white text-black"
-            >
-              <Image
-                src="/images/tl-logo-1.png"
-                alt="Trader Launchpad"
-                width={100}
-                height={100}
-                className="h-8 w-8"
-                priority
-              />
-            </motion.div>}
+        <SidebarBody className="justify-between p-2 gap-10 min-h-screen z-50 border-white/10! border-r bg-black/40! backdrop-blur-md">
+        {open ? <Logo /> : <LogoIcon />}
+         <div className="flex flex-1 flex-col p-2 overflow-x-hidden overflow-y-auto">
+        
             <div className="mt-8 flex flex-col gap-2">
               {links.map((link, idx) => (
                 <SidebarLink key={idx} link={link} />
               ))}
             </div>
-          </div>
-          <div>
-            <SidebarLink
-              link={{
-                label: "Manu Arora",
-                href: "#",
-                icon: (
-                  <img
-                    src="https://assets.aceternity.com/manu.png"
-                    className="h-7 w-7 shrink-0 rounded-full"
-                    width={50}
-                    height={50}
-                    alt="Avatar"
-                  />
-                ),
-              }}
-            />
           </div>
         </SidebarBody>
       </Sidebar>
@@ -174,7 +134,7 @@ export default function AdminLayout({
             </div>
 
             <div className="relative z-10">
-              <UserButton afterSignOutUrl="/" />
+              <TraderLaunchpadNavUser afterSignOutUrl="/" />
             </div>
           </div>
         </header>
@@ -193,3 +153,84 @@ export default function AdminLayout({
     </div>
   );
 }
+
+export function Logo() {
+  return (
+    <a
+      href="#"
+      className="relative z-20 flex items-center space-x-2 py-1 text-sm font-normal text-black"
+    >
+      <Image
+          src="/images/tl-logo-1.png"
+          alt="Trader Launchpad"
+          width={100}
+          height={100}
+          className="h-10 w-10"
+          priority
+        /> 
+        <motion.span
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="whitespace-pre bg-linear-to-b from-white via-orange-200 to-orange-500 bg-clip-text text-lg font-bold tracking-tight text-transparent"
+      >
+        Trader Launchpad
+      </motion.span>
+    </a>
+  );
+};
+export function LogoIcon() {
+  return (
+    <a
+      href="#"
+      className="relative z-20 flex items-center space-x-2 py-1 text-sm font-normal text-black"
+    >
+       <Image
+          src="/images/tl-logo-1.png"
+          alt="Trader Launchpad"
+          width={100}
+          height={100}
+          className="h-10 w-10"
+          priority
+        /> 
+         </a>
+  );
+};
+
+// const Logo = () => {
+  //   return (
+  //     <Link href="/" className="flex items-center gap-2">
+  //       <motion.div
+  //         initial={{ opacity: 0 }}
+  //         animate={{ opacity: 1 }}
+  //         transition={{ duration: 0.2 }}
+  //         className="flex items-center gap-2"
+  //       >
+  //         {/* Logo Icon */}
+  //         <Image
+  //           src="/images/tl-logo-1.png"
+  //           alt="Trader Launchpad"
+  //           width={100}
+  //           height={100}
+  //           className="h-12 w-12"
+  //           priority
+  //         />
+  //         <span className="bg-linear-to-b from-white via-orange-200 to-orange-500 bg-clip-text text-lg font-bold tracking-tight text-transparent">
+  //           Trader Launchpad
+  //         </span>
+  //       </motion.div>
+  //     </Link>
+  //   );
+  // };
+
+  // const LogoIcon = () => {
+  //   return (
+  //     <motion.div
+  //       initial={{ opacity: 0 }}
+  //       animate={{ opacity: 1 }}
+  //       transition={{ duration: 0.2 }}
+  //       className="flex h-7 w-7 items-center justify-center rounded bg-white text-black"
+  //     >
+       
+  //     </motion.div>
+  //   );
+  // };

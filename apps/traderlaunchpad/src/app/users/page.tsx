@@ -63,7 +63,7 @@ export default function UsersArchivePage() {
           variant="outline"
           className="h-10 rounded-full border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
         >
-          <Link href="/sign-up">Create your profile</Link>
+          <Link href="/sign-in">Create your profile</Link>
         </Button>
       </div>
 

@@ -30,7 +30,7 @@ export function Hero() {
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
           <Button asChild size="lg" className="h-12 px-8 text-base bg-white text-black hover:bg-gray-200 border-0">
-            <Link href="/sign-up">
+            <Link href="/sign-in">
               Start Free Trial <ArrowUpRight className="ml-2 w-4 h-4" />
             </Link>
           </Button>

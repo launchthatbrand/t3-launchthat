@@ -1,11 +1,9 @@
-import { SignUp } from "@clerk/nextjs";
+import { redirect } from "next/navigation";
 
 export default function SignUpPage() {
-  return (
-    <main className="container mx-auto flex min-h-screen max-w-md items-center justify-center py-10">
-      <SignUp routing="path" path="/sign-up" />
-    </main>
-  );
+  // TraderLaunchpad does not have a dedicated sign-up flow.
+  // Accounts are created via the sign-in flow and access is gated by entitlements.
+  redirect("/sign-in");
 }
 
 

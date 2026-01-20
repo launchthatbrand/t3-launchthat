@@ -283,7 +283,7 @@ export default async function LeaderboardDetailPage({
                                     Review your trades, refine your rules, and climb in real time.
                                 </p>
                                 <div className="mt-5">
-                                    <Link href="/sign-up" className="inline-block">
+                                    <Link href="/sign-in" className="inline-block">
                                         <Button
                                             as="div"
                                             borderRadius="1.75rem"

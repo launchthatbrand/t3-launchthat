@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { IconMenu2, IconX } from "@tabler/icons-react";
 import React, { createContext, useContext, useState } from "react";
 
-import { cn } from "~/lib/utils";
+import { cn } from "@acme/ui";
 
 interface Links {
   label: string;
@@ -94,7 +94,7 @@ export const DesktopSidebar = ({
           className
         )}
         animate={{
-          width: animate ? (open ? "250px" : "60px") : "250px",
+          width: animate ? (open ? "300px" : "60px") : "300px",
         }}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
@@ -177,20 +177,13 @@ export const SidebarLink = ({
       {link.icon}
 
       <motion.span
-        initial={{ opacity: 0, width: 0 }}
         animate={{
+          display: animate ? (open ? "inline-block" : "none") : "inline-block",
           opacity: animate ? (open ? 1 : 0) : 1,
-          width: animate ? (open ? "auto" : 0) : "auto",
         }}
-        transition={{
-          duration: 0.2,
-          ease: "easeInOut",
-        }}
-        className="inline-block whitespace-pre overflow-hidden !p-0 !m-0"
+        className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
       >
-        <span className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 inline-block">
-          {link.label}
-        </span>
+        {link.label}
       </motion.span>
     </a>
   );

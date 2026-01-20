@@ -3,11 +3,12 @@
 import React from "react";
 import Link from "next/link";
 import { redirect, usePathname } from "next/navigation";
-import { useAuth, UserButton } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { Shield } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { TraderLaunchpadNavUser } from "~/components/auth/TraderLaunchpadNavUser";
 
 export default function PlatformLayout(props: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -68,7 +69,7 @@ export default function PlatformLayout(props: { children: React.ReactNode }) {
             </nav>
           </div>
 
-          <UserButton afterSignOutUrl="/" />
+          <TraderLaunchpadNavUser afterSignOutUrl="/" />
         </div>
       </header>
 

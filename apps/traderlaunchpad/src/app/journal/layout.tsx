@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { UserButton } from "@clerk/nextjs";
+import { TraderLaunchpadNavUser } from "~/components/auth/TraderLaunchpadNavUser";
 
 export default async function JournalLayout(props: {
   children: React.ReactNode;
@@ -33,7 +33,7 @@ export default async function JournalLayout(props: {
               Settings
             </Link>
           </nav>
-          <UserButton afterSignOutUrl="/sign-in" />
+          <TraderLaunchpadNavUser afterSignOutUrl="/sign-in" />
         </div>
       </header>
 

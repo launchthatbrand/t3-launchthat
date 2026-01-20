@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { NavItems } from "~/components/ui/resizable-navbar";
 import React from "react";
-import { Button as UiButton } from "@acme/ui/button";
 import { auth } from "@clerk/nextjs/server";
 
 export async function Header() {
@@ -75,30 +74,21 @@ export async function Header() {
               </Button>
             </Link>
           ) : (
-            <>
-              <UiButton
-                asChild
-                variant="ghost"
-                className="text-gray-300 hover:bg-white/10 hover:text-white"
+            <Link href="/sign-in" className="inline-block">
+              <Button
+                as="div"
+                borderRadius="1.75rem"
+                containerClassName="h-10 w-auto min-w-[160px]"
+                className="bg-white text-black font-medium border-neutral-200 dark:border-slate-800 cursor-pointer"
               >
-                <Link href="/sign-in">Sign In</Link>
-              </UiButton>
-              <Link href="/sign-up" className="inline-block">
-                <Button
-                  as="div"
-                  borderRadius="1.75rem"
-                  containerClassName="h-10 w-auto min-w-[160px]"
-                  className="bg-white text-black font-medium border-neutral-200 dark:border-slate-800 cursor-pointer"
-                >
-                  <span className="flex w-full items-center justify-between gap-3 px-1">
-                    <span>Get Started</span>
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black text-white">
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </span>
+                <span className="flex w-full items-center justify-between gap-1 px-1">
+                  <span className="w-full text-center font-bold">Sign In</span>
+                  <span className="flex min-h-7 min-w-7 items-center justify-center rounded-full bg-black text-white">
+                    <ArrowRight className="h-3.5 w-3.5" />
                   </span>
-                </Button>
-              </Link>
-            </>
+                </span>
+              </Button>
+            </Link>
           )}
         </div>
       </div>
