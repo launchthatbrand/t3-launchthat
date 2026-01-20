@@ -3,6 +3,7 @@
 /* eslint-disable react-compiler/react-compiler */
 import React from "react";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import { api } from "@convex-config/_generated/api";
 import { ConvexReactClient } from "convex/react";
@@ -37,6 +38,20 @@ export function Providers(props: { children: React.ReactNode }) {
 }
 
 function TraderLaunchpadOnboardingGate({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  // Next.js requires a Suspense boundary around any usage of `useSearchParams`
+  // in routes that may be statically prerendered (including /_not-found).
+  return (
+    <Suspense fallback={<>{children}</>}>
+      <TraderLaunchpadOnboardingGateInner>{children}</TraderLaunchpadOnboardingGateInner>
+    </Suspense>
+  );
+}
+
+function TraderLaunchpadOnboardingGateInner({
   children,
 }: {
   children: React.ReactNode;
