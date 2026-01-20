@@ -41,6 +41,7 @@
     "clsx": "^2.1.1",
     "convex": "^1.23.0",
     "convex-helpers": "^0.1.95",
+    "date-fns": "4.1.0",
     "framer-motion": "^12.12.2",
     "launchthat-plugin-discord": "workspace:*",
     "launchthat-plugin-onboarding": "workspace:*",
