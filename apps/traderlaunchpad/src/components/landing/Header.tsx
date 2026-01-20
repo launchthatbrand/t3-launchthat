@@ -47,7 +47,7 @@ export async function Header() {
               className="h-12 w-12"
               priority
             />
-            <span className="text-lg font-bold tracking-tight text-white">
+            <span className="bg-linear-to-b from-white from-40% via-orange-200 via-60% to-orange-500 bg-clip-text text-lg font-bold tracking-tight text-transparent">
               Trader Launchpad
             </span>
           </Link>

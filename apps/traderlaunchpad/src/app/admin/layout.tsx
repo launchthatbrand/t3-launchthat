@@ -119,7 +119,7 @@ export default function AdminLayout({
                   className="h-12 w-12"
                   priority
                 />
-                <span className="text-lg font-bold tracking-tight text-white">
+                <span className="bg-linear-to-b from-white via-orange-200 to-orange-500 bg-clip-text text-lg font-bold tracking-tight text-transparent">
                   Trader Launchpad
                 </span>
               </motion.div>
