@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useQuery } from "convex/react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
@@ -37,7 +37,12 @@ export function TradeLockerConnectionCard() {
 // Legacy implementation retained below (can be deleted once no longer referenced).
 export function TradeLockerConnectionCard_Legacy() {
   const router = useRouter();
-  const data = useQuery(api.traderlaunchpad.queries.getMyTradeLockerConnection);
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const shouldQuery = isAuthenticated && !authLoading;
+  const data = useQuery(
+    api.traderlaunchpad.queries.getMyTradeLockerConnection,
+    shouldQuery ? {} : "skip",
+  );
   const disconnect = useAction(api.traderlaunchpad.actions.disconnectTradeLocker);
   const syncNow = useAction(api.traderlaunchpad.actions.syncMyTradeLockerNow);
   const startConnect = useAction(api.traderlaunchpad.actions.startTradeLockerConnect);

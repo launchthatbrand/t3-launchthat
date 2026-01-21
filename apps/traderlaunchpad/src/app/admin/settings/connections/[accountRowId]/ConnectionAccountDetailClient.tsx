@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useQuery } from "convex/react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
@@ -29,11 +29,11 @@ const toNumber = (value: unknown): number | null => {
 };
 
 export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
+    const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+    const shouldQuery = isAuthenticated && !authLoading;
     const dataRaw: unknown = useQuery(
         api.traderlaunchpad.queries.getMyConnectionAccountById,
-        {
-            accountRowId: props.accountRowId,
-        },
+        shouldQuery ? { accountRowId: props.accountRowId } : "skip",
     );
 
     const disconnect = useAction(api.traderlaunchpad.actions.disconnectTradeLocker);

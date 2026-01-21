@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { ArrowRight, CheckCircle2, ClipboardCheck, Sparkles } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
@@ -34,10 +34,13 @@ const formatAge = (ms: number) => {
 
 export default function OnboardingFirstReviewPage() {
   const status = useOnboardingStatus();
-  const nextToReview = useQuery(api.traderlaunchpad.queries.listMyNextTradeIdeasToReview, {
-    limit: 3,
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const shouldQuery = isAuthenticated && !authLoading;
+  // Only query once auth is ready (prevents transient Unauthorized on load).
+  const nextToReview = useQuery(
+    api.traderlaunchpad.queries.listMyNextTradeIdeasToReview,
+    shouldQuery ? { limit: 3 } : "skip",
   }) as NextToReviewRow[] | undefined;
-
   const first = Array.isArray(nextToReview) ? nextToReview[0] : undefined;
 
   return (

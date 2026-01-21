@@ -1,6 +1,6 @@
 "use client";
 
-import { useAction, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useQuery } from "convex/react";
 import { api } from "@convex-config/_generated/api";
 import { Button } from "@acme/ui/button";
 import { Badge } from "@acme/ui/badge";
@@ -28,11 +28,11 @@ const toNumber = (value: unknown): number | null => {
 };
 
 export function TradeLockerAccountDetail(props: { accountRowId: string }) {
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const shouldQuery = isAuthenticated && !authLoading;
   const dataRaw: unknown = useQuery(
     api.traderlaunchpad.queries.getMyConnectionAccountById,
-    {
-      accountRowId: props.accountRowId,
-    },
+    shouldQuery ? { accountRowId: props.accountRowId } : "skip",
   );
 
   const disconnect = useAction(api.traderlaunchpad.actions.disconnectTradeLocker);

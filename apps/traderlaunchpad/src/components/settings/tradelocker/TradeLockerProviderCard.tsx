@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useQuery } from "convex/react";
 import { api } from "@convex-config/_generated/api";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@acme/ui/card";
@@ -18,7 +18,12 @@ export type TradeLockerProviderCardProps = {
 
 export function TradeLockerProviderCard(props: TradeLockerProviderCardProps) {
   const router = useRouter();
-  const data = useQuery(api.traderlaunchpad.queries.getMyTradeLockerConnection);
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const shouldQuery = isAuthenticated && !authLoading;
+  const data = useQuery(
+    api.traderlaunchpad.queries.getMyTradeLockerConnection,
+    shouldQuery ? {} : "skip",
+  );
   const disconnect = useAction(api.traderlaunchpad.actions.disconnectTradeLocker);
   const syncNow = useAction(api.traderlaunchpad.actions.syncMyTradeLockerNow);
   const refreshAccountConfig = useAction(

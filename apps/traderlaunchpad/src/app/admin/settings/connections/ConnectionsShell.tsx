@@ -9,7 +9,7 @@ import React from "react";
 import { api } from "@convex-config/_generated/api";
 import { cn } from "~/lib/utils";
 import { usePathname } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 
 type UnknownRecord = Record<string, unknown>;
 const isRecord = (value: unknown): value is UnknownRecord =>
@@ -30,7 +30,12 @@ interface Props {
 
 export function ConnectionsShell(props: Props) {
   const pathname = usePathname();
-  const dataRaw: unknown = useQuery(api.traderlaunchpad.queries.getMyTradeLockerConnection);
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const shouldQuery = isAuthenticated && !authLoading;
+  const dataRaw: unknown = useQuery(
+    api.traderlaunchpad.queries.getMyTradeLockerConnection,
+    shouldQuery ? {} : "skip",
+  );
 
   const connection: UnknownRecord | null =
     isRecord(dataRaw) && isRecord(dataRaw.connection) ? dataRaw.connection : null;

@@ -1,11 +1,15 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 
 import { api } from "@convex-config/_generated/api";
 
-export type OnboardingStatus = {
+type UnknownRecord = Record<string, unknown>;
+const isRecord = (value: unknown): value is UnknownRecord =>
+  typeof value === "object" && value !== null;
+
+export interface OnboardingStatus {
   isLoading: boolean;
   connectedOk: boolean;
   syncOk: boolean;
@@ -16,41 +20,70 @@ export type OnboardingStatus = {
   totalSteps: number;
   nextStepHref: string | null;
   isComplete: boolean;
-};
+}
 
 export const useOnboardingStatus = (): OnboardingStatus => {
-  const connectionData = useQuery(api.traderlaunchpad.queries.getMyTradeLockerConnection, {});
-  const closedIdeas = useQuery(api.traderlaunchpad.queries.listMyTradeIdeasByStatus, {
-    status: "closed",
-    paginationOpts: { numItems: 1, cursor: null },
-  }) as { page?: Array<any> } | undefined;
-  const nextToReview = useQuery(api.traderlaunchpad.queries.listMyNextTradeIdeasToReview, {
-    limit: 3,
-  }) as Array<any> | undefined;
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const shouldQuery = isAuthenticated && !authLoading;
+
+  // Gate queries until Convex auth is ready. This prevents transient "Unauthorized"
+  // errors on first load when Clerk/Convex auth is still hydrating.
+  const connectionData = useQuery(
+    api.traderlaunchpad.queries.getMyTradeLockerConnection,
+    shouldQuery ? {} : "skip",
+  );
+  const closedIdeas = useQuery(
+    api.traderlaunchpad.queries.listMyTradeIdeasByStatus,
+    shouldQuery
+      ? {
+          status: "closed",
+          paginationOpts: { numItems: 1, cursor: null },
+        }
+      : "skip",
+  ) as { page?: unknown[] } | undefined;
+  const nextToReview = useQuery(
+    api.traderlaunchpad.queries.listMyNextTradeIdeasToReview,
+    shouldQuery ? { limit: 3 } : "skip",
+  ) as unknown[] | undefined;
 
   return useMemo(() => {
     const isLoading =
+      authLoading ||
+      !isAuthenticated ||
       connectionData === undefined ||
       closedIdeas === undefined ||
       nextToReview === undefined;
-    const status = connectionData?.connection?.status;
+
+    const connection: UnknownRecord | null =
+      isRecord(connectionData) && isRecord(connectionData.connection)
+        ? connectionData.connection
+        : null;
+    const polling: UnknownRecord | null =
+      isRecord(connectionData) && isRecord(connectionData.polling)
+        ? connectionData.polling
+        : null;
+
+    const status =
+      typeof connection?.status === "string" ? connection.status : null;
     const connectedOk = status === "connected";
 
     const now = Date.now();
     const lastSyncAt =
-      typeof connectionData?.polling?.lastSyncAt === "number"
-        ? connectionData.polling.lastSyncAt
+      typeof polling?.lastSyncAt === "number"
+        ? polling.lastSyncAt
         : 0;
 
     // "Meaningful" for onboarding: sync happened recently enough to trust.
     const syncOk = connectedOk && lastSyncAt > 0 && now - lastSyncAt < 24 * 60 * 60 * 1000;
 
-    const hasClosedIdeas = Array.isArray(closedIdeas?.page) && closedIdeas!.page.length > 0;
+    const closedIdeasPage = Array.isArray(closedIdeas?.page) ? closedIdeas.page : [];
+    const hasClosedIdeas = closedIdeasPage.length > 0;
     const tradesOk = connectedOk && syncOk && hasClosedIdeas;
 
+    const firstClosed = closedIdeasPage[0];
     const candidateSymbol =
-      typeof closedIdeas?.page?.[0]?.symbol === "string"
-        ? String(closedIdeas.page[0].symbol).trim()
+      isRecord(firstClosed) && typeof firstClosed.symbol === "string"
+        ? firstClosed.symbol.trim()
         : "";
     const symbolOk = tradesOk && Boolean(candidateSymbol);
 
@@ -82,6 +115,6 @@ export const useOnboardingStatus = (): OnboardingStatus => {
       nextStepHref,
       isComplete: completedSteps >= totalSteps,
     };
-  }, [closedIdeas?.page, connectionData, nextToReview]);
+  }, [authLoading, closedIdeas, connectionData, isAuthenticated, nextToReview]);
 };
 

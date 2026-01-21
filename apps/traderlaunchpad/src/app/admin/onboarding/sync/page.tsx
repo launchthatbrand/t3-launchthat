@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useQuery } from "convex/react";
 import { ArrowRight, RefreshCw, ShieldAlert, Zap } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
@@ -27,7 +27,12 @@ const formatAge = (ms: number) => {
 export default function OnboardingSyncPage() {
   const status = useOnboardingStatus();
   const syncNow = useAction(api.traderlaunchpad.actions.syncMyTradeLockerNow);
-  const connectionData = useQuery(api.traderlaunchpad.queries.getMyTradeLockerConnection, {});
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const shouldQuery = isAuthenticated && !authLoading;
+  const connectionData = useQuery(
+    api.traderlaunchpad.queries.getMyTradeLockerConnection,
+    shouldQuery ? {} : "skip",
+  );
 
   const [isSyncing, setIsSyncing] = React.useState(false);
   const [lastResult, setLastResult] = React.useState<unknown>(null);
