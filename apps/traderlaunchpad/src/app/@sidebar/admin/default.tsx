@@ -30,8 +30,8 @@ interface NavItem {
 
 const NAV_ICON_CLASS =
   "text-white/80 transition-colors group-hover/menu-button:text-white group-data-[active=true]/menu-button:text-orange-200";
-const NAV_ICON_SIZE_CLASS =
-  "h-6 w-6 group-data-[collapsible=icon]:h-5 group-data-[collapsible=icon]:w-5";
+// Keep nav icons the same size in both expanded + collapsed (icon) modes.
+const NAV_ICON_SIZE_CLASS = "h-6 w-6";
 
 const navItems: NavItem[] = [
   {
@@ -39,7 +39,7 @@ const navItems: NavItem[] = [
     href: "/admin/dashboard",
     icon: (
       <IconBrandTabler
-        stroke={1.6}
+        stroke={1}
         className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
       />
     ),
@@ -49,7 +49,7 @@ const navItems: NavItem[] = [
     href: "/admin/journal",
     icon: (
       <IconNotebook
-        stroke={1.6}
+        stroke={1}
         className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
       />
     ),
@@ -59,7 +59,7 @@ const navItems: NavItem[] = [
     href: "/admin/tradeideas",
     icon: (
       <IconBulb
-        stroke={1.6}
+        stroke={1}
         className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
       />
     ),
@@ -69,7 +69,7 @@ const navItems: NavItem[] = [
     href: "/admin/tradingplan",
     icon: (
       <IconTargetArrow
-        stroke={1.6}
+        stroke={1}
         className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
       />
     ),
@@ -79,7 +79,7 @@ const navItems: NavItem[] = [
     href: "/admin/settings",
     icon: (
       <IconSettings
-        stroke={1.6}
+        stroke={1}
         className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
       />
     ),
@@ -94,8 +94,10 @@ export default function AdminSidebarDefault() {
       collapsible="icon"
       className="overflow-hidden border-white/10 bg-black/35 text-white backdrop-blur-md"
     >
-      <SidebarHeader>
-        <SidebarMenu>
+      {/* Remove default header padding so logo aligns with nav menu inset. */}
+      <SidebarHeader className="p-0">
+        {/* Match the nav menu inset so the logo aligns with items. */}
+        <SidebarMenu className="p-3 group-data-[collapsible=icon]:items-center">
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
@@ -106,19 +108,20 @@ export default function AdminSidebarDefault() {
               }}
               // Default SidebarMenuButton collapses to `size-8` in icon mode.
               // Override that here so the brand mark stays larger + square.
-              className="md:h-11 rounded-xl hover:bg-white/8 active:bg-white/10 group-data-[collapsible=icon]:size-11!"
+              className="md:h-11 w-full p-0 rounded-xl hover:bg-white/8 active:bg-white/10 group-data-[collapsible=icon]:size-11! group-data-[collapsible=icon]:p-0!"
             >
               <Link
                 href="/admin/dashboard"
                 className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0"
               >
-                <div className="grid size-10 place-items-center overflow-hidden rounded-xl border border-white/10 bg-white/3 group-data-[collapsible=icon]:size-9">
+                <div className="grid size-10 place-items-center overflow-hidden rounded-xl border border-white/10 bg-white/3">
                   <Image
                     src="/images/tl-logo-1.png"
                     alt="Trader Launchpad"
                     width={100}
                     height={100}
-                    className="h-7 w-7 object-contain group-data-[collapsible=icon]:h-6 group-data-[collapsible=icon]:w-6"
+                    // Logo should always be slightly larger than nav icons.
+                    className="h-7 w-7 object-contain"
                     priority
                   />
                 </div>
@@ -131,7 +134,7 @@ export default function AdminSidebarDefault() {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarMenu className="p-3 gap-2">
+        <SidebarMenu className="p-3 gap-2 group-data-[collapsible=icon]:items-center">
           {navItems.map((item) => {
             const isActive =
               item.href === "/admin/dashboard"
@@ -145,14 +148,18 @@ export default function AdminSidebarDefault() {
                   tooltip={item.label}
                   isActive={isActive}
                   size="default"
-                  className="rounded-xl text-white/80 hover:bg-white/8 hover:text-white data-[active=true]:bg-orange-500/15 data-[active=true]:text-orange-100"
+                  // Default SidebarMenuButton collapses smaller in icon mode; keep it roomy.
+                  // Also override the default `[&>svg]:size-4` so icons stay bigger.
+                  className="h-11 rounded-xl text-white/80 hover:bg-white/8 hover:text-white data-[active=true]:bg-orange-500/15 data-[active=true]:text-orange-100 group-data-[collapsible=icon]:size-11! [&>svg]:size-6!"
                 >
                   <Link
                     href={item.href}
-                    className="gap-3 font-medium tracking-tight"
+                    className="gap-3 font-medium tracking-tight group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0"
                   >
                     {item.icon}
-                    <span>{item.label}</span>
+                    <span className="group-data-[collapsible=icon]:hidden">
+                      {item.label}
+                    </span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

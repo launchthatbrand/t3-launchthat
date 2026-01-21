@@ -167,7 +167,7 @@ export default async function RootLayout(props: {
                 showSidebar={showSidebar}
                 className="bg-transparent"
                 sidebarOpenOnHover={true}
-                sidebarWidthIcon="4rem"
+
 
               >
                 <div className="container py-6">
