@@ -5,6 +5,7 @@ import * as React from "react";
 import {
   IconBrandTabler,
   IconBulb,
+  IconMessageCircle,
   IconNotebook,
   IconSettings,
   IconTargetArrow,
@@ -69,6 +70,16 @@ const navItems: NavItem[] = [
     href: "/admin/tradingplan",
     icon: (
       <IconTargetArrow
+        stroke={1}
+        className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
+      />
+    ),
+  },
+  {
+    label: "Feedback",
+    href: "/admin/feedback",
+    icon: (
+      <IconMessageCircle
         stroke={1}
         className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
       />

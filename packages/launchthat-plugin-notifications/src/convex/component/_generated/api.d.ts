@@ -69,6 +69,29 @@ export type Mounts = {
     >;
   };
   queries: {
+    getDeliveryTogglesForUserEvent: FunctionReference<
+      "query",
+      "public",
+      { eventKey: string; orgId: string; userId: string },
+      {
+        orgEmailDefault: boolean | null;
+        orgInAppDefault: boolean | null;
+        userEmailOverride: boolean | null;
+        userInAppOverride: boolean | null;
+      }
+    >;
+    getUnreadCountByUserIdAcrossOrgs: FunctionReference<
+      "query",
+      "public",
+      { userId: string },
+      number
+    >;
+    getUnreadCountByUserIdAndOrgId: FunctionReference<
+      "query",
+      "public",
+      { orgId: string; userId: string },
+      number
+    >;
     paginateByUserIdAcrossOrgs: FunctionReference<
       "query",
       "public",

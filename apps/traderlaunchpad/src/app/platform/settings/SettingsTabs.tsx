@@ -7,6 +7,7 @@ import { cn } from "~/lib/utils";
 const tabs: Array<{ href: string; label: string }> = [
   { href: "/platform/settings/general", label: "General" },
   { href: "/platform/settings/emails", label: "Email" },
+  { href: "/platform/settings/notifications", label: "Notifications" },
 ];
 
 export const SettingsTabs = () => {

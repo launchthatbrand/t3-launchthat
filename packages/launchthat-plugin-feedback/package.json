@@ -1,5 +1,5 @@
 {
-  "name": "launchthat-plugin-notifications",
+  "name": "launchthat-plugin-feedback",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,10 +7,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./src/index.ts"
-    },
-    "./server": {
-      "types": "./dist/server/index.d.ts",
-      "default": "./src/server/index.ts"
     },
     "./frontend": {
       "types": "./dist/frontend/index.d.ts",

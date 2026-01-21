@@ -16,8 +16,11 @@ import type * as discord_queries from "../discord/queries.js";
 import type * as email_actions from "../email/actions.js";
 import type * as email_mutations from "../email/mutations.js";
 import type * as email_queries from "../email/queries.js";
+import type * as feedback_mutations from "../feedback/mutations.js";
+import type * as feedback_queries from "../feedback/queries.js";
 import type * as notifications_mutations from "../notifications/mutations.js";
 import type * as notifications_queries from "../notifications/queries.js";
+import type * as notifications_test from "../notifications/test.js";
 import type * as onboarding_mutations from "../onboarding/mutations.js";
 import type * as onboarding_queries from "../onboarding/queries.js";
 import type * as traderlaunchpad_actions from "../traderlaunchpad/actions.js";
@@ -49,8 +52,11 @@ declare const fullApi: ApiFromModules<{
   "email/actions": typeof email_actions;
   "email/mutations": typeof email_mutations;
   "email/queries": typeof email_queries;
+  "feedback/mutations": typeof feedback_mutations;
+  "feedback/queries": typeof feedback_queries;
   "notifications/mutations": typeof notifications_mutations;
   "notifications/queries": typeof notifications_queries;
+  "notifications/test": typeof notifications_test;
   "onboarding/mutations": typeof onboarding_mutations;
   "onboarding/queries": typeof onboarding_queries;
   "traderlaunchpad/actions": typeof traderlaunchpad_actions;
@@ -141,6 +147,29 @@ export declare const components: {
       >;
     };
     queries: {
+      getDeliveryTogglesForUserEvent: FunctionReference<
+        "query",
+        "internal",
+        { eventKey: string; orgId: string; userId: string },
+        {
+          orgEmailDefault: boolean | null;
+          orgInAppDefault: boolean | null;
+          userEmailOverride: boolean | null;
+          userInAppOverride: boolean | null;
+        }
+      >;
+      getUnreadCountByUserIdAcrossOrgs: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        number
+      >;
+      getUnreadCountByUserIdAndOrgId: FunctionReference<
+        "query",
+        "internal",
+        { orgId: string; userId: string },
+        number
+      >;
       paginateByUserIdAcrossOrgs: FunctionReference<
         "query",
         "internal",
@@ -290,6 +319,53 @@ export declare const components: {
           };
         },
         { continueCursor: string | null; isDone: boolean; page: Array<any> }
+      >;
+    };
+  };
+  launchthat_feedback: {
+    mutations: {
+      addComment: FunctionReference<
+        "mutation",
+        "internal",
+        { authorUserId: string; body: string; threadId: string },
+        string
+      >;
+      createThread: FunctionReference<
+        "mutation",
+        "internal",
+        { authorUserId: string; boardId: string; body: string; title: string },
+        string
+      >;
+      toggleUpvote: FunctionReference<
+        "mutation",
+        "internal",
+        { threadId: string; userId: string },
+        { upvoteCount: number; upvoted: boolean }
+      >;
+    };
+    queries: {
+      getThreadWithViewer: FunctionReference<
+        "query",
+        "internal",
+        { threadId: string; userId: string },
+        null | any
+      >;
+      listComments: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; threadId: string },
+        Array<any>
+      >;
+      listThreadsForUser: FunctionReference<
+        "query",
+        "internal",
+        {
+          boardId: string;
+          limit?: number;
+          sort?: "trending" | "new";
+          userId: string;
+        },
+        Array<any>
       >;
     };
   };

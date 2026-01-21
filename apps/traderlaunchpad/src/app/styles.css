@@ -216,6 +216,24 @@
   }
 }
 
+/* TraderLaunchpad: unread badge pulse (every 3s) */
+@keyframes tlp-unread-badge-pulse {
+  0%,
+  74%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0);
+  }
+  80% {
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.45);
+  }
+  88% {
+    box-shadow: 0 0 0 6px rgba(249, 115, 22, 0.25);
+  }
+  96% {
+    box-shadow: 0 0 0 10px rgba(249, 115, 22, 0);
+  }
+}
+
 @layer utilities {
   /**
    * Frosted-glass title plate for hero text.

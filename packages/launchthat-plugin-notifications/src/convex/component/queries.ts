@@ -145,3 +145,97 @@ export const paginateByUserIdAcrossOrgs = query({
   },
 });
 
+/**
+ * Read delivery toggles for a given user/org + eventKey.
+ * Used by app-level test harnesses to implement "respectPreferences" mode.
+ *
+ * Note: user email is app-owned (root table), so this only returns toggle booleans.
+ */
+export const getDeliveryTogglesForUserEvent = query({
+  args: {
+    userId: v.string(),
+    orgId: v.string(),
+    eventKey: v.string(),
+  },
+  returns: v.object({
+    userInAppOverride: v.union(v.boolean(), v.null()),
+    userEmailOverride: v.union(v.boolean(), v.null()),
+    orgInAppDefault: v.union(v.boolean(), v.null()),
+    orgEmailDefault: v.union(v.boolean(), v.null()),
+  }),
+  handler: async (ctx, args) => {
+    const eventKey = args.eventKey.trim();
+
+    const orgDefaults = await ctx.db
+      .query("notificationOrgDefaults")
+      .withIndex("by_org", (q: any) => q.eq("orgId", args.orgId))
+      .first();
+
+    const userPrefs = await ctx.db
+      .query("notificationUserEventPrefs")
+      .withIndex("by_user_org", (q: any) =>
+        q.eq("userId", args.userId).eq("orgId", args.orgId),
+      )
+      .first();
+
+    const userInAppOverride =
+      typeof userPrefs?.inAppEnabled?.[eventKey] === "boolean"
+        ? Boolean(userPrefs.inAppEnabled?.[eventKey])
+        : null;
+    const userEmailOverride =
+      typeof userPrefs?.emailEnabled?.[eventKey] === "boolean"
+        ? Boolean(userPrefs.emailEnabled?.[eventKey])
+        : null;
+
+    const orgInAppDefault =
+      typeof orgDefaults?.inAppDefaults?.[eventKey] === "boolean"
+        ? Boolean(orgDefaults.inAppDefaults?.[eventKey])
+        : null;
+    const orgEmailDefault =
+      typeof orgDefaults?.emailDefaults?.[eventKey] === "boolean"
+        ? Boolean(orgDefaults.emailDefaults?.[eventKey])
+        : null;
+
+    return {
+      userInAppOverride,
+      userEmailOverride,
+      orgInAppDefault,
+      orgEmailDefault,
+    };
+  },
+});
+
+/**
+ * Unread count across all orgs for a user.
+ * Useful for header badge indicators (TraderLaunchpad-style inbox).
+ */
+export const getUnreadCountByUserIdAcrossOrgs = query({
+  args: { userId: v.string() },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const unread = await ctx.db
+      .query("notifications")
+      .withIndex("by_user_read", (q: any) => q.eq("userId", args.userId).eq("read", false))
+      .collect();
+    return unread.length;
+  },
+});
+
+/**
+ * Unread count for a user within a specific org.
+ * Useful for portal-style org-scoped inbox.
+ */
+export const getUnreadCountByUserIdAndOrgId = query({
+  args: { userId: v.string(), orgId: v.string() },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const unread = await ctx.db
+      .query("notifications")
+      .withIndex("by_user_org_read", (q: any) =>
+        q.eq("userId", args.userId).eq("orgId", args.orgId).eq("read", false),
+      )
+      .collect();
+    return unread.length;
+  },
+});
+

@@ -19,6 +19,12 @@ interface NotificationsQueries {
     },
     unknown
   >;
+  getUnreadCountByUserIdAcrossOrgs: FunctionReference<
+    "query",
+    "public",
+    { userId: string },
+    unknown
+  >;
 }
 
 const notificationsQueries = (() => {
@@ -79,6 +85,20 @@ export const paginateByClerkIdAcrossOrgs = query({
           ? res.continueCursor
           : null,
     };
+  },
+});
+
+export const getUnreadCountByClerkIdAcrossOrgs = query({
+  args: { clerkId: v.string() },
+  returns: v.number(),
+  handler: async (ctx, args) => {
+    const userId = await resolveUserIdByClerkId(ctx, args.clerkId);
+    if (!userId) return 0;
+    const count = await ctx.runQuery(
+      notificationsQueries.getUnreadCountByUserIdAcrossOrgs,
+      { userId },
+    );
+    return typeof count === "number" ? count : 0;
   },
 });
 

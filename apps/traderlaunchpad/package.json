@@ -53,6 +53,7 @@
     "launchthat-plugin-core-tenant": "workspace:*",
     "launchthat-plugin-discord": "workspace:*",
     "launchthat-plugin-email": "workspace:*",
+    "launchthat-plugin-feedback": "workspace:*",
     "launchthat-plugin-notifications": "workspace:*",
     "launchthat-plugin-onboarding": "workspace:*",
     "launchthat-plugin-pricedata": "workspace:*",
