@@ -20,6 +20,18 @@
       ],
       "launchthat-plugin-discord/*": [
         "../../packages/launchthat-plugin-discord/src/*"
+      ],
+      "launchthat-plugin-notifications": [
+        "../../packages/launchthat-plugin-notifications/src/index.ts"
+      ],
+      "launchthat-plugin-notifications/*": [
+        "../../packages/launchthat-plugin-notifications/src/*"
+      ],
+      "launchthat-plugin-core-tenant": [
+        "../../packages/launchthat-plugin-core-tenant/src/index.ts"
+      ],
+      "launchthat-plugin-core-tenant/*": [
+        "../../packages/launchthat-plugin-core-tenant/src/*"
       ]
     },
     "plugins": [{ "name": "next" }]

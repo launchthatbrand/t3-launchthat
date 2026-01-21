@@ -8,9 +8,12 @@
  * @module
  */
 
+import type * as coreTenant_mutations from "../coreTenant/mutations.js";
 import type * as discord_actions from "../discord/actions.js";
 import type * as discord_mutations from "../discord/mutations.js";
 import type * as discord_queries from "../discord/queries.js";
+import type * as notifications_mutations from "../notifications/mutations.js";
+import type * as notifications_queries from "../notifications/queries.js";
 import type * as onboarding_mutations from "../onboarding/mutations.js";
 import type * as onboarding_queries from "../onboarding/queries.js";
 import type * as traderlaunchpad_actions from "../traderlaunchpad/actions.js";
@@ -34,9 +37,12 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "coreTenant/mutations": typeof coreTenant_mutations;
   "discord/actions": typeof discord_actions;
   "discord/mutations": typeof discord_mutations;
   "discord/queries": typeof discord_queries;
+  "notifications/mutations": typeof notifications_mutations;
+  "notifications/queries": typeof notifications_queries;
   "onboarding/mutations": typeof onboarding_mutations;
   "onboarding/queries": typeof onboarding_queries;
   "traderlaunchpad/actions": typeof traderlaunchpad_actions;
@@ -57,6 +63,129 @@ export declare const internal: FilterApi<
 >;
 
 export declare const components: {
+  launchthat_core_tenant: {
+    mutations: {
+      createOrGetUser: FunctionReference<
+        "mutation",
+        "internal",
+        {},
+        null | string
+      >;
+      createOrganization: FunctionReference<
+        "mutation",
+        "internal",
+        { name: string; slug?: string },
+        string
+      >;
+      setActiveOrganization: FunctionReference<
+        "mutation",
+        "internal",
+        { organizationId: string },
+        null
+      >;
+    };
+    queries: {
+      getUserByClerkId: FunctionReference<
+        "query",
+        "internal",
+        { clerkId: string },
+        null | {
+          _creationTime: number;
+          _id: string;
+          clerkId?: string;
+          email: string;
+          image?: string;
+          name?: string;
+          organizationId?: string;
+          tokenIdentifier?: string;
+        }
+      >;
+      listMyOrganizationsByClerkId: FunctionReference<
+        "query",
+        "internal",
+        { clerkId: string },
+        Array<{
+          isActive: boolean;
+          org: { _id: string; name: string; slug: string };
+          organizationId: string;
+          role: string;
+        }>
+      >;
+    };
+  };
+  launchthat_notifications: {
+    mutations: {
+      createNotification: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          actionUrl?: string;
+          clerkId: string;
+          content?: string;
+          eventKey: string;
+          orgId: string;
+          tabKey?: string;
+          title: string;
+        },
+        null | string
+      >;
+      markAllNotificationsAsReadByClerkId: FunctionReference<
+        "mutation",
+        "internal",
+        { clerkId: string },
+        number
+      >;
+      markAllNotificationsAsReadByClerkIdAndOrgId: FunctionReference<
+        "mutation",
+        "internal",
+        { clerkId: string; orgId: string },
+        number
+      >;
+      markNotificationAsRead: FunctionReference<
+        "mutation",
+        "internal",
+        { notificationId: string },
+        boolean
+      >;
+    };
+    queries: {
+      paginateByClerkIdAcrossOrgs: FunctionReference<
+        "query",
+        "internal",
+        {
+          clerkId: string;
+          filters?: { eventKey?: string; tabKey?: string };
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        { continueCursor: string | null; isDone: boolean; page: Array<any> }
+      >;
+      paginateByClerkIdAndOrgId: FunctionReference<
+        "query",
+        "internal",
+        {
+          clerkId: string;
+          filters?: { eventKey?: string; tabKey?: string };
+          orgId: string;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        { continueCursor: string | null; isDone: boolean; page: Array<any> }
+      >;
+    };
+  };
   launchthat_traderlaunchpad: {
     connections: {
       drafts: {

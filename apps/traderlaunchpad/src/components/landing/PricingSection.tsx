@@ -164,7 +164,7 @@ export const PricingSection = () => {
       kind: "feature",
       row: {
         label: "AI credit (monthly)",
-        free: <span className="text-sm font-medium text-white/85">$5 / mo</span>,
+        free: <div className="flex flex-col gap-2 items-start"><span className="text-sm font-medium text-white/85">$5 / mo</span><sub>~50 AI insights</sub></div>,
         standard: <span className="text-sm font-medium text-orange-200">Unlimited</span>,
         pro: <span className="text-sm font-medium text-orange-200">Unlimited</span>,
       },

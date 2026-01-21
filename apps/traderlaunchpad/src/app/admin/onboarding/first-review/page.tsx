@@ -40,7 +40,7 @@ export default function OnboardingFirstReviewPage() {
   const nextToReview = useQuery(
     api.traderlaunchpad.queries.listMyNextTradeIdeasToReview,
     shouldQuery ? { limit: 3 } : "skip",
-  }) as NextToReviewRow[] | undefined;
+  ) as NextToReviewRow[] | undefined;
   const first = Array.isArray(nextToReview) ? nextToReview[0] : undefined;
 
   return (

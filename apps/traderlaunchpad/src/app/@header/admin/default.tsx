@@ -2,6 +2,7 @@ import * as React from "react";
 
 import AppHeader from "@acme/ui/layout/AppHeader";
 import { TraderLaunchpadNavUser } from "~/components/auth/TraderLaunchpadNavUser";
+import { TraderLaunchpadNotificationsMenu } from "~/components/notifications/TraderLaunchpadNotificationsMenu";
 
 export default function AdminHeaderDefault() {
   return (
@@ -12,7 +13,12 @@ export default function AdminHeaderDefault() {
         showLogo={false}
         className="border-white/10 bg-black/40 text-white backdrop-blur-md"
         // image="/images/tl-logo-1.png"
-        rightSlot={<TraderLaunchpadNavUser afterSignOutUrl="/" />}
+        rightSlot={
+          <div className="flex items-center gap-2">
+            <TraderLaunchpadNotificationsMenu />
+            <TraderLaunchpadNavUser afterSignOutUrl="/" />
+          </div>
+        }
       />
     </div>
   );
