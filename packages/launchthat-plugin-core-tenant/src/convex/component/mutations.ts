@@ -1,111 +1,6 @@
 import { v } from "convex/values";
 
-import type { MutationCtx } from "convex/server";
-
 import { internalMutation, mutation } from "./server";
-
-const ensureUser = async (ctx: MutationCtx): Promise<any | null> => {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) return null;
-
-  let existing =
-    (await ctx.db
-      .query("users")
-      .withIndex("by_token", (q: any) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .first()) ?? null;
-
-  if (!existing && typeof identity.subject === "string" && identity.subject.trim()) {
-    existing = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", identity.subject))
-      .first();
-  }
-
-  const now = Date.now();
-
-  if (existing) {
-    const patch: Record<string, unknown> = { updatedAt: now };
-    if (
-      typeof identity.tokenIdentifier === "string" &&
-      identity.tokenIdentifier.trim() &&
-      existing.tokenIdentifier !== identity.tokenIdentifier
-    ) {
-      patch.tokenIdentifier = identity.tokenIdentifier;
-    }
-    if (!existing.clerkId && typeof identity.subject === "string") {
-      patch.clerkId = identity.subject;
-    }
-    if (
-      typeof identity.email === "string" &&
-      identity.email.trim() &&
-      existing.email !== identity.email
-    ) {
-      patch.email = identity.email.trim();
-    }
-    const nextName = identity.name ?? identity.nickname;
-    if (
-      typeof nextName === "string" &&
-      nextName.trim() &&
-      existing.name !== nextName
-    ) {
-      patch.name = nextName;
-    }
-    const nextImage =
-      typeof identity.picture === "string" ? identity.picture : undefined;
-    if (existing.image !== nextImage) {
-      patch.image = nextImage;
-    }
-
-    if (Object.keys(patch).length > 0) {
-      await ctx.db.patch(existing._id, patch as any);
-    }
-    return existing._id;
-  }
-
-  const email =
-    typeof identity.email === "string" && identity.email.trim()
-      ? identity.email.trim()
-      : "";
-
-  const userId = await ctx.db.insert("users", {
-    email,
-    tokenIdentifier: identity.tokenIdentifier,
-    clerkId: typeof identity.subject === "string" ? identity.subject : undefined,
-    name: identity.name ?? identity.nickname ?? undefined,
-    image: typeof identity.picture === "string" ? identity.picture : undefined,
-    createdAt: now,
-    updatedAt: now,
-  } as any);
-  return userId;
-};
-
-/**
- * Internal: ensure a `users` row exists for the currently authenticated identity.
- * - Creates user if missing
- * - Backfills tokenIdentifier when initially missing
- */
-export const internalEnsureUser = internalMutation({
-  args: {},
-  returns: v.union(v.null(), v.id("users")),
-  handler: async (ctx) => {
-    const id = await ensureUser(ctx as unknown as MutationCtx);
-    return id ?? null;
-  },
-});
-
-/**
- * Public wrapper: clients can call this after sign-in to ensure a Convex user exists.
- */
-export const createOrGetUser = mutation({
-  args: {},
-  returns: v.union(v.null(), v.id("users")),
-  handler: async (ctx) => {
-    const id = await ensureUser(ctx as unknown as MutationCtx);
-    return id ?? null;
-  },
-});
 
 const normalizeSlug = (raw: string): string => {
   const normalized = raw
@@ -118,16 +13,12 @@ const normalizeSlug = (raw: string): string => {
 
 export const createOrganization = mutation({
   args: {
+    userId: v.string(),
     name: v.string(),
     slug: v.optional(v.string()),
   },
-  returns: v.id("organizations"),
+  returns: v.string(),
   handler: async (ctx, args) => {
-    const userId = await ensureUser(ctx as unknown as MutationCtx);
-    if (!userId) {
-      throw new Error("Authentication required");
-    }
-
     const slugBase = typeof args.slug === "string" && args.slug.trim()
       ? args.slug.trim()
       : args.name;
@@ -148,13 +39,13 @@ export const createOrganization = mutation({
     const orgId = await ctx.db.insert("organizations", {
       name: args.name,
       slug,
-      ownerId: userId,
+      ownerId: args.userId,
       createdAt: now,
       updatedAt: now,
     } as any);
 
     await ctx.db.insert("userOrganizations", {
-      userId,
+      userId: args.userId,
       organizationId: orgId,
       role: "owner",
       isActive: true,
@@ -162,36 +53,57 @@ export const createOrganization = mutation({
       updatedAt: now,
     } as any);
 
-    // Backfill user's default org if absent.
-    const user = await ctx.db.get(userId);
-    if (user && !user.organizationId) {
-      await ctx.db.patch(userId, { organizationId: orgId, updatedAt: now } as any);
-    }
-
-    return orgId;
+    return String(orgId);
   },
 });
 
-export const setActiveOrganization = mutation({
-  args: { organizationId: v.id("organizations") },
+export const ensureMembership = mutation({
+  args: {
+    userId: v.string(),
+    organizationId: v.string(),
+    role: v.optional(
+      v.union(
+        v.literal("owner"),
+        v.literal("admin"),
+        v.literal("editor"),
+        v.literal("viewer"),
+        v.literal("student"),
+      ),
+    ),
+    setActive: v.optional(v.boolean()),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await ensureUser(ctx as unknown as MutationCtx);
-    if (!userId) throw new Error("Authentication required");
-
-    // Verify membership.
     const membership = await ctx.db
       .query("userOrganizations")
       .withIndex("by_user_organization", (q: any) =>
-        q.eq("userId", userId).eq("organizationId", args.organizationId),
+        q.eq("userId", args.userId).eq("organizationId", args.organizationId as any),
       )
       .first();
-    if (!membership || !membership.isActive) {
-      throw new Error("Not a member of this organization");
-    }
 
     const now = Date.now();
-    await ctx.db.patch(userId, { organizationId: args.organizationId, updatedAt: now } as any);
+    if (!membership) {
+      await ctx.db.insert("userOrganizations", {
+        userId: args.userId,
+        organizationId: args.organizationId as any,
+        role: args.role ?? "viewer",
+        isActive: args.setActive ?? false,
+        joinedAt: now,
+        updatedAt: now,
+      } as any);
+      return null;
+    }
+
+    const patch: Record<string, unknown> = { updatedAt: now };
+    if (args.setActive === true && membership.isActive !== true) {
+      patch.isActive = true;
+    }
+    if (args.role && membership.role !== args.role) {
+      patch.role = args.role;
+    }
+    if (Object.keys(patch).length > 1) {
+      await ctx.db.patch(membership._id, patch as any);
+    }
     return null;
   },
 });

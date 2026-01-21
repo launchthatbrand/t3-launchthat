@@ -1625,9 +1625,18 @@ importers:
       framer-motion:
         specifier: ^12.12.2
         version: 12.23.24(@emotion/is-prop-valid@1.3.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      launchthat-plugin-core-tenant:
+        specifier: workspace:*
+        version: link:../../packages/launchthat-plugin-core-tenant
       launchthat-plugin-discord:
         specifier: workspace:*
         version: link:../../packages/launchthat-plugin-discord
+      launchthat-plugin-email:
+        specifier: workspace:*
+        version: link:../../packages/launchthat-plugin-email
+      launchthat-plugin-notifications:
+        specifier: workspace:*
+        version: link:../../packages/launchthat-plugin-notifications
       launchthat-plugin-onboarding:
         specifier: workspace:*
         version: link:../../packages/launchthat-plugin-onboarding
@@ -3086,6 +3095,46 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
 
+  packages/launchthat-plugin-email:
+    dependencies:
+      '@acme/ui':
+        specifier: workspace:*
+        version: link:../ui
+      convex:
+        specifier: ^1.23.0
+        version: 1.23.0(@clerk/clerk-react@5.30.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      psl:
+        specifier: ^1.15.0
+        version: 1.15.0
+    devDependencies:
+      '@acme/eslint-config':
+        specifier: workspace:*
+        version: link:../../tooling/eslint
+      '@acme/prettier-config':
+        specifier: workspace:*
+        version: link:../../tooling/prettier
+      '@acme/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.19.1
+      '@types/react':
+        specifier: catalog:react19
+        version: 19.0.12
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.1(jiti@2.6.1)
+      prettier:
+        specifier: 'catalog:'
+        version: 3.6.2
+      react:
+        specifier: catalog:react19
+        version: 19.0.0
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
   packages/launchthat-plugin-helpdesk:
     dependencies:
       dev:
@@ -3226,9 +3275,15 @@ importers:
 
   packages/launchthat-plugin-notifications:
     dependencies:
+      '@acme/ui':
+        specifier: workspace:*
+        version: link:../ui
       convex:
         specifier: ^1.23.0
         version: 1.23.0(@clerk/clerk-react@5.30.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      launchthat-plugin-core-tenant:
+        specifier: workspace:*
+        version: link:../launchthat-plugin-core-tenant
     devDependencies:
       '@acme/eslint-config':
         specifier: workspace:*

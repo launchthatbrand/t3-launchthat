@@ -40,25 +40,25 @@ export type Mounts = {
       "public",
       {
         actionUrl?: string;
-        clerkId: string;
         content?: string;
         eventKey: string;
         orgId: string;
         tabKey?: string;
         title: string;
+        userId: string;
       },
       null | string
     >;
-    markAllNotificationsAsReadByClerkId: FunctionReference<
+    markAllNotificationsAsReadByUserId: FunctionReference<
       "mutation",
       "public",
-      { clerkId: string },
+      { userId: string },
       number
     >;
-    markAllNotificationsAsReadByClerkIdAndOrgId: FunctionReference<
+    markAllNotificationsAsReadByUserIdAndOrgId: FunctionReference<
       "mutation",
       "public",
-      { clerkId: string; orgId: string },
+      { orgId: string; userId: string },
       number
     >;
     markNotificationAsRead: FunctionReference<
@@ -69,11 +69,10 @@ export type Mounts = {
     >;
   };
   queries: {
-    paginateByClerkIdAcrossOrgs: FunctionReference<
+    paginateByUserIdAcrossOrgs: FunctionReference<
       "query",
       "public",
       {
-        clerkId: string;
         filters?: { eventKey?: string; tabKey?: string };
         paginationOpts: {
           cursor: string | null;
@@ -83,14 +82,14 @@ export type Mounts = {
           maximumRowsRead?: number;
           numItems: number;
         };
+        userId: string;
       },
       { continueCursor: string | null; isDone: boolean; page: Array<any> }
     >;
-    paginateByClerkIdAndOrgId: FunctionReference<
+    paginateByUserIdAndOrgId: FunctionReference<
       "query",
       "public",
       {
-        clerkId: string;
         filters?: { eventKey?: string; tabKey?: string };
         orgId: string;
         paginationOpts: {
@@ -101,6 +100,7 @@ export type Mounts = {
           maximumRowsRead?: number;
           numItems: number;
         };
+        userId: string;
       },
       { continueCursor: string | null; isDone: boolean; page: Array<any> }
     >;

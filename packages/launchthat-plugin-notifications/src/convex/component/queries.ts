@@ -3,31 +3,18 @@ import { v } from "convex/values";
 
 import { query } from "./server";
 
-const resolveUserIdByClerkId = async (
-  ctx: any,
-  clerkId: string,
-): Promise<string | null> => {
-  const identity = await ctx.auth.getUserIdentity();
-  if (identity?.tokenIdentifier) {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q: any) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
-      )
-      .unique();
-    return user ? String(user._id) : null;
-  }
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", clerkId))
-    .first();
-  return user ? String(user._id) : null;
+const decodeCreatedAtCursor = (cursor: string | null): number | null => {
+  if (!cursor) return null;
+  const n = Number(cursor);
+  return Number.isFinite(n) ? n : null;
 };
 
-export const paginateByClerkIdAndOrgId = query({
+const encodeCreatedAtCursor = (createdAt: number): string => String(createdAt);
+
+export const paginateByUserIdAndOrgId = query({
   args: {
-    clerkId: v.string(),
-    orgId: v.id("organizations"),
+    userId: v.string(),
+    orgId: v.string(),
     filters: v.optional(
       v.object({
         eventKey: v.optional(v.string()),
@@ -42,39 +29,47 @@ export const paginateByClerkIdAndOrgId = query({
     continueCursor: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
-    const userId = await resolveUserIdByClerkId(ctx, args.clerkId);
-    if (!userId) return { page: [], isDone: true, continueCursor: null };
+    const cursorCreatedAt = decodeCreatedAtCursor(args.paginationOpts.cursor);
 
-    const eventKeyRaw =
-      typeof args.filters?.eventKey === "string"
-        ? args.filters.eventKey.trim()
-        : undefined;
+    // Fetch a bit extra so we can compute isDone without `.paginate()`.
+    const limit = Math.max(1, args.paginationOpts.numItems);
+    const take = limit + 1;
 
-    const qBase = eventKeyRaw
-      ? ctx.db
-          .query("notifications")
-          .withIndex("by_user_org_eventKey", (q: any) =>
-            q
-              .eq("userId", userId as any)
-              .eq("orgId", args.orgId)
-              .eq("eventKey", eventKeyRaw),
-          )
-      : ctx.db
-          .query("notifications")
-          .withIndex("by_user_org_createdAt", (q: any) =>
-            q.eq("userId", userId as any).eq("orgId", args.orgId),
-          );
+    const q = ctx.db
+      .query("notifications")
+      .withIndex("by_user_org_createdAt", (q: any) => {
+        const base = q.eq("userId", args.userId).eq("orgId", args.orgId);
+        return cursorCreatedAt !== null ? base.lt("createdAt", cursorCreatedAt) : base;
+      })
+      .order("desc");
 
-    const result = await qBase.order("desc").paginate(args.paginationOpts);
+    const rows = await q.take(take);
+    const hasMore = rows.length > limit;
+    const slice = rows.slice(0, limit);
+
+    const eventKey =
+      typeof args.filters?.eventKey === "string" ? args.filters.eventKey.trim() : undefined;
     const tabKey = typeof args.filters?.tabKey === "string" ? args.filters.tabKey : undefined;
-    const page = tabKey ? result.page.filter((n: any) => n.tabKey === tabKey) : result.page;
-    return { page, isDone: result.isDone, continueCursor: result.continueCursor };
+
+    const page = slice.filter((n: any) => {
+      if (eventKey && n.eventKey !== eventKey) return false;
+      if (tabKey && n.tabKey !== tabKey) return false;
+      return true;
+    });
+
+    const last = slice[slice.length - 1] as any;
+    const continueCursor =
+      hasMore && typeof last?.createdAt === "number"
+        ? encodeCreatedAtCursor(last.createdAt)
+        : null;
+
+    return { page, isDone: !hasMore, continueCursor };
   },
 });
 
-export const paginateByClerkIdAcrossOrgs = query({
+export const paginateByUserIdAcrossOrgs = query({
   args: {
-    clerkId: v.string(),
+    userId: v.string(),
     filters: v.optional(
       v.object({
         eventKey: v.optional(v.string()),
@@ -89,15 +84,8 @@ export const paginateByClerkIdAcrossOrgs = query({
     continueCursor: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
-    const userId = await resolveUserIdByClerkId(ctx, args.clerkId);
-    if (!userId) return { page: [], isDone: true, continueCursor: null };
-
-    // For now, filter by tabKey/eventKey in-memory to avoid extra indexes.
-    const result = await ctx.db
-      .query("notifications")
-      .withIndex("by_user_createdAt", (q: any) => q.eq("userId", userId as any))
-      .order("desc")
-      .paginate(args.paginationOpts);
+    const cursorCreatedAt = decodeCreatedAtCursor(args.paginationOpts.cursor);
+    const limit = Math.max(1, args.paginationOpts.numItems);
 
     const eventKey =
       typeof args.filters?.eventKey === "string"
@@ -105,13 +93,55 @@ export const paginateByClerkIdAcrossOrgs = query({
         : undefined;
     const tabKey = typeof args.filters?.tabKey === "string" ? args.filters.tabKey : undefined;
 
-    const page = result.page.filter((n: any) => {
-      if (eventKey && n.eventKey !== eventKey) return false;
-      if (tabKey && n.tabKey !== tabKey) return false;
-      return true;
-    });
+    // Because we might filter out items, fetch in chunks until we fill `limit` or exhaust.
+    const page: any[] = [];
+    let nextCursorCreatedAt: number | null = cursorCreatedAt;
+    let isDone = false;
 
-    return { page, isDone: result.isDone, continueCursor: result.continueCursor };
+    for (let i = 0; i < 10; i++) {
+      const q = ctx.db
+        .query("notifications")
+        .withIndex("by_user_createdAt", (q: any) => {
+          const base = q.eq("userId", args.userId);
+          return nextCursorCreatedAt !== null ? base.lt("createdAt", nextCursorCreatedAt) : base;
+        })
+        .order("desc");
+
+      const chunk = await q.take(limit * 3 + 1);
+      if (chunk.length === 0) {
+        isDone = true;
+        break;
+      }
+
+      for (const n of chunk) {
+        if (eventKey && n.eventKey !== eventKey) continue;
+        if (tabKey && n.tabKey !== tabKey) continue;
+        page.push(n);
+        if (page.length >= limit) break;
+      }
+
+      const last = chunk[chunk.length - 1] as any;
+      nextCursorCreatedAt = typeof last?.createdAt === "number" ? last.createdAt : null;
+
+      if (page.length >= limit) {
+        isDone = false;
+        break;
+      }
+
+      if (chunk.length <= limit * 3) {
+        isDone = true;
+        break;
+      }
+    }
+
+    const trimmed = page.slice(0, limit);
+    const lastIncluded = trimmed[trimmed.length - 1] as any;
+    const continueCursor =
+      !isDone && typeof lastIncluded?.createdAt === "number"
+        ? encodeCreatedAtCursor(lastIncluded.createdAt)
+        : null;
+
+    return { page: trimmed, isDone, continueCursor };
   },
 });
 

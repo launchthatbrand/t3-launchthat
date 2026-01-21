@@ -9,9 +9,13 @@
  */
 
 import type * as coreTenant_mutations from "../coreTenant/mutations.js";
+import type * as coreTenant_queries from "../coreTenant/queries.js";
 import type * as discord_actions from "../discord/actions.js";
 import type * as discord_mutations from "../discord/mutations.js";
 import type * as discord_queries from "../discord/queries.js";
+import type * as email_actions from "../email/actions.js";
+import type * as email_mutations from "../email/mutations.js";
+import type * as email_queries from "../email/queries.js";
 import type * as notifications_mutations from "../notifications/mutations.js";
 import type * as notifications_queries from "../notifications/queries.js";
 import type * as onboarding_mutations from "../onboarding/mutations.js";
@@ -38,9 +42,13 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   "coreTenant/mutations": typeof coreTenant_mutations;
+  "coreTenant/queries": typeof coreTenant_queries;
   "discord/actions": typeof discord_actions;
   "discord/mutations": typeof discord_mutations;
   "discord/queries": typeof discord_queries;
+  "email/actions": typeof email_actions;
+  "email/mutations": typeof email_mutations;
+  "email/queries": typeof email_queries;
   "notifications/mutations": typeof notifications_mutations;
   "notifications/queries": typeof notifications_queries;
   "onboarding/mutations": typeof onboarding_mutations;
@@ -65,45 +73,29 @@ export declare const internal: FilterApi<
 export declare const components: {
   launchthat_core_tenant: {
     mutations: {
-      createOrGetUser: FunctionReference<
-        "mutation",
-        "internal",
-        {},
-        null | string
-      >;
       createOrganization: FunctionReference<
         "mutation",
         "internal",
-        { name: string; slug?: string },
+        { name: string; slug?: string; userId: string },
         string
       >;
-      setActiveOrganization: FunctionReference<
+      ensureMembership: FunctionReference<
         "mutation",
         "internal",
-        { organizationId: string },
+        {
+          organizationId: string;
+          role?: "owner" | "admin" | "editor" | "viewer" | "student";
+          setActive?: boolean;
+          userId: string;
+        },
         null
       >;
     };
     queries: {
-      getUserByClerkId: FunctionReference<
+      listOrganizationsByUserId: FunctionReference<
         "query",
         "internal",
-        { clerkId: string },
-        null | {
-          _creationTime: number;
-          _id: string;
-          clerkId?: string;
-          email: string;
-          image?: string;
-          name?: string;
-          organizationId?: string;
-          tokenIdentifier?: string;
-        }
-      >;
-      listMyOrganizationsByClerkId: FunctionReference<
-        "query",
-        "internal",
-        { clerkId: string },
+        { userId: string },
         Array<{
           isActive: boolean;
           org: { _id: string; name: string; slug: string };
@@ -120,25 +112,25 @@ export declare const components: {
         "internal",
         {
           actionUrl?: string;
-          clerkId: string;
           content?: string;
           eventKey: string;
           orgId: string;
           tabKey?: string;
           title: string;
+          userId: string;
         },
         null | string
       >;
-      markAllNotificationsAsReadByClerkId: FunctionReference<
+      markAllNotificationsAsReadByUserId: FunctionReference<
         "mutation",
         "internal",
-        { clerkId: string },
+        { userId: string },
         number
       >;
-      markAllNotificationsAsReadByClerkIdAndOrgId: FunctionReference<
+      markAllNotificationsAsReadByUserIdAndOrgId: FunctionReference<
         "mutation",
         "internal",
-        { clerkId: string; orgId: string },
+        { orgId: string; userId: string },
         number
       >;
       markNotificationAsRead: FunctionReference<
@@ -149,11 +141,10 @@ export declare const components: {
       >;
     };
     queries: {
-      paginateByClerkIdAcrossOrgs: FunctionReference<
+      paginateByUserIdAcrossOrgs: FunctionReference<
         "query",
         "internal",
         {
-          clerkId: string;
           filters?: { eventKey?: string; tabKey?: string };
           paginationOpts: {
             cursor: string | null;
@@ -163,15 +154,131 @@ export declare const components: {
             maximumRowsRead?: number;
             numItems: number;
           };
+          userId: string;
         },
         { continueCursor: string | null; isDone: boolean; page: Array<any> }
       >;
-      paginateByClerkIdAndOrgId: FunctionReference<
+      paginateByUserIdAndOrgId: FunctionReference<
         "query",
         "internal",
         {
-          clerkId: string;
           filters?: { eventKey?: string; tabKey?: string };
+          orgId: string;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          userId: string;
+        },
+        { continueCursor: string | null; isDone: boolean; page: Array<any> }
+      >;
+    };
+  };
+  launchthat_email: {
+    actions: {
+      syncEmailDomain: FunctionReference<
+        "action",
+        "internal",
+        { orgId: string },
+        {
+          emailDomain: string | null;
+          lastError?: string;
+          records: Array<{ name: string; type: string; value: string }>;
+          status: "unconfigured" | "pending" | "verified" | "error";
+          updatedAt: number;
+        }
+      >;
+    };
+    delivery: {
+      emailSink: {
+        sendTransactionalEmail: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            orgId: string;
+            templateKey: string;
+            to: string;
+            variables: Record<string, string>;
+          },
+          string
+        >;
+      };
+    };
+    mutations: {
+      enqueueEmail: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          htmlBody: string;
+          orgId: string;
+          subject: string;
+          templateKey?: string;
+          textBody: string;
+          to: string;
+        },
+        string
+      >;
+      enqueueTestEmail: FunctionReference<
+        "mutation",
+        "internal",
+        { orgId: string; to: string },
+        string
+      >;
+      setEmailDomain: FunctionReference<
+        "mutation",
+        "internal",
+        { domain?: string; orgId: string },
+        null
+      >;
+      upsertEmailSettings: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          designKey?: "clean" | "bold" | "minimal";
+          enabled: boolean;
+          fromLocalPart: string;
+          fromMode: "portal" | "custom";
+          fromName: string;
+          orgId: string;
+          replyToEmail?: string;
+        },
+        null
+      >;
+    };
+    queries: {
+      getEmailDomain: FunctionReference<
+        "query",
+        "internal",
+        { orgId: string },
+        null | {
+          domain: string | null;
+          lastError?: string;
+          records: Array<{ name: string; type: string; value: string }>;
+          status: "unconfigured" | "pending" | "verified" | "error";
+          updatedAt: number;
+        }
+      >;
+      getEmailSettings: FunctionReference<
+        "query",
+        "internal",
+        { orgId: string },
+        null | {
+          designKey?: "clean" | "bold" | "minimal";
+          enabled: boolean;
+          fromLocalPart: string;
+          fromMode: "portal" | "custom";
+          fromName: string;
+          replyToEmail: string | null;
+        }
+      >;
+      listOutbox: FunctionReference<
+        "query",
+        "internal",
+        {
           orgId: string;
           paginationOpts: {
             cursor: string | null;

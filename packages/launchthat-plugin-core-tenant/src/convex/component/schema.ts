@@ -5,35 +5,17 @@ import { v } from "convex/values";
  * Minimal multi-tenant core schema, extracted from Portal.
  *
  * This is the shared foundation for features like notifications that need:
- * - Convex `users` table with Clerk identity mapping
  * - `organizations` + `userOrganizations` membership mapping
+ *
+ * Design decision:
+ * - `users` is app-owned (root table per application)
+ * - This component stores orgs + memberships keyed by `userId: string`
  */
 export default defineSchema({
-  users: defineTable({
-    // Identity
-    email: v.string(),
-    tokenIdentifier: v.optional(v.string()),
-    clerkId: v.optional(v.string()),
-
-    // Profile
-    name: v.optional(v.string()),
-    image: v.optional(v.string()),
-
-    // Convenience: default/last-selected org for apps that have an "active org"
-    organizationId: v.optional(v.id("organizations")),
-
-    createdAt: v.optional(v.number()),
-    updatedAt: v.optional(v.number()),
-  })
-    .index("by_email", ["email"])
-    .index("by_token", ["tokenIdentifier"])
-    .index("by_clerk_id", ["clerkId"])
-    .index("by_organization", ["organizationId"]),
-
   organizations: defineTable({
     name: v.string(),
     slug: v.string(),
-    ownerId: v.id("users"),
+    ownerId: v.string(),
 
     // Optional mapping to external identity providers
     clerkOrganizationId: v.optional(v.string()),
@@ -46,7 +28,7 @@ export default defineSchema({
     .index("by_clerk_org_id", ["clerkOrganizationId"]),
 
   userOrganizations: defineTable({
-    userId: v.id("users"),
+    userId: v.string(),
     organizationId: v.id("organizations"),
     role: v.union(
       v.literal("owner"),

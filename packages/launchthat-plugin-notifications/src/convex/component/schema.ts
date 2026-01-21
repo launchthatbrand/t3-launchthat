@@ -4,12 +4,13 @@ import { v } from "convex/values";
 /**
  * Notifications schema, modeled after Portal's notifications tables but tuned for reuse.
  *
- * Assumes `users` and `organizations` tables exist (provided by `launchthat-plugin-core-tenant`).
+ * Components cannot reference app/root tables or other component tables directly.
+ * Store cross-boundary identifiers as strings (userId/orgId) and let the app do mapping.
  */
 export default defineSchema({
   notifications: defineTable({
-    userId: v.id("users"),
-    orgId: v.id("organizations"),
+    userId: v.string(),
+    orgId: v.string(),
     eventKey: v.string(),
     // UI grouping (tabs). Core defaults to "system"; apps can use "organization", etc.
     tabKey: v.optional(v.string()),
@@ -21,7 +22,7 @@ export default defineSchema({
     actionUrl: v.optional(v.string()),
     actionData: v.optional(v.record(v.string(), v.string())),
     createdAt: v.number(),
-    sourceUserId: v.optional(v.id("users")),
+    sourceUserId: v.optional(v.string()),
     expiresAt: v.optional(v.number()),
   })
     .index("by_user_createdAt", ["userId", "createdAt"])
@@ -30,14 +31,14 @@ export default defineSchema({
     .index("by_user_org_eventKey", ["userId", "orgId", "eventKey"]),
 
   notificationOrgDefaults: defineTable({
-    orgId: v.id("organizations"),
+    orgId: v.string(),
     inAppDefaults: v.optional(v.record(v.string(), v.boolean())),
     emailDefaults: v.optional(v.record(v.string(), v.boolean())),
   }).index("by_org", ["orgId"]),
 
   notificationUserEventPrefs: defineTable({
-    userId: v.id("users"),
-    orgId: v.id("organizations"),
+    userId: v.string(),
+    orgId: v.string(),
     inAppEnabled: v.optional(v.record(v.string(), v.boolean())),
     emailEnabled: v.optional(v.record(v.string(), v.boolean())),
   }).index("by_user_org", ["userId", "orgId"]),

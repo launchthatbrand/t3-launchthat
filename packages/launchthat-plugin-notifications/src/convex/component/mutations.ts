@@ -17,33 +17,17 @@ export const markNotificationAsRead = mutation({
  * Mark all notifications as read for a user in a specific org.
  * Primarily used by Portal-style inbox.
  */
-export const markAllNotificationsAsReadByClerkIdAndOrgId = mutation({
+export const markAllNotificationsAsReadByUserIdAndOrgId = mutation({
   args: {
-    clerkId: v.string(),
-    orgId: v.id("organizations"),
+    userId: v.string(),
+    orgId: v.string(),
   },
   returns: v.number(),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    const tokenIdentifier =
-      typeof identity?.tokenIdentifier === "string" ? identity.tokenIdentifier : null;
-
-    const user =
-      tokenIdentifier
-        ? await ctx.db
-            .query("users")
-            .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", tokenIdentifier))
-            .first()
-        : await ctx.db
-            .query("users")
-            .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", args.clerkId))
-            .first();
-    if (!user) return 0;
-
     const unread = await ctx.db
       .query("notifications")
       .withIndex("by_user_org_read", (q: any) =>
-        q.eq("userId", user._id).eq("orgId", args.orgId).eq("read", false),
+        q.eq("userId", args.userId).eq("orgId", args.orgId).eq("read", false),
       )
       .collect();
 
@@ -59,29 +43,13 @@ export const markAllNotificationsAsReadByClerkIdAndOrgId = mutation({
  * Mark all notifications as read across all orgs for a user.
  * Used by TraderLaunchpad "all orgs" inbox.
  */
-export const markAllNotificationsAsReadByClerkId = mutation({
-  args: { clerkId: v.string() },
+export const markAllNotificationsAsReadByUserId = mutation({
+  args: { userId: v.string() },
   returns: v.number(),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    const tokenIdentifier =
-      typeof identity?.tokenIdentifier === "string" ? identity.tokenIdentifier : null;
-
-    const user =
-      tokenIdentifier
-        ? await ctx.db
-            .query("users")
-            .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", tokenIdentifier))
-            .first()
-        : await ctx.db
-            .query("users")
-            .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", args.clerkId))
-            .first();
-    if (!user) return 0;
-
     const all = await ctx.db
       .query("notifications")
-      .withIndex("by_user_createdAt", (q: any) => q.eq("userId", user._id))
+      .withIndex("by_user_createdAt", (q: any) => q.eq("userId", args.userId))
       .collect();
     const unread = all.filter((n: any) => n.read === false);
 
@@ -99,8 +67,8 @@ export const markAllNotificationsAsReadByClerkId = mutation({
  */
 export const createNotification = mutation({
   args: {
-    clerkId: v.string(),
-    orgId: v.id("organizations"),
+    userId: v.string(),
+    orgId: v.string(),
     eventKey: v.string(),
     tabKey: v.optional(v.string()),
     title: v.string(),
@@ -109,25 +77,9 @@ export const createNotification = mutation({
   },
   returns: v.union(v.null(), v.id("notifications")),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    const tokenIdentifier =
-      typeof identity?.tokenIdentifier === "string" ? identity.tokenIdentifier : null;
-
-    const user =
-      tokenIdentifier
-        ? await ctx.db
-            .query("users")
-            .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", tokenIdentifier))
-            .first()
-        : await ctx.db
-            .query("users")
-            .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", args.clerkId))
-            .first();
-    if (!user) return null;
-
     const createdAt = Date.now();
     const id = await ctx.db.insert("notifications", {
-      userId: user._id,
+      userId: args.userId,
       orgId: args.orgId,
       eventKey: args.eventKey,
       tabKey: (args.tabKey ?? "system").trim() || "system",

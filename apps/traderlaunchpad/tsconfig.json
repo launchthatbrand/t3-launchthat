@@ -32,6 +32,12 @@
       ],
       "launchthat-plugin-core-tenant/*": [
         "../../packages/launchthat-plugin-core-tenant/src/*"
+      ],
+      "launchthat-plugin-email": [
+        "../../packages/launchthat-plugin-email/src/index.ts"
+      ],
+      "launchthat-plugin-email/*": [
+        "../../packages/launchthat-plugin-email/src/*"
       ]
     },
     "plugins": [{ "name": "next" }]

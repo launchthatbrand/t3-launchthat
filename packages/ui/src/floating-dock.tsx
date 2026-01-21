@@ -15,12 +15,23 @@ import Link from "next/link";
 import type { MotionValue } from "motion/react";
 import { cn } from "@acme/ui";
 
+type DockItem = {
+  href: string;
+  icon: React.ReactNode;
+  /** Prefer `label` going forward (desktop tooltip). */
+  label?: string;
+  /** Back-compat for older callers. */
+  title?: string;
+};
+
+const getItemLabel = (item: DockItem): string => item.label ?? item.title ?? "";
+
 export const FloatingDock = ({
   items,
   desktopClassName,
   mobileClassName,
 }: {
-  items: { title: string; icon: React.ReactNode; href: string }[];
+  items: DockItem[];
   desktopClassName?: string;
   mobileClassName?: string;
 }) => {
@@ -36,7 +47,7 @@ export const FloatingDockMobile = ({
   items,
   className,
 }: {
-  items: { title: string; icon: React.ReactNode; href: string }[];
+  items: DockItem[];
   className?: string;
 }) => {
   const [open, setOpen] = useState(false);
@@ -50,7 +61,7 @@ export const FloatingDockMobile = ({
           >
             {items.map((item, idx) => (
               <motion.div
-                key={item.title}
+                key={getItemLabel(item)}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{
                   opacity: 1,
@@ -67,7 +78,7 @@ export const FloatingDockMobile = ({
               >
                 <a
                   href={item.href}
-                  key={item.title}
+                  key={getItemLabel(item)}
                   className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 dark:bg-neutral-900"
                 >
                   <div className="h-4 w-4">{item.icon}</div>
@@ -91,7 +102,7 @@ export const FloatingDockDesktop = ({
   items,
   className,
 }: {
-  items: { label: string; icon: React.ReactNode; href: string }[];
+  items: DockItem[];
   className?: string;
 }) => {
   let mouseX = useMotionValue(Infinity);
@@ -105,7 +116,7 @@ export const FloatingDockDesktop = ({
       )}
     >
       {items.map((item) => (
-        <IconContainer mouseX={mouseX} key={item.label} {...item} />
+        <IconContainer mouseX={mouseX} key={getItemLabel(item)} {...item} />
       ))}
     </motion.div>
   );
@@ -114,11 +125,13 @@ export const FloatingDockDesktop = ({
 function IconContainer({
   mouseX,
   label,
+  title,
   icon,
   href,
 }: {
   mouseX: MotionValue;
-  label: string;
+  label?: string;
+  title?: string;
   icon: React.ReactNode;
   href: string;
 }) {
@@ -181,7 +194,7 @@ function IconContainer({
               exit={{ opacity: 0, y: 2, x: "-50%" }}
               className="absolute -top-8 left-1/2 w-fit whitespace-pre rounded-md border border-gray-200 bg-gray-100 px-2 py-0.5 text-xs text-neutral-700 dark:border-neutral-900 dark:bg-neutral-800 dark:text-white"
             >
-              {label}
+              {label ?? title}
             </motion.div>
           )}
         </AnimatePresence>

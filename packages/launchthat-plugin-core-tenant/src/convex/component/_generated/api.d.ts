@@ -35,40 +35,29 @@ declare const fullApi: ApiFromModules<{
 }>;
 export type Mounts = {
   mutations: {
-    createOrGetUser: FunctionReference<"mutation", "public", {}, null | string>;
     createOrganization: FunctionReference<
       "mutation",
       "public",
-      { name: string; slug?: string },
+      { name: string; slug?: string; userId: string },
       string
     >;
-    setActiveOrganization: FunctionReference<
+    ensureMembership: FunctionReference<
       "mutation",
       "public",
-      { organizationId: string },
+      {
+        organizationId: string;
+        role?: "owner" | "admin" | "editor" | "viewer" | "student";
+        setActive?: boolean;
+        userId: string;
+      },
       null
     >;
   };
   queries: {
-    getUserByClerkId: FunctionReference<
+    listOrganizationsByUserId: FunctionReference<
       "query",
       "public",
-      { clerkId: string },
-      null | {
-        _creationTime: number;
-        _id: string;
-        clerkId?: string;
-        email: string;
-        image?: string;
-        name?: string;
-        organizationId?: string;
-        tokenIdentifier?: string;
-      }
-    >;
-    listMyOrganizationsByClerkId: FunctionReference<
-      "query",
-      "public",
-      { clerkId: string },
+      { userId: string },
       Array<{
         isActive: boolean;
         org: { _id: string; name: string; slug: string };
