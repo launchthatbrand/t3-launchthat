@@ -21,6 +21,11 @@ export default function StandardLayout(props: {
   headerRightSlot?: React.ReactNode;
   sidebarOpenOnHover?: boolean;
   /**
+   * Controls whether the sidebar starts open on first paint (desktop).
+   * Defaults to true to preserve existing behavior.
+   */
+  sidebarDefaultOpen?: boolean;
+  /**
    * Overrides the collapsed (icon) sidebar width, e.g. "4rem".
    * This maps to the `--sidebar-width-icon` CSS variable in `@acme/ui/sidebar`.
    */
@@ -38,6 +43,7 @@ export default function StandardLayout(props: {
 
   return (
     <SidebarProvider
+      defaultOpen={props.sidebarDefaultOpen ?? true}
       style={sidebarProviderStyle}
     >
       {shouldShowSidebar ? (

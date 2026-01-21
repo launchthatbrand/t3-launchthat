@@ -167,7 +167,8 @@ export default async function RootLayout(props: {
                 showSidebar={showSidebar}
                 className="bg-transparent"
                 sidebarOpenOnHover={true}
-
+                // Admin should start collapsed on initial load.
+                sidebarDefaultOpen={false}
 
               >
                 <div className="container py-6">
