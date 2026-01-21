@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { IconMenu2, IconX } from "@tabler/icons-react";
 import React, { createContext, useContext, useState } from "react";
 
+import Link from "next/link";
 import { cn } from "@acme/ui";
 
 interface Links {
@@ -43,8 +44,8 @@ export const SidebarProvider = ({
 }) => {
   const [openState, setOpenState] = useState(false);
 
-  const open = openProp !== undefined ? openProp : openState;
-  const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState;
+  const open = openProp ?? openState;
+  const setOpen = setOpenProp ?? setOpenState;
 
   return (
     <SidebarContext.Provider value={{ open, setOpen, animate: animate }}>
@@ -71,11 +72,25 @@ export const Sidebar = ({
   );
 };
 
-export const SidebarBody = (props: React.ComponentProps<typeof motion.div>) => {
+type SidebarBodyProps = React.ComponentProps<typeof motion.div> & {
+  mobileHeader?: React.ReactNode;
+  mobileHeaderClassName?: string;
+  mobileVariant?: "drawer" | "none";
+};
+
+export const SidebarBody = (props: SidebarBodyProps) => {
+  const { mobileHeader, mobileHeaderClassName, mobileVariant = "drawer", ...rest } = props;
+
   return (
     <>
-      <DesktopSidebar {...props} />
-      <MobileSidebar {...(props as React.ComponentProps<"div">)} />
+      <DesktopSidebar {...rest} />
+      {mobileVariant === "drawer" ? (
+        <MobileSidebar
+          {...(rest as React.ComponentProps<"div">)}
+          mobileHeader={mobileHeader}
+          mobileHeaderClassName={mobileHeaderClassName}
+        />
+      ) : null}
     </>
   );
 };
@@ -109,18 +124,27 @@ export const DesktopSidebar = ({
 export const MobileSidebar = ({
   className,
   children,
+  mobileHeader,
+  mobileHeaderClassName,
   ...props
-}: React.ComponentProps<"div">) => {
+}: React.ComponentProps<"div"> & {
+  mobileHeader?: React.ReactNode;
+  mobileHeaderClassName?: string;
+}) => {
   const { open, setOpen } = useSidebar();
   return (
     <>
       <div
         className={cn(
-          "h-10 px-4 py-4 flex flex-row md:hidden  items-center justify-between bg-neutral-100 dark:bg-neutral-800 w-full"
+          "h-10 px-4 py-4 flex flex-row md:hidden items-center justify-between bg-neutral-100 dark:bg-neutral-800 w-full"
         )}
         {...props}
       >
-        <div className="flex justify-end z-20 w-full">
+        <div className={cn("flex items-center gap-3", mobileHeaderClassName)}>
+          {mobileHeader}
+        </div>
+
+        <div className="flex justify-end z-20">
           <IconMenu2
             className="text-neutral-800 dark:text-neutral-200"
             onClick={() => setOpen(!open)}
@@ -166,7 +190,7 @@ export const SidebarLink = ({
 }) => {
   const { open, animate } = useSidebar();
   return (
-    <a
+    <Link
       href={link.href}
       className={cn(
         "flex items-center justify-start gap-2  group/sidebar py-2",
@@ -185,6 +209,6 @@ export const SidebarLink = ({
       >
         {link.label}
       </motion.span>
-    </a>
+    </Link>
   );
 };

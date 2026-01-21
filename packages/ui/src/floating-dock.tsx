@@ -1,7 +1,5 @@
-/* eslint-disable prefer-const */
-import type { MotionValue } from "motion/react";
-import { useRef, useState } from "react";
-import { IconLayoutNavbarCollapse } from "@tabler/icons-react";
+"use client";
+
 import {
   AnimatePresence,
   motion,
@@ -9,7 +7,12 @@ import {
   useSpring,
   useTransform,
 } from "motion/react";
+import { useRef, useState } from "react";
 
+import { IconLayoutNavbarCollapse } from "@tabler/icons-react";
+import Link from "next/link";
+/* eslint-disable prefer-const */
+import type { MotionValue } from "motion/react";
 import { cn } from "@acme/ui";
 
 export const FloatingDock = ({
@@ -29,7 +32,7 @@ export const FloatingDock = ({
   );
 };
 
-const FloatingDockMobile = ({
+export const FloatingDockMobile = ({
   items,
   className,
 }: {
@@ -84,11 +87,11 @@ const FloatingDockMobile = ({
   );
 };
 
-const FloatingDockDesktop = ({
+export const FloatingDockDesktop = ({
   items,
   className,
 }: {
-  items: { title: string; icon: React.ReactNode; href: string }[];
+  items: { label: string; icon: React.ReactNode; href: string }[];
   className?: string;
 }) => {
   let mouseX = useMotionValue(Infinity);
@@ -102,7 +105,7 @@ const FloatingDockDesktop = ({
       )}
     >
       {items.map((item) => (
-        <IconContainer mouseX={mouseX} key={item.title} {...item} />
+        <IconContainer mouseX={mouseX} key={item.label} {...item} />
       ))}
     </motion.div>
   );
@@ -110,12 +113,12 @@ const FloatingDockDesktop = ({
 
 function IconContainer({
   mouseX,
-  title,
+  label,
   icon,
   href,
 }: {
   mouseX: MotionValue;
-  title: string;
+  label: string;
   icon: React.ReactNode;
   href: string;
 }) {
@@ -162,7 +165,7 @@ function IconContainer({
   const [hovered, setHovered] = useState(false);
 
   return (
-    <a href={href}>
+    <Link href={href}>
       <motion.div
         ref={ref}
         style={{ width, height }}
@@ -178,7 +181,7 @@ function IconContainer({
               exit={{ opacity: 0, y: 2, x: "-50%" }}
               className="absolute -top-8 left-1/2 w-fit whitespace-pre rounded-md border border-gray-200 bg-gray-100 px-2 py-0.5 text-xs text-neutral-700 dark:border-neutral-900 dark:bg-neutral-800 dark:text-white"
             >
-              {title}
+              {label}
             </motion.div>
           )}
         </AnimatePresence>
@@ -189,6 +192,6 @@ function IconContainer({
           {icon}
         </motion.div>
       </motion.div>
-    </a>
+    </Link>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Card, CardContent, CardDescription, CardTitle, FloatingDockDesktop, WarpBackground } from "@acme/ui";
 import {
   IconBrandTabler,
   IconBulb,
@@ -8,15 +9,76 @@ import {
   IconTargetArrow,
 } from "@tabler/icons-react";
 import React, { useState } from "react";
-import { Sidebar, SidebarBody, SidebarLink } from "~/components/ui/sidebar";
+import { Sidebar, SidebarBody, SidebarLink, useSidebar } from "~/components/ui/sidebar";
 
 import { GridLines } from "~/components/background/GridLines";
 import Image from "next/image";
 import { NavItems } from "~/components/ui/resizable-navbar";
+import { Tooltip as TooltipCard } from "@acme/ui/components/ui/tooltip-card";
 import { TraderLaunchpadNavUser } from "~/components/auth/TraderLaunchpadNavUser";
+import { cn } from "~/lib/utils";
 import { motion } from "motion/react";
 import { redirect } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
+
+const UpgradeToProCTA = () => {
+  const { open: sidebarOpen } = useSidebar();
+
+  const icon = (
+    <span className="relative grid place-items-center">
+      <span className="grid h-9 w-9 place-items-center rounded-full bg-white/6 ring-1 ring-white/12">
+        <span className="text-lg leading-none text-orange-200">👑</span>
+      </span>
+      {/* Notification dot */}
+      <span className="pointer-events-none absolute -right-0.5 -top-0.5 inline-flex h-2.5 w-2.5">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400/60" />
+        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-orange-400 ring-2 ring-black/30" />
+      </span>
+    </span>
+  );
+
+  // Compact (collapsed): icon-only
+  if (!sidebarOpen) {
+    const compact = (
+      <a
+        href="/admin/settings/billing"
+        className="flex items-center justify-center p-2 transition-colors hover:bg-white/7"
+        aria-label="Upgrade for more features"
+      >
+        {icon}
+      </a>
+    );
+    return <TooltipCard content="Upgrade to Pro">{compact}</TooltipCard>;
+  }
+
+  // Expanded: WarpBackground CTA
+  return (
+    <a href="/admin/settings/billing" className="block">
+      <WarpBackground className="rounded-xl overflow-hidden border border-white/12 bg-black/2 p-0">
+        <Card className="w-full border-0 bg-transparent shadow-none! rounded-none! p-3">
+          <CardContent className="flex items-center gap-3 p-0">
+            {icon}
+            <div className="min-w-0">
+              <CardTitle className="text-sm text-white">Upgrade for more features</CardTitle>
+              <CardDescription className="text-xs text-white/60">
+                Organizations + customizable AI
+              </CardDescription>
+            </div>
+            <motion.span
+              animate={{
+                display: "inline-block",
+                opacity: 1,
+              }}
+              className="ml-auto rounded-full border border-orange-500/25 bg-orange-500/10 px-2 py-1 text-[11px] font-semibold text-orange-200"
+            >
+              Upgrade
+            </motion.span>
+          </CardContent>
+        </Card>
+      </WarpBackground>
+    </a>
+  );
+};
 
 export default function AdminLayout({
   children,
@@ -104,25 +166,105 @@ export default function AdminLayout({
     },
   ];
 
-
-
+  
   
 
   return (
-    <div className="max-h-screen h-full flex flex-1 overflow-hidden">
+    <div
+      className={cn(
+        "mx-auto flex w-full flex-1 flex-col overflow-hidden rounded-md border border-neutral-200 md:flex-row dark:border-neutral-700",
+        "h-screen", // for your use case, use `h-screen` instead of `h-[60vh]`
+      )}
+    >
       <Sidebar open={open} setOpen={setOpen}>
-        <SidebarBody className="justify-between p-2 gap-10 min-h-screen z-50 border-white/10! border-r bg-black/40! backdrop-blur-md">
+        <SidebarBody
+          mobileHeaderClassName="text-white"
+          mobileHeader={
+            <a
+              href="/admin/dashboard"
+              className="flex items-center gap-2 text-sm font-semibold text-white/90"
+            >
+              <Image
+                src="/images/tl-logo-1.png"
+                alt="Trader Launchpad"
+                width={32}
+                height={32}
+                className="h-7 w-7"
+                priority
+              />
+              <span className="bg-linear-to-b from-white via-orange-200 to-orange-500 bg-clip-text text-transparent">
+                Admin
+              </span>
+            </a>
+          }
+          mobileVariant="none"
+          className="justify-between p-2 gap-3 min-h-screen z-50 border-white/10! border-r bg-black/40! backdrop-blur-md"
+        >
         {open ? <Logo /> : <LogoIcon />}
-         <div className="flex flex-1 flex-col p-2 overflow-x-hidden overflow-y-auto">
-        
-            <div className="mt-8 flex flex-col gap-2">
+         <div className="flex flex-1 flex-col p-2 overflow-x-hidden justify-between mb-8 overflow-y-auto">
+            <div className="mt-2 flex flex-col gap-2">
+            
               {links.map((link, idx) => (
                 <SidebarLink key={idx} link={link} />
               ))}
             </div>
+            <UpgradeToProCTA />
           </div>
         </SidebarBody>
       </Sidebar>
+
+      {/* Mobile-only navigation (replaces the drawer sidebar on small screens) */}
+      <FloatingDockDesktop
+      className="flex md:hidden z-50 items-center justify-center absolute bottom-5 left-10 right-10 bg-black! backdrop-blur-md"
+         items={links}
+      />
+      {/* <TooltipProvider>
+        <Dock direction="middle">
+          {DATA.navbar.map((item) => (
+            <DockIcon key={item.label}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={item.href}
+                    aria-label={item.label}
+                    className={cn(
+                      buttonVariants({ variant: "ghost", size: "icon" }),
+                      "size-12 rounded-full"
+                    )}
+                  >
+                    <item.icon className="size-4" />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{item.label}</p>
+                </TooltipContent>
+              </Tooltip>
+            </DockIcon>
+          ))}
+          <Separator orientation="vertical" className="h-full" />
+          {Object.entries(DATA.contact.social).map(([name, social]) => (
+            <DockIcon key={name}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={social.url}
+                    aria-label={social.name}
+                    className={cn(
+                      buttonVariants({ variant: "ghost", size: "icon" }),
+                      "size-12 rounded-full"
+                    )}
+                  >
+                    <social.icon className="size-4" />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{name}</p>
+                </TooltipContent>
+              </Tooltip>
+            </DockIcon>
+          ))}
+        </Dock>
+      </TooltipProvider> */}
       <div className="flex-1 overflow-y-scroll">
 
         <header className="sticky top-0 z-40 border-b border-white/10 bg-black/40 backdrop-blur-md">

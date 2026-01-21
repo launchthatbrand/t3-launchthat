@@ -1,4 +1,5 @@
-import { DottedGlowBackground } from "@acme/ui";
+import { DottedGlowBackground, ShootingStars } from "@acme/ui";
+
 import { GridLines } from "~/components/background/GridLines";
 import { Header } from "../../components/landing/Header";
 import Link from "next/link";
@@ -15,14 +16,10 @@ export default function MarketingLayout({
                 <div className="pointer-events-none absolute inset-0">
                     <GridLines />
                 </div>
-
+                <ShootingStars minSpeed={10} maxSpeed={20} minDelay={5000} starColor="#9E00FF" trailColor="#2EB9DF" starWidth={10} starHeight={1} />
                 <Header />
                 {children}
             </div>
-
-
-
-
         </div>
     );
 }
