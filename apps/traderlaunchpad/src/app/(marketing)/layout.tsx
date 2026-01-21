@@ -1,8 +1,7 @@
 import { DottedGlowBackground, ShootingStars } from "@acme/ui";
 
 import { GridLines } from "~/components/background/GridLines";
-import { Header } from "../../components/landing/Header";
-import Link from "next/link";
+
 import React from "react";
 
 export default function MarketingLayout({
@@ -17,7 +16,7 @@ export default function MarketingLayout({
                     <GridLines />
                 </div>
                 <ShootingStars minSpeed={10} maxSpeed={20} minDelay={5000} starColor="#9E00FF" trailColor="#2EB9DF" starWidth={10} starHeight={1} />
-                <Header />
+                {/* <Header /> */}
                 {children}
             </div>
         </div>

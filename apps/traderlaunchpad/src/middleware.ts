@@ -1,6 +1,12 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
-export default clerkMiddleware();
+export default clerkMiddleware((_auth, req) => {
+  // Portal-style: expose pathname to server layouts (App Router doesn't provide it).
+  const res = NextResponse.next();
+  res.headers.set("x-pathname", req.nextUrl.pathname);
+  return res;
+});
 
 export const config = {
   matcher: [

@@ -1,8 +1,10 @@
+import { SidebarInset, SidebarProvider } from "../sidebar";
+
+import AppHeader from "./AppHeader";
+import { AppSidebar } from "./app-sidebar";
+import { SidebarHoverWrapper } from "./SidebarHoverWrapper";
 // import { AppSidebar } from "./AppSidebar";
 import { cn } from "../lib/utils";
-import { SidebarInset, SidebarProvider } from "../sidebar";
-import { AppSidebar } from "./app-sidebar";
-import AppHeader from "./AppHeader";
 
 // import { AppSidebar } from "./AppSidebar";
 
@@ -17,23 +19,34 @@ export default function StandardLayout(props: {
   sidebarVariant?: "inset" | "floating" | "sidebar";
   showSidebar?: boolean;
   headerRightSlot?: React.ReactNode;
+  sidebarOpenOnHover?: boolean;
+  /**
+   * Overrides the collapsed (icon) sidebar width, e.g. "4rem".
+   * This maps to the `--sidebar-width-icon` CSS variable in `@acme/ui/sidebar`.
+   */
+  sidebarWidthIcon?: string;
 }) {
   const sidebarToggle = props.sidebar !== undefined;
   // If showSidebar is explicitly set to false, hide the sidebar
   // Otherwise, show it if it exists
   const shouldShowSidebar = props.showSidebar !== false && sidebarToggle;
 
+  const sidebarProviderStyle =
+    typeof props.sidebarWidthIcon === "string" && props.sidebarWidthIcon.length > 0
+      ? ({ "--sidebar-width-icon": props.sidebarWidthIcon } as React.CSSProperties)
+      : undefined;
+
   return (
     <SidebarProvider
-    // style={
-    //   {
-    //     "--sidebar-width": "350px",
-    //   } as React.CSSProperties
-    // }
+      style={sidebarProviderStyle}
     >
-      {shouldShowSidebar ? props.sidebar : null}
+      {shouldShowSidebar ? (
+        <SidebarHoverWrapper enabled={props.sidebarOpenOnHover === true}>
+          {props.sidebar}
+        </SidebarHoverWrapper>
+      ) : null}
       {/* <AppSidebar sidebar={props.sidebar} /> */}
-      <SidebarInset className="min-h-screen">
+      <SidebarInset className={cn("min-h-screen", props.className)}>
         {props.header !== undefined ? (
           props.header
         ) : (

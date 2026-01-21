@@ -48,7 +48,8 @@ const SidebarTriggerWrapper = ({ className }: { className?: string }) => {
 
 interface AppHeaderProps {
   appName: string;
-  sidebarToggle: boolean;
+  showLogo?: boolean;
+  sidebarToggle?: boolean;
   className?: string;
   image?: string;
   rightSlot?: React.ReactNode;
@@ -58,6 +59,7 @@ function AppHeader({
   appName,
   sidebarToggle,
   className,
+  showLogo,
   image,
   rightSlot,
 }: AppHeaderProps) {
@@ -101,7 +103,7 @@ function AppHeader({
         />
         <div className="flex flex-1 items-center justify-between gap-2">
           <Link href="/" className="flex items-center gap-2">
-            <Logo appName={appName} image={image} />
+            {showLogo ? <Logo appName={appName} image={image} /> : null}
           </Link>
           <div className="ml-auto flex items-center gap-2">{rightSlot}</div>
         </div>

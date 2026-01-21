@@ -90,7 +90,7 @@ export default function AdminTradeIdeasPage() {
   const [view, setView] = React.useState<"grid" | "list">("grid");
 
   return (
-    <div className="container relative animate-in fade-in space-y-8 text-white selection:bg-orange-500/30 duration-500">
+    <div className="relative animate-in fade-in space-y-8 text-white selection:bg-orange-500/30 duration-500">
       {/* Header */}
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
