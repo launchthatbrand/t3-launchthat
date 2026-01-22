@@ -771,10 +771,65 @@ export type Mounts = {
         textPreview: string;
       }
     >;
+    probeBackendPathForAccount: FunctionReference<
+      "action",
+      "public",
+      {
+        accNum: number;
+        accountId: string;
+        organizationId: string;
+        path: string;
+        secretsKey: string;
+        tokenStorage?: "raw" | "enc";
+        userId: string;
+      },
+      {
+        accNum: number;
+        accountId: string;
+        apiStatus?: string;
+        attempts?: Array<any>;
+        baseUrl: string;
+        error?: string;
+        jsonPreview?: any;
+        ok: boolean;
+        pathUsed?: string;
+        status?: number;
+        textPreview?: string;
+      }
+    >;
     probeHistoryForInstrument: FunctionReference<
       "action",
       "public",
       {
+        lookbackDays?: number;
+        organizationId: string;
+        resolution?: string;
+        routeId?: number;
+        secretsKey: string;
+        tokenStorage?: "raw" | "enc";
+        tradableInstrumentId: string;
+        userId: string;
+      },
+      {
+        accNum: number;
+        accountId: string;
+        barsPreview?: any;
+        baseUrl: string;
+        error?: string;
+        instrumentId: string;
+        ok: boolean;
+        requestPath?: string;
+        routeId: number;
+        status?: number;
+        textPreview?: string;
+      }
+    >;
+    probeHistoryForInstrumentForAccount: FunctionReference<
+      "action",
+      "public",
+      {
+        accNum: number;
+        accountId: string;
         lookbackDays?: number;
         organizationId: string;
         resolution?: string;
@@ -913,6 +968,41 @@ export type Mounts = {
         textPreview?: string;
       }
     >;
+    probeTradeEndpointForAccount: FunctionReference<
+      "action",
+      "public",
+      {
+        accNum: number;
+        accountId: string;
+        endpoint:
+          | "state"
+          | "positions"
+          | "orders"
+          | "ordersHistory"
+          | "filledOrders"
+          | "executions";
+        organizationId: string;
+        secretsKey: string;
+        tokenStorage?: "raw" | "enc";
+        userId: string;
+      },
+      {
+        accNum: number;
+        accountId: string;
+        apiStatus?: string;
+        attempts?: Array<any>;
+        baseUrl: string;
+        endpoint: string;
+        error?: string;
+        jsonPreview?: any;
+        ok: boolean;
+        pathUsed?: string;
+        status?: number;
+        textPreview?: string;
+        tradeAccNum?: number;
+        tradeAccountId?: string;
+      }
+    >;
     syncTradeLockerConnection: FunctionReference<
       "action",
       "public",
@@ -937,7 +1027,12 @@ export type Mounts = {
       getSummary: FunctionReference<
         "query",
         "public",
-        { limit?: number; organizationId: string; userId: string },
+        {
+          accountId?: string;
+          limit?: number;
+          organizationId: string;
+          userId: string;
+        },
         {
           avgLoss: number;
           avgWin: number;
@@ -953,7 +1048,12 @@ export type Mounts = {
       listByInstrument: FunctionReference<
         "query",
         "public",
-        { limit?: number; organizationId: string; userId: string },
+        {
+          accountId?: string;
+          limit?: number;
+          organizationId: string;
+          userId: string;
+        },
         Array<{
           avgPnl: number;
           instrumentId: string;
@@ -1134,7 +1234,12 @@ export type Mounts = {
       listNextToReview: FunctionReference<
         "query",
         "public",
-        { limit?: number; organizationId: string; userId: string },
+        {
+          accountId?: string;
+          limit?: number;
+          organizationId: string;
+          userId: string;
+        },
         Array<{
           closedAt: number;
           direction: "long" | "short";
@@ -1151,7 +1256,12 @@ export type Mounts = {
       listRecentClosedWithReviewStatus: FunctionReference<
         "query",
         "public",
-        { limit?: number; organizationId: string; userId: string },
+        {
+          accountId?: string;
+          limit?: number;
+          organizationId: string;
+          userId: string;
+        },
         Array<{
           closedAt: number;
           direction: "long" | "short";

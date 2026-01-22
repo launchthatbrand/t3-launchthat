@@ -1,7 +1,7 @@
-import { v } from "convex/values";
+import { mutation, query } from "../server";
 
 import type { Id } from "../_generated/dataModel";
-import { mutation, query } from "../server";
+import { v } from "convex/values";
 
 const noteView = v.object({
   _id: v.id("tradeIdeaNotes"),
@@ -143,6 +143,7 @@ export const listNextToReview = query({
   args: {
     organizationId: v.string(),
     userId: v.string(),
+    accountId: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   returns: v.array(
@@ -161,6 +162,7 @@ export const listNextToReview = query({
   ),
   handler: async (ctx, args) => {
     const limit = Math.max(1, Math.min(50, Number(args.limit ?? 10)));
+    const accountId = typeof args.accountId === "string" ? args.accountId.trim() : "";
 
     // Pull recent closed TradeIdeas and filter to those not yet reviewed (or with no note).
     // We use openedAt ordering because it's indexed; closedAt is derived from lastExecutionAt.
@@ -190,6 +192,10 @@ export const listNextToReview = query({
 
     for (const ti of candidates) {
       if (out.length >= limit) break;
+      if (accountId) {
+        const tiAccountId = typeof (ti as any).accountId === "string" ? String((ti as any).accountId) : "";
+        if (tiAccountId !== accountId) continue;
+      }
       const closedAt =
         typeof (ti as any).closedAt === "number"
           ? Number((ti as any).closedAt)
@@ -245,6 +251,7 @@ export const listRecentClosedWithReviewStatus = query({
   args: {
     organizationId: v.string(),
     userId: v.string(),
+    accountId: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   returns: v.array(
@@ -263,6 +270,7 @@ export const listRecentClosedWithReviewStatus = query({
   ),
   handler: async (ctx, args) => {
     const limit = Math.max(1, Math.min(500, Number(args.limit ?? 200)));
+    const accountId = typeof args.accountId === "string" ? args.accountId.trim() : "";
 
     // Pull recent closed TradeIdeas (includes reviewed + unreviewed).
     // We use openedAt ordering because it's indexed; closedAt is derived from lastExecutionAt.
@@ -291,6 +299,10 @@ export const listRecentClosedWithReviewStatus = query({
     }> = [];
 
     for (const ti of candidates) {
+      if (accountId) {
+        const tiAccountId = typeof (ti as any).accountId === "string" ? String((ti as any).accountId) : "";
+        if (tiAccountId !== accountId) continue;
+      }
       const closedAt =
         typeof (ti as any).closedAt === "number"
           ? Number((ti as any).closedAt)

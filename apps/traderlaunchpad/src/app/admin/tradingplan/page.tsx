@@ -1,7 +1,5 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -13,20 +11,21 @@ import {
   Shield,
   Target,
 } from "lucide-react";
-
-import { api } from "@convex-config/_generated/api";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@acme/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@acme/ui/dropdown-menu";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
-import { Progress } from "@acme/ui/progress";
-import { cn } from "@acme/ui";
-import { demoReviewTrades } from "@acme/demo-data";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
+import Link from "next/link";
+import { Progress } from "@acme/ui/progress";
+import React from "react";
+import { api } from "@convex-config/_generated/api";
+import { cn } from "@acme/ui";
+import { demoReviewTrades } from "@acme/demo-data";
 import { useDataMode } from "~/components/dataMode/DataModeProvider";
 
 interface TradingPlanRule {
@@ -197,13 +196,13 @@ export default function AdminTradingPlanPage() {
     shouldQuery && isLive ? { limit: 200 } : "skip",
   ) as
     | {
-        tradeIdeaGroupId: string;
-        symbol: string;
-        direction: "long" | "short";
-        closedAt: number;
-        realizedPnl?: number;
-        reviewStatus: "todo" | "reviewed";
-      }[]
+      tradeIdeaGroupId: string;
+      symbol: string;
+      direction: "long" | "short";
+      closedAt: number;
+      realizedPnl?: number;
+      reviewStatus: "todo" | "reviewed";
+    }[]
     | undefined;
 
   const createPlan = useMutation(api.traderlaunchpad.mutations.createMyTradingPlanFromTemplate);

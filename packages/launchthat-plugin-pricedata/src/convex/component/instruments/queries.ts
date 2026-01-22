@@ -1,6 +1,53 @@
 import { query } from "../server";
 import { v } from "convex/values";
 
+export const listInstrumentsByTradableInstrumentIds = query({
+  args: {
+    sourceKey: v.string(),
+    tradableInstrumentIds: v.array(v.string()),
+  },
+  returns: v.array(
+    v.object({
+      tradableInstrumentId: v.string(),
+      symbol: v.string(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const sourceKey = args.sourceKey.trim();
+    if (!sourceKey) return [];
+
+    const unique = Array.from(
+      new Set(
+        args.tradableInstrumentIds
+          .map((id) => id.trim())
+          .filter(Boolean),
+      ),
+    ).slice(0, 200);
+    if (unique.length === 0) return [];
+
+    const out: Array<{ tradableInstrumentId: string; symbol: string }> = [];
+
+    // Convex doesn't support "IN" queries; resolve by index lookups.
+    for (const tradableInstrumentId of unique) {
+      const doc = await ctx.db
+        .query("priceInstruments")
+        .withIndex("by_source_and_tradableInstrumentId", (q: any) =>
+          q
+            .eq("sourceKey", sourceKey)
+            .eq("tradableInstrumentId", tradableInstrumentId),
+        )
+        .first();
+      if (!doc) continue;
+      out.push({
+        tradableInstrumentId: doc.tradableInstrumentId,
+        symbol: doc.symbol,
+      });
+    }
+
+    return out;
+  },
+});
+
 export const getInstrumentBySymbol = query({
   args: { sourceKey: v.string(), symbol: v.string() },
   returns: v.union(

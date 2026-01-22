@@ -30,6 +30,7 @@ export const getSummary = query({
   args: {
     organizationId: v.string(),
     userId: v.string(),
+    accountId: v.optional(v.string()),
     // Phase 1: consider only last N closed trades for performance.
     limit: v.optional(v.number()),
   },
@@ -46,6 +47,7 @@ export const getSummary = query({
   }),
   handler: async (ctx, args) => {
     const limit = Math.max(10, Math.min(500, args.limit ?? 200));
+    const accountId = typeof args.accountId === "string" ? args.accountId.trim() : "";
 
     const open = await ctx.db
       .query("tradeIdeaGroups")
@@ -69,7 +71,14 @@ export const getSummary = query({
       .order("desc")
       .take(limit);
 
-    const pnls = closed
+    const openScoped = accountId
+      ? (open as any[]).filter((t: any) => String(t?.accountId ?? "") === accountId)
+      : (open as any[]);
+    const closedScoped = accountId
+      ? (closed as any[]).filter((t: any) => String(t?.accountId ?? "") === accountId)
+      : (closed as any[]);
+
+    const pnls = closedScoped
       .map((t: any) => (typeof t.realizedPnl === "number" ? t.realizedPnl : 0))
       .filter((n) => Number.isFinite(n));
     const wins = pnls.filter((n) => n > 0);
@@ -80,7 +89,7 @@ export const getSummary = query({
 
     const totalPnl = sum(pnls);
     const totalFees = sum(
-      closed.map((t: any) => (typeof t.fees === "number" ? t.fees : 0)),
+      closedScoped.map((t: any) => (typeof t.fees === "number" ? t.fees : 0)),
     );
     const winRate = pnls.length ? wins.length / pnls.length : 0;
     const avgWin = avg(wins);
@@ -89,8 +98,8 @@ export const getSummary = query({
 
     return {
       sampleSize: pnls.length,
-      closedTrades: closed.length,
-      openTrades: open.length,
+      closedTrades: closedScoped.length,
+      openTrades: openScoped.length,
       winRate,
       avgWin,
       avgLoss,
@@ -105,6 +114,7 @@ export const listByInstrument = query({
   args: {
     organizationId: v.string(),
     userId: v.string(),
+    accountId: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   returns: v.array(
@@ -120,6 +130,7 @@ export const listByInstrument = query({
   ),
   handler: async (ctx, args) => {
     const limit = Math.max(5, Math.min(100, args.limit ?? 20));
+    const accountId = typeof args.accountId === "string" ? args.accountId.trim() : "";
 
     // Pull a reasonable slice of closed tradeIdeas and aggregate client-side.
     const closed = await ctx.db
@@ -144,6 +155,7 @@ export const listByInstrument = query({
     >();
 
     for (const t of closed as any[]) {
+      if (accountId && String((t as any)?.accountId ?? "") !== accountId) continue;
       const instrumentId =
         typeof t.instrumentId === "string" && t.instrumentId.trim()
           ? t.instrumentId.trim()

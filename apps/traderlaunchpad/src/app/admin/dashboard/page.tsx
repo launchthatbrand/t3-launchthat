@@ -28,23 +28,25 @@ import {
   demoInsights,
   demoReviewTrades,
 } from "@acme/demo-data";
+import { useAction, useConvexAuth, useQuery } from "convex/react";
 
-import { api } from "@convex-config/_generated/api";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Calendar as DayCalendar } from "@acme/ui/calendar";
 import Link from "next/link";
 import { Progress } from "@acme/ui/progress";
 import React from "react";
-import { useAction, useConvexAuth, useQuery } from "convex/react";
 import { TradingCalendarPanel } from "~/components/dashboard/TradingCalendarPanel";
 import { TradingTimingInsights } from "~/components/dashboard/TradingTimingInsights";
-import { useDataMode } from "~/components/dataMode/DataModeProvider";
+import { api } from "@convex-config/_generated/api";
 import { cn } from "@acme/ui";
 import { createPortal } from "react-dom";
 import { format as formatDate } from "date-fns";
+import { useDataMode } from "~/components/dataMode/DataModeProvider";
 import { useOnboardingStatus } from "~/lib/onboarding/getOnboardingStatus";
 import { useTradingCalendarStore } from "~/stores/tradingCalendarStore";
+import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
+import { useActiveAccount } from "~/components/accounts/ActiveAccountProvider";
 
 function TooltipIcon({
   title,
@@ -224,6 +226,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 export default function AdminDashboardPage() {
   const dataMode = useDataMode();
   const isLive = dataMode.effectiveMode === "live";
+  const activeAccount = useActiveAccount();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const shouldQuery = isAuthenticated && !authLoading;
 
@@ -247,33 +250,37 @@ export default function AdminDashboardPage() {
 
   const analyticsSummary = useQuery(
     api.traderlaunchpad.queries.getMyTradeIdeaAnalyticsSummary,
-    shouldQuery && isLive ? { limit: 200 } : "skip",
+    shouldQuery && isLive
+      ? { limit: 200, accountId: activeAccount.selected?.accountId }
+      : "skip",
   ) as
     | {
-        sampleSize: number;
-        closedTrades: number;
-        openTrades: number;
-        winRate: number; // 0..1
-        avgWin: number;
-        avgLoss: number;
-        expectancy: number;
-        totalFees: number;
-        totalPnl: number;
-      }
+      sampleSize: number;
+      closedTrades: number;
+      openTrades: number;
+      winRate: number; // 0..1
+      avgWin: number;
+      avgLoss: number;
+      expectancy: number;
+      totalFees: number;
+      totalPnl: number;
+    }
     | undefined;
 
   const recentClosed = useQuery(
     api.traderlaunchpad.queries.listMyRecentClosedTradeIdeas,
-    shouldQuery && isLive ? { limit: 200 } : "skip",
+    shouldQuery && isLive
+      ? { limit: 200, accountId: activeAccount.selected?.accountId }
+      : "skip",
   ) as
     | {
-        tradeIdeaGroupId: string;
-        symbol: string;
-        direction: "long" | "short";
-        closedAt: number;
-        realizedPnl?: number;
-        reviewStatus: "todo" | "reviewed";
-      }[]
+      tradeIdeaGroupId: string;
+      symbol: string;
+      direction: "long" | "short";
+      closedAt: number;
+      realizedPnl?: number;
+      reviewStatus: "todo" | "reviewed";
+    }[]
     | undefined;
 
   const liveReviewTrades: ReviewTradeRow[] = React.useMemo(() => {
@@ -367,13 +374,13 @@ export default function AdminDashboardPage() {
     () =>
       isLive
         ? {
-            balance,
-            monthlyReturn: monthlyReturnPct,
-            winRate: winRatePct,
-            profitFactor,
-            avgRiskReward: demoDashboardStats.avgRiskReward,
-            streak,
-          }
+          balance,
+          monthlyReturn: monthlyReturnPct,
+          winRate: winRatePct,
+          profitFactor,
+          avgRiskReward: demoDashboardStats.avgRiskReward,
+          streak,
+        }
         : (demoDashboardStats as unknown as DashboardStats),
     [balance, isLive, monthlyReturnPct, profitFactor, streak, winRatePct],
   );
@@ -624,6 +631,7 @@ export default function AdminDashboardPage() {
       {/* Date filter (moved down; syncs with TradingCalendarPanel) */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
         <div className="flex flex-wrap items-center gap-2">
+          <ActiveAccountSelector />
           <Popover>
             <PopoverTrigger asChild>
               <Button

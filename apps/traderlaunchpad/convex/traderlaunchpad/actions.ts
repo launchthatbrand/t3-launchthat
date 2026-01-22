@@ -235,8 +235,8 @@ export const startTradeLockerConnect = action({
     const allAccountsRes = await fetch(
       `${baseUrlResolved}/auth/jwt/all-accounts`,
       {
-      method: "GET",
-      headers: { Authorization: `Bearer ${accessToken}`, ...developerKeyHeader() },
+        method: "GET",
+        headers: { Authorization: `Bearer ${accessToken}`, ...developerKeyHeader() },
       },
     );
     if (!allAccountsRes.ok) {
@@ -380,13 +380,13 @@ export const connectTradeLocker = action({
       const customerAccess =
         customerAccessRaw && typeof customerAccessRaw === "object"
           ? {
-              orders: Boolean((customerAccessRaw as any).orders),
-              ordersHistory: Boolean((customerAccessRaw as any).ordersHistory),
-              filledOrders: Boolean((customerAccessRaw as any).filledOrders),
-              positions: Boolean((customerAccessRaw as any).positions),
-              symbolInfo: Boolean((customerAccessRaw as any).symbolInfo),
-              marketDepth: Boolean((customerAccessRaw as any).marketDepth),
-            }
+            orders: Boolean((customerAccessRaw as any).orders),
+            ordersHistory: Boolean((customerAccessRaw as any).ordersHistory),
+            filledOrders: Boolean((customerAccessRaw as any).filledOrders),
+            positions: Boolean((customerAccessRaw as any).positions),
+            symbolInfo: Boolean((customerAccessRaw as any).symbolInfo),
+            marketDepth: Boolean((customerAccessRaw as any).marketDepth),
+          }
           : undefined;
 
       await ctx.runMutation(traderlaunchpadConnectionsMutations.updateConnectionAccountDebug, {
@@ -435,13 +435,13 @@ export const refreshMyTradeLockerAccountConfig = action({
     const customerAccess =
       customerAccessRaw && typeof customerAccessRaw === "object"
         ? {
-            orders: Boolean((customerAccessRaw as any).orders),
-            ordersHistory: Boolean((customerAccessRaw as any).ordersHistory),
-            filledOrders: Boolean((customerAccessRaw as any).filledOrders),
-            positions: Boolean((customerAccessRaw as any).positions),
-            symbolInfo: Boolean((customerAccessRaw as any).symbolInfo),
-            marketDepth: Boolean((customerAccessRaw as any).marketDepth),
-          }
+          orders: Boolean((customerAccessRaw as any).orders),
+          ordersHistory: Boolean((customerAccessRaw as any).ordersHistory),
+          filledOrders: Boolean((customerAccessRaw as any).filledOrders),
+          positions: Boolean((customerAccessRaw as any).positions),
+          symbolInfo: Boolean((customerAccessRaw as any).symbolInfo),
+          marketDepth: Boolean((customerAccessRaw as any).marketDepth),
+        }
         : undefined;
 
     await ctx.runMutation(traderlaunchpadConnectionsMutations.updateConnectionAccountDebug, {
@@ -616,6 +616,238 @@ export const probeMyTradeLockerAllAccounts = action({
   },
 });
 
+export const probeMyTradeLockerTradeEndpointForAccountRow = action({
+  args: {
+    accountRowId: v.string(),
+    endpoint: v.union(
+      v.literal("state"),
+      v.literal("positions"),
+      v.literal("orders"),
+      v.literal("ordersHistory"),
+      v.literal("filledOrders"),
+      v.literal("executions"),
+    ),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+
+    const connection = await ctx.runQuery(
+      traderlaunchpadConnectionsQueries.getMyConnection,
+      { organizationId, userId },
+    );
+    if (!connection) {
+      return { ok: false, error: "No TradeLocker connection found." };
+    }
+
+    const accounts = await ctx.runQuery(
+      traderlaunchpadConnectionsQueries.listMyConnectionAccounts,
+      {
+        organizationId,
+        userId,
+        connectionId: (connection as any)._id,
+      } as any,
+    );
+    const list = Array.isArray(accounts) ? accounts : [];
+    const row =
+      list.find((a: any) => String(a?._id ?? "") === args.accountRowId) ?? null;
+    if (!row) {
+      return { ok: false, error: "Account row not found." };
+    }
+
+    const accountId = String((row as any).accountId ?? "").trim();
+    const accNum = Number((row as any).accNum ?? 0);
+    if (!accountId || !Number.isFinite(accNum) || accNum <= 0) {
+      return { ok: false, error: "Invalid account identifiers." };
+    }
+
+    const result = await ctx.runAction(
+      componentsUntyped.launchthat_traderlaunchpad.sync.probeTradeEndpointForAccount,
+      {
+        organizationId,
+        userId,
+        accountId,
+        accNum,
+        endpoint: args.endpoint,
+        secretsKey: env.TRADELOCKER_SECRETS_KEY,
+        tokenStorage: env.TRADELOCKER_TOKEN_STORAGE,
+      },
+    );
+    return result;
+  },
+});
+
+export const probeMyTradeLockerBackendPathForAccountRow = action({
+  args: {
+    accountRowId: v.string(),
+    path: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+
+    const connection = await ctx.runQuery(
+      traderlaunchpadConnectionsQueries.getMyConnection,
+      { organizationId, userId },
+    );
+    if (!connection) {
+      return { ok: false, error: "No TradeLocker connection found." };
+    }
+
+    const accounts = await ctx.runQuery(
+      traderlaunchpadConnectionsQueries.listMyConnectionAccounts,
+      {
+        organizationId,
+        userId,
+        connectionId: (connection as any)._id,
+      } as any,
+    );
+    const list = Array.isArray(accounts) ? accounts : [];
+    const row =
+      list.find((a: any) => String(a?._id ?? "") === args.accountRowId) ?? null;
+    if (!row) {
+      return { ok: false, error: "Account row not found." };
+    }
+
+    const accountId = String((row as any).accountId ?? "").trim();
+    const accNum = Number((row as any).accNum ?? 0);
+    if (!accountId || !Number.isFinite(accNum) || accNum <= 0) {
+      return { ok: false, error: "Invalid account identifiers." };
+    }
+
+    const path = String(args.path ?? "").replaceAll("{accNum}", String(accNum));
+
+    const result = await ctx.runAction(
+      componentsUntyped.launchthat_traderlaunchpad.sync.probeBackendPathForAccount,
+      {
+        organizationId,
+        userId,
+        accountId,
+        accNum,
+        path,
+        secretsKey: env.TRADELOCKER_SECRETS_KEY,
+        tokenStorage: env.TRADELOCKER_TOKEN_STORAGE,
+      },
+    );
+    return result;
+  },
+});
+
+export const probeMyTradeLockerHistoryForInstrumentForAccountRow = action({
+  args: {
+    accountRowId: v.string(),
+    tradableInstrumentId: v.string(),
+    resolution: v.optional(v.string()),
+    lookbackDays: v.optional(v.number()),
+    routeId: v.optional(v.number()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+
+    const connection = await ctx.runQuery(
+      traderlaunchpadConnectionsQueries.getMyConnection,
+      { organizationId, userId },
+    );
+    if (!connection) {
+      return { ok: false, error: "No TradeLocker connection found." };
+    }
+
+    const accounts = await ctx.runQuery(
+      traderlaunchpadConnectionsQueries.listMyConnectionAccounts,
+      {
+        organizationId,
+        userId,
+        connectionId: (connection as any)._id,
+      } as any,
+    );
+    const list = Array.isArray(accounts) ? accounts : [];
+    const row =
+      list.find((a: any) => String(a?._id ?? "") === args.accountRowId) ?? null;
+    if (!row) {
+      return { ok: false, error: "Account row not found." };
+    }
+
+    const accountId = String((row as any).accountId ?? "").trim();
+    const accNum = Number((row as any).accNum ?? 0);
+    if (!accountId || !Number.isFinite(accNum) || accNum <= 0) {
+      return { ok: false, error: "Invalid account identifiers." };
+    }
+
+    const result = await ctx.runAction(
+      componentsUntyped.launchthat_traderlaunchpad.sync
+        .probeHistoryForInstrumentForAccount,
+      {
+        organizationId,
+        userId,
+        accountId,
+        accNum,
+        tradableInstrumentId: args.tradableInstrumentId,
+        routeId: args.routeId,
+        resolution: args.resolution,
+        lookbackDays: args.lookbackDays,
+        secretsKey: env.TRADELOCKER_SECRETS_KEY,
+        tokenStorage: env.TRADELOCKER_TOKEN_STORAGE,
+      },
+    );
+    return result;
+  },
+});
+
+export const probeMyTradeLockerConfigForAccountRow = action({
+  args: {
+    accountRowId: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+
+    const connection = await ctx.runQuery(
+      traderlaunchpadConnectionsQueries.getMyConnection,
+      { organizationId, userId },
+    );
+    if (!connection) {
+      return { ok: false, error: "No TradeLocker connection found." };
+    }
+
+    const accounts = await ctx.runQuery(
+      traderlaunchpadConnectionsQueries.listMyConnectionAccounts,
+      {
+        organizationId,
+        userId,
+        connectionId: (connection as any)._id,
+      } as any,
+    );
+    const list = Array.isArray(accounts) ? accounts : [];
+    const row =
+      list.find((a: any) => String(a?._id ?? "") === args.accountRowId) ?? null;
+    if (!row) {
+      return { ok: false, error: "Account row not found." };
+    }
+
+    const accNum = Number((row as any).accNum ?? 0);
+    if (!Number.isFinite(accNum) || accNum <= 0) {
+      return { ok: false, error: "Invalid accNum." };
+    }
+
+    const result = await ctx.runAction(
+      componentsUntyped.launchthat_traderlaunchpad.sync.probeTradeConfigForAccNum,
+      {
+        organizationId,
+        userId,
+        accNum,
+        secretsKey: env.TRADELOCKER_SECRETS_KEY,
+        tokenStorage: env.TRADELOCKER_TOKEN_STORAGE,
+      },
+    );
+    return result;
+  },
+});
+
 export const probeMyTradeLockerInstrumentsCandidates = action({
   args: {},
   returns: v.any(),
@@ -759,8 +991,8 @@ export const pricedataListPublicSymbols = action({
 
     const symbols = Array.isArray(rows)
       ? rows
-          .map((r: any) => (typeof r?.symbol === "string" ? r.symbol : ""))
-          .filter(Boolean)
+        .map((r: any) => (typeof r?.symbol === "string" ? r.symbol : ""))
+        .filter(Boolean)
       : [];
 
     return { sourceKey, symbols };

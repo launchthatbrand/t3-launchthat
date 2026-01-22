@@ -176,6 +176,12 @@ export type Mounts = {
           updatedAt: number;
         }
       >;
+      listInstrumentsByTradableInstrumentIds: FunctionReference<
+        "query",
+        "public",
+        { sourceKey: string; tradableInstrumentIds: Array<string> },
+        Array<{ symbol: string; tradableInstrumentId: string }>
+      >;
       listInstrumentsForSource: FunctionReference<
         "query",
         "public",
@@ -235,6 +241,12 @@ export type Mounts = {
           tradableInstrumentId: string;
           updatedAt: number;
         }
+      >;
+      listInstrumentsByTradableInstrumentIds: FunctionReference<
+        "query",
+        "public",
+        { sourceKey: string; tradableInstrumentIds: Array<string> },
+        Array<{ symbol: string; tradableInstrumentId: string }>
       >;
       listInstrumentsForSource: FunctionReference<
         "query",

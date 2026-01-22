@@ -1077,10 +1077,65 @@ export declare const components: {
           textPreview: string;
         }
       >;
+      probeBackendPathForAccount: FunctionReference<
+        "action",
+        "internal",
+        {
+          accNum: number;
+          accountId: string;
+          organizationId: string;
+          path: string;
+          secretsKey: string;
+          tokenStorage?: "raw" | "enc";
+          userId: string;
+        },
+        {
+          accNum: number;
+          accountId: string;
+          apiStatus?: string;
+          attempts?: Array<any>;
+          baseUrl: string;
+          error?: string;
+          jsonPreview?: any;
+          ok: boolean;
+          pathUsed?: string;
+          status?: number;
+          textPreview?: string;
+        }
+      >;
       probeHistoryForInstrument: FunctionReference<
         "action",
         "internal",
         {
+          lookbackDays?: number;
+          organizationId: string;
+          resolution?: string;
+          routeId?: number;
+          secretsKey: string;
+          tokenStorage?: "raw" | "enc";
+          tradableInstrumentId: string;
+          userId: string;
+        },
+        {
+          accNum: number;
+          accountId: string;
+          barsPreview?: any;
+          baseUrl: string;
+          error?: string;
+          instrumentId: string;
+          ok: boolean;
+          requestPath?: string;
+          routeId: number;
+          status?: number;
+          textPreview?: string;
+        }
+      >;
+      probeHistoryForInstrumentForAccount: FunctionReference<
+        "action",
+        "internal",
+        {
+          accNum: number;
+          accountId: string;
           lookbackDays?: number;
           organizationId: string;
           resolution?: string;
@@ -1219,6 +1274,41 @@ export declare const components: {
           textPreview?: string;
         }
       >;
+      probeTradeEndpointForAccount: FunctionReference<
+        "action",
+        "internal",
+        {
+          accNum: number;
+          accountId: string;
+          endpoint:
+            | "state"
+            | "positions"
+            | "orders"
+            | "ordersHistory"
+            | "filledOrders"
+            | "executions";
+          organizationId: string;
+          secretsKey: string;
+          tokenStorage?: "raw" | "enc";
+          userId: string;
+        },
+        {
+          accNum: number;
+          accountId: string;
+          apiStatus?: string;
+          attempts?: Array<any>;
+          baseUrl: string;
+          endpoint: string;
+          error?: string;
+          jsonPreview?: any;
+          ok: boolean;
+          pathUsed?: string;
+          status?: number;
+          textPreview?: string;
+          tradeAccNum?: number;
+          tradeAccountId?: string;
+        }
+      >;
       syncTradeLockerConnection: FunctionReference<
         "action",
         "internal",
@@ -1243,7 +1333,12 @@ export declare const components: {
         getSummary: FunctionReference<
           "query",
           "internal",
-          { limit?: number; organizationId: string; userId: string },
+          {
+            accountId?: string;
+            limit?: number;
+            organizationId: string;
+            userId: string;
+          },
           {
             avgLoss: number;
             avgWin: number;
@@ -1259,7 +1354,12 @@ export declare const components: {
         listByInstrument: FunctionReference<
           "query",
           "internal",
-          { limit?: number; organizationId: string; userId: string },
+          {
+            accountId?: string;
+            limit?: number;
+            organizationId: string;
+            userId: string;
+          },
           Array<{
             avgPnl: number;
             instrumentId: string;
@@ -1440,7 +1540,12 @@ export declare const components: {
         listNextToReview: FunctionReference<
           "query",
           "internal",
-          { limit?: number; organizationId: string; userId: string },
+          {
+            accountId?: string;
+            limit?: number;
+            organizationId: string;
+            userId: string;
+          },
           Array<{
             closedAt: number;
             direction: "long" | "short";
@@ -1457,7 +1562,12 @@ export declare const components: {
         listRecentClosedWithReviewStatus: FunctionReference<
           "query",
           "internal",
-          { limit?: number; organizationId: string; userId: string },
+          {
+            accountId?: string;
+            limit?: number;
+            organizationId: string;
+            userId: string;
+          },
           Array<{
             closedAt: number;
             direction: "long" | "short";
@@ -1866,6 +1976,12 @@ export declare const components: {
             updatedAt: number;
           }
         >;
+        listInstrumentsByTradableInstrumentIds: FunctionReference<
+          "query",
+          "internal",
+          { sourceKey: string; tradableInstrumentIds: Array<string> },
+          Array<{ symbol: string; tradableInstrumentId: string }>
+        >;
         listInstrumentsForSource: FunctionReference<
           "query",
           "internal",
@@ -1925,6 +2041,12 @@ export declare const components: {
             tradableInstrumentId: string;
             updatedAt: number;
           }
+        >;
+        listInstrumentsByTradableInstrumentIds: FunctionReference<
+          "query",
+          "internal",
+          { sourceKey: string; tradableInstrumentIds: Array<string> },
+          Array<{ symbol: string; tradableInstrumentId: string }>
         >;
         listInstrumentsForSource: FunctionReference<
           "query",

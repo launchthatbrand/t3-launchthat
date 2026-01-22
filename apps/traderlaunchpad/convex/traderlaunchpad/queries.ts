@@ -5,12 +5,12 @@
   @typescript-eslint/no-unsafe-return
 */
 
-import { v } from "convex/values";
-import { paginationOptsValidator } from "convex/server";
+import { resolveOrganizationId, resolveViewerUserId } from "./lib/resolve";
 
 import { components } from "../_generated/api";
+import { paginationOptsValidator } from "convex/server";
 import { query } from "../_generated/server";
-import { resolveOrganizationId, resolveViewerUserId } from "./lib/resolve";
+import { v } from "convex/values";
 
 const connectionsQueries = components.launchthat_traderlaunchpad.connections
   .queries as any;
@@ -23,6 +23,11 @@ const tradeIdeasAnalytics = components.launchthat_traderlaunchpad.tradeIdeas
   .analytics as any;
 const tradeIdeasNotes = components.launchthat_traderlaunchpad.tradeIdeas.notes as any;
 const tradingPlans = components.launchthat_traderlaunchpad.tradingPlans.index as any;
+const pricedataSources = (components as any).launchthat_pricedata?.sources?.queries as
+  | any
+  | undefined;
+const pricedataInstruments = (components as any).launchthat_pricedata?.instruments
+  ?.queries as any | undefined;
 
 const tradeOrderView = v.object({
   _id: v.string(),
@@ -359,6 +364,36 @@ export const listMyTradeLockerPositions = query({
   },
 });
 
+export const getMyPriceDataSymbolsByTradableInstrumentIds = query({
+  args: { tradableInstrumentIds: v.array(v.string()) },
+  returns: v.array(
+    v.object({ tradableInstrumentId: v.string(), symbol: v.string() }),
+  ),
+  handler: async (ctx, args) => {
+    if (!pricedataSources || !pricedataInstruments) return [];
+
+    const ids = Array.isArray(args.tradableInstrumentIds)
+      ? args.tradableInstrumentIds.map((id) => id.trim()).filter(Boolean)
+      : [];
+    if (ids.length === 0) return [];
+
+    const source = await ctx.runQuery(pricedataSources.getDefaultSource, {});
+    const sourceKey =
+      typeof source?.sourceKey === "string" ? String(source.sourceKey) : "";
+    if (!sourceKey) return [];
+
+    const rows = await ctx.runQuery(
+      pricedataInstruments.listInstrumentsByTradableInstrumentIds,
+      {
+        sourceKey,
+        tradableInstrumentIds: ids,
+      },
+    );
+
+    return Array.isArray(rows) ? rows : [];
+  },
+});
+
 export const getMyTradeLockerOrderDetail = query({
   args: {
     orderId: v.string(),
@@ -430,6 +465,7 @@ export const getMyTradeLockerAccountState = query({
 export const getMyTradeIdeaAnalyticsSummary = query({
   args: {
     limit: v.optional(v.number()),
+    accountId: v.optional(v.string()),
   },
   returns: v.object({
     sampleSize: v.number(),
@@ -449,6 +485,7 @@ export const getMyTradeIdeaAnalyticsSummary = query({
       organizationId,
       userId,
       limit: args.limit,
+      accountId: args.accountId,
     });
   },
 });
@@ -456,6 +493,7 @@ export const getMyTradeIdeaAnalyticsSummary = query({
 export const listMyTradeIdeaAnalyticsByInstrument = query({
   args: {
     limit: v.optional(v.number()),
+    accountId: v.optional(v.string()),
   },
   returns: v.array(
     v.object({
@@ -475,6 +513,7 @@ export const listMyTradeIdeaAnalyticsByInstrument = query({
       organizationId,
       userId,
       limit: args.limit,
+      accountId: args.accountId,
     });
   },
 });
@@ -568,6 +607,7 @@ export const getMyTradeIdeaNoteForGroup = query({
 export const listMyNextTradeIdeasToReview = query({
   args: {
     limit: v.optional(v.number()),
+    accountId: v.optional(v.string()),
   },
   returns: v.array(
     v.object({
@@ -590,6 +630,7 @@ export const listMyNextTradeIdeasToReview = query({
       organizationId,
       userId,
       limit: args.limit,
+      accountId: args.accountId,
     });
     return (rows ?? []).map((r: any) => ({
       tradeIdeaGroupId: String(r.tradeIdeaGroupId),
@@ -609,6 +650,7 @@ export const listMyNextTradeIdeasToReview = query({
 export const listMyRecentClosedTradeIdeas = query({
   args: {
     limit: v.optional(v.number()),
+    accountId: v.optional(v.string()),
   },
   returns: v.array(
     v.object({
@@ -633,6 +675,7 @@ export const listMyRecentClosedTradeIdeas = query({
         organizationId,
         userId,
         limit: args.limit,
+        accountId: args.accountId,
       },
     );
     return (rows ?? []).map((r: any) => ({
@@ -757,13 +800,13 @@ export const getMyActiveTradingPlan = query({
         : [],
       sessions: Array.isArray((plan as any).sessions)
         ? (plan as any).sessions.map((s: any) => ({
-            id: String(s?.id ?? ""),
-            label: String(s?.label ?? ""),
-            timezone: String(s?.timezone ?? ""),
-            days: Array.isArray(s?.days) ? s.days.map((d: any) => String(d)) : [],
-            start: String(s?.start ?? ""),
-            end: String(s?.end ?? ""),
-          }))
+          id: String(s?.id ?? ""),
+          label: String(s?.label ?? ""),
+          timezone: String(s?.timezone ?? ""),
+          days: Array.isArray(s?.days) ? s.days.map((d: any) => String(d)) : [],
+          start: String(s?.start ?? ""),
+          end: String(s?.end ?? ""),
+        }))
         : [],
       risk: {
         maxRiskPerTradePct: Number((plan as any).risk?.maxRiskPerTradePct ?? 0),
@@ -774,18 +817,18 @@ export const getMyActiveTradingPlan = query({
       },
       rules: Array.isArray((plan as any).rules)
         ? (plan as any).rules.map((r: any) => ({
-            id: String(r?.id ?? ""),
-            title: String(r?.title ?? ""),
-            description: String(r?.description ?? ""),
-            category:
-              r?.category === "Risk" ||
+          id: String(r?.id ?? ""),
+          title: String(r?.title ?? ""),
+          description: String(r?.description ?? ""),
+          category:
+            r?.category === "Risk" ||
               r?.category === "Exit" ||
               r?.category === "Process" ||
               r?.category === "Psychology"
-                ? r.category
-                : "Entry",
-            severity: r?.severity === "hard" ? "hard" : "soft",
-          }))
+              ? r.category
+              : "Entry",
+          severity: r?.severity === "hard" ? "hard" : "soft",
+        }))
         : [],
       kpis: {
         adherencePct: Number((plan as any).kpis?.adherencePct ?? 0),

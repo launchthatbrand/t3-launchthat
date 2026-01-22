@@ -1,8 +1,7 @@
-import { v } from "convex/values";
-
+import { ConvexError } from "convex/values";
 import { mutation } from "../_generated/server";
 import { resolveOrganizationId } from "../traderlaunchpad/lib/resolve";
-import { ConvexError } from "convex/values";
+import { v } from "convex/values";
 
 const parseAdminEmails = (raw: string | undefined | null): Set<string> => {
   const set = new Set<string>();

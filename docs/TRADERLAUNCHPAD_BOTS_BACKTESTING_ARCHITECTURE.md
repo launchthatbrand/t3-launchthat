@@ -249,12 +249,11 @@ These controls map directly to ingestion and worker compute cost.
 
 ## Suggested “V1” slice that scaffolds execution
 
-1) Strategy DSL + template gallery + guided first-plan workflow (wizard).
-2) M1 ingestion + caching + gap detection + backfill jobs.
-3) Derived timeframe aggregation (30m/1h/4h) from M1.
-4) Backtest jobs in external worker; results stored + shown in UI.
-5) Deployments evaluate at bar close and emit alerts + audit logs.
-6) Execution later:
+1. Strategy DSL + template gallery + guided first-plan workflow (wizard).
+2. M1 ingestion + caching + gap detection + backfill jobs.
+3. Derived timeframe aggregation (30m/1h/4h) from M1.
+4. Backtest jobs in external worker; results stored + shown in UI.
+5. Deployments evaluate at bar close and emit alerts + audit logs.
+6. Execution later:
    - keep deployments + audit trail identical
    - swap output action from `emitAlert()` → `placeOrder()` gated behind explicit consent and guardrails.
-

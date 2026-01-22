@@ -8,6 +8,7 @@ import { Button } from "@acme/ui/button";
 import React from "react";
 import { RefreshCw } from "lucide-react";
 import { api } from "@convex-config/_generated/api";
+import { TradeLockerApiDebugPanel } from "~/components/settings/tradelocker/TradeLockerApiDebugPanel";
 
 type UnknownRecord = Record<string, unknown>;
 interface ConnectionAccountResult {
@@ -245,6 +246,10 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
                     </details>
                 </CardContent>
             </Card>
+
+            {provider === "tradelocker" ? (
+              <TradeLockerApiDebugPanel accountRowId={props.accountRowId} />
+            ) : null}
         </div>
     );
 }

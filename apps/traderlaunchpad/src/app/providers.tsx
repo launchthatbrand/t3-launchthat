@@ -1,21 +1,22 @@
 "use client";
 
-/* eslint-disable react-compiler/react-compiler */
-import React from "react";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
 import { ClerkProvider, useAuth } from "@clerk/nextjs";
-import { api } from "@convex-config/_generated/api";
-import { ConvexReactClient } from "convex/react";
-import { ConvexProviderWithClerk } from "convex/react-clerk";
 import {
   OnboardingGateModal,
   OnboardingGateProvider,
 } from "launchthat-plugin-onboarding/frontend";
 
+import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { ConvexReactClient } from "convex/react";
 import { DataModeProvider } from "~/components/dataMode/DataModeProvider";
+/* eslint-disable react-compiler/react-compiler */
+import React from "react";
+import { Suspense } from "react";
+import { ActiveAccountProvider } from "~/components/accounts/ActiveAccountProvider";
 import { TraderLaunchpadOnboardingDialog } from "~/components/onboarding/TraderLaunchpadOnboardingDialog";
+import { api } from "@convex-config/_generated/api";
 import { env } from "~/env";
+import { useSearchParams } from "next/navigation";
 
 const convexUrl = String(env.NEXT_PUBLIC_CONVEX_URL ?? "");
 if (!convexUrl) {
@@ -31,9 +32,11 @@ export function Providers(props: { children: React.ReactNode }) {
     <ClerkProvider>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <DataModeProvider>
-          <TraderLaunchpadOnboardingGate>
-            {props.children}
-          </TraderLaunchpadOnboardingGate>
+          <ActiveAccountProvider>
+            <TraderLaunchpadOnboardingGate>
+              {props.children}
+            </TraderLaunchpadOnboardingGate>
+          </ActiveAccountProvider>
         </DataModeProvider>
       </ConvexProviderWithClerk>
     </ClerkProvider>

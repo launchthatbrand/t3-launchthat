@@ -27,6 +27,11 @@ import Link from "next/link";
 import React from "react";
 import { Separator } from "@acme/ui/separator";
 import { cn } from "@acme/ui";
+import { useConvexAuth, useQuery } from "convex/react";
+import { api } from "@convex-config/_generated/api";
+import { useDataMode } from "~/components/dataMode/DataModeProvider";
+import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
+import { useActiveAccount } from "~/components/accounts/ActiveAccountProvider";
 
 const MOCK_IDEAS = [
   {
@@ -86,8 +91,67 @@ const MOCK_IDEAS = [
   },
 ];
 
+interface TradeIdeaCardRow {
+  id: string;
+  symbol: string;
+  type: "Long" | "Short";
+  status: "Open" | "Closed";
+  result: "win" | "loss" | "open";
+  pnl: number;
+  date: string;
+  tags: string[];
+  reviewed: boolean;
+}
+
+interface LiveRecentClosedTradeIdeaRow {
+  tradeIdeaGroupId: string;
+  symbol: string;
+  direction: "long" | "short";
+  closedAt: number;
+  realizedPnl?: number;
+  reviewStatus: "todo" | "reviewed";
+}
+
+const toDateLabel = (tsMs: number): string => {
+  const d = new Date(tsMs);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+};
+
 export default function AdminTradeIdeasPage() {
   const [view, setView] = React.useState<"grid" | "list">("grid");
+  const dataMode = useDataMode();
+  const activeAccount = useActiveAccount();
+  const isLive = dataMode.effectiveMode === "live";
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const shouldQuery = isAuthenticated && !authLoading;
+
+  const liveRecentClosed = useQuery(
+    api.traderlaunchpad.queries.listMyRecentClosedTradeIdeas,
+    shouldQuery && isLive
+      ? { limit: 200, accountId: activeAccount.selected?.accountId }
+      : "skip",
+  ) as LiveRecentClosedTradeIdeaRow[] | undefined;
+
+  const ideas: TradeIdeaCardRow[] = React.useMemo(() => {
+    if (!isLive) return MOCK_IDEAS as TradeIdeaCardRow[];
+
+    const rows = Array.isArray(liveRecentClosed) ? liveRecentClosed : [];
+    return rows.map((r): TradeIdeaCardRow => {
+      const pnl = typeof r.realizedPnl === "number" ? r.realizedPnl : 0;
+      return {
+        id: r.tradeIdeaGroupId,
+        symbol: r.symbol,
+        type: r.direction === "short" ? "Short" : "Long",
+        status: "Closed",
+        result: pnl > 0 ? "win" : pnl < 0 ? "loss" : "open",
+        pnl,
+        date: toDateLabel(r.closedAt),
+        tags: [],
+        reviewed: r.reviewStatus === "reviewed",
+      };
+    });
+  }, [isLive, liveRecentClosed]);
 
   return (
     <div className="relative animate-in fade-in space-y-8 text-white selection:bg-orange-500/30 duration-500">
@@ -100,6 +164,7 @@ export default function AdminTradeIdeasPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <ActiveAccountSelector />
           <Button className="bg-white text-black hover:bg-white/90">
             <Plus className="mr-2 h-4 w-4" />
             New Idea
@@ -152,7 +217,7 @@ export default function AdminTradeIdeasPage() {
             : "grid-cols-1",
         )}
       >
-        {MOCK_IDEAS.map((idea) => (
+        {ideas.map((idea) => (
           <Card
             key={idea.id}
             className="group relative overflow-hidden transition-colors hover:border-white/20 hover:bg-white/5"

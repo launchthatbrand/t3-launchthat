@@ -5,15 +5,17 @@
   @typescript-eslint/no-unsafe-return
 */
 
-import { v } from "convex/values";
+import { resolveOrganizationId, resolveViewerUserId } from "./lib/resolve";
 
 import { components } from "../_generated/api";
 import { mutation } from "../_generated/server";
-import { resolveOrganizationId, resolveViewerUserId } from "./lib/resolve";
+import { v } from "convex/values";
 
 const tradeIdeasNotesMutations = components.launchthat_traderlaunchpad.tradeIdeas
   .notes as any;
 const tradingPlansMutations = components.launchthat_traderlaunchpad.tradingPlans.index as any;
+const connectionsQueries = components.launchthat_traderlaunchpad.connections.queries as any;
+const connectionsMutations = components.launchthat_traderlaunchpad.connections.mutations as any;
 
 export const upsertMyTradeIdeaNoteForGroup = mutation({
   args: {
@@ -98,6 +100,51 @@ export const setMyActiveTradingPlan = mutation({
       userId,
       planId: args.planId as any,
     });
+    return null;
+  },
+});
+
+export const setMySelectedConnectionAccount = mutation({
+  args: {
+    // Id of the `connectionAccounts` row (stored in the component)
+    accountRowId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+
+    const connection = await ctx.runQuery(connectionsQueries.getMyConnection, {
+      organizationId,
+      userId,
+    });
+    if (!connection) return null;
+
+    const accounts = await ctx.runQuery(connectionsQueries.listMyConnectionAccounts, {
+      organizationId,
+      userId,
+      connectionId: (connection as any)._id,
+    } as any);
+    const list = Array.isArray(accounts) ? accounts : [];
+
+    const row =
+      list.find((a: any) => String(a?._id ?? "") === args.accountRowId) ?? null;
+    if (!row) return null;
+
+    const selectedAccountId = String(row?.accountId ?? row?.id ?? "").trim();
+    const selectedAccNum = Number(row?.accNum ?? row?.acc_num ?? row?.accountNumber ?? 0);
+    if (!selectedAccountId || !Number.isFinite(selectedAccNum) || selectedAccNum <= 0) {
+      return null;
+    }
+
+    await ctx.runMutation(connectionsMutations.setConnectionSelectedAccount, {
+      organizationId,
+      userId,
+      connectionId: (connection as any)._id,
+      selectedAccountId,
+      selectedAccNum,
+    } as any);
+
     return null;
   },
 });

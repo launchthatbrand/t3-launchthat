@@ -1,24 +1,26 @@
 "use client";
 
-import { ArrowUpRight, Brain, Calendar, Clock } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { Calendar as DayCalendar } from "@acme/ui/calendar";
+import { ArrowUpRight, Brain, Calendar, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
 import { demoCalendarDailyStats, demoDashboardStats, demoReviewTrades } from "@acme/demo-data";
-import { cn } from "@acme/ui";
-import { format as formatDate } from "date-fns";
+import { useConvexAuth, useQuery } from "convex/react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { Calendar as DayCalendar } from "@acme/ui/calendar";
 import Link from "next/link";
 import React from "react";
-import { createPortal } from "react-dom";
-
-import { api } from "@convex-config/_generated/api";
-import { useConvexAuth, useQuery } from "convex/react";
 import { TradingCalendarPanel } from "~/components/dashboard/TradingCalendarPanel";
 import { TradingTimingInsights } from "~/components/dashboard/TradingTimingInsights";
+import { api } from "@convex-config/_generated/api";
+import { cn } from "@acme/ui";
+import { createPortal } from "react-dom";
+import { format as formatDate } from "date-fns";
 import { useDataMode } from "~/components/dataMode/DataModeProvider";
+import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
+import { useActiveAccount } from "~/components/accounts/ActiveAccountProvider";
 import { useTradingCalendarStore } from "~/stores/tradingCalendarStore";
 
 type LiveReviewRow = {
@@ -105,33 +107,33 @@ function TooltipIcon({
       </Button>
       {typeof document !== "undefined"
         ? createPortal(
-            <AnimatePresence>
-              {open ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 6, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 6, scale: 0.98 }}
-                  transition={{ duration: 0.18, ease: "easeOut" }}
-                  className="pointer-events-none fixed inset-0 z-50"
+          <AnimatePresence>
+            {open ? (
+              <motion.div
+                initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 6, scale: 0.98 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className="pointer-events-none fixed inset-0 z-50"
+              >
+                <div className="pointer-events-none absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                <div
+                  className="pointer-events-auto absolute z-10 w-64 -translate-x-full rounded-lg border border-white/10 bg-black/85 p-3 shadow-xl backdrop-blur"
+                  style={{
+                    top: coords?.top ?? 0,
+                    left: coords?.left ?? 0,
+                  }}
+                  onMouseEnter={() => setOpen(true)}
+                  onMouseLeave={() => setOpen(false)}
                 >
-                  <div className="pointer-events-none absolute inset-0 bg-black/60 backdrop-blur-sm" />
-                  <div
-                    className="pointer-events-auto absolute z-10 w-64 -translate-x-full rounded-lg border border-white/10 bg-black/85 p-3 shadow-xl backdrop-blur"
-                    style={{
-                      top: coords?.top ?? 0,
-                      left: coords?.left ?? 0,
-                    }}
-                    onMouseEnter={() => setOpen(true)}
-                    onMouseLeave={() => setOpen(false)}
-                  >
-                    <div className="text-sm font-semibold">{title}</div>
-                    <div className="mt-1 text-xs text-white/60">{description}</div>
-                  </div>
-                </motion.div>
-              ) : null}
-            </AnimatePresence>,
-            document.body,
-          )
+                  <div className="text-sm font-semibold">{title}</div>
+                  <div className="mt-1 text-xs text-white/60">{description}</div>
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>,
+          document.body,
+        )
         : null}
     </div>
   );
@@ -139,12 +141,15 @@ function TooltipIcon({
 
 export default function AdminJournalDashboardPage() {
   const dataMode = useDataMode();
+  const activeAccount = useActiveAccount();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const shouldQuery = isAuthenticated && !authLoading;
 
   const liveRowsRaw = useQuery(
     api.traderlaunchpad.queries.listMyNextTradeIdeasToReview,
-    shouldQuery && dataMode.effectiveMode === "live" ? { limit: 200 } : "skip",
+    shouldQuery && dataMode.effectiveMode === "live"
+      ? { limit: 200, accountId: activeAccount.selected?.accountId }
+      : "skip",
   ) as LiveReviewRow[] | undefined;
 
   const demoLikeTrades: DemoLikeReviewTrade[] = React.useMemo(() => {
@@ -258,6 +263,7 @@ export default function AdminJournalDashboardPage() {
       {/* Date filter (syncs with TradingCalendarPanel) */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
         <div className="flex flex-wrap items-center gap-2">
+          <ActiveAccountSelector />
           <Popover>
             <PopoverTrigger asChild>
               <Button
