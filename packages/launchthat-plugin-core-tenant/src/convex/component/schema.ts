@@ -27,6 +27,34 @@ export default defineSchema({
     .index("by_slug", ["slug"])
     .index("by_clerk_org_id", ["clerkOrganizationId"]),
 
+  organizationDomains: defineTable({
+    organizationId: v.id("organizations"),
+    appKey: v.string(),
+    hostname: v.string(),
+    status: v.union(
+      v.literal("unconfigured"),
+      v.literal("pending"),
+      v.literal("verified"),
+      v.literal("error"),
+    ),
+    records: v.optional(
+      v.array(
+        v.object({
+          type: v.string(),
+          name: v.string(),
+          value: v.string(),
+        }),
+      ),
+    ),
+    verifiedAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_appKey_hostname", ["appKey", "hostname"])
+    .index("by_org_appKey", ["organizationId", "appKey"])
+    .index("by_org", ["organizationId"]),
+
   userOrganizations: defineTable({
     userId: v.string(),
     organizationId: v.id("organizations"),

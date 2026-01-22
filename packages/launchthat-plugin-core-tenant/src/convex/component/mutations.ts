@@ -1,6 +1,28 @@
 import { v } from "convex/values";
 
-import { internalMutation, mutation } from "./server";
+import { mutation } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
+
+const normalizeHostname = (input: string): string => {
+  const raw = input.trim().toLowerCase();
+  if (!raw) return "";
+
+  const candidate = raw.includes("://")
+    ? (() => {
+        try {
+          return new URL(raw).hostname;
+        } catch {
+          return raw;
+        }
+      })()
+    : raw;
+
+  return candidate
+    .trim()
+    .toLowerCase()
+    .replace(/^www\./, "")
+    .replace(/\.$/, "");
+};
 
 const normalizeSlug = (raw: string): string => {
   const normalized = raw
@@ -17,7 +39,7 @@ export const createOrganization = mutation({
     name: v.string(),
     slug: v.optional(v.string()),
   },
-  returns: v.string(),
+  returns: v.id("organizations"),
   handler: async (ctx, args) => {
     const slugBase = typeof args.slug === "string" && args.slug.trim()
       ? args.slug.trim()
@@ -29,7 +51,7 @@ export const createOrganization = mutation({
 
     const existing = await ctx.db
       .query("organizations")
-      .withIndex("by_slug", (q: any) => q.eq("slug", slug))
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
       .first();
     if (existing) {
       throw new Error("Organization slug already exists");
@@ -42,7 +64,7 @@ export const createOrganization = mutation({
       ownerId: args.userId,
       createdAt: now,
       updatedAt: now,
-    } as any);
+    });
 
     await ctx.db.insert("userOrganizations", {
       userId: args.userId,
@@ -51,16 +73,16 @@ export const createOrganization = mutation({
       isActive: true,
       joinedAt: now,
       updatedAt: now,
-    } as any);
+    });
 
-    return String(orgId);
+    return orgId;
   },
 });
 
 export const ensureMembership = mutation({
   args: {
     userId: v.string(),
-    organizationId: v.string(),
+    organizationId: v.id("organizations"),
     role: v.optional(
       v.union(
         v.literal("owner"),
@@ -76,8 +98,8 @@ export const ensureMembership = mutation({
   handler: async (ctx, args) => {
     const membership = await ctx.db
       .query("userOrganizations")
-      .withIndex("by_user_organization", (q: any) =>
-        q.eq("userId", args.userId).eq("organizationId", args.organizationId as any),
+      .withIndex("by_user_organization", (q) =>
+        q.eq("userId", args.userId).eq("organizationId", args.organizationId),
       )
       .first();
 
@@ -85,16 +107,16 @@ export const ensureMembership = mutation({
     if (!membership) {
       await ctx.db.insert("userOrganizations", {
         userId: args.userId,
-        organizationId: args.organizationId as any,
+        organizationId: args.organizationId,
         role: args.role ?? "viewer",
         isActive: args.setActive ?? false,
         joinedAt: now,
         updatedAt: now,
-      } as any);
+      });
       return null;
     }
 
-    const patch: Record<string, unknown> = { updatedAt: now };
+    const patch: Partial<Doc<"userOrganizations">> = { updatedAt: now };
     if (args.setActive === true && membership.isActive !== true) {
       patch.isActive = true;
     }
@@ -102,8 +124,205 @@ export const ensureMembership = mutation({
       patch.role = args.role;
     }
     if (Object.keys(patch).length > 1) {
-      await ctx.db.patch(membership._id, patch as any);
+      await ctx.db.patch(membership._id, patch);
     }
+    return null;
+  },
+});
+
+export const removeMembership = mutation({
+  args: {
+    userId: v.string(),
+    organizationId: v.id("organizations"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const membership = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user_organization", (q) =>
+        q.eq("userId", args.userId).eq("organizationId", args.organizationId),
+      )
+      .first();
+    if (!membership) return null;
+    await ctx.db.delete(membership._id);
+    return null;
+  },
+});
+
+export const setActiveOrganizationForUser = mutation({
+  args: {
+    userId: v.string(),
+    organizationId: v.id("organizations"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const memberships = await ctx.db
+      .query("userOrganizations")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    const now = Date.now();
+    let hasMembership = false;
+
+    for (const m of memberships) {
+      if (m.organizationId === args.organizationId) {
+        hasMembership = true;
+      }
+
+      const nextActive = m.organizationId === args.organizationId;
+      if (m.isActive !== nextActive) {
+        await ctx.db.patch(m._id, { isActive: nextActive, updatedAt: now });
+      } else if (m.updatedAt !== now && nextActive) {
+        // Keep a timestamp bump for the active org selection.
+        await ctx.db.patch(m._id, { updatedAt: now });
+      }
+    }
+
+    if (!hasMembership) {
+      throw new Error("User is not a member of that organization");
+    }
+
+    return null;
+  },
+});
+
+export const upsertOrganizationDomain = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    appKey: v.string(),
+    hostname: v.string(),
+    status: v.optional(
+      v.union(
+        v.literal("unconfigured"),
+        v.literal("pending"),
+        v.literal("verified"),
+        v.literal("error"),
+      ),
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const appKey = args.appKey.trim().toLowerCase();
+    const hostname = normalizeHostname(args.hostname);
+    if (!appKey) throw new Error("appKey is required");
+    if (!hostname) throw new Error("hostname is required");
+
+    const existing = await ctx.db
+      .query("organizationDomains")
+      .withIndex("by_appKey_hostname", (q) =>
+        q.eq("appKey", appKey).eq("hostname", hostname),
+      )
+      .first();
+
+    const now = Date.now();
+    const nextStatus = args.status ?? "pending";
+
+    if (!existing) {
+      await ctx.db.insert("organizationDomains", {
+        organizationId: args.organizationId,
+        appKey,
+        hostname,
+        status: nextStatus,
+        createdAt: now,
+        updatedAt: now,
+      });
+      return null;
+    }
+
+    // Domain uniqueness: (appKey, hostname) can only point to one org.
+    if (existing.organizationId !== args.organizationId) {
+      throw new Error("That domain is already assigned to another organization.");
+    }
+
+    const patch: Partial<Doc<"organizationDomains">> = { updatedAt: now };
+    if (existing.status !== nextStatus) patch.status = nextStatus;
+    if (Object.keys(patch).length > 1) {
+      await ctx.db.patch(existing._id, patch);
+    }
+    return null;
+  },
+});
+
+export const setOrganizationDomainStatus = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    appKey: v.string(),
+    hostname: v.string(),
+    status: v.union(
+      v.literal("unconfigured"),
+      v.literal("pending"),
+      v.literal("verified"),
+      v.literal("error"),
+    ),
+    records: v.optional(
+      v.array(
+        v.object({
+          type: v.string(),
+          name: v.string(),
+          value: v.string(),
+        }),
+      ),
+    ),
+    lastError: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const appKey = args.appKey.trim().toLowerCase();
+    const hostname = normalizeHostname(args.hostname);
+    if (!appKey) throw new Error("appKey is required");
+    if (!hostname) throw new Error("hostname is required");
+
+    const existing = await ctx.db
+      .query("organizationDomains")
+      .withIndex("by_appKey_hostname", (q) =>
+        q.eq("appKey", appKey).eq("hostname", hostname),
+      )
+      .first();
+    if (!existing) throw new Error("Domain mapping not found.");
+    if (existing.organizationId !== args.organizationId) {
+      throw new Error("Domain mapping belongs to a different organization.");
+    }
+
+    const now = Date.now();
+    const patch: Partial<Doc<"organizationDomains">> = {
+      status: args.status,
+      updatedAt: now,
+    };
+
+    if (args.records !== undefined) patch.records = args.records;
+    if (args.lastError !== undefined) patch.lastError = args.lastError;
+    if (args.status === "verified") patch.verifiedAt = now;
+
+    await ctx.db.patch(existing._id, patch);
+    return null;
+  },
+});
+
+export const removeOrganizationDomain = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    appKey: v.string(),
+    hostname: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const appKey = args.appKey.trim().toLowerCase();
+    const hostname = normalizeHostname(args.hostname);
+    if (!appKey) throw new Error("appKey is required");
+    if (!hostname) throw new Error("hostname is required");
+
+    const existing = await ctx.db
+      .query("organizationDomains")
+      .withIndex("by_appKey_hostname", (q) =>
+        q.eq("appKey", appKey).eq("hostname", hostname),
+      )
+      .first();
+    if (!existing) return null;
+    if (existing.organizationId !== args.organizationId) {
+      throw new Error("Domain mapping belongs to a different organization.");
+    }
+
+    await ctx.db.delete(existing._id);
     return null;
   },
 });

@@ -52,8 +52,119 @@ export type Mounts = {
       },
       null
     >;
+    removeMembership: FunctionReference<
+      "mutation",
+      "public",
+      { organizationId: string; userId: string },
+      null
+    >;
+    removeOrganizationDomain: FunctionReference<
+      "mutation",
+      "public",
+      { appKey: string; hostname: string; organizationId: string },
+      null
+    >;
+    setActiveOrganizationForUser: FunctionReference<
+      "mutation",
+      "public",
+      { organizationId: string; userId: string },
+      null
+    >;
+    setOrganizationDomainStatus: FunctionReference<
+      "mutation",
+      "public",
+      {
+        appKey: string;
+        hostname: string;
+        lastError?: string;
+        organizationId: string;
+        records?: Array<{ name: string; type: string; value: string }>;
+        status: "unconfigured" | "pending" | "verified" | "error";
+      },
+      null
+    >;
+    upsertOrganizationDomain: FunctionReference<
+      "mutation",
+      "public",
+      {
+        appKey: string;
+        hostname: string;
+        organizationId: string;
+        status?: "unconfigured" | "pending" | "verified" | "error";
+      },
+      null
+    >;
   };
   queries: {
+    getOrganizationByHostname: FunctionReference<
+      "query",
+      "public",
+      { appKey: string; hostname: string; requireVerified?: boolean },
+      null | {
+        _creationTime: number;
+        _id: string;
+        clerkOrganizationId?: string;
+        createdAt?: number;
+        name: string;
+        ownerId: string;
+        slug: string;
+        updatedAt?: number;
+      }
+    >;
+    getOrganizationById: FunctionReference<
+      "query",
+      "public",
+      { organizationId: string },
+      null | {
+        _creationTime: number;
+        _id: string;
+        clerkOrganizationId?: string;
+        createdAt?: number;
+        name: string;
+        ownerId: string;
+        slug: string;
+        updatedAt?: number;
+      }
+    >;
+    getOrganizationBySlug: FunctionReference<
+      "query",
+      "public",
+      { slug: string },
+      null | {
+        _creationTime: number;
+        _id: string;
+        clerkOrganizationId?: string;
+        createdAt?: number;
+        name: string;
+        ownerId: string;
+        slug: string;
+        updatedAt?: number;
+      }
+    >;
+    listDomainsForOrg: FunctionReference<
+      "query",
+      "public",
+      { appKey?: string; organizationId: string },
+      Array<{
+        _creationTime: number;
+        _id: string;
+        appKey: string;
+        createdAt: number;
+        hostname: string;
+        lastError?: string;
+        organizationId: string;
+        records?: Array<{ name: string; type: string; value: string }>;
+        status: "unconfigured" | "pending" | "verified" | "error";
+        updatedAt: number;
+        verifiedAt?: number;
+      }>
+    >;
+    listMembersByOrganizationId: FunctionReference<
+      "query",
+      "public",
+      { organizationId: string },
+      Array<{ isActive: boolean; role: string; userId: string }>
+    >;
     listOrganizationsByUserId: FunctionReference<
       "query",
       "public",

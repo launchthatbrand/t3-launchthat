@@ -4,3 +4,6 @@ export { default as schema } from "./convex/component/schema";
 export * as queries from "./convex/component/queries";
 export * as mutations from "./convex/component/mutations";
 
+export * from "./next/tenant-fetcher";
+export * from "./frontend";
+

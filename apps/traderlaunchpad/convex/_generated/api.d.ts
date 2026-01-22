@@ -9,6 +9,8 @@
  */
 
 import type * as coreTenant_mutations from "../coreTenant/mutations.js";
+import type * as coreTenant_organizations from "../coreTenant/organizations.js";
+import type * as coreTenant_platformUsers from "../coreTenant/platformUsers.js";
 import type * as coreTenant_queries from "../coreTenant/queries.js";
 import type * as discord_actions from "../discord/actions.js";
 import type * as discord_mutations from "../discord/mutations.js";
@@ -47,6 +49,8 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   "coreTenant/mutations": typeof coreTenant_mutations;
+  "coreTenant/organizations": typeof coreTenant_organizations;
+  "coreTenant/platformUsers": typeof coreTenant_platformUsers;
   "coreTenant/queries": typeof coreTenant_queries;
   "discord/actions": typeof discord_actions;
   "discord/mutations": typeof discord_mutations;
@@ -100,8 +104,119 @@ export declare const components: {
         },
         null
       >;
+      removeMembership: FunctionReference<
+        "mutation",
+        "internal",
+        { organizationId: string; userId: string },
+        null
+      >;
+      removeOrganizationDomain: FunctionReference<
+        "mutation",
+        "internal",
+        { appKey: string; hostname: string; organizationId: string },
+        null
+      >;
+      setActiveOrganizationForUser: FunctionReference<
+        "mutation",
+        "internal",
+        { organizationId: string; userId: string },
+        null
+      >;
+      setOrganizationDomainStatus: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          appKey: string;
+          hostname: string;
+          lastError?: string;
+          organizationId: string;
+          records?: Array<{ name: string; type: string; value: string }>;
+          status: "unconfigured" | "pending" | "verified" | "error";
+        },
+        null
+      >;
+      upsertOrganizationDomain: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          appKey: string;
+          hostname: string;
+          organizationId: string;
+          status?: "unconfigured" | "pending" | "verified" | "error";
+        },
+        null
+      >;
     };
     queries: {
+      getOrganizationByHostname: FunctionReference<
+        "query",
+        "internal",
+        { appKey: string; hostname: string; requireVerified?: boolean },
+        null | {
+          _creationTime: number;
+          _id: string;
+          clerkOrganizationId?: string;
+          createdAt?: number;
+          name: string;
+          ownerId: string;
+          slug: string;
+          updatedAt?: number;
+        }
+      >;
+      getOrganizationById: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string },
+        null | {
+          _creationTime: number;
+          _id: string;
+          clerkOrganizationId?: string;
+          createdAt?: number;
+          name: string;
+          ownerId: string;
+          slug: string;
+          updatedAt?: number;
+        }
+      >;
+      getOrganizationBySlug: FunctionReference<
+        "query",
+        "internal",
+        { slug: string },
+        null | {
+          _creationTime: number;
+          _id: string;
+          clerkOrganizationId?: string;
+          createdAt?: number;
+          name: string;
+          ownerId: string;
+          slug: string;
+          updatedAt?: number;
+        }
+      >;
+      listDomainsForOrg: FunctionReference<
+        "query",
+        "internal",
+        { appKey?: string; organizationId: string },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          appKey: string;
+          createdAt: number;
+          hostname: string;
+          lastError?: string;
+          organizationId: string;
+          records?: Array<{ name: string; type: string; value: string }>;
+          status: "unconfigured" | "pending" | "verified" | "error";
+          updatedAt: number;
+          verifiedAt?: number;
+        }>
+      >;
+      listMembersByOrganizationId: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string },
+        Array<{ isActive: boolean; role: string; userId: string }>
+      >;
       listOrganizationsByUserId: FunctionReference<
         "query",
         "internal",
