@@ -13,6 +13,7 @@ import { resolveOrganizationId, resolveViewerUserId } from "./lib/resolve";
 
 const tradeIdeasNotesMutations = components.launchthat_traderlaunchpad.tradeIdeas
   .notes as any;
+const tradingPlansMutations = components.launchthat_traderlaunchpad.tradingPlans.index as any;
 
 export const upsertMyTradeIdeaNoteForGroup = mutation({
   args: {
@@ -61,6 +62,43 @@ export const markMyTradeIdeaReviewed = mutation({
     });
 
     return { noteId: String(noteId) };
+  },
+});
+
+export const createMyTradingPlanFromTemplate = mutation({
+  args: {
+    name: v.optional(v.string()),
+  },
+  returns: v.object({ planId: v.string() }),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const planId = await ctx.runMutation(
+      tradingPlansMutations.createTradingPlanFromTemplate,
+      {
+        organizationId,
+        userId,
+        name: args.name,
+      },
+    );
+    return { planId: String(planId) };
+  },
+});
+
+export const setMyActiveTradingPlan = mutation({
+  args: {
+    planId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    await ctx.runMutation(tradingPlansMutations.setActiveTradingPlan, {
+      organizationId,
+      userId,
+      planId: args.planId as any,
+    });
+    return null;
   },
 });
 

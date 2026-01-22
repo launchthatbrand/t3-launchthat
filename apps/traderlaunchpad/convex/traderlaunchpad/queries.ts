@@ -22,6 +22,7 @@ const tradeIdeasQueries = components.launchthat_traderlaunchpad.tradeIdeas
 const tradeIdeasAnalytics = components.launchthat_traderlaunchpad.tradeIdeas
   .analytics as any;
 const tradeIdeasNotes = components.launchthat_traderlaunchpad.tradeIdeas.notes as any;
+const tradingPlans = components.launchthat_traderlaunchpad.tradingPlans.index as any;
 
 const tradeOrderView = v.object({
   _id: v.string(),
@@ -602,5 +603,203 @@ export const listMyNextTradeIdeasToReview = query({
       reviewedAt: typeof r.reviewedAt === "number" ? r.reviewedAt : undefined,
       noteUpdatedAt: typeof r.noteUpdatedAt === "number" ? r.noteUpdatedAt : undefined,
     }));
+  },
+});
+
+export const listMyRecentClosedTradeIdeas = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      tradeIdeaGroupId: v.string(),
+      symbol: v.string(),
+      instrumentId: v.optional(v.string()),
+      direction: v.union(v.literal("long"), v.literal("short")),
+      closedAt: v.number(),
+      realizedPnl: v.optional(v.number()),
+      fees: v.optional(v.number()),
+      reviewStatus: v.union(v.literal("todo"), v.literal("reviewed")),
+      reviewedAt: v.optional(v.number()),
+      noteUpdatedAt: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const rows = await ctx.runQuery(
+      tradeIdeasNotes.listRecentClosedWithReviewStatus,
+      {
+        organizationId,
+        userId,
+        limit: args.limit,
+      },
+    );
+    return (rows ?? []).map((r: any) => ({
+      tradeIdeaGroupId: String(r.tradeIdeaGroupId),
+      symbol: String(r.symbol ?? "UNKNOWN"),
+      instrumentId: typeof r.instrumentId === "string" ? r.instrumentId : undefined,
+      direction: r.direction === "short" ? "short" : "long",
+      closedAt: Number(r.closedAt ?? 0),
+      realizedPnl: typeof r.realizedPnl === "number" ? r.realizedPnl : undefined,
+      fees: typeof r.fees === "number" ? r.fees : undefined,
+      reviewStatus: r.reviewStatus === "reviewed" ? "reviewed" : "todo",
+      reviewedAt: typeof r.reviewedAt === "number" ? r.reviewedAt : undefined,
+      noteUpdatedAt: typeof r.noteUpdatedAt === "number" ? r.noteUpdatedAt : undefined,
+    }));
+  },
+});
+
+export const listMyTradingPlans = query({
+  args: {
+    includeArchived: v.optional(v.boolean()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.string(),
+      name: v.string(),
+      version: v.string(),
+      archivedAt: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const rows = await ctx.runQuery(tradingPlans.listTradingPlans, {
+      organizationId,
+      userId,
+      includeArchived: args.includeArchived,
+      limit: args.limit,
+    });
+    return (rows ?? []).map((r: any) => ({
+      _id: String(r._id),
+      name: String(r.name ?? "Untitled"),
+      version: String(r.version ?? "v1.0"),
+      archivedAt: typeof r.archivedAt === "number" ? Number(r.archivedAt) : undefined,
+      createdAt: Number(r.createdAt ?? 0),
+      updatedAt: Number(r.updatedAt ?? 0),
+    }));
+  },
+});
+
+export const getMyActiveTradingPlan = query({
+  args: {},
+  returns: v.union(
+    v.object({
+      _id: v.string(),
+      name: v.string(),
+      version: v.string(),
+      strategySummary: v.string(),
+      markets: v.array(v.string()),
+      sessions: v.array(
+        v.object({
+          id: v.string(),
+          label: v.string(),
+          timezone: v.string(),
+          days: v.array(v.string()),
+          start: v.string(),
+          end: v.string(),
+        }),
+      ),
+      risk: v.object({
+        maxRiskPerTradePct: v.number(),
+        maxDailyLossPct: v.number(),
+        maxWeeklyLossPct: v.number(),
+        maxOpenPositions: v.number(),
+        maxTradesPerDay: v.number(),
+      }),
+      rules: v.array(
+        v.object({
+          id: v.string(),
+          title: v.string(),
+          description: v.string(),
+          category: v.union(
+            v.literal("Entry"),
+            v.literal("Risk"),
+            v.literal("Exit"),
+            v.literal("Process"),
+            v.literal("Psychology"),
+          ),
+          severity: v.union(v.literal("hard"), v.literal("soft")),
+        }),
+      ),
+      kpis: v.object({
+        adherencePct: v.number(),
+        sessionDisciplinePct7d: v.number(),
+        avgRiskPerTradePct7d: v.number(),
+        journalCompliancePct: v.number(),
+        violations7d: v.number(),
+      }),
+      archivedAt: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const plan = await ctx.runQuery(tradingPlans.getActiveTradingPlan, {
+      organizationId,
+      userId,
+    });
+    if (!plan) return null;
+    return {
+      _id: String((plan as any)._id),
+      name: String((plan as any).name ?? "Untitled"),
+      version: String((plan as any).version ?? "v1.0"),
+      strategySummary: String((plan as any).strategySummary ?? ""),
+      markets: Array.isArray((plan as any).markets)
+        ? (plan as any).markets.map((m: any) => String(m))
+        : [],
+      sessions: Array.isArray((plan as any).sessions)
+        ? (plan as any).sessions.map((s: any) => ({
+            id: String(s?.id ?? ""),
+            label: String(s?.label ?? ""),
+            timezone: String(s?.timezone ?? ""),
+            days: Array.isArray(s?.days) ? s.days.map((d: any) => String(d)) : [],
+            start: String(s?.start ?? ""),
+            end: String(s?.end ?? ""),
+          }))
+        : [],
+      risk: {
+        maxRiskPerTradePct: Number((plan as any).risk?.maxRiskPerTradePct ?? 0),
+        maxDailyLossPct: Number((plan as any).risk?.maxDailyLossPct ?? 0),
+        maxWeeklyLossPct: Number((plan as any).risk?.maxWeeklyLossPct ?? 0),
+        maxOpenPositions: Number((plan as any).risk?.maxOpenPositions ?? 0),
+        maxTradesPerDay: Number((plan as any).risk?.maxTradesPerDay ?? 0),
+      },
+      rules: Array.isArray((plan as any).rules)
+        ? (plan as any).rules.map((r: any) => ({
+            id: String(r?.id ?? ""),
+            title: String(r?.title ?? ""),
+            description: String(r?.description ?? ""),
+            category:
+              r?.category === "Risk" ||
+              r?.category === "Exit" ||
+              r?.category === "Process" ||
+              r?.category === "Psychology"
+                ? r.category
+                : "Entry",
+            severity: r?.severity === "hard" ? "hard" : "soft",
+          }))
+        : [],
+      kpis: {
+        adherencePct: Number((plan as any).kpis?.adherencePct ?? 0),
+        sessionDisciplinePct7d: Number((plan as any).kpis?.sessionDisciplinePct7d ?? 0),
+        avgRiskPerTradePct7d: Number((plan as any).kpis?.avgRiskPerTradePct7d ?? 0),
+        journalCompliancePct: Number((plan as any).kpis?.journalCompliancePct ?? 0),
+        violations7d: Number((plan as any).kpis?.violations7d ?? 0),
+      },
+      archivedAt:
+        typeof (plan as any).archivedAt === "number"
+          ? Number((plan as any).archivedAt)
+          : undefined,
+      createdAt: Number((plan as any).createdAt ?? 0),
+      updatedAt: Number((plan as any).updatedAt ?? 0),
+    };
   },
 });

@@ -241,3 +241,103 @@ export const listNextToReview = query({
   },
 });
 
+export const listRecentClosedWithReviewStatus = query({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      tradeIdeaGroupId: v.id("tradeIdeaGroups"),
+      symbol: v.string(),
+      instrumentId: v.optional(v.string()),
+      direction: v.union(v.literal("long"), v.literal("short")),
+      closedAt: v.number(),
+      realizedPnl: v.optional(v.number()),
+      fees: v.optional(v.number()),
+      reviewStatus: v.union(v.literal("todo"), v.literal("reviewed")),
+      reviewedAt: v.optional(v.number()),
+      noteUpdatedAt: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(500, Number(args.limit ?? 200)));
+
+    // Pull recent closed TradeIdeas (includes reviewed + unreviewed).
+    // We use openedAt ordering because it's indexed; closedAt is derived from lastExecutionAt.
+    const candidates = await ctx.db
+      .query("tradeIdeaGroups")
+      .withIndex("by_org_user_status_openedAt", (q: any) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("userId", args.userId)
+          .eq("status", "closed"),
+      )
+      .order("desc")
+      .take(limit);
+
+    const out: Array<{
+      tradeIdeaGroupId: Id<"tradeIdeaGroups">;
+      symbol: string;
+      instrumentId?: string;
+      direction: "long" | "short";
+      closedAt: number;
+      realizedPnl?: number;
+      fees?: number;
+      reviewStatus: "todo" | "reviewed";
+      reviewedAt?: number;
+      noteUpdatedAt?: number;
+    }> = [];
+
+    for (const ti of candidates) {
+      const closedAt =
+        typeof (ti as any).closedAt === "number"
+          ? Number((ti as any).closedAt)
+          : typeof (ti as any).lastExecutionAt === "number"
+            ? Number((ti as any).lastExecutionAt)
+            : 0;
+      if (!closedAt) continue;
+
+      const note = await ctx.db
+        .query("tradeIdeaNotes")
+        .withIndex("by_org_user_tradeIdeaGroupId", (q: any) =>
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("userId", args.userId)
+            .eq("tradeIdeaGroupId", ti._id),
+        )
+        .unique();
+
+      const reviewStatus: "todo" | "reviewed" =
+        note?.reviewStatus === "reviewed" ? "reviewed" : "todo";
+
+      out.push({
+        tradeIdeaGroupId: ti._id,
+        symbol: String((ti as any).symbol ?? "UNKNOWN"),
+        instrumentId:
+          typeof (ti as any).instrumentId === "string"
+            ? String((ti as any).instrumentId)
+            : undefined,
+        direction: (ti as any).direction === "short" ? "short" : "long",
+        closedAt,
+        realizedPnl:
+          typeof (ti as any).realizedPnl === "number"
+            ? Number((ti as any).realizedPnl)
+            : undefined,
+        fees:
+          typeof (ti as any).fees === "number"
+            ? Number((ti as any).fees)
+            : undefined,
+        reviewStatus,
+        reviewedAt:
+          typeof note?.reviewedAt === "number" ? Number(note.reviewedAt) : undefined,
+        noteUpdatedAt:
+          typeof note?.updatedAt === "number" ? Number(note.updatedAt) : undefined,
+      });
+    }
+
+    return out;
+  },
+});
+

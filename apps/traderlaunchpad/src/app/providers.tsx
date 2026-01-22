@@ -13,6 +13,7 @@ import {
   OnboardingGateProvider,
 } from "launchthat-plugin-onboarding/frontend";
 
+import { DataModeProvider } from "~/components/dataMode/DataModeProvider";
 import { TraderLaunchpadOnboardingDialog } from "~/components/onboarding/TraderLaunchpadOnboardingDialog";
 import { env } from "~/env";
 
@@ -29,9 +30,11 @@ export function Providers(props: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-        <TraderLaunchpadOnboardingGate>
-          {props.children}
-        </TraderLaunchpadOnboardingGate>
+        <DataModeProvider>
+          <TraderLaunchpadOnboardingGate>
+            {props.children}
+          </TraderLaunchpadOnboardingGate>
+        </DataModeProvider>
       </ConvexProviderWithClerk>
     </ClerkProvider>
   );

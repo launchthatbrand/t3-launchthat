@@ -32,11 +32,123 @@ import React from "react";
 import { cn } from "@acme/ui";
 import { useRouter } from "next/navigation";
 import { demoAdminOrders } from "@acme/demo-data";
+import { useConvexAuth, useQuery } from "convex/react";
+import { api } from "@convex-config/_generated/api";
+import { useDataMode } from "~/components/dataMode/DataModeProvider";
 
-const ORDERS = demoAdminOrders;
+interface OrderRow {
+  id: string;
+  date: string;
+  time: string;
+  symbol: string;
+  type: "Buy" | "Sell";
+  qty: number;
+  price: number;
+  status: string;
+  pnl: number | null;
+}
+
+type UnknownRecord = Record<string, unknown>;
+const isRecord = (value: unknown): value is UnknownRecord =>
+  typeof value === "object" && value !== null;
+
+const toNumber = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+};
+
+const formatDateTime = (tsMs: number | null): { date: string; time: string } => {
+  if (!tsMs || !Number.isFinite(tsMs)) return { date: "—", time: "" };
+  const d = new Date(tsMs);
+  const date = d.toISOString().slice(0, 10);
+  const time = d.toTimeString().slice(0, 5);
+  return { date, time };
+};
 
 export default function AdminOrdersPage() {
   const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const dataMode = useDataMode();
+  const shouldQuery = isAuthenticated && !authLoading;
+
+  const liveOrdersRaw = useQuery(
+    api.traderlaunchpad.queries.listMyTradeLockerOrders,
+    shouldQuery && dataMode.effectiveMode === "live" ? { limit: 200 } : "skip",
+  ) as unknown[] | undefined;
+
+  const orders: OrderRow[] = React.useMemo(() => {
+    if (dataMode.effectiveMode === "demo") {
+      return demoAdminOrders as unknown as OrderRow[];
+    }
+
+    const rows = Array.isArray(liveOrdersRaw) ? liveOrdersRaw : [];
+    return rows.map((row): OrderRow => {
+      const r: UnknownRecord = isRecord(row) ? row : {};
+      const raw: UnknownRecord = isRecord(r.raw) ? r.raw : {};
+
+      const symbol =
+        (typeof r.symbol === "string" && r.symbol.trim()) ||
+        (typeof raw.symbol === "string" && raw.symbol.trim()) ||
+        "—";
+
+      const side =
+        (typeof r.side === "string" && r.side) ||
+        (typeof raw.side === "string" && raw.side) ||
+        "";
+      const type: "Buy" | "Sell" =
+        side === "sell" || side === "Sell" ? "Sell" : "Buy";
+
+      const createdAtMs =
+        toNumber(r.createdAt) ??
+        toNumber(raw.createdAt) ??
+        (typeof r._creationTime === "number" ? r._creationTime : null);
+      const { date, time } = formatDateTime(createdAtMs);
+
+      const qty =
+        toNumber(raw.qty) ??
+        toNumber(raw.quantity) ??
+        toNumber(raw.volume) ??
+        0;
+
+      const price =
+        toNumber(raw.price) ??
+        toNumber(raw.avgPrice) ??
+        toNumber(raw.averagePrice) ??
+        0;
+
+      const status =
+        (typeof r.status === "string" && r.status) ||
+        (typeof raw.status === "string" && raw.status) ||
+        "—";
+
+      const externalId =
+        (typeof r.externalOrderId === "string" && r.externalOrderId) ||
+        (typeof raw.externalOrderId === "string" && raw.externalOrderId) ||
+        (typeof r._id === "string" && r._id) ||
+        "—";
+
+      const pnl =
+        toNumber(raw.pnl) ??
+        toNumber(raw.realizedPnl) ??
+        null;
+
+      return {
+        id: externalId,
+        date,
+        time,
+        symbol,
+        type,
+        qty,
+        price,
+        status,
+        pnl,
+      };
+    });
+  }, [dataMode.effectiveMode, liveOrdersRaw]);
 
   return (
     <div className="relative animate-in fade-in space-y-8 text-white selection:bg-orange-500/30 duration-500">
@@ -112,7 +224,7 @@ export default function AdminOrdersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {ORDERS.map((order) => (
+              {orders.map((order) => (
                 <TableRow
                   key={order.id}
                   className="group cursor-pointer border-white/5 hover:bg-white/5"

@@ -4,6 +4,7 @@ import * as React from "react";
 
 import {
     DropdownMenu,
+    DropdownMenuCheckboxItem,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuLabel,
@@ -14,10 +15,12 @@ import { LogOut, Settings, User } from "lucide-react";
 import { useClerk, useSession } from "@clerk/nextjs";
 
 import { Button } from "@acme/ui/button";
+import { useDataMode } from "~/components/dataMode/DataModeProvider";
 
 export function TraderLaunchpadNavUser(props: { afterSignOutUrl?: string }) {
     const { session } = useSession();
     const { openSignIn, signOut } = useClerk();
+    const dataMode = useDataMode();
 
     if (!session) {
         return (
@@ -80,6 +83,19 @@ export function TraderLaunchpadNavUser(props: { afterSignOutUrl?: string }) {
                     <User className="h-4 w-4" />
                     Account settings
                 </DropdownMenuItem>
+                {dataMode.isSignedIn && dataMode.isAdmin ? (
+                    <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuCheckboxItem
+                            checked={dataMode.dataMode === "demo"}
+                            onCheckedChange={(checked) => {
+                                void dataMode.setDataMode(checked ? "demo" : "live");
+                            }}
+                        >
+                            Use demo/mock data
+                        </DropdownMenuCheckboxItem>
+                    </>
+                ) : null}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                     variant="destructive"

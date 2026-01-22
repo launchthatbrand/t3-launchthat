@@ -42,9 +42,8 @@
     "@acme/eslint-config": "workspace:*",
     "@acme/prettier-config": "workspace:*",
     "@acme/tsconfig": "workspace:*",
-    "@types/node": "catalog:",
     "@types/react": "catalog:react19",
-    "eslint": "catalog:",
+    "@types/node": "catalog:",
     "prettier": "catalog:",
     "react": "catalog:react19",
     "typescript": "catalog:"
@@ -55,3 +54,4 @@
   },
   "prettier": "@acme/prettier-config"
 }
+

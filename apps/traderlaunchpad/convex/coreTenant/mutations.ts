@@ -2,6 +2,25 @@ import { v } from "convex/values";
 
 import { mutation } from "../_generated/server";
 import { resolveOrganizationId } from "../traderlaunchpad/lib/resolve";
+import { ConvexError } from "convex/values";
+
+const parseAdminEmails = (raw: string | undefined | null): Set<string> => {
+  const set = new Set<string>();
+  const input = String(raw ?? "").trim();
+  if (!input) return set;
+  for (const part of input.split(",")) {
+    const email = part.trim().toLowerCase();
+    if (email) set.add(email);
+  }
+  return set;
+};
+
+const isAdminEmail = (email: string | undefined | null): boolean => {
+  const normalized = String(email ?? "").trim().toLowerCase();
+  if (!normalized) return false;
+  const allow = parseAdminEmails(process.env.TRADERLAUNCHPAD_ADMIN_EMAILS);
+  return allow.has(normalized);
+};
 
 export const createOrGetUser = mutation({
   args: {},
@@ -28,6 +47,8 @@ export const createOrGetUser = mutation({
 
     const now = Date.now();
     const defaultOrgId = resolveOrganizationId();
+    const nextIsAdmin = isAdminEmail(identity.email);
+    const defaultDataMode = "live" as const;
 
     if (existing) {
       const patch: Record<string, unknown> = { updatedAt: now };
@@ -59,6 +80,15 @@ export const createOrGetUser = mutation({
       if (!existing.organizationId && typeof defaultOrgId === "string" && defaultOrgId.trim()) {
         patch.organizationId = defaultOrgId.trim();
       }
+      if (typeof existing.isAdmin !== "boolean" || existing.isAdmin !== nextIsAdmin) {
+        patch.isAdmin = nextIsAdmin;
+      }
+      if (
+        existing.dataMode !== "demo" &&
+        existing.dataMode !== "live"
+      ) {
+        patch.dataMode = defaultDataMode;
+      }
 
       if (Object.keys(patch).length > 0) {
         await ctx.db.patch(existing._id, patch as any);
@@ -68,6 +98,11 @@ export const createOrGetUser = mutation({
 
     const email =
       typeof identity.email === "string" && identity.email.trim() ? identity.email.trim() : "";
+    if (!email) {
+      // We rely on email for admin allowlist checks; ensure it's present.
+      // (Clerk/Convex identity usually provides this, but guard anyway.)
+      throw new ConvexError("Missing email on authenticated identity.");
+    }
 
     const userId = await ctx.db.insert("users", {
       email,
@@ -76,6 +111,8 @@ export const createOrGetUser = mutation({
       name: identity.name ?? identity.nickname ?? undefined,
       image: typeof identity.picture === "string" ? identity.picture : undefined,
       organizationId: defaultOrgId.trim(),
+      isAdmin: nextIsAdmin,
+      dataMode: defaultDataMode,
       createdAt: now,
       updatedAt: now,
     } as any);

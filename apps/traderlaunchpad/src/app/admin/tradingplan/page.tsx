@@ -7,21 +7,166 @@ import {
   ArrowUpRight,
   Brain,
   CheckCircle2,
+  ChevronDown,
   ClipboardCheck,
   Clock,
   Shield,
   Target,
 } from "lucide-react";
 
+import { api } from "@convex-config/_generated/api";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@acme/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@acme/ui/dropdown-menu";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
 import { Progress } from "@acme/ui/progress";
 import { cn } from "@acme/ui";
-import { demoReviewTrades, demoTradingPlan, demoTradingPlanViolations } from "@acme/demo-data";
+import { demoReviewTrades } from "@acme/demo-data";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
+
+import { useDataMode } from "~/components/dataMode/DataModeProvider";
+
+interface TradingPlanRule {
+  id: string;
+  title: string;
+  description: string;
+  category: "Entry" | "Risk" | "Exit" | "Process" | "Psychology";
+  severity: "hard" | "soft";
+}
+
+interface TradingPlanSession {
+  id: string;
+  label: string;
+  timezone: string;
+  days: string[];
+  start: string;
+  end: string;
+}
+
+interface TradingPlan {
+  _id: string;
+  name: string;
+  version: string;
+  createdAt: number;
+  strategySummary: string;
+  markets: string[];
+  sessions: TradingPlanSession[];
+  risk: {
+    maxRiskPerTradePct: number;
+    maxDailyLossPct: number;
+    maxWeeklyLossPct: number;
+    maxOpenPositions: number;
+    maxTradesPerDay: number;
+  };
+  rules: TradingPlanRule[];
+  kpis: {
+    adherencePct: number;
+    sessionDisciplinePct7d: number;
+    avgRiskPerTradePct7d: number;
+    journalCompliancePct: number;
+    violations7d: number;
+  };
+}
+
+interface TradingPlanListRow {
+  _id: string;
+  name: string;
+  version: string;
+  archivedAt?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+const DEMO_PLAN: TradingPlan = {
+  _id: "demo-plan",
+  name: "Momentum Breakout + Retest (A-Setups Only)",
+  version: "v1.0",
+  createdAt: Date.now() - 1000 * 60 * 60 * 24 * 30,
+  strategySummary:
+    "Trade only the cleanest momentum breakouts and disciplined retests. Prioritize structure, pre-defined risk, and consistent journaling over frequency.",
+  markets: ["ES", "NQ", "CL"],
+  sessions: [
+    {
+      id: "newyork",
+      label: "New York",
+      timezone: "America/New_York",
+      days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+      start: "09:30",
+      end: "11:30",
+    },
+  ],
+  risk: {
+    maxRiskPerTradePct: 1,
+    maxDailyLossPct: 3,
+    maxWeeklyLossPct: 6,
+    maxOpenPositions: 2,
+    maxTradesPerDay: 3,
+  },
+  rules: [
+    {
+      id: "entry-1",
+      title: "Trade only A+ setups",
+      description: "If you wouldn’t take it live on max size, don’t take it at all.",
+      category: "Entry",
+      severity: "hard",
+    },
+    {
+      id: "risk-1",
+      title: "Size risk before entry",
+      description: "Risk is defined at entry. No moving stops wider.",
+      category: "Risk",
+      severity: "hard",
+    },
+    {
+      id: "process-1",
+      title: "Journal every closed trade",
+      description: "No exceptions. Review within 24 hours.",
+      category: "Process",
+      severity: "soft",
+    },
+  ],
+  kpis: {
+    adherencePct: 84,
+    sessionDisciplinePct7d: 88,
+    avgRiskPerTradePct7d: 0.78,
+    journalCompliancePct: 92,
+    violations7d: 2,
+  },
+};
+
+interface TradingPlanViolation {
+  id: string;
+  ruleTitle: string;
+  date: string;
+  severity: "hard" | "soft";
+  note?: string;
+  tradeId?: string;
+}
+
+const DEMO_VIOLATIONS: TradingPlanViolation[] = [
+  {
+    id: "v-1",
+    ruleTitle: "Trade only A+ setups",
+    date: "Jan 12",
+    severity: "hard",
+    note: "Took a low-quality late entry after missing the initial move.",
+    tradeId: "mock-001",
+  },
+  {
+    id: "v-2",
+    ruleTitle: "Size risk before entry",
+    date: "Jan 16",
+    severity: "soft",
+    note: "Adjusted stop without recalculating size (minor).",
+    tradeId: "mock-002",
+  },
+];
 
 const toneForCategory: Record<
-  (typeof demoTradingPlan.rules)[number]["category"],
+  TradingPlanRule["category"],
   string
 > = {
   Entry: "bg-sky-500/10 text-sky-200 border-sky-500/20",
@@ -32,32 +177,171 @@ const toneForCategory: Record<
 };
 
 export default function AdminTradingPlanPage() {
-  const plan = demoTradingPlan;
+  const dataMode = useDataMode();
+  const isLive = dataMode.effectiveMode === "live";
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const shouldQuery = isAuthenticated && !authLoading;
+
+  const plans = useQuery(
+    api.traderlaunchpad.queries.listMyTradingPlans,
+    shouldQuery && isLive ? {} : "skip",
+  ) as TradingPlanListRow[] | undefined;
+
+  const activePlan = useQuery(
+    api.traderlaunchpad.queries.getMyActiveTradingPlan,
+    shouldQuery && isLive ? {} : "skip",
+  ) as TradingPlan | null | undefined;
+
+  const recentClosed = useQuery(
+    api.traderlaunchpad.queries.listMyRecentClosedTradeIdeas,
+    shouldQuery && isLive ? { limit: 200 } : "skip",
+  ) as
+    | {
+        tradeIdeaGroupId: string;
+        symbol: string;
+        direction: "long" | "short";
+        closedAt: number;
+        realizedPnl?: number;
+        reviewStatus: "todo" | "reviewed";
+      }[]
+    | undefined;
+
+  const createPlan = useMutation(api.traderlaunchpad.mutations.createMyTradingPlanFromTemplate);
+  const setActive = useMutation(api.traderlaunchpad.mutations.setMyActiveTradingPlan);
+
+  const [createOpen, setCreateOpen] = React.useState(false);
+  const [newPlanName, setNewPlanName] = React.useState("");
+  const [creating, setCreating] = React.useState(false);
+
+  const effectivePlan: TradingPlan | null = isLive ? (activePlan ?? null) : DEMO_PLAN;
   const [range, setRange] = React.useState<"7d" | "30d">("7d");
 
+  const liveTradeStats = React.useMemo(() => {
+    const rows = Array.isArray(recentClosed) ? recentClosed : [];
+    const pnl = rows.reduce((sum, t) => sum + (typeof t.realizedPnl === "number" ? t.realizedPnl : 0), 0);
+    const wins = rows.filter((t) => (typeof t.realizedPnl === "number" ? t.realizedPnl : 0) > 0).length;
+    const losses = rows.filter((t) => (typeof t.realizedPnl === "number" ? t.realizedPnl : 0) < 0).length;
+    const reviewed = rows.filter((t) => t.reviewStatus === "reviewed").length;
+    const total = rows.length;
+    const reviewRate = total > 0 ? Math.round((reviewed / total) * 100) : 0;
+    return { pnl, wins, losses, reviewed, total, reviewRate };
+  }, [recentClosed]);
+
+  const handleCreateFirstPlan = async () => {
+    if (!isLive) return;
+    setCreating(true);
+    try {
+      const name = newPlanName.trim();
+      await createPlan({ name: name ? name : undefined });
+      setNewPlanName("");
+      setCreateOpen(false);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleSelectPlan = async (planId: string) => {
+    if (!isLive) return;
+    await setActive({ planId });
+  };
+
   const stats = React.useMemo(() => {
-    // Mock “monitoring” derived from demoReviewTrades + plan KPIs.
-    // Later: wire to real user data + violations engine.
-    const reviewed = demoReviewTrades.filter((t) => t.reviewed).length;
-    const total = demoReviewTrades.length;
+    const plan = effectivePlan;
+    if (!plan) {
+      return {
+        adherencePct: 0,
+        sessionDisciplinePct: 0,
+        avgRiskPct: 0,
+        journalCompliancePct: 0,
+        violations: 0,
+        reviewRate: 0,
+        pnl: 0,
+        wins: 0,
+        losses: 0,
+      };
+    }
+
+    // Demo uses demoReviewTrades. Live uses recent closed trade-ideas + reviewStatus.
+    const reviewed = isLive ? liveTradeStats.reviewed : demoReviewTrades.filter((t) => t.reviewed).length;
+    const total = isLive ? liveTradeStats.total : demoReviewTrades.length;
     const reviewRate = total > 0 ? Math.round((reviewed / total) * 100) : 0;
 
-    const pnl = demoReviewTrades.reduce((sum, t) => sum + t.pnl, 0);
-    const wins = demoReviewTrades.filter((t) => t.pnl > 0).length;
-    const losses = demoReviewTrades.filter((t) => t.pnl < 0).length;
+    const pnl = isLive ? liveTradeStats.pnl : demoReviewTrades.reduce((sum, t) => sum + t.pnl, 0);
+    const wins = isLive ? liveTradeStats.wins : demoReviewTrades.filter((t) => t.pnl > 0).length;
+    const losses = isLive ? liveTradeStats.losses : demoReviewTrades.filter((t) => t.pnl < 0).length;
 
     return {
-      adherencePct: plan.kpis.adherencePct,
+      adherencePct: isLive ? reviewRate : plan.kpis.adherencePct,
       sessionDisciplinePct: plan.kpis.sessionDisciplinePct7d,
       avgRiskPct: plan.kpis.avgRiskPerTradePct7d,
-      journalCompliancePct: plan.kpis.journalCompliancePct,
+      journalCompliancePct: isLive ? reviewRate : plan.kpis.journalCompliancePct,
       violations: plan.kpis.violations7d,
       reviewRate,
       pnl,
       wins,
       losses,
     };
-  }, [plan]);
+  }, [effectivePlan, isLive, liveTradeStats]);
+
+  if (isLive && shouldQuery && plans && plans.length === 0) {
+    return (
+      <div className="relative animate-in fade-in space-y-6 text-white selection:bg-orange-500/30 duration-500">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div className="min-w-0">
+            <h1 className="text-3xl font-bold tracking-tight">Trading Plan</h1>
+            <p className="mt-1 text-white/60">
+              You don’t have a trading plan yet. Create your first plan to start tracking consistency.
+            </p>
+          </div>
+        </div>
+
+        <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+          <CardHeader>
+            <CardTitle className="text-lg">Create your first trading plan</CardTitle>
+            <CardDescription className="text-white/60">
+              Start with a solid default template and refine it over time.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="w-full space-y-2">
+              <Label htmlFor="planName" className="text-white/70">
+                Plan name (optional)
+              </Label>
+              <Input
+                id="planName"
+                value={newPlanName}
+                onChange={(e) => setNewPlanName(e.target.value)}
+                placeholder="e.g. ES Breakout + Retest"
+                className="border-white/10 bg-black/30 text-white placeholder:text-white/40"
+              />
+            </div>
+            <Button
+              className="border-0 bg-orange-600 text-white hover:bg-orange-700"
+              onClick={() => void handleCreateFirstPlan()}
+              disabled={creating}
+            >
+              {creating ? "Creating..." : "Create plan"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Button asChild variant="outline" className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white">
+          <Link href="/admin/dashboard">
+            Back to platform dashboard <ArrowUpRight className="ml-2 h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const plan = effectivePlan;
+  if (!plan) {
+    return (
+      <div className="mx-auto max-w-4xl space-y-4 text-white">
+        <div className="text-sm text-white/60">Loading…</div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative animate-in fade-in space-y-8 text-white selection:bg-orange-500/30 duration-500">
@@ -70,6 +354,88 @@ export default function AdminTradingPlanPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {isLive && plans && plans.length > 0 ? (
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-9 gap-2 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                  >
+                    <span className="max-w-[220px] truncate">Active: {plan.name}</span>
+                    <ChevronDown className="h-4 w-4 text-white/60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-72 border-white/10 bg-black/90 text-white">
+                  {plans.map((p) => {
+                    const isActive = p._id === plan._id;
+                    return (
+                      <DropdownMenuItem
+                        key={p._id}
+                        className="cursor-pointer"
+                        onSelect={() => void handleSelectPlan(p._id)}
+                      >
+                        <span className="mr-2 w-4 shrink-0 text-center text-white/80">
+                          {isActive ? "✓" : ""}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold">{p.name}</div>
+                          <div className="truncate text-xs text-white/60">{p.version}</div>
+                        </div>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem
+                    className="cursor-pointer text-orange-300 focus:text-orange-300"
+                    onSelect={() => setCreateOpen(true)}
+                  >
+                    Create new plan
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+                <DialogContent className="border-white/10 bg-black/90 text-white">
+                  <DialogHeader>
+                    <DialogTitle>Create a new trading plan</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-2">
+                    <Label htmlFor="newPlanName" className="text-white/70">
+                      Plan name (optional)
+                    </Label>
+                    <Input
+                      id="newPlanName"
+                      value={newPlanName}
+                      onChange={(e) => setNewPlanName(e.target.value)}
+                      placeholder="e.g. NQ Trend Pullback"
+                      className="border-white/10 bg-black/30 text-white placeholder:text-white/40"
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                      onClick={() => setCreateOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      className="border-0 bg-orange-600 text-white hover:bg-orange-700"
+                      onClick={() => void handleCreateFirstPlan()}
+                      disabled={creating}
+                    >
+                      {creating ? "Creating..." : "Create"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </>
+          ) : null}
+
           <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
             <Button
               type="button"
@@ -97,7 +463,7 @@ export default function AdminTradingPlanPage() {
 
           <Button className="gap-2 border-0 bg-orange-600 text-white hover:bg-orange-700">
             <Brain className="h-4 w-4" />
-            Generate AI plan insights (mock)
+            Generate AI plan insights (coming)
           </Button>
         </div>
       </div>
@@ -334,7 +700,7 @@ export default function AdminTradingPlanPage() {
                   Recent Violations
                 </CardTitle>
                 <Badge variant="secondary" className="bg-white/5 text-white/70 hover:bg-white/10">
-                  {demoTradingPlanViolations.length}
+                  {isLive ? 0 : DEMO_VIOLATIONS.length}
                 </Badge>
               </div>
               <CardDescription className="text-white/60">
@@ -342,7 +708,7 @@ export default function AdminTradingPlanPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {demoTradingPlanViolations.map((v) => (
+              {(isLive ? [] : DEMO_VIOLATIONS).map((v) => (
                 <div key={v.id} className="rounded-lg border border-white/10 bg-black/30 p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">

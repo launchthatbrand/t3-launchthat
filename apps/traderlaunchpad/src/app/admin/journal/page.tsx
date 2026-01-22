@@ -14,9 +14,58 @@ import Link from "next/link";
 import React from "react";
 import { createPortal } from "react-dom";
 
+import { api } from "@convex-config/_generated/api";
+import { useConvexAuth, useQuery } from "convex/react";
 import { TradingCalendarPanel } from "~/components/dashboard/TradingCalendarPanel";
 import { TradingTimingInsights } from "~/components/dashboard/TradingTimingInsights";
+import { useDataMode } from "~/components/dataMode/DataModeProvider";
 import { useTradingCalendarStore } from "~/stores/tradingCalendarStore";
+
+type LiveReviewRow = {
+  tradeIdeaGroupId: string;
+  symbol: string;
+  direction: "long" | "short";
+  closedAt: number;
+  realizedPnl?: number;
+  reviewStatus: "todo" | "reviewed";
+};
+
+type DemoLikeReviewTrade = {
+  id: string;
+  symbol: string;
+  type: "Long" | "Short";
+  date: string;
+  reason: string;
+  reviewed: boolean;
+  pnl: number;
+  tradeDate: string; // YYYY-MM-DD
+};
+
+const toDateKey = (tsMs: number): string => {
+  const d = new Date(tsMs);
+  if (Number.isNaN(d.getTime())) return "1970-01-01";
+  return d.toISOString().slice(0, 10);
+};
+
+const toDateLabel = (tsMs: number): string => {
+  const d = new Date(tsMs);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+};
+
+const computeStreakFromDailyStats = (dailyStats: Array<{ date: string }>): number => {
+  const set = new Set(dailyStats.map((s) => s.date));
+  const today = new Date();
+  let streak = 0;
+  for (let i = 0; i < 365; i += 1) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    if (!set.has(key)) break;
+    streak += 1;
+  }
+  return streak;
+};
 
 function TooltipIcon({
   title,
@@ -89,6 +138,39 @@ function TooltipIcon({
 }
 
 export default function AdminJournalDashboardPage() {
+  const dataMode = useDataMode();
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const shouldQuery = isAuthenticated && !authLoading;
+
+  const liveRowsRaw = useQuery(
+    api.traderlaunchpad.queries.listMyNextTradeIdeasToReview,
+    shouldQuery && dataMode.effectiveMode === "live" ? { limit: 200 } : "skip",
+  ) as LiveReviewRow[] | undefined;
+
+  const demoLikeTrades: DemoLikeReviewTrade[] = React.useMemo(() => {
+    if (dataMode.effectiveMode === "demo") {
+      return demoReviewTrades as unknown as DemoLikeReviewTrade[];
+    }
+
+    const rows = Array.isArray(liveRowsRaw) ? liveRowsRaw : [];
+    return rows
+      .filter((r) => r && typeof r.tradeIdeaGroupId === "string" && r.tradeIdeaGroupId)
+      .map((r) => {
+        const tradeDate = toDateKey(r.closedAt);
+        const pnl = typeof r.realizedPnl === "number" ? r.realizedPnl : 0;
+        return {
+          id: String(r.tradeIdeaGroupId),
+          symbol: String(r.symbol ?? "UNKNOWN"),
+          type: r.direction === "short" ? "Short" : "Long",
+          date: toDateLabel(r.closedAt),
+          reason: r.reviewStatus === "reviewed" ? "Reviewed" : "Pending review",
+          reviewed: r.reviewStatus === "reviewed",
+          pnl,
+          tradeDate,
+        };
+      });
+  }, [dataMode.effectiveMode, liveRowsRaw]);
+
   const [openTradeId, setOpenTradeId] = React.useState<string | null>(null);
   const selectedTradeDate = useTradingCalendarStore((state) => state.selectedDate);
   const setSelectedTradeDate = useTradingCalendarStore((state) => state.setSelectedDate);
@@ -97,11 +179,33 @@ export default function AdminJournalDashboardPage() {
     setOpenTradeId(null);
   }, [selectedTradeDate]);
 
-  const totalTrades = demoReviewTrades.length;
+  const totalTrades = demoLikeTrades.length;
   const avgPnl =
     totalTrades > 0
-      ? demoReviewTrades.reduce((sum, t) => sum + t.pnl, 0) / totalTrades
+      ? demoLikeTrades.reduce((sum, t) => sum + t.pnl, 0) / totalTrades
       : 0;
+
+  const dailyStats = React.useMemo(() => {
+    if (dataMode.effectiveMode === "demo") return demoCalendarDailyStats;
+
+    const map: Record<
+      string,
+      { date: string; pnl: number; wins: number; losses: number }
+    > = {};
+    for (const t of demoLikeTrades) {
+      const key = t.tradeDate;
+      const stat = map[key] ?? (map[key] = { date: key, pnl: 0, wins: 0, losses: 0 });
+      stat.pnl += t.pnl;
+      if (t.pnl >= 0) stat.wins += 1;
+      else stat.losses += 1;
+    }
+    return Object.values(map);
+  }, [dataMode.effectiveMode, demoLikeTrades]);
+
+  const streak = React.useMemo(() => {
+    if (dataMode.effectiveMode === "demo") return demoDashboardStats.streak;
+    return computeStreakFromDailyStats(dailyStats);
+  }, [dataMode.effectiveMode, dailyStats]);
 
   const selectedDateObj = React.useMemo(() => {
     if (!selectedTradeDate) return undefined;
@@ -124,8 +228,8 @@ export default function AdminJournalDashboardPage() {
   };
 
   const tradesForSelectedDate = selectedTradeDate
-    ? demoReviewTrades.filter((trade) => trade.tradeDate === selectedTradeDate)
-    : demoReviewTrades;
+    ? demoLikeTrades.filter((trade) => trade.tradeDate === selectedTradeDate)
+    : demoLikeTrades;
 
   return (
     <div className="relative animate-in fade-in space-y-8 text-white selection:bg-orange-500/30 duration-500">
@@ -189,7 +293,7 @@ export default function AdminJournalDashboardPage() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="space-y-8 lg:col-span-2">
           <TradingCalendarPanel
-            dailyStats={demoCalendarDailyStats}
+            dailyStats={dailyStats}
             selectedDate={selectedTradeDate}
             onSelectDateAction={setSelectedTradeDate}
             className="min-h-[340px]"
@@ -197,7 +301,21 @@ export default function AdminJournalDashboardPage() {
           />
 
           <div className="relative">
-            <TradingTimingInsights />
+            {dataMode.effectiveMode === "demo" ? (
+              <TradingTimingInsights />
+            ) : (
+              <Card className="border-white/10 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">Trading Timing Insights</CardTitle>
+                    <Badge variant="outline">Live</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="text-sm text-white/60">
+                  Coming soon — we’ll calculate best hours/days from your synced executions.
+                </CardContent>
+              </Card>
+            )}
             <div className="absolute top-4 right-4">
               <TooltipIcon
                 title="Trading Timing Insights"
@@ -224,7 +342,7 @@ export default function AdminJournalDashboardPage() {
               </CardHeader>
               <CardContent className="p-3 pt-0">
                 <div className="text-lg font-bold leading-none tabular-nums">
-                  {demoDashboardStats.streak} Days
+                  {streak} Days
                 </div>
                 <p className="mt-0.5 text-[11px] leading-tight text-white/60">
                   Keep it up. Consistency compounds.
@@ -365,7 +483,13 @@ export default function AdminJournalDashboardPage() {
                           className="h-8 bg-orange-600 px-2 text-xs text-white hover:bg-orange-700"
                           asChild
                         >
-                          <Link href={`/admin/trade/${trade.id}`}>
+                          <Link
+                            href={
+                              dataMode.effectiveMode === "demo"
+                                ? `/admin/trade/${trade.id}`
+                                : `/admin/tradeidea/${encodeURIComponent(trade.id)}`
+                            }
+                          >
                             View Trade <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
                           </Link>
                         </Button>

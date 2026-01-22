@@ -27,17 +27,19 @@ import {
   demoDashboardStats,
   demoInsights,
   demoReviewTrades,
-  demoTradingPlan,
 } from "@acme/demo-data";
 
+import { api } from "@convex-config/_generated/api";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Calendar as DayCalendar } from "@acme/ui/calendar";
 import Link from "next/link";
 import { Progress } from "@acme/ui/progress";
 import React from "react";
+import { useAction, useConvexAuth, useQuery } from "convex/react";
 import { TradingCalendarPanel } from "~/components/dashboard/TradingCalendarPanel";
 import { TradingTimingInsights } from "~/components/dashboard/TradingTimingInsights";
+import { useDataMode } from "~/components/dataMode/DataModeProvider";
 import { cn } from "@acme/ui";
 import { createPortal } from "react-dom";
 import { format as formatDate } from "date-fns";
@@ -116,8 +118,10 @@ function TooltipIcon({
   );
 }
 
+type InsightIcon = "trendingUp" | "alertCircle" | "calendar";
+
 const INSIGHT_ICON: Record<
-  (typeof demoInsights)[number]["icon"],
+  InsightIcon,
   { Icon: React.ComponentType<{ className?: string }>; color: string }
 > = {
   trendingUp: { Icon: TrendingUp, color: "text-emerald-500" },
@@ -125,7 +129,104 @@ const INSIGHT_ICON: Record<
   calendar: { Icon: Calendar, color: "text-blue-500" },
 };
 
+interface TradingCalendarDailyStat {
+  date: string;
+  pnl: number;
+  wins: number;
+  losses: number;
+}
+
+interface DashboardStats {
+  balance: number;
+  monthlyReturn: number;
+  winRate: number;
+  profitFactor: number;
+  avgRiskReward: number;
+  streak: number;
+}
+
+interface DashboardInsight {
+  id: string;
+  kind: "positive" | "warning" | "neutral";
+  title: string;
+  description: string;
+  icon: InsightIcon;
+}
+
+interface ReviewTradeRow {
+  id: string;
+  symbol: string;
+  type: "Long" | "Short";
+  date: string;
+  reason: string;
+  reviewed: boolean;
+  pnl: number;
+  tradeDate: string;
+}
+
+interface TradingPlanKpis {
+  adherencePct: number;
+  violations7d: number;
+  avgRiskPerTradePct7d: number;
+  journalCompliancePct: number;
+}
+
+const DEMO_TRADING_PLAN = {
+  name: "Momentum Breakout + Retest (A-Setups Only)",
+  version: "v1.0",
+} as const;
+
+const DEMO_TRADING_PLAN_KPIS: TradingPlanKpis = {
+  adherencePct: 84,
+  violations7d: 2,
+  avgRiskPerTradePct7d: 0.78,
+  journalCompliancePct: 92,
+};
+
+const toDateKey = (tsMs: number): string => {
+  const d = new Date(tsMs);
+  if (Number.isNaN(d.getTime())) return "1970-01-01";
+  return d.toISOString().slice(0, 10);
+};
+
+const toDateLabel = (tsMs: number): string => {
+  const d = new Date(tsMs);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+};
+
+const computeStreakFromDailyStats = (dailyStats: { date: string }[]): number => {
+  const set = new Set(dailyStats.map((s) => s.date));
+  const today = new Date();
+  let streak = 0;
+  for (let i = 0; i < 365; i += 1) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    if (!set.has(key)) break;
+    streak += 1;
+  }
+  return streak;
+};
+
+const toNumber = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
 export default function AdminDashboardPage() {
+  const dataMode = useDataMode();
+  const isLive = dataMode.effectiveMode === "live";
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const shouldQuery = isAuthenticated && !authLoading;
+
   const onboarding = useOnboardingStatus();
   const [isDismissed, setIsDismissed] = React.useState(false);
   const [openTradeId, setOpenTradeId] = React.useState<string | null>(null);
@@ -139,11 +240,225 @@ export default function AdminDashboardPage() {
     setOpenTradeId(null);
   }, [selectedTradeDate]);
 
-  const totalTrades = demoReviewTrades.length;
+  const accountStateRaw = useQuery(
+    api.traderlaunchpad.queries.getMyTradeLockerAccountState,
+    shouldQuery && isLive ? {} : "skip",
+  ) as unknown;
+
+  const analyticsSummary = useQuery(
+    api.traderlaunchpad.queries.getMyTradeIdeaAnalyticsSummary,
+    shouldQuery && isLive ? { limit: 200 } : "skip",
+  ) as
+    | {
+        sampleSize: number;
+        closedTrades: number;
+        openTrades: number;
+        winRate: number; // 0..1
+        avgWin: number;
+        avgLoss: number;
+        expectancy: number;
+        totalFees: number;
+        totalPnl: number;
+      }
+    | undefined;
+
+  const recentClosed = useQuery(
+    api.traderlaunchpad.queries.listMyRecentClosedTradeIdeas,
+    shouldQuery && isLive ? { limit: 200 } : "skip",
+  ) as
+    | {
+        tradeIdeaGroupId: string;
+        symbol: string;
+        direction: "long" | "short";
+        closedAt: number;
+        realizedPnl?: number;
+        reviewStatus: "todo" | "reviewed";
+      }[]
+    | undefined;
+
+  const liveReviewTrades: ReviewTradeRow[] = React.useMemo(() => {
+    const rows = Array.isArray(recentClosed) ? recentClosed : [];
+    return rows
+      .filter((r) => typeof r.tradeIdeaGroupId === "string" && r.tradeIdeaGroupId)
+      .map((r) => {
+        const pnl = typeof r.realizedPnl === "number" ? r.realizedPnl : 0;
+        return {
+          id: r.tradeIdeaGroupId,
+          symbol: r.symbol,
+          type: r.direction === "short" ? "Short" : "Long",
+          date: toDateLabel(r.closedAt),
+          reason: r.reviewStatus === "reviewed" ? "Reviewed" : "Pending review",
+          reviewed: r.reviewStatus === "reviewed",
+          pnl,
+          tradeDate: toDateKey(r.closedAt),
+        };
+      });
+  }, [recentClosed]);
+
+  const reviewTrades: ReviewTradeRow[] = isLive
+    ? liveReviewTrades
+    : (demoReviewTrades as unknown as ReviewTradeRow[]);
+
+  const totalTrades = reviewTrades.length;
   const avgPnl =
     totalTrades > 0
-      ? demoReviewTrades.reduce((sum, t) => sum + t.pnl, 0) / totalTrades
+      ? reviewTrades.reduce((sum, t) => sum + t.pnl, 0) / totalTrades
       : 0;
+
+  const calendarDailyStats: TradingCalendarDailyStat[] = React.useMemo(() => {
+    if (!isLive) return demoCalendarDailyStats as unknown as TradingCalendarDailyStat[];
+
+    const map: Record<string, TradingCalendarDailyStat> = {};
+    for (const t of reviewTrades) {
+      const key = t.tradeDate;
+      const stat =
+        map[key] ?? (map[key] = { date: key, pnl: 0, wins: 0, losses: 0 });
+      stat.pnl += t.pnl;
+      if (t.pnl >= 0) stat.wins += 1;
+      else stat.losses += 1;
+    }
+    return Object.values(map);
+  }, [isLive, reviewTrades]);
+
+  const streak = React.useMemo(() => {
+    return isLive ? computeStreakFromDailyStats(calendarDailyStats) : demoDashboardStats.streak;
+  }, [calendarDailyStats, isLive]);
+
+  const balance = React.useMemo(() => {
+    if (!isLive) return demoDashboardStats.balance;
+    if (!accountStateRaw || typeof accountStateRaw !== "object") return 0;
+    const rec = accountStateRaw as Record<string, unknown>;
+    const raw = isRecord(rec.raw) ? rec.raw : null;
+    if (!raw) return 0;
+    return (
+      toNumber(raw.equity) ??
+      toNumber(raw.balance) ??
+      toNumber(raw.accountBalance) ??
+      toNumber(raw.account_equity) ??
+      toNumber(raw.account_balance) ??
+      0
+    );
+  }, [accountStateRaw, isLive]);
+
+  const winRatePct = React.useMemo(() => {
+    if (!isLive) return demoDashboardStats.winRate;
+    const winRate = typeof analyticsSummary?.winRate === "number" ? analyticsSummary.winRate : 0;
+    return Math.round(Math.max(0, Math.min(1, winRate)) * 100);
+  }, [analyticsSummary?.winRate, isLive]);
+
+  const profitFactor = React.useMemo(() => {
+    if (!isLive) return demoDashboardStats.profitFactor;
+    const pnls = reviewTrades.map((t) => t.pnl).filter((n) => Number.isFinite(n));
+    const grossProfit = pnls.filter((n) => n > 0).reduce((a, b) => a + b, 0);
+    const grossLossAbs = Math.abs(pnls.filter((n) => n < 0).reduce((a, b) => a + b, 0));
+    if (grossLossAbs <= 0) return grossProfit > 0 ? 9.99 : 0;
+    const pf = grossProfit / grossLossAbs;
+    return Number.isFinite(pf) ? Math.round(pf * 100) / 100 : 0;
+  }, [isLive, reviewTrades]);
+
+  const monthlyReturnPct = React.useMemo(() => {
+    if (!isLive) return demoDashboardStats.monthlyReturn;
+    const totalPnl = typeof analyticsSummary?.totalPnl === "number" ? analyticsSummary.totalPnl : 0;
+    if (!balance) return 0;
+    return Math.round((totalPnl / Math.max(1, balance)) * 1000) / 10; // 0.1% precision
+  }, [analyticsSummary?.totalPnl, balance, isLive]);
+
+  const dashboardStats: DashboardStats = React.useMemo(
+    () =>
+      isLive
+        ? {
+            balance,
+            monthlyReturn: monthlyReturnPct,
+            winRate: winRatePct,
+            profitFactor,
+            avgRiskReward: demoDashboardStats.avgRiskReward,
+            streak,
+          }
+        : (demoDashboardStats as unknown as DashboardStats),
+    [balance, isLive, monthlyReturnPct, profitFactor, streak, winRatePct],
+  );
+
+  const insights: DashboardInsight[] = React.useMemo(() => {
+    if (!isLive) return demoInsights as unknown as DashboardInsight[];
+
+    const out: DashboardInsight[] = [];
+    if (dashboardStats.winRate >= 60) {
+      out.push({
+        id: "insight-winrate",
+        kind: "positive",
+        title: "Strong win rate",
+        description: `You’re winning ${dashboardStats.winRate}% of your recent closed trades.`,
+        icon: "trendingUp",
+      });
+    } else if (dashboardStats.winRate > 0) {
+      out.push({
+        id: "insight-winrate",
+        kind: "neutral",
+        title: "Win rate baseline",
+        description: `Current win rate: ${dashboardStats.winRate}%. Keep journaling to improve edge.`,
+        icon: "calendar",
+      });
+    }
+
+    if (dashboardStats.profitFactor >= 2) {
+      out.push({
+        id: "insight-pf",
+        kind: "positive",
+        title: "Profit factor looks great",
+        description: `Profit factor is ${dashboardStats.profitFactor}. Nice risk/reward discipline.`,
+        icon: "trendingUp",
+      });
+    } else if (dashboardStats.profitFactor > 0 && dashboardStats.profitFactor < 1) {
+      out.push({
+        id: "insight-pf",
+        kind: "warning",
+        title: "Losses outweigh wins",
+        description:
+          "Your recent gross losses outweigh profits. Review entries and sizing on losing setups.",
+        icon: "alertCircle",
+      });
+    }
+
+    out.push({
+      id: "insight-streak",
+      kind: "neutral",
+      title: "Journal streak",
+      description: `You have a ${dashboardStats.streak}-day streak of trading activity (based on closed trades).`,
+      icon: "calendar",
+    });
+
+    return out.slice(0, 3);
+  }, [dashboardStats.profitFactor, dashboardStats.streak, dashboardStats.winRate, isLive]);
+
+  const tradingPlanKpis: TradingPlanKpis = React.useMemo(() => {
+    if (!isLive) return DEMO_TRADING_PLAN_KPIS;
+    const closed = reviewTrades.length;
+    const reviewed = reviewTrades.filter((t) => t.reviewed).length;
+    const pct = closed > 0 ? Math.round((reviewed / closed) * 100) : 0;
+    return {
+      ...DEMO_TRADING_PLAN_KPIS,
+      adherencePct: pct,
+      journalCompliancePct: pct,
+      violations7d: 0,
+      avgRiskPerTradePct7d: DEMO_TRADING_PLAN_KPIS.avgRiskPerTradePct7d,
+    };
+  }, [isLive, reviewTrades]);
+
+  const syncNow = useAction(api.traderlaunchpad.actions.syncMyTradeLockerNow);
+  const [syncingNow, setSyncingNow] = React.useState(false);
+
+  const handleSyncAccount = async () => {
+    if (!isLive) {
+      console.log("sync account (mock)");
+      return;
+    }
+    setSyncingNow(true);
+    try {
+      await syncNow({});
+    } finally {
+      setSyncingNow(false);
+    }
+  };
 
   const selectedDateObj = React.useMemo(() => {
     if (!selectedTradeDate) return undefined;
@@ -201,13 +516,11 @@ export default function AdminDashboardPage() {
         <div className="flex items-center gap-2">
           <Button
             className="gap-2 border-0 bg-orange-600 text-white hover:bg-orange-700"
-            onClick={() => {
-              // mock action
-              console.log("sync account (mock)");
-            }}
+            onClick={() => void handleSyncAccount()}
+            disabled={syncingNow}
           >
             <Activity className="h-4 w-4" />
-            Sync Account
+            {syncingNow ? "Syncing..." : "Sync Account"}
           </Button>
         </div>
       </div>
@@ -380,11 +693,11 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent className="p-3 pt-0">
                 <div className="text-lg font-bold leading-none tabular-nums">
-                  ${demoDashboardStats.balance.toLocaleString()}
+                  ${dashboardStats.balance.toLocaleString()}
                 </div>
                 <p className="text-muted-foreground mt-0.5 text-[11px] leading-tight">
                   <span className="font-medium text-emerald-500">
-                    +{demoDashboardStats.monthlyReturn}%
+                    +{dashboardStats.monthlyReturn}%
                   </span>{" "}
                   this month
                 </p>
@@ -406,10 +719,10 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent className="p-3 pt-0">
                 <div className="text-lg font-bold leading-none tabular-nums">
-                  {demoDashboardStats.winRate}%
+                  {dashboardStats.winRate}%
                 </div>
                 <Progress
-                  value={demoDashboardStats.winRate}
+                  value={dashboardStats.winRate}
                   className="mt-1.5 h-1.5 bg-blue-100 dark:bg-blue-950"
                 />
               </CardContent>
@@ -430,7 +743,7 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent className="p-3 pt-0">
                 <div className="text-lg font-bold leading-none tabular-nums">
-                  {demoDashboardStats.profitFactor}
+                  {dashboardStats.profitFactor}
                 </div>
                 <p className="text-muted-foreground mt-0.5 text-[11px] leading-tight">
                   Target: 2.0+{" "}
@@ -456,7 +769,7 @@ export default function AdminDashboardPage() {
               </CardHeader>
               <CardContent className="p-3 pt-0">
                 <div className="text-lg font-bold leading-none tabular-nums">
-                  {demoDashboardStats.streak} Days
+                  {dashboardStats.streak} Days
                 </div>
                 <p className="text-muted-foreground mt-0.5 text-[11px] leading-tight">
                   Keep it up! Consistency is key.
@@ -529,7 +842,7 @@ export default function AdminDashboardPage() {
           {/* KPI Grid */}
 
           <TradingCalendarPanel
-            dailyStats={demoCalendarDailyStats}
+            dailyStats={calendarDailyStats}
             selectedDate={selectedTradeDate}
             onSelectDateAction={setSelectedTradeDate}
             className="min-h-[340px]"
@@ -585,7 +898,7 @@ export default function AdminDashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
-              {demoInsights.map((insight) => {
+              {insights.map((insight) => {
                 const meta = INSIGHT_ICON[insight.icon];
                 const Icon = meta.Icon;
                 return (
@@ -629,7 +942,7 @@ export default function AdminDashboardPage() {
                   variant="secondary"
                   className="bg-orange-500/10 text-orange-300 hover:bg-orange-500/20"
                 >
-                  {demoTradingPlan.kpis.adherencePct}% adherence
+                  {tradingPlanKpis.adherencePct}% adherence
                 </Badge>
               </div>
               <CardDescription className="text-white/60">
@@ -640,28 +953,28 @@ export default function AdminDashboardPage() {
               <div className="rounded-lg border border-white/10 bg-black/30 p-3">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-white/60">Plan</span>
-                  <span className="font-semibold text-white/90">{demoTradingPlan.version}</span>
+                  <span className="font-semibold text-white/90">{DEMO_TRADING_PLAN.version}</span>
                 </div>
                 <div className="mt-2 text-sm font-semibold text-white">
-                  {demoTradingPlan.name}
+                  {DEMO_TRADING_PLAN.name}
                 </div>
                 <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] text-white/60">
                   <div className="rounded-md border border-white/10 bg-white/3 p-2">
                     <div className="text-white/60">Violations (7d)</div>
                     <div className="mt-1 font-semibold text-white/90 tabular-nums">
-                      {demoTradingPlan.kpis.violations7d}
+                      {tradingPlanKpis.violations7d}
                     </div>
                   </div>
                   <div className="rounded-md border border-white/10 bg-white/3 p-2">
                     <div className="text-white/60">Avg risk</div>
                     <div className="mt-1 font-semibold text-white/90 tabular-nums">
-                      {demoTradingPlan.kpis.avgRiskPerTradePct7d}%
+                      {tradingPlanKpis.avgRiskPerTradePct7d}%
                     </div>
                   </div>
                   <div className="rounded-md border border-white/10 bg-white/3 p-2">
                     <div className="text-white/60">Journal</div>
                     <div className="mt-1 font-semibold text-white/90 tabular-nums">
-                      {demoTradingPlan.kpis.journalCompliancePct}%
+                      {tradingPlanKpis.journalCompliancePct}%
                     </div>
                   </div>
                 </div>
@@ -700,10 +1013,8 @@ export default function AdminDashboardPage() {
             <CardContent className="flex h-full flex-col gap-3">
               <div className="flex-1 space-y-2 overflow-y-auto pr-1">
                 {(selectedTradeDate
-                  ? demoReviewTrades.filter(
-                    (trade) => trade.tradeDate === selectedTradeDate,
-                  )
-                  : demoReviewTrades
+                  ? reviewTrades.filter((trade) => trade.tradeDate === selectedTradeDate)
+                  : reviewTrades
                 ).map((trade) => (
                   <Popover
                     key={trade.id}
@@ -792,7 +1103,13 @@ export default function AdminDashboardPage() {
                           className="h-8 bg-orange-600 px-2 text-xs text-white hover:bg-orange-700"
                           asChild
                         >
-                          <Link href={`/admin/trade/${trade.id}`}>
+                          <Link
+                            href={
+                              isLive
+                                ? `/admin/tradeidea/${encodeURIComponent(trade.id)}`
+                                : `/admin/trade/${trade.id}`
+                            }
+                          >
                             View Trade{" "}
                             <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
                           </Link>

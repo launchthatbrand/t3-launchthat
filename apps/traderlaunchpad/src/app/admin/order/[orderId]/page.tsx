@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Calendar, Clock, DollarSign, Hash, Layers } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
@@ -13,6 +13,7 @@ import { Separator } from "@acme/ui/separator";
 import { TraderLaunchpadOrderDetailPage } from "launchthat-plugin-traderlaunchpad/frontend/journal";
 import { TradingChartCard } from "~/components/charts/TradingChartCard";
 import { api } from "@convex-config/_generated/api";
+import { useDataMode } from "~/components/dataMode/DataModeProvider";
 
 const isLikelyConvexId = (id: string) => {
   const trimmed = id.trim();
@@ -206,6 +207,8 @@ function MockOrderDetail(props: { orderId: string }) {
 }
 
 export default function AdminOrderDetailPage() {
+  const router = useRouter();
+  const dataMode = useDataMode();
   const params = useParams();
   const searchParams = useSearchParams();
   const orderId = typeof params?.orderId === "string" ? params.orderId : "";
@@ -216,6 +219,22 @@ export default function AdminOrderDetailPage() {
   if (!orderId) {
     return (
       <div className="text-muted-foreground text-sm">Missing order id.</div>
+    );
+  }
+
+  // Guard: when demo mode is OFF, mock routes should not resolve.
+  React.useEffect(() => {
+    if (!orderId) return;
+    if (dataMode.effectiveMode !== "demo" && orderId.startsWith("mock-")) {
+      router.replace("/admin/orders");
+    }
+  }, [dataMode.effectiveMode, orderId, router]);
+
+  if (dataMode.effectiveMode !== "demo" && orderId.startsWith("mock-")) {
+    return (
+      <div className="text-muted-foreground text-sm">
+        Redirecting…
+      </div>
     );
   }
 

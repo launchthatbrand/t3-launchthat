@@ -2,6 +2,77 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  tradingPlans: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+
+    name: v.string(),
+    version: v.string(),
+
+    strategySummary: v.string(),
+    markets: v.array(v.string()),
+    sessions: v.array(
+      v.object({
+        id: v.string(),
+        label: v.string(),
+        timezone: v.string(),
+        days: v.array(v.string()),
+        start: v.string(),
+        end: v.string(),
+      }),
+    ),
+    risk: v.object({
+      maxRiskPerTradePct: v.number(),
+      maxDailyLossPct: v.number(),
+      maxWeeklyLossPct: v.number(),
+      maxOpenPositions: v.number(),
+      maxTradesPerDay: v.number(),
+    }),
+    rules: v.array(
+      v.object({
+        id: v.string(),
+        title: v.string(),
+        description: v.string(),
+        category: v.union(
+          v.literal("Entry"),
+          v.literal("Risk"),
+          v.literal("Exit"),
+          v.literal("Process"),
+          v.literal("Psychology"),
+        ),
+        severity: v.union(v.literal("hard"), v.literal("soft")),
+      }),
+    ),
+    kpis: v.object({
+      adherencePct: v.number(),
+      sessionDisciplinePct7d: v.number(),
+      avgRiskPerTradePct7d: v.number(),
+      journalCompliancePct: v.number(),
+      violations7d: v.number(),
+    }),
+
+    archivedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_and_user_and_updatedAt", [
+      "organizationId",
+      "userId",
+      "updatedAt",
+    ])
+    .index("by_org_and_user_and_createdAt", [
+      "organizationId",
+      "userId",
+      "createdAt",
+    ]),
+
+  tradingPlanSelections: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+    activePlanId: v.id("tradingPlans"),
+    updatedAt: v.number(),
+  }).index("by_org_and_user", ["organizationId", "userId"]),
+
   journalProfiles: defineTable({
     organizationId: v.string(),
     userId: v.string(),

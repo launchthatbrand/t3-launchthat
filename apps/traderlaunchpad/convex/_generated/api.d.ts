@@ -28,6 +28,8 @@ import type * as traderlaunchpad_lib_resolve from "../traderlaunchpad/lib/resolv
 import type * as traderlaunchpad_mutations from "../traderlaunchpad/mutations.js";
 import type * as traderlaunchpad_queries from "../traderlaunchpad/queries.js";
 import type * as traderlaunchpad_types from "../traderlaunchpad/types.js";
+import type * as viewer_mutations from "../viewer/mutations.js";
+import type * as viewer_queries from "../viewer/queries.js";
 
 import type {
   ApiFromModules,
@@ -64,6 +66,8 @@ declare const fullApi: ApiFromModules<{
   "traderlaunchpad/mutations": typeof traderlaunchpad_mutations;
   "traderlaunchpad/queries": typeof traderlaunchpad_queries;
   "traderlaunchpad/types": typeof traderlaunchpad_types;
+  "viewer/mutations": typeof viewer_mutations;
+  "viewer/queries": typeof viewer_queries;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
 
@@ -1450,6 +1454,23 @@ export declare const components: {
             tradeIdeaGroupId: string;
           }>
         >;
+        listRecentClosedWithReviewStatus: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; organizationId: string; userId: string },
+          Array<{
+            closedAt: number;
+            direction: "long" | "short";
+            fees?: number;
+            instrumentId?: string;
+            noteUpdatedAt?: number;
+            realizedPnl?: number;
+            reviewStatus: "todo" | "reviewed";
+            reviewedAt?: number;
+            symbol: string;
+            tradeIdeaGroupId: string;
+          }>
+        >;
         markReviewed: FunctionReference<
           "mutation",
           "internal",
@@ -1580,6 +1601,140 @@ export declare const components: {
             tradeIdeaGroupId: string;
             userId: string;
           }>
+        >;
+      };
+    };
+    tradingPlans: {
+      index: {
+        archiveTradingPlan: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; planId: string; userId: string },
+          null
+        >;
+        createTradingPlanFromTemplate: FunctionReference<
+          "mutation",
+          "internal",
+          { name?: string; organizationId: string; userId: string },
+          string
+        >;
+        getActiveTradingPlan: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; userId: string },
+          {
+            _creationTime: number;
+            _id: string;
+            archivedAt?: number;
+            createdAt: number;
+            kpis: {
+              adherencePct: number;
+              avgRiskPerTradePct7d: number;
+              journalCompliancePct: number;
+              sessionDisciplinePct7d: number;
+              violations7d: number;
+            };
+            markets: Array<string>;
+            name: string;
+            organizationId: string;
+            risk: {
+              maxDailyLossPct: number;
+              maxOpenPositions: number;
+              maxRiskPerTradePct: number;
+              maxTradesPerDay: number;
+              maxWeeklyLossPct: number;
+            };
+            rules: Array<{
+              category: "Entry" | "Risk" | "Exit" | "Process" | "Psychology";
+              description: string;
+              id: string;
+              severity: "hard" | "soft";
+              title: string;
+            }>;
+            sessions: Array<{
+              days: Array<string>;
+              end: string;
+              id: string;
+              label: string;
+              start: string;
+              timezone: string;
+            }>;
+            strategySummary: string;
+            updatedAt: number;
+            userId: string;
+            version: string;
+          } | null
+        >;
+        getTradingPlan: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; planId: string; userId: string },
+          {
+            _creationTime: number;
+            _id: string;
+            archivedAt?: number;
+            createdAt: number;
+            kpis: {
+              adherencePct: number;
+              avgRiskPerTradePct7d: number;
+              journalCompliancePct: number;
+              sessionDisciplinePct7d: number;
+              violations7d: number;
+            };
+            markets: Array<string>;
+            name: string;
+            organizationId: string;
+            risk: {
+              maxDailyLossPct: number;
+              maxOpenPositions: number;
+              maxRiskPerTradePct: number;
+              maxTradesPerDay: number;
+              maxWeeklyLossPct: number;
+            };
+            rules: Array<{
+              category: "Entry" | "Risk" | "Exit" | "Process" | "Psychology";
+              description: string;
+              id: string;
+              severity: "hard" | "soft";
+              title: string;
+            }>;
+            sessions: Array<{
+              days: Array<string>;
+              end: string;
+              id: string;
+              label: string;
+              start: string;
+              timezone: string;
+            }>;
+            strategySummary: string;
+            updatedAt: number;
+            userId: string;
+            version: string;
+          } | null
+        >;
+        listTradingPlans: FunctionReference<
+          "query",
+          "internal",
+          {
+            includeArchived?: boolean;
+            limit?: number;
+            organizationId: string;
+            userId: string;
+          },
+          Array<{
+            _id: string;
+            archivedAt?: number;
+            createdAt: number;
+            name: string;
+            updatedAt: number;
+            version: string;
+          }>
+        >;
+        setActiveTradingPlan: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; planId: string; userId: string },
+          null
         >;
       };
     };

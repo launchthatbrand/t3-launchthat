@@ -18,6 +18,19 @@ export default defineSchema({
     image: v.optional(v.string()),
 
     /**
+     * Per-user data source mode.
+     * - "live": prefer broker-backed data when available.
+     * - "demo": force demo/mock data (admin-only toggle).
+     */
+    dataMode: v.optional(v.union(v.literal("demo"), v.literal("live"))),
+
+    /**
+     * App-level admin flag (used for gated developer/admin tooling).
+     * NOTE: this is app-owned and may be derived from an env allowlist.
+     */
+    isAdmin: v.optional(v.boolean()),
+
+    /**
      * "Active org" selection.
      * This is a string because organizations live in a component and cannot be referenced by `v.id()`.
      */

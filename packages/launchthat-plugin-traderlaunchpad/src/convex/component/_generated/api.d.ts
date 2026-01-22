@@ -28,6 +28,7 @@ import type * as tradeIdeas_internalQueries from "../tradeIdeas/internalQueries.
 import type * as tradeIdeas_mutations from "../tradeIdeas/mutations.js";
 import type * as tradeIdeas_notes from "../tradeIdeas/notes.js";
 import type * as tradeIdeas_queries from "../tradeIdeas/queries.js";
+import type * as tradingPlans_index from "../tradingPlans/index.js";
 
 import type {
   ApiFromModules,
@@ -64,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   "tradeIdeas/mutations": typeof tradeIdeas_mutations;
   "tradeIdeas/notes": typeof tradeIdeas_notes;
   "tradeIdeas/queries": typeof tradeIdeas_queries;
+  "tradingPlans/index": typeof tradingPlans_index;
 }>;
 export type Mounts = {
   connections: {
@@ -1146,6 +1148,23 @@ export type Mounts = {
           tradeIdeaGroupId: string;
         }>
       >;
+      listRecentClosedWithReviewStatus: FunctionReference<
+        "query",
+        "public",
+        { limit?: number; organizationId: string; userId: string },
+        Array<{
+          closedAt: number;
+          direction: "long" | "short";
+          fees?: number;
+          instrumentId?: string;
+          noteUpdatedAt?: number;
+          realizedPnl?: number;
+          reviewStatus: "todo" | "reviewed";
+          reviewedAt?: number;
+          symbol: string;
+          tradeIdeaGroupId: string;
+        }>
+      >;
       markReviewed: FunctionReference<
         "mutation",
         "public",
@@ -1276,6 +1295,140 @@ export type Mounts = {
           tradeIdeaGroupId: string;
           userId: string;
         }>
+      >;
+    };
+  };
+  tradingPlans: {
+    index: {
+      archiveTradingPlan: FunctionReference<
+        "mutation",
+        "public",
+        { organizationId: string; planId: string; userId: string },
+        null
+      >;
+      createTradingPlanFromTemplate: FunctionReference<
+        "mutation",
+        "public",
+        { name?: string; organizationId: string; userId: string },
+        string
+      >;
+      getActiveTradingPlan: FunctionReference<
+        "query",
+        "public",
+        { organizationId: string; userId: string },
+        {
+          _creationTime: number;
+          _id: string;
+          archivedAt?: number;
+          createdAt: number;
+          kpis: {
+            adherencePct: number;
+            avgRiskPerTradePct7d: number;
+            journalCompliancePct: number;
+            sessionDisciplinePct7d: number;
+            violations7d: number;
+          };
+          markets: Array<string>;
+          name: string;
+          organizationId: string;
+          risk: {
+            maxDailyLossPct: number;
+            maxOpenPositions: number;
+            maxRiskPerTradePct: number;
+            maxTradesPerDay: number;
+            maxWeeklyLossPct: number;
+          };
+          rules: Array<{
+            category: "Entry" | "Risk" | "Exit" | "Process" | "Psychology";
+            description: string;
+            id: string;
+            severity: "hard" | "soft";
+            title: string;
+          }>;
+          sessions: Array<{
+            days: Array<string>;
+            end: string;
+            id: string;
+            label: string;
+            start: string;
+            timezone: string;
+          }>;
+          strategySummary: string;
+          updatedAt: number;
+          userId: string;
+          version: string;
+        } | null
+      >;
+      getTradingPlan: FunctionReference<
+        "query",
+        "public",
+        { organizationId: string; planId: string; userId: string },
+        {
+          _creationTime: number;
+          _id: string;
+          archivedAt?: number;
+          createdAt: number;
+          kpis: {
+            adherencePct: number;
+            avgRiskPerTradePct7d: number;
+            journalCompliancePct: number;
+            sessionDisciplinePct7d: number;
+            violations7d: number;
+          };
+          markets: Array<string>;
+          name: string;
+          organizationId: string;
+          risk: {
+            maxDailyLossPct: number;
+            maxOpenPositions: number;
+            maxRiskPerTradePct: number;
+            maxTradesPerDay: number;
+            maxWeeklyLossPct: number;
+          };
+          rules: Array<{
+            category: "Entry" | "Risk" | "Exit" | "Process" | "Psychology";
+            description: string;
+            id: string;
+            severity: "hard" | "soft";
+            title: string;
+          }>;
+          sessions: Array<{
+            days: Array<string>;
+            end: string;
+            id: string;
+            label: string;
+            start: string;
+            timezone: string;
+          }>;
+          strategySummary: string;
+          updatedAt: number;
+          userId: string;
+          version: string;
+        } | null
+      >;
+      listTradingPlans: FunctionReference<
+        "query",
+        "public",
+        {
+          includeArchived?: boolean;
+          limit?: number;
+          organizationId: string;
+          userId: string;
+        },
+        Array<{
+          _id: string;
+          archivedAt?: number;
+          createdAt: number;
+          name: string;
+          updatedAt: number;
+          version: string;
+        }>
+      >;
+      setActiveTradingPlan: FunctionReference<
+        "mutation",
+        "public",
+        { organizationId: string; planId: string; userId: string },
+        null
       >;
     };
   };
