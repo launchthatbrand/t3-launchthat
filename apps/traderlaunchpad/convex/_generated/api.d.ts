@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as auth_exchange from "../auth/exchange.js";
+import type * as auth_sessions from "../auth/sessions.js";
 import type * as coreTenant_mutations from "../coreTenant/mutations.js";
 import type * as coreTenant_organizations from "../coreTenant/organizations.js";
 import type * as coreTenant_platformUsers from "../coreTenant/platformUsers.js";
@@ -48,6 +50,8 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "auth/exchange": typeof auth_exchange;
+  "auth/sessions": typeof auth_sessions;
   "coreTenant/mutations": typeof coreTenant_mutations;
   "coreTenant/organizations": typeof coreTenant_organizations;
   "coreTenant/platformUsers": typeof coreTenant_platformUsers;

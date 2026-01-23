@@ -206,6 +206,7 @@ type AuthStep = "choose" | "email" | "email_sent" | "phone" | "phone_code";
 
 export default function SignInClient(props: {
   returnTo: string | null;
+  tenantSlug: string | null;
   ui?: "custom" | "clerk";
   prefillMethod?: "phone" | "email" | null;
   prefillPhone?: string | null;
@@ -247,6 +248,18 @@ export default function SignInClient(props: {
     const raw = props.returnTo?.trim();
     return raw && raw.length > 0 ? raw : "/admin/dashboard";
   }, [props.returnTo]);
+
+  const afterAuthCallbackUrl = React.useMemo(() => {
+    const u = new URL("/api/auth/callback", window.location.origin);
+    // Only include return_to when it's an absolute URL. If missing, let the callback
+    // compute an appropriate tenant origin + default redirect.
+    if (/^https?:\/\//i.test(afterSignInUrl)) {
+      u.searchParams.set("return_to", afterSignInUrl);
+    }
+    const tenant = props.tenantSlug?.trim();
+    if (tenant) u.searchParams.set("tenant", tenant);
+    return u.toString();
+  }, [afterSignInUrl, props.tenantSlug]);
 
   const startPhoneOtp = React.useCallback(
     async (values: PhoneStartValues) => {
@@ -440,8 +453,8 @@ export default function SignInClient(props: {
   React.useEffect(() => {
     if (!isAuthLoaded) return;
     if (!isSignedIn) return;
-    window.location.assign(afterSignInUrl);
-  }, [afterSignInUrl, isAuthLoaded, isSignedIn]);
+    window.location.assign(afterAuthCallbackUrl);
+  }, [afterAuthCallbackUrl, isAuthLoaded, isSignedIn]);
 
   React.useEffect(() => {
     if (!isLoaded) return;
@@ -483,7 +496,7 @@ export default function SignInClient(props: {
       await signIn.authenticateWithRedirect({
         strategy,
         redirectUrl: `${window.location.origin}/sso-callback`,
-        redirectUrlComplete: afterSignInUrl,
+        redirectUrlComplete: afterAuthCallbackUrl,
       });
     } catch {
       setFormError("Unable to start sign-in. Please try again.");
@@ -522,7 +535,7 @@ export default function SignInClient(props: {
 
         if (typeof createdSessionId === "string" && createdSessionId.trim()) {
           await setActive({ session: createdSessionId });
-          window.location.assign(afterSignInUrl);
+          window.location.assign(afterAuthCallbackUrl);
           return;
         }
 
@@ -533,7 +546,7 @@ export default function SignInClient(props: {
         setIsSubmitting(false);
       }
     },
-    [afterSignInUrl, isLoaded, setActive, signIn],
+    [afterAuthCallbackUrl, isLoaded, setActive, signIn],
   );
 
   const phoneCodeValue = phoneCodeForm.watch("code");

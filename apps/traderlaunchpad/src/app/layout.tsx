@@ -11,6 +11,8 @@ import { ThemeProvider } from "@acme/ui/theme";
 import { Toaster } from "@acme/ui/toast";
 import { env } from "~/env";
 import { headers } from "next/headers";
+import { getHostFromHeaders } from "~/lib/host";
+import { getActiveTenantFromHeaders } from "~/lib/tenant-headers";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -59,6 +61,8 @@ export default async function RootLayout(props: {
   footer: React.ReactNode;
 }) {
   const headerList = await headers();
+  const host = getHostFromHeaders(headerList);
+  const tenant = await getActiveTenantFromHeaders();
   const pathnameHeader = headerList.get("x-pathname");
   const pathname =
     typeof pathnameHeader === "string" && pathnameHeader.length > 0
@@ -99,7 +103,7 @@ export default async function RootLayout(props: {
           geistMono.variable,
         )}
       >
-        <Providers>
+        <Providers tenant={tenant} host={host}>
           <ThemeProvider>
             {/* Background */}
             <div className="pointer-events-none fixed inset-0 z-0">

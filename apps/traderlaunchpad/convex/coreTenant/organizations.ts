@@ -57,6 +57,57 @@ export const setActiveOrganizationForUser = mutation({
   },
 });
 
+// Tenant resolution helpers (for Next middleware / server-side tenant routing).
+export const getOrganizationBySlug = query({
+  args: { slug: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.string(),
+      name: v.string(),
+      slug: v.string(),
+      ownerId: v.string(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const org = await ctx.runQuery(
+      components.launchthat_core_tenant.queries.getOrganizationBySlug,
+      { slug: args.slug },
+    );
+    if (!org) return null;
+    return { _id: org._id, name: org.name, slug: org.slug, ownerId: org.ownerId };
+  },
+});
+
+export const getOrganizationByHostname = query({
+  args: {
+    hostname: v.string(),
+    requireVerified: v.optional(v.boolean()),
+    appKey: v.optional(v.string()),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.string(),
+      name: v.string(),
+      slug: v.string(),
+      ownerId: v.string(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const org = await ctx.runQuery(
+      components.launchthat_core_tenant.queries.getOrganizationByHostname,
+      {
+        hostname: args.hostname,
+        requireVerified: args.requireVerified ?? true,
+        appKey: args.appKey ?? "traderlaunchpad",
+      },
+    );
+    if (!org) return null;
+    return { _id: org._id, name: org.name, slug: org.slug, ownerId: org.ownerId };
+  },
+});
+
 export const listDomainsForOrg = query({
   args: { organizationId: v.string(), appKey: v.optional(v.string()) },
   returns: v.array(

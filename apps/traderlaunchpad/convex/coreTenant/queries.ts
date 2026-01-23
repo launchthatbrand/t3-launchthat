@@ -15,6 +15,8 @@ export const getUserByClerkId = query({
       organizationId: v.optional(v.string()),
       tokenIdentifier: v.optional(v.string()),
       clerkId: v.optional(v.string()),
+      // Portal parity: expose a simple role string for UI decisions.
+      role: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -29,6 +31,7 @@ export const getUserByClerkId = query({
         organizationId: user.organizationId ?? undefined,
         tokenIdentifier: user.tokenIdentifier ?? undefined,
         clerkId: user.clerkId ?? undefined,
+        role: user.isAdmin ? ("admin" as const) : undefined,
       };
     };
 

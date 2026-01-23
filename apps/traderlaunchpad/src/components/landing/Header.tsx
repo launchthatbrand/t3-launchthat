@@ -1,14 +1,13 @@
-import { ArrowRight } from "lucide-react";
-import { Button } from "@acme/ui/moving-border";
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
-import { NavItems } from "~/components/ui/resizable-navbar";
 import React from "react";
-import { auth } from "@clerk/nextjs/server";
 
-export async function Header() {
-  const { userId } = await auth();
+import { TraderLaunchpadNavUser } from "~/components/auth/TraderLaunchpadNavUser";
+import { NavItems } from "~/components/ui/resizable-navbar";
 
+export function Header() {
   const navItems = [
     {
       name: "Features",
@@ -57,39 +56,8 @@ export async function Header() {
         </div>
 
         <div className="flex items-center gap-4">
-          {userId ? (
-            <Link href="/admin/dashboard" className="inline-block">
-              <Button
-                as="div"
-                borderRadius="1.75rem"
-                containerClassName="h-10 w-auto min-w-[140px]"
-                className="bg-white text-black font-medium border-neutral-200 dark:border-slate-800 cursor-pointer"
-              >
-                <span className="flex w-full items-center justify-between gap-3 px-1">
-                  <span className="w-full text-center font-bold">Dashboard</span>
-                  <span className="flex min-h-7 min-w-7 items-center justify-center rounded-full bg-black text-white">
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </span>
-                </span>
-              </Button>
-            </Link>
-          ) : (
-            <Link href="/sign-in" className="inline-block">
-              <Button
-                as="div"
-                borderRadius="1.75rem"
-                containerClassName="h-10 w-auto min-w-[160px]"
-                className="bg-white text-black font-medium border-neutral-200 dark:border-slate-800 cursor-pointer"
-              >
-                <span className="flex w-full items-center justify-between gap-1 px-1">
-                  <span className="w-full text-center font-bold">Sign In</span>
-                  <span className="flex min-h-7 min-w-7 items-center justify-center rounded-full bg-black text-white">
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </span>
-                </span>
-              </Button>
-            </Link>
-          )}
+          {/* Portal parity: tenant hosts derive auth state from /api/me; auth host uses Clerk session */}
+          <TraderLaunchpadNavUser />
         </div>
       </div>
     </header>

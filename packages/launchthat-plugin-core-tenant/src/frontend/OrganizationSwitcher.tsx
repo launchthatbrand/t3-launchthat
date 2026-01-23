@@ -21,6 +21,7 @@ export interface OrganizationSwitcherProps {
   userId: string | null | undefined;
   label?: string;
   className?: string;
+  triggerClassName?: string;
   onSwitched?: (next: {
     organizationId: string;
     slug: string;
@@ -71,13 +72,13 @@ export const OrganizationSwitcher = (props: OrganizationSwitcherProps) => {
   return (
     <div className={props.className}>
       <div className="space-y-1">
-        <Label>{label}</Label>
+        {label ? <Label>{label}</Label> : null}
         <Select
           value={active?.organizationId ?? ""}
           onValueChange={handleChange}
           disabled={disabled}
         >
-          <SelectTrigger className="min-w-56">
+          <SelectTrigger className={props.triggerClassName ?? "min-w-56"}>
             <SelectValue
               placeholder={!props.userId ? "Sign in to select" : rows ? "Select" : "Loading…"}
             />

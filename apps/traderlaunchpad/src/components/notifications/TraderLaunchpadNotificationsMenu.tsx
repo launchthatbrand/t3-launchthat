@@ -19,6 +19,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import { useHostContext } from "~/context/HostContext";
 
 const tabs: NotificationTabDefinition[] = [
   { id: "all", label: "All" },
@@ -27,6 +28,10 @@ const tabs: NotificationTabDefinition[] = [
 ];
 
 export function TraderLaunchpadNotificationsMenu() {
+  const host = useHostContext();
+  // Tenant/custom hosts don't run Clerk; avoid calling Clerk hooks outside <ClerkProvider>.
+  if (!host.isAuthHost) return null;
+
   const { session } = useSession();
   const clerkId = session?.user?.id ?? null;
 

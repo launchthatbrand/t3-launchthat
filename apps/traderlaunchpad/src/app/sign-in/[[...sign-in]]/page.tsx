@@ -8,12 +8,14 @@ export default async function Page({
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
 
   const returnToRaw = resolvedSearchParams?.return_to;
+  const tenantRaw = resolvedSearchParams?.tenant;
   const uiRaw = resolvedSearchParams?.ui;
   const methodRaw = resolvedSearchParams?.method;
   const phoneRaw = resolvedSearchParams?.phone;
   const emailRaw = resolvedSearchParams?.email;
 
   const returnTo = Array.isArray(returnToRaw) ? returnToRaw[0] : returnToRaw;
+  const tenant = Array.isArray(tenantRaw) ? tenantRaw[0] : tenantRaw;
   const ui = Array.isArray(uiRaw) ? uiRaw[0] : uiRaw;
   const method = Array.isArray(methodRaw) ? methodRaw[0] : methodRaw;
   const phone = Array.isArray(phoneRaw) ? phoneRaw[0] : phoneRaw;
@@ -26,6 +28,7 @@ export default async function Page({
     <div className="flex flex-1 items-center justify-center">
       <SignInClient
         returnTo={typeof returnTo === "string" ? returnTo : null}
+        tenantSlug={typeof tenant === "string" ? tenant : null}
         ui={ui === "clerk" ? "clerk" : "custom"}
         prefillMethod={prefillMethod}
         prefillPhone={typeof phone === "string" ? phone : null}

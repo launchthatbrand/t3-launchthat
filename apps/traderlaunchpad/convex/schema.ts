@@ -11,6 +11,38 @@ import { v } from "convex/values";
  *   Therefore cross-boundary references (like the active org) are stored as strings.
  */
 export default defineSchema({
+  authExchangeCodes: defineTable({
+    codeHash: v.string(),
+    organizationId: v.string(),
+    clerkUserId: v.string(),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    usedAt: v.optional(v.number()),
+  })
+    .index("by_code_hash", ["codeHash"])
+    // Portal parity: indexes used for housekeeping + lookups.
+    .index("by_organizationId_and_clerkUserId", ["organizationId", "clerkUserId"])
+    .index("by_expiresAt", ["expiresAt"]),
+
+  tenantSessions: defineTable({
+    /**
+     * SHA-256 base64url hash of the session id stored in the `tenant_session` cookie.
+     * We only store the hash so the raw cookie value is never persisted.
+     */
+    sessionIdHash: v.string(),
+    organizationId: v.string(),
+    clerkUserId: v.string(),
+    createdAt: v.number(),
+    // Portal parity: expiresAt is always set.
+    expiresAt: v.number(),
+    revokedAt: v.optional(v.number()),
+    lastSeenAt: v.optional(v.number()),
+  })
+    // Keep the original index name for backwards compatibility with existing code,
+    .index("by_session_id_hash", ["sessionIdHash"])
+    .index("by_organizationId_and_clerkUserId", ["organizationId", "clerkUserId"])
+    .index("by_expiresAt", ["expiresAt"]),
+
   users: defineTable({
     email: v.string(),
     tokenIdentifier: v.optional(v.string()),
