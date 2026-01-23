@@ -1,11 +1,10 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
-import { ArrowUpRight, Ban, Search, Shield, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Shield } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -13,18 +12,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { Input } from "@acme/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@acme/ui/table";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
 
 type ConnStatus = "active" | "disabled" | "revoked";
-type ConnectionRow = {
+interface ConnectionRow extends Record<string, unknown> {
   id: string;
   clientId: string;
   clientName: string;
@@ -34,7 +26,7 @@ type ConnectionRow = {
   status: ConnStatus;
   lastUsedAt: string;
   createdAt: string;
-};
+}
 
 const CONNECTIONS: ConnectionRow[] = [
   {
@@ -81,18 +73,105 @@ const statusBadgeClass = (s: ConnStatus) => {
 };
 
 export default function PlatformIntegrationsConnectionsPage() {
-  const [q, setQ] = React.useState("");
+  const router = useRouter();
 
-  const filtered = React.useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    if (!needle) return CONNECTIONS;
-    return CONNECTIONS.filter((c) =>
-      [c.id, c.userId, c.portalOrg, c.clientName, c.env, c.status]
-        .join(" ")
-        .toLowerCase()
-        .includes(needle),
-    );
-  }, [q]);
+  const columns = React.useMemo<ColumnDefinition<ConnectionRow>[]>(
+    () => [
+      {
+        id: "connection",
+        header: "Connection",
+        accessorKey: "id",
+        cell: (c: ConnectionRow) => (
+          <div className="space-y-1">
+            <div className="font-mono text-sm">{c.id}</div>
+            <div className="text-muted-foreground text-xs">
+              Created {c.createdAt} • Last used {c.lastUsedAt}
+            </div>
+          </div>
+        ),
+        sortable: true,
+      },
+      {
+        id: "client",
+        header: "Client",
+        accessorKey: "clientName",
+        cell: (c: ConnectionRow) => (
+          <div className="space-y-1">
+            <div className="text-sm font-semibold">{c.clientName}</div>
+            <div className="text-muted-foreground font-mono text-xs">{c.clientId}</div>
+          </div>
+        ),
+        sortable: true,
+      },
+      {
+        id: "user",
+        header: "User",
+        accessorKey: "userId",
+        cell: (c: ConnectionRow) => (
+          <div className="space-y-1">
+            <div className="font-mono text-sm">{c.userId}</div>
+            <div className="text-muted-foreground text-xs">{c.env}</div>
+          </div>
+        ),
+        sortable: true,
+      },
+      {
+        id: "portalOrg",
+        header: "Portal org",
+        accessorKey: "portalOrg",
+        cell: (c: ConnectionRow) => <span className="text-sm">{c.portalOrg}</span>,
+        sortable: true,
+      },
+      {
+        id: "status",
+        header: "Status",
+        accessorKey: "status",
+        cell: (c: ConnectionRow) => (
+          <Badge className={statusBadgeClass(c.status)}>{c.status}</Badge>
+        ),
+        sortable: true,
+      },
+    ],
+    [],
+  );
+
+  const entityActions = React.useMemo<EntityAction<ConnectionRow>[]>(
+    () => [
+      {
+        id: "open",
+        label: "Open",
+        variant: "outline",
+        onClick: (c: ConnectionRow) => {
+          router.push(`/platform/integrations/connection/${encodeURIComponent(c.id)}`);
+        },
+      },
+      {
+        id: "viewUser",
+        label: "User",
+        variant: "secondary",
+        onClick: (c: ConnectionRow) => {
+          router.push(`/platform/user/${encodeURIComponent(c.userId)}/oauth`);
+        },
+      },
+      {
+        id: "disable",
+        label: "Disable",
+        variant: "outline",
+        onClick: (c: ConnectionRow) => {
+          console.info("[mock] disable connection", c.id);
+        },
+      },
+      {
+        id: "revoke",
+        label: "Revoke",
+        variant: "destructive",
+        onClick: (c: ConnectionRow) => {
+          console.info("[mock] revoke connection", c.id);
+        },
+      },
+    ],
+    [router],
+  );
 
   return (
     <div className="space-y-6">
@@ -104,17 +183,6 @@ export default function PlatformIntegrationsConnectionsPage() {
             (mock).
           </p>
         </div>
-        <div className="flex w-full max-w-md items-center gap-2">
-          <div className="relative w-full">
-            <Search className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
-            <Input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search by user, org, connection id…"
-              className="pl-9"
-            />
-          </div>
-        </div>
       </div>
 
       <Card className="overflow-hidden">
@@ -125,83 +193,18 @@ export default function PlatformIntegrationsConnectionsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Connection</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Portal org</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((c) => (
-                <TableRow key={c.id} className="group">
-                  <TableCell>
-                    <Link
-                      href={`/platform/integrations/connection/${encodeURIComponent(c.id)}`}
-                      className="hover:underline"
-                    >
-                      <div className="font-mono text-sm">{c.id}</div>
-                      <div className="text-muted-foreground text-xs">
-                        Created {c.createdAt} • Last used {c.lastUsedAt}
-                      </div>
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm font-semibold">{c.clientName}</div>
-                    <div className="text-muted-foreground font-mono text-xs">
-                      {c.clientId}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/platform/user/${encodeURIComponent(c.userId)}/oauth`}
-                      className="font-mono text-sm hover:underline"
-                    >
-                      {c.userId}
-                    </Link>
-                    <div className="text-muted-foreground text-xs">{c.env}</div>
-                  </TableCell>
-                  <TableCell className="text-sm">{c.portalOrg}</TableCell>
-                  <TableCell>
-                    <Badge className={statusBadgeClass(c.status)}>
-                      {c.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                      <Button variant="outline" size="sm" asChild>
-                        <Link
-                          href={`/platform/integrations/connection/${encodeURIComponent(c.id)}`}
-                        >
-                          Open <ArrowUpRight className="ml-2 h-4 w-4" />
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-2 text-amber-500 hover:bg-amber-50 hover:text-amber-600"
-                      >
-                        <Ban className="h-4 w-4" />
-                        Disable
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-2 text-red-500 hover:bg-red-50 hover:text-red-600"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Revoke
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <EntityList<ConnectionRow>
+            data={[...CONNECTIONS]}
+            columns={columns}
+            defaultViewMode="list"
+            viewModes={["list"]}
+            enableSearch={true}
+            entityActions={entityActions}
+            onRowClick={(c) =>
+              router.push(`/platform/integrations/connection/${encodeURIComponent(c.id)}`)
+            }
+            getRowId={(c: ConnectionRow) => c.id}
+          />
         </CardContent>
       </Card>
 

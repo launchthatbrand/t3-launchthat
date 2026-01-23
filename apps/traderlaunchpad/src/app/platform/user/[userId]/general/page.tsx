@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useParams } from "next/navigation";
+import { useQuery } from "convex/react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -23,13 +24,33 @@ import { Label } from "@acme/ui/label";
 import { Separator } from "@acme/ui/separator";
 import { Switch } from "@acme/ui/switch";
 
+import { api } from "@convex-config/_generated/api";
+
 export default function PlatformUserGeneralPage() {
   const params = useParams<{ userId?: string | string[] }>();
   const raw = params.userId;
   const userId = Array.isArray(raw) ? (raw[0] ?? "") : (raw ?? "");
 
+  const user = useQuery(
+    api.coreTenant.platformUsers.getUserByClerkId,
+    userId ? { clerkId: userId } : "skip",
+  );
+
+  const createdLabel = React.useMemo(() => {
+    if (!user?.createdAt) return "—";
+    try {
+      return new Date(user.createdAt).toLocaleString();
+    } catch {
+      return String(user.createdAt);
+    }
+  }, [user?.createdAt]);
+
   const [isDisabled, setIsDisabled] = React.useState(false);
   const [isAdmin, setIsAdmin] = React.useState(false);
+
+  React.useEffect(() => {
+    if (user) setIsAdmin(Boolean(user.isAdmin));
+  }, [user]);
 
   return (
     <div className="space-y-8">
@@ -52,15 +73,15 @@ export default function PlatformUserGeneralPage() {
               </div>
               <div className="space-y-2">
                 <Label>Email</Label>
-                <Input value="user@example.com" readOnly />
+                <Input value={user?.email ?? "—"} readOnly />
               </div>
               <div className="space-y-2">
                 <Label>Name</Label>
-                <Input defaultValue="Example User" />
+                <Input value={user?.name ?? "—"} readOnly />
               </div>
               <div className="space-y-2">
                 <Label>Created</Label>
-                <Input value="Jan 15, 2026" readOnly />
+                <Input value={createdLabel} readOnly />
               </div>
             </div>
 
@@ -94,7 +115,7 @@ export default function PlatformUserGeneralPage() {
                 <div className="text-muted-foreground text-xs">Role</div>
                 <div className="mt-1 flex items-center gap-2 text-lg font-semibold">
                   <ShieldCheck className="h-4 w-4 text-purple-500" />
-                  {isAdmin ? "Platform admin" : "User"}
+                  {user?.isAdmin ? "Platform admin" : "User"}
                 </div>
               </div>
             </div>

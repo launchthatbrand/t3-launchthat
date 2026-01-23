@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 
 import { OrganizationMembersManager } from "launchthat-plugin-core-tenant/frontend";
@@ -14,6 +14,7 @@ import { api } from "@convex-config/_generated/api";
 import { OrganizationTabs } from "../_components/OrganizationTabs";
 
 export default function PlatformOrganizationMembersPage() {
+  const router = useRouter();
   const params = useParams<{ organizationId?: string | string[] }>();
   const raw = params.organizationId;
   const organizationId = Array.isArray(raw) ? (raw[0] ?? "") : (raw ?? "");
@@ -26,6 +27,8 @@ export default function PlatformOrganizationMembersPage() {
     if (!Array.isArray(users)) return [];
     return users.map((u) => ({
       userId: u.clerkId,
+      name: u.name ?? undefined,
+      email: u.email,
       label: u.name ? `${u.name} (${u.email})` : u.email,
       sublabel: u.clerkId,
     }));
@@ -64,6 +67,9 @@ export default function PlatformOrganizationMembersPage() {
           api={orgUiApi as unknown as CoreTenantOrganizationsUiApi}
           organizationId={organizationId}
           availableUsers={availableUsers}
+          onOpenUser={(userId) => {
+            router.push(`/platform/user/${encodeURIComponent(userId)}`);
+          }}
         />
       ) : (
         <div className="text-muted-foreground text-sm">Missing organization id.</div>

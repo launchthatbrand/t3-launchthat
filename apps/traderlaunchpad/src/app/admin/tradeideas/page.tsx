@@ -4,28 +4,17 @@ import {
   AlertCircle,
   ArrowUpRight,
   CheckCircle2,
-  Filter,
-  LayoutGrid,
-  List,
-  MoreHorizontal,
   Plus,
-  Search,
 } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@acme/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@acme/ui/dropdown-menu";
-import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Input } from "@acme/ui/input";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import React from "react";
-import { Separator } from "@acme/ui/separator";
 import { cn } from "@acme/ui";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@convex-config/_generated/api";
@@ -91,7 +80,7 @@ const MOCK_IDEAS = [
   },
 ];
 
-interface TradeIdeaCardRow {
+interface TradeIdeaCardRow extends Record<string, unknown> {
   id: string;
   symbol: string;
   type: "Long" | "Short";
@@ -119,7 +108,7 @@ const toDateLabel = (tsMs: number): string => {
 };
 
 export default function AdminTradeIdeasPage() {
-  const [view, setView] = React.useState<"grid" | "list">("grid");
+  const router = useRouter();
   const dataMode = useDataMode();
   const activeAccount = useActiveAccount();
   const isLive = dataMode.effectiveMode === "live";
@@ -153,6 +142,99 @@ export default function AdminTradeIdeasPage() {
     });
   }, [isLive, liveRecentClosed]);
 
+  const columns = React.useMemo<ColumnDefinition<TradeIdeaCardRow>[]>(
+    () => [
+      {
+        id: "symbol",
+        header: "Symbol",
+        accessorKey: "symbol",
+        cell: (idea: TradeIdeaCardRow) => (
+          <div className="space-y-1">
+            <div className="text-sm font-semibold text-white">{idea.symbol}</div>
+            <div className="text-xs text-white/50">{idea.date}</div>
+          </div>
+        ),
+        sortable: true,
+      },
+      {
+        id: "type",
+        header: "Type",
+        accessorKey: "type",
+        cell: (idea: TradeIdeaCardRow) => (
+          <Badge
+            variant="outline"
+            className={cn(
+              "h-5 px-1.5 text-[10px]",
+              idea.type === "Long"
+                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
+                : "border-red-500/20 bg-red-500/10 text-red-500",
+            )}
+          >
+            {idea.type}
+          </Badge>
+        ),
+        sortable: true,
+      },
+      {
+        id: "status",
+        header: "Status",
+        accessorKey: "status",
+        cell: (idea: TradeIdeaCardRow) => (
+          <span className="text-sm text-white/80">{idea.status}</span>
+        ),
+        sortable: true,
+      },
+      {
+        id: "pnl",
+        header: "Net P&L",
+        accessorKey: "pnl",
+        cell: (idea: TradeIdeaCardRow) => (
+          <span
+            className={cn(
+              "text-sm font-semibold",
+              idea.pnl > 0
+                ? "text-emerald-500"
+                : idea.pnl < 0
+                  ? "text-red-500"
+                  : "text-white/60",
+            )}
+          >
+            {idea.pnl > 0 ? "+" : ""}
+            {idea.pnl}
+          </span>
+        ),
+        sortable: true,
+      },
+      {
+        id: "reviewed",
+        header: "Review",
+        accessorKey: "reviewed",
+        cell: (idea: TradeIdeaCardRow) =>
+          idea.reviewed ? (
+            <span className="text-sm text-emerald-200">Reviewed</span>
+          ) : (
+            <span className="text-sm text-orange-200">Needs review</span>
+          ),
+        sortable: true,
+      },
+    ],
+    [],
+  );
+
+  const entityActions = React.useMemo<EntityAction<TradeIdeaCardRow>[]>(
+    () => [
+      {
+        id: "open",
+        label: "Open",
+        variant: "outline",
+        onClick: (idea: TradeIdeaCardRow) => {
+          router.push(`/admin/tradeidea/${encodeURIComponent(idea.id)}`);
+        },
+      },
+    ],
+    [router],
+  );
+
   return (
     <div className="relative animate-in fade-in space-y-8 text-white selection:bg-orange-500/30 duration-500">
       {/* Header */}
@@ -163,63 +245,41 @@ export default function AdminTradeIdeasPage() {
             Manage your setups and review your execution.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <ActiveAccountSelector />
-          <Button className="bg-white text-black hover:bg-white/90">
-            <Plus className="mr-2 h-4 w-4" />
-            New Idea
-          </Button>
-        </div>
       </div>
 
-      {/* Toolbar */}
-      <Card className="flex flex-col items-center justify-between gap-4 p-4 sm:flex-row">
-        <div className="flex w-full items-center gap-2 sm:w-auto">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute top-2.5 left-2.5 h-4 w-4 text-white/40" />
-            <Input
-              placeholder="Search symbol, tag..."
-              className="border-white/10 bg-black/20 pl-9 text-white placeholder:text-white/30 focus-visible:ring-orange-500/40"
-            />
+      <EntityList<TradeIdeaCardRow>
+        data={ideas}
+        columns={columns}
+        defaultViewMode="grid"
+        viewModes={["grid", "list"]}
+        gridColumns={{ sm: 1, md: 2, lg: 3, xl: 4 }}
+        enableSearch={true}
+        title="Ideas"
+        description={isLive ? "Live data (closed ideas)" : "Mock data"}
+        actions={
+          <div className="flex items-center gap-2">
+            <ActiveAccountSelector />
+            <Button className="bg-white text-black hover:bg-white/90">
+              <Plus className="mr-2 h-4 w-4" />
+              New Idea
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="icon"
-            className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
-          >
-            <Filter className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
-          <Tabs
-            value={view}
-            onValueChange={(v) => setView(v as "grid" | "list")}
-          >
-            <TabsList className="border border-white/10 bg-black/20">
-              <TabsTrigger value="grid" className="data-[state=active]:bg-white/10">
-                <LayoutGrid className="h-4 w-4" />
-              </TabsTrigger>
-              <TabsTrigger value="list" className="data-[state=active]:bg-white/10">
-                <List className="h-4 w-4" />
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-      </Card>
-
-      {/* Grid View Content */}
-      <div
-        className={cn(
-          "grid gap-6",
-          view === "grid"
-            ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-            : "grid-cols-1",
-        )}
-      >
-        {ideas.map((idea) => (
+        }
+        onRowClick={(idea) => {
+          router.push(`/admin/tradeidea/${encodeURIComponent(idea.id)}`);
+        }}
+        entityActions={entityActions}
+        getRowId={(idea) => idea.id}
+        emptyState={
+          <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-white/15 bg-white/3 p-8 text-white/60">
+            <div className="text-lg font-medium text-white">No trade ideas</div>
+            <div className="mt-1 text-sm text-white/60">
+              Create your first idea to start tracking setups.
+            </div>
+          </div>
+        }
+        itemRender={(idea) => (
           <Card
-            key={idea.id}
             className="group relative overflow-hidden transition-colors hover:border-white/20 hover:bg-white/5"
           >
             {/* Status Stripe */}
@@ -255,37 +315,10 @@ export default function AdminTradeIdeasPage() {
                     {idea.date}
                   </div>
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="border-white/10 bg-black/70 text-white">
-                    <DropdownMenuItem>Edit Details</DropdownMenuItem>
-                    <DropdownMenuItem>View Chart</DropdownMenuItem>
-                    <Separator className="my-1" />
-                    <DropdownMenuItem className="text-red-500">
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
             </CardHeader>
 
             <CardContent className="pb-3 pl-6">
-              <div className="mb-4 flex flex-wrap gap-2">
-                {idea.tags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="secondary"
-                    className="border border-white/10 bg-white/5 text-xs font-normal text-white/80"
-                  >
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-
               <div className="flex items-end justify-between">
                 <div className="flex flex-col">
                   <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
@@ -337,16 +370,8 @@ export default function AdminTradeIdeasPage() {
               </Button>
             </CardFooter>
           </Card>
-        ))}
-
-        {/* Add New Placeholder Card */}
-        <button className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-white/15 bg-white/3 p-8 text-white/60 transition-all hover:border-white/25 hover:bg-white/5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-            <Plus className="h-5 w-5" />
-          </div>
-          <span className="text-sm font-medium">Add New Idea</span>
-        </button>
-      </div>
+        )}
+      />
     </div>
   );
 }

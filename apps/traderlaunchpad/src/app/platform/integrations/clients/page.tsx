@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import Link from "next/link";
-import { ArrowUpRight, BadgeCheck, Globe, Plus, Shield } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { BadgeCheck, Globe, Plus, Shield } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
@@ -13,16 +13,25 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
-import { Separator } from "@acme/ui/separator";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
 
-const CLIENTS = [
+interface ClientRow extends Record<string, unknown> {
+  id: string;
+  name: string;
+  status: "active" | "disabled";
+  type: "first_party" | "third_party";
+  redirectAllowlist: string[];
+  scopes: string[];
+  createdAt: string;
+}
+
+const CLIENTS: ClientRow[] = [
   {
     id: "portal_mock",
     name: "Portal",
-    status: "active" as const,
-    type: "first_party" as const,
+    status: "active",
+    type: "first_party",
     redirectAllowlist: [
       "https://portal.launchthat.app/oauth/callback",
       "https://app.traderlaunchpad.com/admin/integrations/portal/callback",
@@ -30,12 +39,105 @@ const CLIENTS = [
     scopes: ["trades:read", "tradeideas:read", "discord:routing:write"],
     createdAt: "Jan 16, 2026",
   },
-] as const;
+];
 
 export default function PlatformIntegrationsClientsPage() {
-  const [q, setQ] = React.useState("");
-  const filtered = CLIENTS.filter((c) =>
-    (c.name + c.id).toLowerCase().includes(q.trim().toLowerCase()),
+  const router = useRouter();
+
+  const columns = React.useMemo<ColumnDefinition<ClientRow>[]>(
+    () => [
+      {
+        id: "client",
+        header: "Client",
+        accessorKey: "id",
+        cell: (c: ClientRow) => (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <BadgeCheck className="h-4 w-4 text-emerald-500" />
+              {c.name}
+            </div>
+            <div className="text-muted-foreground font-mono text-xs">{c.id}</div>
+          </div>
+        ),
+        sortable: true,
+      },
+      {
+        id: "status",
+        header: "Status",
+        accessorKey: "status",
+        cell: (c: ClientRow) => (
+          <Badge
+            className={
+              c.status === "active"
+                ? "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/10"
+                : "bg-muted text-muted-foreground hover:bg-muted"
+            }
+          >
+            {c.status}
+          </Badge>
+        ),
+        sortable: true,
+      },
+      {
+        id: "type",
+        header: "Type",
+        accessorKey: "type",
+        cell: (c: ClientRow) => (
+          <span className="text-sm">{c.type === "first_party" ? "First-party" : "Third-party"}</span>
+        ),
+        sortable: true,
+      },
+      {
+        id: "redirects",
+        header: "Redirects",
+        accessorKey: "redirectAllowlist",
+        cell: (c: ClientRow) => (
+          <div className="text-sm">
+            <span className="inline-flex items-center gap-2">
+              <Globe className="h-4 w-4 text-blue-500" />
+              {c.redirectAllowlist.length}
+            </span>
+          </div>
+        ),
+        sortable: true,
+      },
+      {
+        id: "scopes",
+        header: "Scopes",
+        accessorKey: "scopes",
+        cell: (c: ClientRow) => (
+          <div className="text-sm">
+            <span className="inline-flex items-center gap-2">
+              <Shield className="h-4 w-4 text-purple-500" />
+              {c.scopes.length}
+            </span>
+          </div>
+        ),
+        sortable: true,
+      },
+      {
+        id: "createdAt",
+        header: "Created",
+        accessorKey: "createdAt",
+        cell: (c: ClientRow) => <span className="text-sm">{c.createdAt}</span>,
+        sortable: true,
+      },
+    ],
+    [],
+  );
+
+  const entityActions = React.useMemo<EntityAction<ClientRow>[]>(
+    () => [
+      {
+        id: "connections",
+        label: "Connections",
+        variant: "outline",
+        onClick: () => {
+          router.push("/platform/integrations/connections");
+        },
+      },
+    ],
+    [router],
   );
 
   return (
@@ -58,123 +160,19 @@ export default function PlatformIntegrationsClientsPage() {
 
       <Card>
         <CardHeader className="border-b">
-          <CardTitle className="text-base">Search</CardTitle>
-          <CardDescription>Find clients by name or client_id.</CardDescription>
+          <CardTitle className="text-base">Registry</CardTitle>
+          <CardDescription>Find clients by name or client_id (mock).</CardDescription>
         </CardHeader>
-        <CardContent className="pt-6">
-          <Input
-            placeholder="Search clients…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
+        <CardContent className="p-0">
+          <EntityList<ClientRow>
+            data={[...CLIENTS]}
+            columns={columns}
+            defaultViewMode="list"
+            viewModes={["list"]}
+            enableSearch={true}
+            entityActions={entityActions}
+            getRowId={(c: ClientRow) => c.id}
           />
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {filtered.map((c) => (
-          <Card key={c.id} className="overflow-hidden">
-            <CardHeader className="border-b">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <BadgeCheck className="h-4 w-4 text-emerald-500" />
-                    {c.name}
-                  </CardTitle>
-                  <div className="text-muted-foreground font-mono text-xs">
-                    {c.id}
-                  </div>
-                </div>
-                <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/10">
-                  Active
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-5 pt-6">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="bg-muted/20 rounded-lg border p-4">
-                  <div className="text-muted-foreground text-xs">Type</div>
-                  <div className="mt-1 text-sm font-semibold">First-party</div>
-                </div>
-                <div className="bg-muted/20 rounded-lg border p-4">
-                  <div className="text-muted-foreground text-xs">Created</div>
-                  <div className="mt-1 text-sm font-semibold">
-                    {c.createdAt}
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <Globe className="h-4 w-4 text-blue-500" />
-                  Redirect allowlist
-                </div>
-                <div className="space-y-2">
-                  {c.redirectAllowlist.map((u) => (
-                    <div
-                      key={u}
-                      className="bg-card rounded-lg border px-3 py-2 font-mono text-xs"
-                    >
-                      {u}
-                    </div>
-                  ))}
-                </div>
-                <div className="text-muted-foreground text-xs">
-                  Backend later: enforce exact match (scheme + host + path).
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <Shield className="h-4 w-4 text-purple-500" />
-                  Default scopes
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {c.scopes.map((s) => (
-                    <Badge
-                      key={s}
-                      variant="secondary"
-                      className="bg-muted text-muted-foreground hover:bg-muted"
-                    >
-                      {s}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" asChild>
-                  <Link href="/platform/integrations/connections">
-                    View connections <ArrowUpRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button variant="outline" disabled>
-                  Rotate client secret (soon)
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Card className="overflow-hidden">
-        <CardHeader className="border-b">
-          <CardTitle className="text-base">Client settings (mock)</CardTitle>
-          <CardDescription>
-            This section is intentionally read-only for now—only to visualize
-            the backend work.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 pt-6 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Client ID</Label>
-            <Input value="portal_mock" readOnly className="font-mono" />
-          </div>
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Input value="active" readOnly />
-          </div>
         </CardContent>
       </Card>
     </div>

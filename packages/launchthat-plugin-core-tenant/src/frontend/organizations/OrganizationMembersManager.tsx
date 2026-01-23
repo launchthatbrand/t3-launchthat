@@ -5,36 +5,19 @@ import { useMutation, useQuery } from "convex/react";
 
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { Label } from "@acme/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@acme/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@acme/ui/table";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
 
 import type { CoreTenantOrganizationsUiApi, OrganizationMemberRow } from "./types";
-
-export interface AvailableUserOption {
-  userId: string;
-  label: string;
-  sublabel?: string;
-}
+import { OrganizationMemberAddDialog } from "./OrganizationMemberAddDialog";
+import type { AvailableUserOption } from "./OrganizationMemberAddDialog";
 
 export interface OrganizationMembersManagerProps {
   api: CoreTenantOrganizationsUiApi;
   organizationId: string;
   availableUsers: AvailableUserOption[];
   className?: string;
+  onOpenUser?: (userId: string) => void;
 }
 
 export const OrganizationMembersManager = (props: OrganizationMembersManagerProps) => {
@@ -63,25 +46,101 @@ export const OrganizationMembersManager = (props: OrganizationMembersManagerProp
   const addMember = useMutation(ensureMembership);
   const removeMember = useMutation(removeMembership);
 
-  const [selectedUserId, setSelectedUserId] = React.useState<string>("");
   const [busyKey, setBusyKey] = React.useState<string | null>(null);
+  const [isAddOpen, setIsAddOpen] = React.useState(false);
 
   const available = props.availableUsers;
 
-  const handleAdd = async () => {
-    if (!selectedUserId) return;
-    setBusyKey(`add:${selectedUserId}`);
+  const handleAdd = async (userId: string) => {
+    // Avoid adding duplicates (race-safe UI guard).
+    if (rows.some((m) => m.userId === userId)) return;
+    setBusyKey(`add:${userId}`);
     try {
       await addMember({
-        userId: selectedUserId,
+        userId,
         organizationId: props.organizationId,
         role: "viewer",
       });
-      setSelectedUserId("");
     } finally {
       setBusyKey(null);
     }
   };
+
+  const rows = React.useMemo<OrganizationMemberRow[]>(() => {
+    return Array.isArray(members) ? members : [];
+  }, [members]);
+
+  const usersById = React.useMemo(() => {
+    const map = new Map<string, AvailableUserOption>();
+    for (const u of available) map.set(u.userId, u);
+    return map;
+  }, [available]);
+
+  const availableToAdd = React.useMemo(() => {
+    const existing = new Set(rows.map((m) => m.userId));
+    return available.filter((u) => !existing.has(u.userId));
+  }, [available, rows]);
+
+  const columns = React.useMemo<ColumnDefinition<OrganizationMemberRow>[]>(
+    () => [
+      {
+        id: "user",
+        header: "User",
+        accessorKey: "userId",
+        cell: (m: OrganizationMemberRow) => {
+          const u = usersById.get(m.userId);
+          const name = u?.name ?? "";
+          const email = u?.email ?? "";
+          return (
+            <div className="space-y-1">
+              <div className="text-sm font-medium">
+                {name ? name : email ? email : "—"}
+              </div>
+              <div className="text-muted-foreground font-mono text-xs">
+                {email && name ? email : m.userId}
+              </div>
+            </div>
+          );
+        },
+        sortable: true,
+      },
+      {
+        id: "role",
+        header: "Role",
+        accessorKey: "role",
+        cell: (m: OrganizationMemberRow) => <span className="text-sm">{m.role}</span>,
+        sortable: true,
+      },
+    ],
+    [usersById],
+  );
+
+  const entityActions = React.useMemo<EntityAction<OrganizationMemberRow>[]>(
+    () => [
+      {
+        id: "view",
+        label: "View",
+        variant: "outline",
+        onClick: (m: OrganizationMemberRow) => {
+          props.onOpenUser?.(m.userId);
+        },
+      },
+      {
+        id: "remove",
+        label: "Remove",
+        variant: "destructive",
+        isDisabled: (m) => busyKey === `rm:${m.userId}`,
+        onClick: (m: OrganizationMemberRow) => {
+          setBusyKey(`rm:${m.userId}`);
+          void removeMember({
+            userId: m.userId,
+            organizationId: props.organizationId,
+          }).finally(() => setBusyKey(null));
+        },
+      },
+    ],
+    [busyKey, props, removeMember],
+  );
 
   return (
     <div className={props.className}>
@@ -90,106 +149,45 @@ export const OrganizationMembersManager = (props: OrganizationMembersManagerProp
           <CardTitle>Members</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="space-y-1 sm:col-span-2">
-              <Label>Add existing user</Label>
-              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a user…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {available.length === 0 ? (
-                    <SelectItem value="__none__" disabled>
-                      No users available
-                    </SelectItem>
-                  ) : (
-                    available.map((u) => (
-                      <SelectItem key={u.userId} value={u.userId}>
-                        {u.label}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-              {selectedUserId ? (
-                <div className="text-muted-foreground text-xs">
-                  {available.find((u) => u.userId === selectedUserId)?.sublabel ?? ""}
-                </div>
-              ) : null}
-            </div>
-            <div className="flex items-end">
-              <Button
-                className="w-full"
-                disabled={!selectedUserId || busyKey === `add:${selectedUserId}`}
-                onClick={handleAdd}
-              >
-                {busyKey === `add:${selectedUserId}` ? "Adding…" : "Add"}
+          <EntityList<OrganizationMemberRow>
+            data={rows}
+            columns={columns}
+            isLoading={members === undefined}
+            defaultViewMode="list"
+            viewModes={["list"]}
+            enableSearch={true}
+            entityActions={entityActions}
+            onRowClick={(m) => props.onOpenUser?.(m.userId)}
+            getRowId={(m: OrganizationMemberRow) => m.userId}
+            actions={
+              <Button disabled={availableToAdd.length === 0} onClick={() => setIsAddOpen(true)}>
+                Add member
               </Button>
-            </div>
-          </div>
+            }
+            emptyState={
+              <div className="flex h-40 flex-col items-center justify-center rounded-lg border border-dashed">
+                <div className="text-lg font-medium">No members</div>
+                <div className="text-muted-foreground mt-1 text-sm">
+                  Add a user to grant access.
+                </div>
+                <div className="mt-4">
+                  <Button disabled={availableToAdd.length === 0} onClick={() => setIsAddOpen(true)}>
+                    Add member
+                  </Button>
+                </div>
+              </div>
+            }
+          />
 
-          <MembersTable
-            members={Array.isArray(members) ? members : []}
-            onRemove={async (row) => {
-              setBusyKey(`rm:${row.userId}`);
-              try {
-                await removeMember({
-                  userId: row.userId,
-                  organizationId: props.organizationId,
-                });
-              } finally {
-                setBusyKey(null);
-              }
-            }}
-            busyKey={busyKey}
+          <OrganizationMemberAddDialog
+            open={isAddOpen}
+            onOpenChange={setIsAddOpen}
+            availableUsers={availableToAdd}
+            isAdding={busyKey?.startsWith("add:") ?? false}
+            onAdd={handleAdd}
           />
         </CardContent>
       </Card>
     </div>
   );
 };
-
-const MembersTable = (props: {
-  members: OrganizationMemberRow[];
-  onRemove: (row: OrganizationMemberRow) => Promise<void>;
-  busyKey: string | null;
-}) => {
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>User</TableHead>
-          <TableHead>Role</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {props.members.length === 0 ? (
-          <TableRow>
-            <TableCell colSpan={3} className="text-muted-foreground text-sm">
-              No members.
-            </TableCell>
-          </TableRow>
-        ) : (
-          props.members.map((m) => (
-            <TableRow key={m.userId}>
-              <TableCell className="font-mono text-xs">{m.userId}</TableCell>
-              <TableCell>{m.role}</TableCell>
-              <TableCell className="text-right">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={props.busyKey === `rm:${m.userId}`}
-                  onClick={() => props.onRemove(m)}
-                >
-                  {props.busyKey === `rm:${m.userId}` ? "…" : "Remove"}
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))
-        )}
-      </TableBody>
-    </Table>
-  );
-};
-

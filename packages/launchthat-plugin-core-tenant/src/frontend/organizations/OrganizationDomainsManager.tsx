@@ -6,22 +6,15 @@ import { useMutation, useQuery } from "convex/react";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@acme/ui/table";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
 
 import type {
   CoreTenantOrganizationsUiApi,
   OrganizationDomainRow,
   OrganizationDomainStatus,
 } from "./types";
+import { OrganizationDomainDialog } from "./OrganizationDomainDialog";
 
 const statusVariant = (
   status: OrganizationDomainStatus,
@@ -42,37 +35,83 @@ export interface OrganizationDomainsManagerProps {
 export const OrganizationDomainsManager = (props: OrganizationDomainsManagerProps) => {
   const appKeys = props.appKeys?.length ? props.appKeys : ["portal", "traderlaunchpad"];
 
-  const domains = useQuery(props.api.launchthat_core_tenant.queries.listDomainsForOrg, {
+  const domains: OrganizationDomainRow[] | undefined = useQuery(
+    props.api.launchthat_core_tenant.queries.listDomainsForOrg,
+    {
     organizationId: props.organizationId,
-  });
+    },
+  );
 
-  const upsert = useMutation(props.api.launchthat_core_tenant.mutations.upsertOrganizationDomain);
   const remove = useMutation(props.api.launchthat_core_tenant.mutations.removeOrganizationDomain);
 
-  const [hostname, setHostname] = React.useState("");
-  const [appKey, setAppKey] = React.useState(appKeys[0] ?? "traderlaunchpad");
-  const [status, setStatus] = React.useState<OrganizationDomainStatus>("pending");
-  const [error, setError] = React.useState<string | null>(null);
-  const [isSaving, setIsSaving] = React.useState(false);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState<
+    Pick<OrganizationDomainRow, "appKey" | "hostname" | "status"> | undefined
+  >(undefined);
 
-  const handleAdd = async () => {
-    setError(null);
-    setIsSaving(true);
-    try {
-      await upsert({
-        organizationId: props.organizationId,
-        appKey,
-        hostname,
-        status,
-      });
-      setHostname("");
-      setStatus("pending");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save domain");
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  const rows = React.useMemo<OrganizationDomainRow[]>(() => {
+    return Array.isArray(domains) ? domains : [];
+  }, [domains]);
+
+  const columns = React.useMemo<ColumnDefinition<OrganizationDomainRow>[]>(
+    () => [
+      {
+        id: "appKey",
+        header: "App",
+        accessorKey: "appKey",
+        cell: (d: OrganizationDomainRow) => (
+          <span className="font-mono text-xs">{d.appKey}</span>
+        ),
+        sortable: true,
+      },
+      {
+        id: "hostname",
+        header: "Hostname",
+        accessorKey: "hostname",
+        cell: (d: OrganizationDomainRow) => (
+          <span className="font-mono text-xs">{d.hostname}</span>
+        ),
+        sortable: true,
+      },
+      {
+        id: "status",
+        header: "Status",
+        accessorKey: "status",
+        cell: (d: OrganizationDomainRow) => (
+          <Badge variant={statusVariant(d.status)}>{d.status}</Badge>
+        ),
+        sortable: true,
+      },
+    ],
+    [],
+  );
+
+  const entityActions = React.useMemo<EntityAction<OrganizationDomainRow>[]>(
+    () => [
+      {
+        id: "edit",
+        label: "Edit",
+        variant: "outline",
+        onClick: (d: OrganizationDomainRow) => {
+          setEditing({ appKey: d.appKey, hostname: d.hostname, status: d.status });
+          setIsDialogOpen(true);
+        },
+      },
+      {
+        id: "remove",
+        label: "Remove",
+        variant: "destructive",
+        onClick: (d: OrganizationDomainRow) => {
+          void remove({
+            organizationId: props.organizationId,
+            appKey: d.appKey,
+            hostname: d.hostname,
+          });
+        },
+      },
+    ],
+    [props.organizationId, remove],
+  );
 
   return (
     <div className={props.className}>
@@ -81,116 +120,55 @@ export const OrganizationDomainsManager = (props: OrganizationDomainsManagerProp
           <CardTitle>Domains</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="space-y-1">
-              <Label>App</Label>
-              <select
-                className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
-                value={appKey}
-                onChange={(e) => setAppKey(e.target.value)}
+          <EntityList<OrganizationDomainRow>
+            data={rows}
+            columns={columns}
+            isLoading={domains === undefined}
+            defaultViewMode="list"
+            viewModes={["list"]}
+            enableSearch={true}
+            entityActions={entityActions}
+            getRowId={(d: OrganizationDomainRow) => `${d.appKey}:${d.hostname}`}
+            actions={
+              <Button
+                onClick={() => {
+                  setEditing(undefined);
+                  setIsDialogOpen(true);
+                }}
               >
-                {appKeys.map((k) => (
-                  <option key={k} value={k}>
-                    {k}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <Label>Hostname</Label>
-              <Input value={hostname} onChange={(e) => setHostname(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label>Status</Label>
-              <select
-                className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as OrganizationDomainStatus)}
-              >
-                <option value="pending">pending</option>
-                <option value="verified">verified</option>
-                <option value="unconfigured">unconfigured</option>
-                <option value="error">error</option>
-              </select>
-            </div>
-          </div>
-          {error ? <div className="text-destructive text-sm">{error}</div> : null}
-          <Button disabled={isSaving || !hostname.trim() || !appKey.trim()} onClick={handleAdd}>
-            {isSaving ? "Saving…" : "Add / Update domain"}
-          </Button>
+                Add domain
+              </Button>
+            }
+            emptyState={
+              <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed">
+                <div className="text-lg font-medium">No domains</div>
+                <div className="text-muted-foreground mt-1 text-sm">
+                  Add a domain mapping for this organization.
+                </div>
+                <div className="mt-4">
+                  <Button
+                    onClick={() => {
+                      setEditing(undefined);
+                      setIsDialogOpen(true);
+                    }}
+                  >
+                    Add domain
+                  </Button>
+                </div>
+              </div>
+            }
+          />
 
-          <DomainsTable
-            domains={Array.isArray(domains) ? domains : []}
-            onRemove={async (row) => {
-              await remove({
-                organizationId: props.organizationId,
-                appKey: row.appKey,
-                hostname: row.hostname,
-              });
-            }}
+          <OrganizationDomainDialog
+            api={props.api}
+            organizationId={props.organizationId}
+            appKeys={appKeys}
+            open={isDialogOpen}
+            onOpenChange={setIsDialogOpen}
+            initial={editing}
           />
         </CardContent>
       </Card>
     </div>
   );
 };
-
-const DomainsTable = (props: {
-  domains: OrganizationDomainRow[];
-  onRemove: (row: OrganizationDomainRow) => Promise<void>;
-}) => {
-  const [busyKey, setBusyKey] = React.useState<string | null>(null);
-
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>App</TableHead>
-          <TableHead>Hostname</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {props.domains.length === 0 ? (
-          <TableRow>
-            <TableCell colSpan={4} className="text-muted-foreground text-sm">
-              No domains configured.
-            </TableCell>
-          </TableRow>
-        ) : (
-          props.domains.map((d) => {
-            const key = `${d.appKey}:${d.hostname}`;
-            return (
-              <TableRow key={key}>
-                <TableCell className="font-mono text-xs">{d.appKey}</TableCell>
-                <TableCell className="font-mono text-xs">{d.hostname}</TableCell>
-                <TableCell>
-                  <Badge variant={statusVariant(d.status)}>{d.status}</Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={busyKey === key}
-                    onClick={async () => {
-                      setBusyKey(key);
-                      try {
-                        await props.onRemove(d);
-                      } finally {
-                        setBusyKey(null);
-                      }
-                    }}
-                  >
-                    {busyKey === key ? "…" : "Remove"}
-                  </Button>
-                </TableCell>
-              </TableRow>
-            );
-          })
-        )}
-      </TableBody>
-    </Table>
-  );
-};
-
