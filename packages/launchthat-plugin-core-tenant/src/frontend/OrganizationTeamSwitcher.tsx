@@ -15,6 +15,12 @@ export interface OrganizationTeamSwitcherProps {
   userId: string | null | undefined;
 
   /**
+   * If provided, prefer this slug when determining the "active" org in the UI.
+   * Useful when the current tenant is derived from the hostname/subdomain.
+   */
+  activeTenantSlug?: string | null;
+
+  /**
    * Root domain for subdomain routing in production (e.g. "traderlaunchpad.com" or "launchthat.app").
    */
   rootDomain: string;
@@ -47,6 +53,11 @@ export interface OrganizationTeamSwitcherProps {
    */
   redirectBasePath?: string;
 
+  /**
+   * Optional "Add organization" link shown at the bottom of the menu.
+   */
+  createHref?: string;
+
   className?: string;
 }
 
@@ -76,8 +87,17 @@ export const OrganizationTeamSwitcher = (props: OrganizationTeamSwitcherProps) =
 
   const activeOrganizationId = React.useMemo(() => {
     if (!Array.isArray(memberships) || memberships.length === 0) return null;
+
+    const activeTenantSlug = (props.activeTenantSlug ?? "").trim().toLowerCase();
+    if (activeTenantSlug) {
+      const bySlug = memberships.find(
+        (m) => m.org?.slug?.trim().toLowerCase() === activeTenantSlug,
+      );
+      if (bySlug?.organizationId) return bySlug.organizationId;
+    }
+
     return memberships.find((m) => m.isActive)?.organizationId ?? memberships[0]?.organizationId ?? null;
-  }, [memberships]);
+  }, [memberships, props.activeTenantSlug]);
 
   const [switchingOrganizationId, setSwitchingOrganizationId] = React.useState<string | null>(
     null,
@@ -141,7 +161,7 @@ export const OrganizationTeamSwitcher = (props: OrganizationTeamSwitcherProps) =
         onSelect={handleSelect}
         isLoading={memberships === undefined}
         switchingOrganizationId={switchingOrganizationId}
-        createHref={undefined}
+        createHref={props.createHref}
       />
     </div>
   );

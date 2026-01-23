@@ -21,6 +21,7 @@ import {
 
 import Image from "next/image";
 import Link from "next/link";
+import { OrgSubdomainSwitcher } from "~/components/organizations/OrgSubdomainSwitcher";
 import { usePathname } from "next/navigation";
 
 interface NavItem {
@@ -107,6 +108,7 @@ export default function AdminSidebarDefault() {
     >
       {/* Remove default header padding so logo aligns with nav menu inset. */}
       <SidebarHeader className="p-0">
+        <OrgSubdomainSwitcher className="p-3 pb-0" />
         {/* Match the nav menu inset so the logo aligns with items. */}
         <SidebarMenu className="p-3 group-data-[collapsible=icon]:items-center">
           <SidebarMenuItem>

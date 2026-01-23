@@ -6,6 +6,7 @@ import React from "react";
 
 import { TraderLaunchpadNavUser } from "~/components/auth/TraderLaunchpadNavUser";
 import { NavItems } from "~/components/ui/resizable-navbar";
+import { ThemeToggleButton } from "@acme/ui/theme";
 
 export function Header() {
   const navItems = [
@@ -56,6 +57,7 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-4">
+          <ThemeToggleButton />
           {/* Portal parity: tenant hosts derive auth state from /api/me; auth host uses Clerk session */}
           <TraderLaunchpadNavUser />
         </div>

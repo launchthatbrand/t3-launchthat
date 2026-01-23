@@ -250,15 +250,24 @@ export default function SignInClient(props: {
   }, [props.returnTo]);
 
   const afterAuthCallbackUrl = React.useMemo(() => {
-    const u = new URL("/api/auth/callback", window.location.origin);
+    const params = new URLSearchParams();
     // Only include return_to when it's an absolute URL. If missing, let the callback
     // compute an appropriate tenant origin + default redirect.
     if (/^https?:\/\//i.test(afterSignInUrl)) {
-      u.searchParams.set("return_to", afterSignInUrl);
+      params.set("return_to", afterSignInUrl);
     }
     const tenant = props.tenantSlug?.trim();
-    if (tenant) u.searchParams.set("tenant", tenant);
-    return u.toString();
+    if (tenant) params.set("tenant", tenant);
+
+    const basePath = "/api/auth/callback";
+    const query = params.toString();
+    const relative = query ? `${basePath}?${query}` : basePath;
+
+    if (typeof window === "undefined") {
+      return relative;
+    }
+
+    return new URL(relative, window.location.origin).toString();
   }, [afterSignInUrl, props.tenantSlug]);
 
   const startPhoneOtp = React.useCallback(
@@ -291,7 +300,7 @@ export default function SignInClient(props: {
           (signIn as unknown as { supportedFirstFactors?: unknown }).supportedFirstFactors,
         )
           ? ((signIn as unknown as { supportedFirstFactors?: unknown })
-              .supportedFirstFactors as unknown[])
+            .supportedFirstFactors as unknown[])
           : [];
 
         const phoneCodeFactor = firstFactors.find((f) => {
@@ -306,7 +315,7 @@ export default function SignInClient(props: {
 
         const phoneNumberId =
           phoneCodeFactor &&
-          typeof (phoneCodeFactor as { phoneNumberId?: unknown }).phoneNumberId === "string"
+            typeof (phoneCodeFactor as { phoneNumberId?: unknown }).phoneNumberId === "string"
             ? String((phoneCodeFactor as { phoneNumberId?: unknown }).phoneNumberId)
             : "";
 
@@ -358,7 +367,7 @@ export default function SignInClient(props: {
         (signIn as unknown as { supportedFirstFactors?: unknown }).supportedFirstFactors,
       )
         ? ((signIn as unknown as { supportedFirstFactors?: unknown })
-            .supportedFirstFactors as unknown[])
+          .supportedFirstFactors as unknown[])
         : [];
 
       const emailLinkFactor = firstFactors.find((f) => {
@@ -373,7 +382,7 @@ export default function SignInClient(props: {
 
       const emailAddressId =
         emailLinkFactor &&
-        typeof (emailLinkFactor as { emailAddressId?: unknown }).emailAddressId === "string"
+          typeof (emailLinkFactor as { emailAddressId?: unknown }).emailAddressId === "string"
           ? String((emailLinkFactor as { emailAddressId?: unknown }).emailAddressId)
           : "";
 

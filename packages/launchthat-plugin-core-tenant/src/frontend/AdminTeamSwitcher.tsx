@@ -1,0 +1,130 @@
+"use client";
+
+import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "convex/react";
+
+import { TeamSwitcher } from "@acme/ui/general/team-switcher";
+import type { TeamSwitcherOrganization } from "@acme/ui/general/team-switcher";
+
+import { buildOrganizationSwitchUrl } from "./org-switching";
+
+export type TenantLike = {
+  _id?: string;
+  slug?: string;
+  name?: string;
+  customDomain?: string | null;
+} | null;
+
+export function AdminTeamSwitcher(props: {
+  tenant: TenantLike;
+  rootDomain: string;
+  organizationsQuery: any;
+  /**
+   * Root tenant slug that should resolve to apex (no subdomain).
+   * Portal passes `PORTAL_TENANT_SLUG`; TraderLaunchpad can omit.
+   */
+  rootTenantSlug?: string;
+  redirectBasePath?: string; // default: /admin
+}) {
+  const organizationsResult = useQuery(props.organizationsQuery, {});
+  const [switchingOrganizationId, setSwitchingOrganizationId] = useState<string | null>(null);
+
+  const organizations = useMemo<TeamSwitcherOrganization[]>(() => {
+    if (!organizationsResult || !Array.isArray(organizationsResult)) return [];
+
+    return organizationsResult.flatMap((org: unknown) => {
+      if (!org || typeof org !== "object") return [];
+      const obj = org as Record<string, unknown>;
+      const idValue = typeof obj._id === "string" ? obj._id : undefined;
+      if (!idValue) return [];
+
+      const nameValue = typeof obj.name === "string" ? obj.name : "Untitled";
+      const slugValue = typeof obj.slug === "string" ? obj.slug : undefined;
+      const customDomainValue = typeof obj.customDomain === "string" ? obj.customDomain : undefined;
+      const roleValue =
+        typeof obj.userRole === "string"
+          ? obj.userRole
+          : typeof obj.role === "string"
+            ? obj.role
+            : undefined;
+
+      return [
+        {
+          id: idValue,
+          name: nameValue,
+          slug: slugValue,
+          customDomain: customDomainValue,
+          role: roleValue,
+        },
+      ];
+    });
+  }, [organizationsResult]);
+
+  const tenantFallbackOrganization = useMemo<TeamSwitcherOrganization | null>(() => {
+    const tenant = props.tenant;
+    if (!tenant) return null;
+
+    const slug = typeof tenant.slug === "string" ? tenant.slug : undefined;
+    const fallbackId = (typeof tenant._id === "string" ? tenant._id : slug) ?? "tenant";
+    const fallbackName =
+      typeof tenant.name === "string" ? tenant.name : (slug ?? "Current Organization");
+    const fallbackDomain = typeof tenant.customDomain === "string" ? tenant.customDomain : undefined;
+
+    return { id: fallbackId, name: fallbackName, slug, customDomain: fallbackDomain, role: undefined };
+  }, [props.tenant]);
+
+  const effectiveOrganizations = useMemo(() => {
+    if (organizations.length > 0) return organizations;
+    return tenantFallbackOrganization ? [tenantFallbackOrganization] : [];
+  }, [organizations, tenantFallbackOrganization]);
+
+  const activeOrganizationId = useMemo(() => {
+    if (!effectiveOrganizations.length) return null;
+    const tenantSlug = props.tenant?.slug;
+    if (tenantSlug) {
+      const match = effectiveOrganizations.find((org) => org.slug === tenantSlug);
+      if (match) return match.id;
+    }
+    return effectiveOrganizations[0]?.id ?? null;
+  }, [effectiveOrganizations, props.tenant]);
+
+  const handleOrganizationSelect = useCallback(
+    (org: TeamSwitcherOrganization) => {
+      if (!org.slug && !org.customDomain) return;
+      if (switchingOrganizationId === org.id) return;
+
+      setSwitchingOrganizationId(org.id);
+      if (typeof window === "undefined") return;
+
+      const nextUrl = buildOrganizationSwitchUrl({
+        currentUrl: window.location.href,
+        currentHost: window.location.host,
+        currentHostname: window.location.hostname,
+        currentPort: window.location.port,
+        currentProtocol: window.location.protocol,
+        slug: typeof org.slug === "string" ? org.slug : null,
+        customDomain: typeof org.customDomain === "string" ? org.customDomain : null,
+        rootDomain: props.rootDomain,
+        preferLocalhostSubdomains: true,
+        preservePath: false,
+        redirectBasePath: props.redirectBasePath ?? "/admin",
+        rootTenantSlug: props.rootTenantSlug,
+      });
+      if (!nextUrl) return;
+      window.location.assign(nextUrl);
+    },
+    [props.redirectBasePath, props.rootDomain, props.rootTenantSlug, switchingOrganizationId],
+  );
+
+  return (
+    <TeamSwitcher
+      organizations={effectiveOrganizations}
+      activeOrganizationId={activeOrganizationId}
+      onSelect={handleOrganizationSelect}
+      isLoading={organizationsResult === undefined}
+      switchingOrganizationId={switchingOrganizationId}
+      createHref={undefined}
+    />
+  );
+}
+

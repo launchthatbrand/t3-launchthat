@@ -2,16 +2,17 @@
 
 import * as React from "react";
 
-import type { CoreTenantOrganizationsUiApi } from "launchthat-plugin-core-tenant/frontend";
-import { OrganizationTeamSwitcher } from "launchthat-plugin-core-tenant/frontend";
-import { api } from "@convex-config/_generated/api";
-import { useAuth } from "@clerk/nextjs";
 import { useQueries, useQuery } from "convex/react";
 
+import type { CoreTenantOrganizationsUiApi } from "launchthat-plugin-core-tenant/frontend";
+import { OrganizationTeamSwitcher } from "launchthat-plugin-core-tenant/frontend";
 import type { TeamSwitcherOrganization } from "@acme/ui/general/team-switcher";
-
+import { api } from "@convex-config/_generated/api";
 import { env } from "~/env";
+import { useAuth } from "@clerk/nextjs";
 import { useHostContext } from "~/context/HostContext";
+import { usePathname } from "next/navigation";
+import { useTenant } from "~/context/TenantContext";
 
 const isLocalHostHost = (host: string): boolean => {
   const hostname = (host.split(":")[0] ?? "").toLowerCase();
@@ -27,10 +28,12 @@ const APP_KEY = "traderlaunchpad";
 
 export function OrgSubdomainSwitcher(props: { className?: string }) {
   const { isAuthHost } = useHostContext();
+  const pathname = usePathname();
+  const tenant = useTenant();
 
   // Tenant/custom hosts do not mount Clerk. Until this switcher is converted to tenant-session
   // identity (Convex auth), only render it on the auth host.
-  if (!isAuthHost) return null;
+
 
   const { userId } = useAuth();
 
@@ -98,16 +101,25 @@ export function OrgSubdomainSwitcher(props: { className?: string }) {
   }, []);
 
   if (!userId) return null;
+  if (!isAuthHost) return null;
+
+  const redirectBasePath = pathname.startsWith("/admin")
+    ? "/admin"
+    : pathname.startsWith("/platform")
+      ? "/platform"
+      : "/";
 
   return (
     <OrganizationTeamSwitcher
       className={props.className}
       api={orgUiApi as unknown as CoreTenantOrganizationsUiApi}
       userId={userId}
+      activeTenantSlug={tenant?.slug ?? null}
       rootDomain={env.NEXT_PUBLIC_ROOT_DOMAIN ?? "traderlaunchpad.com"}
       preferLocalhostSubdomains={true}
       preservePath={false}
-      redirectBasePath="/"
+      redirectBasePath={redirectBasePath}
+      createHref="/platform/organizations"
       getCustomDomainForOrg={getCustomDomainForOrg}
     />
   );

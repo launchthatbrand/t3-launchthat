@@ -24,6 +24,7 @@ import { TenantProvider } from "~/context/TenantContext";
 import { useConvexAuth } from "convex/react";
 import { ConvexUserEnsurer } from "~/app/ConvexUserEnsurer";
 import { TenantConvexProvider } from "launchthat-plugin-core-tenant/next/components/tenant-convex-provider";
+import { ThemeProvider } from "@acme/ui/theme";
 
 const convexUrl = String(env.NEXT_PUBLIC_CONVEX_URL ?? "");
 if (!convexUrl) {
@@ -45,33 +46,37 @@ export function Providers({ children, tenant, host }: ProvidersProps) {
   const rootDomain = String(env.NEXT_PUBLIC_ROOT_DOMAIN ?? "traderlaunchpad.com");
   const shouldUseClerk = isAuthHostForHost(host, rootDomain);
 
-  return shouldUseClerk ? (
-    <ClerkProvider>
-      <ConvexProviderWithClerk client={convexClerk} useAuth={useAuth}>
+  return (
+    <ThemeProvider>
+      {shouldUseClerk ? (
+        <ClerkProvider>
+          <ConvexProviderWithClerk client={convexClerk} useAuth={useAuth}>
+            <TenantProvider value={tenant}>
+              <HostProvider host={host}>
+                <ConvexUserEnsurer />
+                <DataModeProvider>
+                  <ActiveAccountProvider>
+                    <TraderLaunchpadOnboardingGate>{children}</TraderLaunchpadOnboardingGate>
+                  </ActiveAccountProvider>
+                </DataModeProvider>
+              </HostProvider>
+            </TenantProvider>
+          </ConvexProviderWithClerk>
+        </ClerkProvider>
+      ) : (
         <TenantProvider value={tenant}>
           <HostProvider host={host}>
-            <ConvexUserEnsurer />
-            <DataModeProvider>
-              <ActiveAccountProvider>
-                <TraderLaunchpadOnboardingGate>{children}</TraderLaunchpadOnboardingGate>
-              </ActiveAccountProvider>
-            </DataModeProvider>
+            <TenantConvexProvider convexUrl={convexUrl} nodeEnv={env.NODE_ENV}>
+              <DataModeProvider>
+                <ActiveAccountProvider>
+                  <TraderLaunchpadOnboardingGate>{children}</TraderLaunchpadOnboardingGate>
+                </ActiveAccountProvider>
+              </DataModeProvider>
+            </TenantConvexProvider>
           </HostProvider>
         </TenantProvider>
-      </ConvexProviderWithClerk>
-    </ClerkProvider>
-  ) : (
-    <TenantProvider value={tenant}>
-      <HostProvider host={host}>
-        <TenantConvexProvider convexUrl={convexUrl} nodeEnv={env.NODE_ENV}>
-          <DataModeProvider>
-            <ActiveAccountProvider>
-              <TraderLaunchpadOnboardingGate>{children}</TraderLaunchpadOnboardingGate>
-            </ActiveAccountProvider>
-          </DataModeProvider>
-        </TenantConvexProvider>
-      </HostProvider>
-    </TenantProvider>
+      )}
+    </ThemeProvider>
   );
 }
 

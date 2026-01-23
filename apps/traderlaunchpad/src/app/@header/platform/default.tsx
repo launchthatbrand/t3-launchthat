@@ -1,9 +1,10 @@
 import * as React from "react";
 
 import AppHeader from "@acme/ui/layout/AppHeader";
+import { ThemeToggleButton } from "@acme/ui/theme";
 import { TraderLaunchpadNavUser } from "~/components/auth/TraderLaunchpadNavUser";
 import { TraderLaunchpadNotificationsMenu } from "~/components/notifications/TraderLaunchpadNotificationsMenu";
-import { OrgSubdomainSwitcher } from "~/components/organizations/OrgSubdomainSwitcher";
+import { TraderLaunchpadAdminTeamSwitcher } from "~/components/organizations/TraderLaunchpadAdminTeamSwitcher";
 
 export default function AdminHeaderDefault() {
   return (
@@ -16,7 +17,8 @@ export default function AdminHeaderDefault() {
         // image="/images/tl-logo-1.png"
         rightSlot={
           <div className="flex items-center gap-2">
-            <OrgSubdomainSwitcher />
+            <ThemeToggleButton />
+            <TraderLaunchpadAdminTeamSwitcher />
             <TraderLaunchpadNotificationsMenu />
             <TraderLaunchpadNavUser afterSignOutUrl="/" />
           </div>

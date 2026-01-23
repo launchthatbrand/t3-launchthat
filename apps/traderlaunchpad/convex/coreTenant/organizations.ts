@@ -33,6 +33,66 @@ export const listOrganizationsByUserId = query({
   },
 });
 
+// Portal parity: list organizations for the currently-authenticated user.
+// Works on tenant hosts because the Convex JWT subject is the Clerk user id.
+export const myOrganizations = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.string(),
+      name: v.string(),
+      slug: v.string(),
+      customDomain: v.union(v.string(), v.null()),
+      userRole: v.string(),
+    }),
+  ),
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    const userId =
+      typeof identity?.subject === "string" ? identity.subject.trim() : "";
+    if (!userId) return [];
+
+    const memberships = await ctx.runQuery(
+      components.launchthat_core_tenant.queries.listOrganizationsByUserId,
+      { userId },
+    );
+
+    const result: Array<{
+      _id: string;
+      name: string;
+      slug: string;
+      customDomain: string | null;
+      userRole: string;
+    }> = [];
+
+    for (const membership of memberships) {
+      const org = membership.org;
+      const organizationId = org._id;
+
+      const domains = await ctx.runQuery(
+        components.launchthat_core_tenant.queries.listDomainsForOrg,
+        { organizationId, appKey: "traderlaunchpad" },
+      );
+
+      const verified = domains.find((d) => d.status === "verified");
+      const customDomain =
+        verified && typeof verified.hostname === "string" && verified.hostname.trim()
+          ? verified.hostname.trim()
+          : null;
+
+      result.push({
+        _id: String(organizationId),
+        name: org.name,
+        slug: org.slug,
+        customDomain,
+        userRole: membership.role,
+      });
+    }
+
+    return result;
+  },
+});
+
 export const createOrganization = mutation({
   args: { userId: v.string(), name: v.string(), slug: v.optional(v.string()) },
   returns: v.string(),
