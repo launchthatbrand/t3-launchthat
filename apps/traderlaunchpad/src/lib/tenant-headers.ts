@@ -1,25 +1,18 @@
 import "server-only";
 
-import { headers } from "next/headers";
+import { getActiveTenantFromHeaders as getActiveTenantFromHeadersShared } from "launchthat-plugin-core-tenant/next/tenant-headers";
 
 import type { TenantSummary } from "./tenant-fetcher";
 
 export async function getActiveTenantFromHeaders(): Promise<TenantSummary | null> {
-  const headerList: Headers = await headers();
-  const id = headerList.get("x-tenant-id");
-  const slug = headerList.get("x-tenant-slug");
-  const encodedName = headerList.get("x-tenant-name");
-  const customDomain = headerList.get("x-tenant-custom-domain");
-
-  if (!id || !slug || !encodedName) {
-    return null;
-  }
+  const tenant = await getActiveTenantFromHeadersShared();
+  if (!tenant) return null;
 
   return {
-    _id: id,
-    slug,
-    name: decodeURIComponent(encodedName),
-    customDomain,
+    _id: tenant._id,
+    slug: tenant.slug,
+    name: decodeURIComponent(String(tenant.name ?? "")) || tenant.slug,
+    customDomain: tenant.customDomain ?? null,
   };
 }
 

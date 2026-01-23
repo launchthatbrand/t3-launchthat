@@ -1,31 +1,21 @@
 import "server-only";
 
 import type { Id } from "@/convex/_generated/dataModel";
-import { headers } from "next/headers";
+import { getActiveTenantFromHeaders as getActiveTenantFromHeadersShared } from "launchthat-plugin-core-tenant/next/tenant-headers";
 
 import type { TenantSummary } from "./tenant-fetcher";
 import { PORTAL_TENANT_SUMMARY } from "./tenant-fetcher";
 
 export async function getActiveTenantFromHeaders(): Promise<TenantSummary | null> {
-  const headerList: Headers = await headers();
-  const id: string | null = headerList.get("x-tenant-id");
-  const slug: string | null = headerList.get("x-tenant-slug");
-  const encodedName: string | null = headerList.get("x-tenant-name");
-  const logo: string | null = headerList.get("x-tenant-logo");
-
-  if (!id || !slug || !encodedName) {
-    return PORTAL_TENANT_SUMMARY;
-  }
-
-  const planId: string | null = headerList.get("x-tenant-plan-id");
-  const customDomain: string | null = headerList.get("x-tenant-custom-domain");
+  const tenant = await getActiveTenantFromHeadersShared();
+  if (!tenant) return PORTAL_TENANT_SUMMARY;
 
   return {
-    _id: id as Id<"organizations">,
-    slug,
-    name: decodeURIComponent(encodedName),
-    logo,
-    planId: planId ? (planId as Id<"plans">) : null,
-    customDomain,
+    _id: tenant._id as Id<"organizations">,
+    slug: tenant.slug,
+    name: decodeURIComponent(String(tenant.name ?? "")) || PORTAL_TENANT_SUMMARY.name,
+    logo: tenant.logo ?? null,
+    planId: tenant.planId ? (tenant.planId as Id<"plans">) : null,
+    customDomain: tenant.customDomain ?? null,
   };
 }

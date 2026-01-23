@@ -1,4 +1,11 @@
 import type { ReadonlyHeaders } from "next/dist/server/web/spec-extension/adapters/headers";
+import {
+  getAuthHostForHost as sharedGetAuthHostForHost,
+  getHostFromHeaders as sharedGetHostFromHeaders,
+  getProtoForHostFromHeaders as sharedGetProtoForHostFromHeaders,
+  isAuthHostForHost as sharedIsAuthHostForHost,
+  isLocalHost as sharedIsLocalHost,
+} from "launchthat-plugin-core-tenant/next/host";
 
 /**
  * Central auth host (the only host where Clerk UI should run).
@@ -19,9 +26,7 @@ export const getAuthHost = (rootDomain: string): string => {
 export const getHostFromHeaders = (
   headers: Headers | ReadonlyHeaders,
 ): string => {
-  return (headers.get("x-forwarded-host") ?? headers.get("host") ?? "")
-    .trim()
-    .toLowerCase();
+  return sharedGetHostFromHeaders(headers);
 };
 
 export const getHostnameFromHeaders = (
@@ -31,20 +36,8 @@ export const getHostnameFromHeaders = (
   return (host.split(":")[0] ?? "").toLowerCase();
 };
 
-const parseHost = (host: string): { hostname: string; port: string } => {
-  const trimmed = host.trim().toLowerCase();
-  const [hostnameRaw, portRaw] = trimmed.split(":");
-  return { hostname: (hostnameRaw ?? "").toLowerCase(), port: portRaw ?? "" };
-};
-
 export const isLocalHost = (host: string): boolean => {
-  const { hostname } = parseHost(host);
-  return (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname.endsWith(".localhost") ||
-    hostname.endsWith(".127.0.0.1")
-  );
+  return sharedIsLocalHost(host);
 };
 
 /**
@@ -57,10 +50,7 @@ export const getProtoForHostFromHeaders = (
   host: string,
   headers: Headers | ReadonlyHeaders,
 ): "http" | "https" => {
-  if (isLocalHost(host)) return "http";
-  const forwarded = headers.get("x-forwarded-proto");
-  const proto = (forwarded?.split(",")[0] ?? "").trim().toLowerCase();
-  return proto === "http" ? "http" : "https";
+  return sharedGetProtoForHostFromHeaders(host, headers);
 };
 
 /**
@@ -73,31 +63,14 @@ export const getAuthHostForHost = (
   host: string,
   rootDomain: string,
 ): string => {
-  const { hostname, port } = parseHost(host);
-  const root = rootDomain
-    .trim()
-    .toLowerCase()
-    .replace(/^https?:\/\//, "");
-  const rootHost = (root.split("/")[0] ?? "").split(":")[0] ?? "";
-
-  if (isLocalHost(host)) {
-    const base =
-      hostname === "127.0.0.1" || hostname.endsWith(".127.0.0.1")
-        ? "127.0.0.1"
-        : "localhost";
-    return `auth.${base}${port ? `:${port}` : ""}`;
-  }
-
-  return getAuthHost(rootHost || rootDomain);
+  return sharedGetAuthHostForHost(host, rootDomain);
 };
 
 export const isAuthHostForHost = (
   host: string,
   rootDomain: string,
 ): boolean => {
-  const normalized = host.trim().toLowerCase();
-  const expected = getAuthHostForHost(normalized, rootDomain);
-  return normalized === expected;
+  return sharedIsAuthHostForHost(host, rootDomain);
 };
 
 export const isAuthHost = (hostname: string, rootDomain: string): boolean => {

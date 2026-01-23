@@ -131,6 +131,7 @@
     "launchthat-ai": "workspace:*",
     "launchthat-plugin-calendar": "workspace:*",
     "launchthat-plugin-core": "workspace:*",
+    "launchthat-plugin-core-tenant": "workspace:*",
     "launchthat-plugin-crm": "workspace:*",
     "launchthat-plugin-disclaimers": "workspace:*",
     "launchthat-plugin-discord": "workspace:*",

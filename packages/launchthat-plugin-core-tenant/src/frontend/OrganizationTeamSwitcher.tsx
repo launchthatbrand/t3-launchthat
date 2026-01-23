@@ -8,25 +8,7 @@ import type { TeamSwitcherOrganization } from "@acme/ui/general/team-switcher";
 
 import type { CoreTenantOrganizationsUiApi } from "./organizations/types";
 
-const isLocalHostHost = (host: string): boolean => {
-  const hostname = (host.split(":")[0] ?? "").toLowerCase();
-  return (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname.endsWith(".localhost") ||
-    hostname.endsWith(".127.0.0.1")
-  );
-};
-
-const getLocalSuffix = (hostname: string): string => {
-  const lower = hostname.toLowerCase();
-  if (lower.includes(".localhost")) return lower.substring(lower.indexOf(".localhost"));
-  if (lower.includes(".127.0.0.1")) return lower.substring(lower.indexOf(".127.0.0.1"));
-  if (lower === "127.0.0.1") return ".127.0.0.1";
-  return ".localhost";
-};
-
-const stripProtocol = (domain: string): string => domain.replace(/^https?:\/\//i, "");
+import { buildOrganizationSwitchUrl, stripProtocol } from "./org-switching";
 
 export interface OrganizationTeamSwitcherProps {
   api: CoreTenantOrganizationsUiApi;
@@ -48,6 +30,12 @@ export interface OrganizationTeamSwitcherProps {
    * If provided (and non-empty), it wins over `${slug}.${rootDomain}`.
    */
   getCustomDomainForOrg?: (org: TeamSwitcherOrganization) => string | undefined;
+
+  /**
+   * Optional "root tenant" slug that should resolve to the apex domain (no subdomain).
+   * Portal uses this for its internal tenant.
+   */
+  rootTenantSlug?: string;
 
   /**
    * If true, preserve the current path/query/hash on redirect. If false, redirect to `/`.
@@ -116,37 +104,23 @@ export const OrganizationTeamSwitcher = (props: OrganizationTeamSwitcherProps) =
         void setActive({ userId: props.userId, organizationId: String(org.id) });
       }
 
-      const { protocol, hostname, port, host } = window.location;
-      const normalizedProtocol = protocol.replace(":", "") || "http";
-      const portSegment = port ? `:${port}` : "";
+      const nextUrl = buildOrganizationSwitchUrl({
+        currentUrl: window.location.href,
+        currentHost: window.location.host,
+        currentHostname: window.location.hostname,
+        currentPort: window.location.port,
+        currentProtocol: window.location.protocol,
+        slug: slug || null,
+        customDomain: customDomain || null,
+        rootDomain: props.rootDomain,
+        preferLocalhostSubdomains,
+        preservePath,
+        redirectBasePath: props.redirectBasePath,
+        rootTenantSlug: props.rootTenantSlug,
+      });
 
-      let nextHost: string;
-      if (customDomain) {
-        nextHost = customDomain;
-      } else if (preferLocalhostSubdomains && isLocalHostHost(host) && slug) {
-        nextHost = `${slug}${getLocalSuffix(hostname)}${portSegment}`;
-      } else {
-        nextHost = `${slug}.${stripProtocol(props.rootDomain)}`;
-      }
-
-      const targetProtocol =
-        customDomain && normalizedProtocol === "http" ? "https" : normalizedProtocol;
-
-      const nextUrl = new URL(window.location.href);
-      nextUrl.protocol = `${targetProtocol}:`;
-      const [nextHostname, nextPort] = nextHost.split(":");
-      nextUrl.hostname = nextHostname ?? nextHost;
-      // Preserve localhost port when we generated `slug.localhost:${port}`.
-      nextUrl.port = nextPort ?? "";
-
-      if (!preservePath) {
-        const base = props.redirectBasePath?.trim() ?? "/";
-        nextUrl.pathname = base.startsWith("/") ? base : `/${base}`;
-        nextUrl.search = "";
-        nextUrl.hash = "";
-      }
-
-      window.location.assign(nextUrl.toString());
+      if (!nextUrl) return;
+      window.location.assign(nextUrl);
     },
     [
       preferLocalhostSubdomains,

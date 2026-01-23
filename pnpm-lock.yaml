@@ -802,7 +802,7 @@ importers:
         version: 1.2.11(zod@4.1.13)
       '@clerk/nextjs':
         specifier: ^6.18.0
-        version: 6.18.0(next@16.0.7(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 6.18.0(next@16.0.7(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@convex-dev/action-cache':
         specifier: ^0.2.10
         version: 0.2.10(convex@1.23.0(@clerk/clerk-react@5.30.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))
@@ -967,19 +967,19 @@ importers:
         version: 8.21.3(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@tiptap/extension-character-count':
         specifier: ^2.12.0
-        version: 2.12.0(@tiptap/core@3.15.3(@tiptap/pm@3.15.3))(@tiptap/pm@3.15.3)
+        version: 2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)
       '@tiptap/extension-link':
         specifier: ^2.12.0
-        version: 2.12.0(@tiptap/core@3.15.3(@tiptap/pm@3.15.3))(@tiptap/pm@3.15.3)
+        version: 2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)
       '@tiptap/extension-mention':
         specifier: ^2.12.0
-        version: 2.12.0(@tiptap/core@3.15.3(@tiptap/pm@3.15.3))(@tiptap/pm@3.15.3)(@tiptap/suggestion@2.27.1(@tiptap/core@3.15.3(@tiptap/pm@3.15.3))(@tiptap/pm@3.15.3))
+        version: 2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)(@tiptap/suggestion@2.27.1(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0))
       '@tiptap/extension-placeholder':
         specifier: ^2.12.0
-        version: 2.12.0(@tiptap/core@3.15.3(@tiptap/pm@3.15.3))(@tiptap/pm@3.15.3)
+        version: 2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)
       '@tiptap/react':
         specifier: ^2.12.0
-        version: 2.12.0(@tiptap/core@3.15.3(@tiptap/pm@3.15.3))(@tiptap/pm@3.15.3)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@tiptap/starter-kit':
         specifier: ^2.12.0
         version: 2.12.0
@@ -1067,6 +1067,9 @@ importers:
       launchthat-plugin-core:
         specifier: workspace:*
         version: link:../../packages/launchthat-plugin-core
+      launchthat-plugin-core-tenant:
+        specifier: workspace:*
+        version: link:../../packages/launchthat-plugin-core-tenant
       launchthat-plugin-crm:
         specifier: workspace:*
         version: link:../../packages/launchthat-plugin-crm
@@ -1816,13 +1819,13 @@ importers:
         version: link:../db
       '@better-auth/expo':
         specifier: 'catalog:'
-        version: 1.4.0-beta.9(85cc48a8609d64f9a88399ff80f9d93b)
+        version: 1.4.0-beta.9(better-auth@1.4.0-beta.9(better-sqlite3@12.4.6)(next@16.0.7(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(expo-constants@18.0.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(expo-crypto@15.0.7)(expo-linking@7.1.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))(expo-secure-store@14.0.2-canary-20250304-f08e984)(expo-web-browser@14.1.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))
       '@t3-oss/env-core':
         specifier: ^0.13.8
         version: 0.13.8(typescript@5.9.3)(zod@4.1.13)
       better-auth:
         specifier: 'catalog:'
-        version: 1.4.0-beta.9(better-sqlite3@12.4.6)(next@16.0.7(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(svelte@5.45.2)
+        version: 1.4.0-beta.9(better-sqlite3@12.4.6)(next@16.0.7(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       dev:
         specifier: ^0.1.3
         version: 0.1.3
@@ -2799,6 +2802,9 @@ importers:
       convex:
         specifier: ^1.23.0
         version: 1.23.0(@clerk/clerk-react@5.30.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      jose:
+        specifier: 5.9.6
+        version: 5.9.6
     devDependencies:
       '@acme/eslint-config':
         specifier: workspace:*
@@ -2809,6 +2815,9 @@ importers:
       '@acme/tsconfig':
         specifier: workspace:*
         version: link:../../tooling/typescript
+      '@clerk/nextjs':
+        specifier: ^6.18.0
+        version: 6.18.0(next@16.0.7(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.1
@@ -2818,6 +2827,9 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 9.39.1(jiti@2.6.1)
+      next:
+        specifier: 'catalog:'
+        version: 16.0.7(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2)
       prettier:
         specifier: 'catalog:'
         version: 3.6.2
@@ -2982,7 +2994,7 @@ importers:
         version: link:../ui
       '@clerk/nextjs':
         specifier: ^6.18.0
-        version: 6.18.0(next@16.0.7(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+        version: 6.18.0(next@16.0.7(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@hookform/resolvers':
         specifier: ^4.1.3
         version: 4.1.3(react-hook-form@7.54.2(react@19.0.0))
@@ -25963,7 +25975,7 @@ snapshots:
       '@prisma/client': 5.22.0(prisma@5.22.0)
       '@types/better-sqlite3': 7.6.13
       '@types/prompts': 2.4.9
-      better-auth: 1.4.0-beta.9(better-sqlite3@12.4.6)(next@16.0.7(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(svelte@5.45.2)
+      better-auth: 1.4.0-beta.9(better-sqlite3@12.4.6)(next@16.0.7(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       better-sqlite3: 12.4.6
       c12: 3.3.2(magicast@0.3.5)
       chalk: 5.6.2
@@ -26037,15 +26049,15 @@ snapshots:
       nanostores: 1.1.0
       zod: 4.1.13
 
-  '@better-auth/expo@1.4.0-beta.9(85cc48a8609d64f9a88399ff80f9d93b)':
+  '@better-auth/expo@1.4.0-beta.9(better-auth@1.4.0-beta.9(better-sqlite3@12.4.6)(next@16.0.7(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(expo-constants@18.0.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(expo-crypto@15.0.7)(expo-linking@7.1.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))(expo-secure-store@14.0.2-canary-20250304-f08e984)(expo-web-browser@14.1.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))':
     dependencies:
       '@better-fetch/fetch': 1.1.18
-      better-auth: 1.4.0-beta.9(better-sqlite3@12.4.6)(next@16.0.7(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(svelte@5.45.2)
+      better-auth: 1.4.0-beta.9(better-sqlite3@12.4.6)(next@16.0.7(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       expo-constants: 18.0.0-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))
       expo-crypto: 15.0.7(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))
-      expo-linking: 7.1.0-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0)
-      expo-secure-store: 14.0.2-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))
-      expo-web-browser: 14.1.0-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))
+      expo-linking: 7.1.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0)
+      expo-secure-store: 14.0.2-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))
+      expo-web-browser: 14.1.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))
       zod: 4.1.13
 
   '@better-auth/telemetry@1.4.0-beta.9(@better-auth/core@1.4.0-beta.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.0.19)(better-sqlite3@12.4.6)(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0))':
@@ -26177,20 +26189,6 @@ snapshots:
     transitivePeerDependencies:
       - svix
 
-  '@clerk/nextjs@6.18.0(next@16.0.7(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
-    dependencies:
-      '@clerk/backend': 1.34.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/clerk-react': 5.30.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/shared': 3.9.5(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      '@clerk/types': 4.55.1
-      next: 16.0.7(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2)
-      react: 19.0.0
-      react-dom: 19.0.0(react@19.0.0)
-      server-only: 0.0.1
-      tslib: 2.8.1
-    transitivePeerDependencies:
-      - svix
-
   '@clerk/nextjs@6.18.0(next@16.0.7(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@clerk/backend': 1.34.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -26198,6 +26196,20 @@ snapshots:
       '@clerk/shared': 3.9.5(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       '@clerk/types': 4.55.1
       next: 16.0.7(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2)
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
+      server-only: 0.0.1
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - svix
+
+  '@clerk/nextjs@6.18.0(next@16.0.7(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+    dependencies:
+      '@clerk/backend': 1.34.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/clerk-react': 5.30.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/shared': 3.9.5(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      '@clerk/types': 4.55.1
+      next: 16.0.7(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2)
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
       server-only: 0.0.1
@@ -34539,6 +34551,12 @@ snapshots:
     dependencies:
       '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
 
+  '@tiptap/extension-bubble-menu@2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)':
+    dependencies:
+      '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
+      '@tiptap/pm': 2.12.0
+      tippy.js: 6.3.7
+
   '@tiptap/extension-bubble-menu@2.12.0(@tiptap/core@3.15.3(@tiptap/pm@3.15.3))(@tiptap/pm@3.15.3)':
     dependencies:
       '@tiptap/core': 3.15.3(@tiptap/pm@3.15.3)
@@ -34548,6 +34566,11 @@ snapshots:
   '@tiptap/extension-bullet-list@2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))':
     dependencies:
       '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
+
+  '@tiptap/extension-character-count@2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)':
+    dependencies:
+      '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
+      '@tiptap/pm': 2.12.0
 
   '@tiptap/extension-character-count@2.12.0(@tiptap/core@3.15.3(@tiptap/pm@3.15.3))(@tiptap/pm@3.15.3)':
     dependencies:
@@ -34571,6 +34594,12 @@ snapshots:
     dependencies:
       '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
       '@tiptap/pm': 2.12.0
+
+  '@tiptap/extension-floating-menu@2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)':
+    dependencies:
+      '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
+      '@tiptap/pm': 2.12.0
+      tippy.js: 6.3.7
 
   '@tiptap/extension-floating-menu@2.12.0(@tiptap/core@3.15.3(@tiptap/pm@3.15.3))(@tiptap/pm@3.15.3)':
     dependencies:
@@ -34618,6 +34647,12 @@ snapshots:
     dependencies:
       '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
 
+  '@tiptap/extension-link@2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)':
+    dependencies:
+      '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
+      '@tiptap/pm': 2.12.0
+      linkifyjs: 4.3.1
+
   '@tiptap/extension-link@2.12.0(@tiptap/core@3.15.3(@tiptap/pm@3.15.3))(@tiptap/pm@3.15.3)':
     dependencies:
       '@tiptap/core': 3.15.3(@tiptap/pm@3.15.3)
@@ -34633,6 +34668,12 @@ snapshots:
       '@tiptap/core': 3.15.3(@tiptap/pm@3.15.3)
       '@tiptap/pm': 3.15.3
 
+  '@tiptap/extension-mention@2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)(@tiptap/suggestion@2.27.1(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0))':
+    dependencies:
+      '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
+      '@tiptap/pm': 2.12.0
+      '@tiptap/suggestion': 2.27.1(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)
+
   '@tiptap/extension-mention@2.12.0(@tiptap/core@3.15.3(@tiptap/pm@3.15.3))(@tiptap/pm@3.15.3)(@tiptap/suggestion@2.27.1(@tiptap/core@3.15.3(@tiptap/pm@3.15.3))(@tiptap/pm@3.15.3))':
     dependencies:
       '@tiptap/core': 3.15.3(@tiptap/pm@3.15.3)
@@ -34646,6 +34687,11 @@ snapshots:
   '@tiptap/extension-paragraph@2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))':
     dependencies:
       '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
+
+  '@tiptap/extension-placeholder@2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)':
+    dependencies:
+      '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
+      '@tiptap/pm': 2.12.0
 
   '@tiptap/extension-placeholder@2.12.0(@tiptap/core@3.15.3(@tiptap/pm@3.15.3))(@tiptap/pm@3.15.3)':
     dependencies:
@@ -34729,6 +34775,18 @@ snapshots:
       prosemirror-transform: 1.10.4
       prosemirror-view: 1.39.3
 
+  '@tiptap/react@2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
+    dependencies:
+      '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
+      '@tiptap/extension-bubble-menu': 2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)
+      '@tiptap/extension-floating-menu': 2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)
+      '@tiptap/pm': 2.12.0
+      '@types/use-sync-external-store': 0.0.6
+      fast-deep-equal: 3.1.3
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
+      use-sync-external-store: 1.5.0(react@19.0.0)
+
   '@tiptap/react@2.12.0(@tiptap/core@3.15.3(@tiptap/pm@3.15.3))(@tiptap/pm@3.15.3)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)':
     dependencies:
       '@tiptap/core': 3.15.3(@tiptap/pm@3.15.3)
@@ -34763,6 +34821,11 @@ snapshots:
       '@tiptap/extension-strike': 2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))
       '@tiptap/extension-text': 2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))
       '@tiptap/extension-text-style': 2.12.0(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))
+      '@tiptap/pm': 2.12.0
+
+  '@tiptap/suggestion@2.27.1(@tiptap/core@2.12.0(@tiptap/pm@2.12.0))(@tiptap/pm@2.12.0)':
+    dependencies:
+      '@tiptap/core': 2.12.0(@tiptap/pm@2.12.0)
       '@tiptap/pm': 2.12.0
 
   '@tiptap/suggestion@2.27.1(@tiptap/core@3.15.3(@tiptap/pm@3.15.3))(@tiptap/pm@3.15.3)':
@@ -36564,7 +36627,7 @@ snapshots:
 
   better-auth@1.4.0-beta.9(better-sqlite3@12.4.6)(next@16.0.7(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(svelte@5.45.2):
     dependencies:
-      '@better-auth/core': 1.4.0-beta.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.0.19)(better-sqlite3@12.4.6)(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0)
+      '@better-auth/core': 1.4.0-beta.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.0.19)(better-sqlite3@12.4.6)(jose@5.9.6)(kysely@0.28.8)(nanostores@1.1.0)
       '@better-auth/telemetry': 1.4.0-beta.9(@better-auth/core@1.4.0-beta.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.0.19)(better-sqlite3@12.4.6)(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0))
       '@better-auth/utils': 0.3.0
       '@better-fetch/fetch': 1.1.18
@@ -36588,7 +36651,7 @@ snapshots:
 
   better-auth@1.4.0-beta.9(better-sqlite3@12.4.6)(next@16.0.7(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
     dependencies:
-      '@better-auth/core': 1.4.0-beta.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.0.19)(better-sqlite3@12.4.6)(jose@5.9.6)(kysely@0.28.8)(nanostores@1.1.0)
+      '@better-auth/core': 1.4.0-beta.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.0.19)(better-sqlite3@12.4.6)(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0)
       '@better-auth/telemetry': 1.4.0-beta.9(@better-auth/core@1.4.0-beta.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.0.19)(better-sqlite3@12.4.6)(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0))
       '@better-auth/utils': 0.3.0
       '@better-fetch/fetch': 1.1.18
@@ -36604,6 +36667,29 @@ snapshots:
       zod: 4.1.13
     optionalDependencies:
       next: 16.0.7(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2)
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
+    transitivePeerDependencies:
+      - better-sqlite3
+
+  better-auth@1.4.0-beta.9(better-sqlite3@12.4.6)(next@16.0.7(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
+    dependencies:
+      '@better-auth/core': 1.4.0-beta.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.0.19)(better-sqlite3@12.4.6)(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0)
+      '@better-auth/telemetry': 1.4.0-beta.9(@better-auth/core@1.4.0-beta.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.0.19)(better-sqlite3@12.4.6)(jose@6.1.2)(kysely@0.28.8)(nanostores@1.1.0))
+      '@better-auth/utils': 0.3.0
+      '@better-fetch/fetch': 1.1.18
+      '@noble/ciphers': 2.0.1
+      '@noble/hashes': 2.0.1
+      '@simplewebauthn/browser': 13.2.2
+      '@simplewebauthn/server': 13.2.2
+      better-call: 1.0.19
+      defu: 6.1.4
+      jose: 6.1.2
+      kysely: 0.28.8
+      nanostores: 1.1.0
+      zod: 4.1.13
+    optionalDependencies:
+      next: 16.0.7(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(babel-plugin-macros@3.1.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(sass@1.97.2)
       react: 19.0.0
       react-dom: 19.0.0(react@19.0.0)
     transitivePeerDependencies:
@@ -39297,7 +39383,7 @@ snapshots:
       - expo
       - supports-color
 
-  expo-linking@7.1.0-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0):
+  expo-linking@7.1.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0):
     dependencies:
       expo-constants: 18.0.0-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))
       invariant: 2.2.4
@@ -39362,10 +39448,6 @@ snapshots:
     dependencies:
       expo: 53.0.0-canary-20250304-f08e984(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0)
 
-  expo-secure-store@14.0.2-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0)):
-    dependencies:
-      expo: 53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0)
-
   expo-splash-screen@0.29.23-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0)):
     dependencies:
       '@expo/prebuild-config': 9.0.0-canary-20250304-f08e984
@@ -39388,9 +39470,8 @@ snapshots:
       expo: 53.0.0-canary-20250304-f08e984(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0)
       react-native: 0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)
 
-  expo-web-browser@14.1.0-canary-20250304-f08e984(expo@53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0))(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)):
+  expo-web-browser@14.1.0-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)):
     dependencies:
-      expo: 53.0.0-canary-20250304-f08e984(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0)
       react-native: 0.78.0(@babel/core@7.28.5)(@babel/preset-env@7.26.9(@babel/core@7.28.5))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)
 
   expo@53.0.0-canary-20250304-f08e984(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@expo/metro-runtime@4.0.2-canary-20250304-f08e984(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0)))(bufferutil@4.0.8)(graphql@16.12.0)(react-native@0.78.0(@babel/core@7.26.10)(@babel/preset-env@7.26.9(@babel/core@7.26.10))(@types/react@19.0.12)(bufferutil@4.0.8)(react@19.0.0))(react@19.0.0):

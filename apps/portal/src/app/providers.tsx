@@ -12,11 +12,11 @@ import { api } from "@/convex/_generated/api";
 import { ClerkProvider, useAuth, useUser } from "@clerk/nextjs";
 import { SessionProvider } from "convex-helpers/react/sessions";
 import {
-  ConvexProviderWithAuth,
   ConvexReactClient,
   useQuery,
 } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { TenantConvexProvider } from "launchthat-plugin-core-tenant/next/components/tenant-convex-provider";
 import { SupportChatWidget } from "launchthat-plugin-support";
 import { OnboardingGateProvider } from "launchthat-plugin-onboarding/frontend";
 import { useLocalStorage } from "usehooks-ts";
@@ -91,7 +91,7 @@ export function Providers({ children, tenant, host }: ProvidersProps) {
       </ConvexProviderWithClerk>
     </ClerkProvider>
   ) : (
-    <TenantConvexProvider>
+    <TenantConvexProvider convexUrl={env.NEXT_PUBLIC_CONVEX_URL} nodeEnv={env.NODE_ENV}>
       <SessionProvider storageKey="cart-session" useStorage={useLocalStorage}>
         <ContentProtectionProvider>
           <TenantProvider value={effectiveTenant}>
@@ -280,6 +280,7 @@ function SupportChatWidgetBridgeAnonymous({
   );
 }
 
+/*
 const CONVEX_TOKEN_STORAGE_KEY = "convex_token";
 const TOKEN_UPDATED_EVENT = "convex-token-updated";
 
@@ -361,7 +362,8 @@ const parseJwtClaims = (
   }
 };
 
-function TenantConvexProvider({ children }: { children: React.ReactNode }) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function TenantConvexProviderLegacy({ children }: { children: React.ReactNode }) {
   const [token, setToken] = React.useState<string | null>(null);
   const [isTokenLoading, setIsTokenLoading] = React.useState(false);
   const pathname = usePathname();
@@ -715,3 +717,4 @@ function TenantConvexProvider({ children }: { children: React.ReactNode }) {
     </ConvexProviderWithAuth>
   );
 }
+*/
