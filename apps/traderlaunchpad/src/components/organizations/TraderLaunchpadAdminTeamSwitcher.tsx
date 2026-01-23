@@ -10,14 +10,18 @@ import { AdminTeamSwitcher } from "launchthat-plugin-core-tenant/frontend";
 
 export function TraderLaunchpadAdminTeamSwitcher() {
   const tenant = useTenant();
-  const rootDomain = String(env.NEXT_PUBLIC_ROOT_DOMAIN ?? "traderlaunchpad.com");
+  const rootDomain = String(env.NEXT_PUBLIC_ROOT_DOMAIN);
+  // TraderLaunchpad: keep the default/core org at the top of the switcher list.
+  // This is intentionally a client-safe constant (avoid server-only env access here).
+  const pinnedTenantSlug = "default";
 
   return (
     <AdminTeamSwitcher
       tenant={tenant}
       rootDomain={rootDomain}
-      organizationsQuery={api.coreTenant.organizations.myOrganizations as any}
+      organizationsQuery={api.coreTenant.organizations.myOrganizations}
       redirectBasePath="/admin"
+      pinnedTenantSlug={pinnedTenantSlug}
     />
   );
 }

@@ -25,6 +25,10 @@ export function AdminTeamSwitcher(props: {
    */
   rootTenantSlug?: string;
   redirectBasePath?: string; // default: /admin
+  /**
+   * Optional slug to pin to the top of the list (e.g. TraderLaunchpad's default org).
+   */
+  pinnedTenantSlug?: string;
 }) {
   const organizationsResult = useQuery(props.organizationsQuery, {});
   const [switchingOrganizationId, setSwitchingOrganizationId] = useState<string | null>(null);
@@ -78,15 +82,31 @@ export function AdminTeamSwitcher(props: {
     return tenantFallbackOrganization ? [tenantFallbackOrganization] : [];
   }, [organizations, tenantFallbackOrganization]);
 
+  const orderedOrganizations = useMemo(() => {
+    const pinned = String(props.pinnedTenantSlug ?? "").trim().toLowerCase();
+    if (!pinned) return effectiveOrganizations;
+    if (effectiveOrganizations.length < 2) return effectiveOrganizations;
+
+    const idx = effectiveOrganizations.findIndex(
+      (org) => (org.slug ?? "").trim().toLowerCase() === pinned,
+    );
+    if (idx <= 0) return effectiveOrganizations;
+
+    const next = effectiveOrganizations.slice();
+    const [item] = next.splice(idx, 1);
+    if (item) next.unshift(item);
+    return next;
+  }, [effectiveOrganizations, props.pinnedTenantSlug]);
+
   const activeOrganizationId = useMemo(() => {
-    if (!effectiveOrganizations.length) return null;
+    if (!orderedOrganizations.length) return null;
     const tenantSlug = props.tenant?.slug;
     if (tenantSlug) {
-      const match = effectiveOrganizations.find((org) => org.slug === tenantSlug);
+      const match = orderedOrganizations.find((org) => org.slug === tenantSlug);
       if (match) return match.id;
     }
-    return effectiveOrganizations[0]?.id ?? null;
-  }, [effectiveOrganizations, props.tenant]);
+    return orderedOrganizations[0]?.id ?? null;
+  }, [orderedOrganizations, props.tenant]);
 
   const handleOrganizationSelect = useCallback(
     (org: TeamSwitcherOrganization) => {
@@ -118,7 +138,7 @@ export function AdminTeamSwitcher(props: {
 
   return (
     <TeamSwitcher
-      organizations={effectiveOrganizations}
+      organizations={orderedOrganizations}
       activeOrganizationId={activeOrganizationId}
       onSelect={handleOrganizationSelect}
       isLoading={organizationsResult === undefined}

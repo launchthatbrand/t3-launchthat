@@ -2,6 +2,8 @@ import { v } from "convex/values";
 
 import { components } from "../_generated/api";
 import { mutation, query } from "../_generated/server";
+import type { QueryCtx } from "../_generated/server";
+import { ConvexError } from "convex/values";
 
 const domainStatusValidator = v.union(
   v.literal("unconfigured"),
@@ -93,6 +95,83 @@ export const myOrganizations = query({
   },
 });
 
+const requirePlatformAdmin = async (ctx: QueryCtx) => {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new ConvexError("Unauthorized");
+
+  // Prefer tokenIdentifier (convex auth) when available.
+  let viewer =
+    (await ctx.db
+      .query("users")
+      .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .first()) ?? null;
+
+  if (!viewer && typeof identity.subject === "string" && identity.subject.trim()) {
+    viewer = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", identity.subject))
+      .first();
+  }
+
+  if (!viewer) throw new ConvexError("Unauthorized");
+  if (!viewer.isAdmin) throw new ConvexError("Forbidden: admin access required.");
+
+  return { viewer, identity };
+};
+
+export const listAllOrganizations = query({
+  args: {
+    search: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.string(),
+      _creationTime: v.number(),
+      name: v.string(),
+      slug: v.string(),
+      ownerId: v.string(),
+      clerkOrganizationId: v.optional(v.string()),
+      createdAt: v.optional(v.number()),
+      updatedAt: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    await requirePlatformAdmin(ctx);
+    const rows = await ctx.runQuery(
+      components.launchthat_core_tenant.queries.listOrganizations,
+      { search: args.search, limit: args.limit },
+    );
+    return rows.map((row) => ({
+      _id: String(row._id),
+      _creationTime: row._creationTime,
+      name: row.name,
+      slug: row.slug,
+      ownerId: row.ownerId,
+      clerkOrganizationId: row.clerkOrganizationId,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }));
+  },
+});
+
+export const createOrganizationAsViewer = mutation({
+  args: { name: v.string(), slug: v.optional(v.string()) },
+  returns: v.string(),
+  handler: async (ctx, args) => {
+    const { identity } = await requirePlatformAdmin(ctx);
+    const userId = typeof identity.subject === "string" ? identity.subject.trim() : "";
+    if (!userId) {
+      throw new ConvexError("Unauthorized");
+    }
+    const id = await ctx.runMutation(
+      components.launchthat_core_tenant.mutations.createOrganization,
+      { userId, name: args.name, slug: args.slug },
+    );
+    return String(id);
+  },
+});
+
 export const createOrganization = mutation({
   args: { userId: v.string(), name: v.string(), slug: v.optional(v.string()) },
   returns: v.string(),
@@ -102,6 +181,54 @@ export const createOrganization = mutation({
       { userId: args.userId, name: args.name, slug: args.slug },
     );
     return id;
+  },
+});
+
+export const updateOrganization = mutation({
+  args: {
+    organizationId: v.string(),
+    name: v.optional(v.string()),
+    slug: v.optional(v.string()),
+    description: v.optional(v.string()),
+    logo: v.optional(v.union(v.string(), v.null())),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    // Allow platform admins, or org owner/admin members.
+    const { identity } = await requirePlatformAdmin(ctx).catch(async (err) => {
+      // Not platform admin: fall back to membership check.
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) throw err;
+      return { identity };
+    });
+
+    const userId = typeof identity.subject === "string" ? identity.subject.trim() : "";
+    if (!userId) throw new ConvexError("Unauthorized");
+
+    // If not platform admin, ensure membership role is owner/admin.
+    try {
+      await requirePlatformAdmin(ctx);
+    } catch {
+      const memberships = await ctx.runQuery(
+        components.launchthat_core_tenant.queries.listOrganizationsByUserId,
+        { userId },
+      );
+      const match = memberships.find((m) => String(m.org._id) === String(args.organizationId));
+      const role = match ? String(match.role) : "";
+      if (role !== "owner" && role !== "admin") {
+        throw new ConvexError("Forbidden: admin access required.");
+      }
+    }
+
+    await ctx.runMutation(components.launchthat_core_tenant.mutations.updateOrganization, {
+      organizationId: args.organizationId,
+      name: args.name,
+      slug: args.slug,
+      description: args.description,
+      logo: args.logo ?? null,
+    });
+
+    return null;
   },
 });
 

@@ -38,6 +38,8 @@ export const createOrganization = mutation({
     userId: v.string(),
     name: v.string(),
     slug: v.optional(v.string()),
+    description: v.optional(v.string()),
+    logo: v.optional(v.string()),
   },
   returns: v.id("organizations"),
   handler: async (ctx, args) => {
@@ -62,6 +64,8 @@ export const createOrganization = mutation({
       name: args.name,
       slug,
       ownerId: args.userId,
+      description: typeof args.description === "string" ? args.description : undefined,
+      logo: typeof args.logo === "string" ? args.logo : undefined,
       createdAt: now,
       updatedAt: now,
     });
@@ -76,6 +80,60 @@ export const createOrganization = mutation({
     });
 
     return orgId;
+  },
+});
+
+export const updateOrganization = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    name: v.optional(v.string()),
+    slug: v.optional(v.string()),
+    description: v.optional(v.string()),
+    logo: v.union(v.string(), v.null(), v.optional(v.null())),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const org = await ctx.db.get(args.organizationId);
+    if (!org) throw new Error("Organization not found");
+
+    const patch: Partial<Doc<"organizations">> = {};
+    const now = Date.now();
+
+    if (typeof args.name === "string" && args.name.trim() && args.name !== org.name) {
+      patch.name = args.name.trim();
+    }
+
+    if (typeof args.description === "string") {
+      const next = args.description.trim();
+      patch.description = next ? next : undefined;
+    }
+
+    if (args.logo === null) {
+      patch.logo = undefined;
+    } else if (typeof args.logo === "string") {
+      const next = args.logo.trim();
+      patch.logo = next ? next : undefined;
+    }
+
+    if (typeof args.slug === "string") {
+      const nextSlug = normalizeSlug(args.slug.trim());
+      if (!nextSlug) throw new Error("Organization slug cannot be empty");
+      if (nextSlug !== org.slug) {
+        const existing = await ctx.db
+          .query("organizations")
+          .withIndex("by_slug", (q) => q.eq("slug", nextSlug))
+          .first();
+        if (existing && existing._id !== org._id) {
+          throw new Error("Organization slug already exists");
+        }
+        patch.slug = nextSlug;
+      }
+    }
+
+    if (Object.keys(patch).length === 0) return null;
+    patch.updatedAt = now;
+    await ctx.db.patch(org._id, patch);
+    return null;
   },
 });
 

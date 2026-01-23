@@ -1,19 +1,26 @@
 "use client";
 
-import React from "react";
 import Image from "next/image";
+import React from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 
-import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
 
 import { api } from "@convex-config/_generated/api";
-import { OrganizationTabs } from "./_components/OrganizationTabs";
 
-export default function PlatformOrganizationGeneralPage() {
+interface Org {
+  _id: string;
+  name: string;
+  slug: string;
+  ownerId: string;
+  description?: string;
+  logo?: string;
+}
+
+export default function AdminOrganizationPage() {
   const params = useParams<{ organizationId?: string | string[] }>();
   const raw = params.organizationId;
   const organizationId = Array.isArray(raw) ? (raw[0] ?? "") : (raw ?? "");
@@ -21,38 +28,37 @@ export default function PlatformOrganizationGeneralPage() {
   const org = useQuery(
     api.coreTenant.organizations.getOrganizationById,
     organizationId ? { organizationId } : "skip",
-  );
-  const updateOrg = useMutation(api.coreTenant.organizations.updateOrganization);
+  ) as Org | null | undefined;
 
+  const updateOrg = useMutation(api.coreTenant.organizations.updateOrganization);
   const [draftName, setDraftName] = React.useState("");
   const [draftSlug, setDraftSlug] = React.useState("");
   const [draftLogo, setDraftLogo] = React.useState("");
   const [isSaving, setIsSaving] = React.useState(false);
 
   React.useEffect(() => {
-    if (!org || typeof org !== "object") return;
-    setDraftName(typeof (org as any).name === "string" ? (org as any).name : "");
-    setDraftSlug(typeof (org as any).slug === "string" ? (org as any).slug : "");
-    setDraftLogo(typeof (org as any).logo === "string" ? (org as any).logo : "");
-  }, [organizationId, org && (org as any)._id]);
+    if (!org) return;
+    setDraftName(org.name);
+    setDraftSlug(org.slug);
+    setDraftLogo(org.logo ?? "");
+  }, [org]);
+
+  const canSave = Boolean(organizationId) && draftName.trim().length > 0 && !isSaving;
 
   return (
     <div className="animate-in fade-in space-y-6 duration-500">
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-3xl font-bold tracking-tight">Organization</h1>
-          <Badge variant="outline" className="font-mono">
-            {organizationId || "—"}
-          </Badge>
-        </div>
-        <OrganizationTabs />
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Organization</h1>
+        <p className="text-muted-foreground mt-1">
+          Update organization settings (slug + featured image).
+        </p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>General</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           {org === undefined ? (
             <div className="text-muted-foreground text-sm">Loading…</div>
           ) : org === null ? (
@@ -74,13 +80,9 @@ export default function PlatformOrganizationGeneralPage() {
                     spellCheck={false}
                   />
                 </div>
-                <div className="space-y-1">
-                  <div className="text-muted-foreground text-xs">Owner</div>
-                  <div className="font-mono text-sm">{(org as any).ownerId}</div>
-                </div>
               </div>
 
-              <div className="space-y-2 pt-2">
+              <div className="space-y-2">
                 <div className="text-muted-foreground text-xs">Featured image (URL)</div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                   <Input
@@ -120,9 +122,9 @@ export default function PlatformOrganizationGeneralPage() {
                 ) : null}
               </div>
 
-              <div className="flex justify-end pt-2">
+              <div className="flex justify-end">
                 <Button
-                  disabled={!draftName.trim() || !draftSlug.trim() || isSaving}
+                  disabled={!canSave}
                   onClick={async () => {
                     if (!organizationId) return;
                     setIsSaving(true);

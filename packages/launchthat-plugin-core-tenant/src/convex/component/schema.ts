@@ -17,6 +17,10 @@ export default defineSchema({
     slug: v.string(),
     ownerId: v.string(),
 
+    // Portal parity: basic branding fields.
+    description: v.optional(v.string()),
+    logo: v.optional(v.string()),
+
     // Optional mapping to external identity providers
     clerkOrganizationId: v.optional(v.string()),
 

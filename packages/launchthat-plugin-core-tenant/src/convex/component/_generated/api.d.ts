@@ -38,7 +38,13 @@ export type Mounts = {
     createOrganization: FunctionReference<
       "mutation",
       "public",
-      { name: string; slug?: string; userId: string },
+      {
+        description?: string;
+        logo?: string;
+        name: string;
+        slug?: string;
+        userId: string;
+      },
       string
     >;
     ensureMembership: FunctionReference<
@@ -83,6 +89,18 @@ export type Mounts = {
       },
       null
     >;
+    updateOrganization: FunctionReference<
+      "mutation",
+      "public",
+      {
+        description?: string;
+        logo: string | null | null;
+        name?: string;
+        organizationId: string;
+        slug?: string;
+      },
+      null
+    >;
     upsertOrganizationDomain: FunctionReference<
       "mutation",
       "public",
@@ -105,6 +123,8 @@ export type Mounts = {
         _id: string;
         clerkOrganizationId?: string;
         createdAt?: number;
+        description?: string;
+        logo?: string;
         name: string;
         ownerId: string;
         slug: string;
@@ -120,6 +140,8 @@ export type Mounts = {
         _id: string;
         clerkOrganizationId?: string;
         createdAt?: number;
+        description?: string;
+        logo?: string;
         name: string;
         ownerId: string;
         slug: string;
@@ -135,6 +157,8 @@ export type Mounts = {
         _id: string;
         clerkOrganizationId?: string;
         createdAt?: number;
+        description?: string;
+        logo?: string;
         name: string;
         ownerId: string;
         slug: string;
@@ -164,6 +188,23 @@ export type Mounts = {
       "public",
       { organizationId: string },
       Array<{ isActive: boolean; role: string; userId: string }>
+    >;
+    listOrganizations: FunctionReference<
+      "query",
+      "public",
+      { limit?: number; search?: string },
+      Array<{
+        _creationTime: number;
+        _id: string;
+        clerkOrganizationId?: string;
+        createdAt?: number;
+        description?: string;
+        logo?: string;
+        name: string;
+        ownerId: string;
+        slug: string;
+        updatedAt?: number;
+      }>
     >;
     listOrganizationsByUserId: FunctionReference<
       "query",

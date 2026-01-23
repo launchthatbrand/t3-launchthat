@@ -49,6 +49,8 @@ const orgSummary = v.object({
   name: v.string(),
   slug: v.string(),
   ownerId: v.string(),
+  description: v.optional(v.string()),
+  logo: v.optional(v.string()),
   clerkOrganizationId: v.optional(v.string()),
   createdAt: v.optional(v.number()),
   updatedAt: v.optional(v.number()),
@@ -221,6 +223,34 @@ export const listOrganizationsByUserId = query({
         org: { _id: org._id, name: org.name, slug: org.slug },
       });
     }
+    return result;
+  },
+});
+
+export const listOrganizations = query({
+  args: {
+    search: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(orgSummary),
+  handler: async (ctx, args) => {
+    const search = String(args.search ?? "").trim().toLowerCase();
+    const limit = Math.max(1, Math.min(Number(args.limit ?? 200), 1000));
+
+    // NOTE: For platform admin tooling, a scan is acceptable for now.
+    // If this grows, add an index-backed search strategy.
+    const rows = await ctx.db.query("organizations").take(1000);
+    const result: Doc<"organizations">[] = [];
+
+    for (const org of rows) {
+      if (search) {
+        const haystack = `${org.name} ${org.slug} ${org.ownerId}`.toLowerCase();
+        if (!haystack.includes(search)) continue;
+      }
+      result.push(org);
+      if (result.length >= limit) break;
+    }
+
     return result;
   },
 });
