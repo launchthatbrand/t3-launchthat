@@ -1,13 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
 
-import { api } from "@convex-config/_generated/api";
-import { Button } from "@acme/ui/button";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
-import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -15,27 +10,34 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@acme/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import { useMutation, useQuery } from "convex/react";
+
+import { Button } from "@acme/ui/button";
+import type { ColumnDefinition } from "@acme/ui/entity-list/types";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { Textarea } from "@acme/ui/textarea";
+import { api } from "@convex-config/_generated/api";
+import { useRouter } from "next/navigation";
+
+interface FeedbackThreadRow extends Record<string, unknown> {
+  _id: string;
+  title?: string;
+  status?: string;
+  upvoteCount?: number;
+  commentCount?: number;
+  viewerHasUpvoted?: boolean;
+  createdAt?: number;
+}
 
 export default function AdminFeedbackPage() {
   const router = useRouter();
   const [sort, setSort] = React.useState<"trending" | "new">("trending");
 
   const threads = useQuery(api.feedback.queries.listThreads, { sort }) as
-    | Array<
-        Record<string, unknown> & {
-          _id: string;
-          title?: string;
-          status?: string;
-          upvoteCount?: number;
-          commentCount?: number;
-          viewerHasUpvoted?: boolean;
-          createdAt?: number;
-        }
-      >
+    | FeedbackThreadRow[]
     | undefined;
 
   const toggleUpvote = useMutation(api.feedback.mutations.toggleUpvote);
@@ -52,7 +54,7 @@ export default function AdminFeedbackPage() {
     if (!t || !b) return;
     setCreating(true);
     try {
-      await createThread({ title: t, body: b } as any);
+      await createThread({ title: t, body: b });
       setTitle("");
       setBody("");
       setCreateOpen(false);
@@ -61,19 +63,19 @@ export default function AdminFeedbackPage() {
     }
   };
 
-  const rows = React.useMemo(() => (Array.isArray(threads) ? threads : []), [threads]);
+  const rows = React.useMemo<FeedbackThreadRow[]>(
+    () => (Array.isArray(threads) ? threads : []),
+    [threads],
+  );
 
-  const columns = React.useMemo<ColumnDefinition<(typeof rows)[number]>[]>(
+  const columns = React.useMemo<ColumnDefinition<FeedbackThreadRow>[]>(
     () => [
       {
         id: "title",
         header: "Thread",
         accessorKey: "title",
-        cell: (t) => (
-          <div className="space-y-1">
-            <div className="text-sm font-semibold text-white">{t.title ?? "Untitled"}</div>
-            <div className="text-xs text-white/50 font-mono">{t._id}</div>
-          </div>
+        cell: (t: FeedbackThreadRow) => (
+          <span className="text-white">{t.title ?? "Untitled"}</span>
         ),
         sortable: true,
       },
@@ -81,43 +83,31 @@ export default function AdminFeedbackPage() {
         id: "status",
         header: "Status",
         accessorKey: "status",
-        cell: (t) => <span className="text-sm text-white/80">{t.status ?? "—"}</span>,
+        cell: (t: FeedbackThreadRow) => (
+          <span className="text-white/80">{t.status ?? "—"}</span>
+        ),
         sortable: true,
       },
       {
         id: "comments",
         header: "Comments",
         accessorKey: "commentCount",
-        cell: (t) => <span className="text-sm text-white/80">{t.commentCount ?? 0}</span>,
+        cell: (t: FeedbackThreadRow) => (
+          <span className="text-white/80">{t.commentCount ?? 0}</span>
+        ),
         sortable: true,
       },
       {
         id: "upvotes",
         header: "Upvotes",
         accessorKey: "upvoteCount",
-        cell: (t) => <span className="text-sm text-white/80">{t.upvoteCount ?? 0}</span>,
+        cell: (t: FeedbackThreadRow) => (
+          <span className="text-white/80">{t.upvoteCount ?? 0}</span>
+        ),
         sortable: true,
       },
     ],
     [],
-  );
-
-  const entityActions = React.useMemo<EntityAction<(typeof rows)[number]>[]>(
-    () => [
-      {
-        id: "open",
-        label: "Open",
-        variant: "outline",
-        onClick: (t) => router.push(`/admin/feedback/${encodeURIComponent(t._id)}`),
-      },
-      {
-        id: "upvote",
-        label: (t) => (t.viewerHasUpvoted ? "Upvoted" : "Upvote"),
-        variant: "secondary",
-        onClick: (t) => void toggleUpvote({ threadId: t._id } as any),
-      },
-    ],
-    [router, toggleUpvote],
   );
 
   return (
@@ -152,12 +142,77 @@ export default function AdminFeedbackPage() {
         data={rows}
         columns={columns}
         isLoading={threads === undefined}
-        defaultViewMode="list"
-        viewModes={["list"]}
+        defaultViewMode="grid"
+        viewModes={[]}
+        gridColumns={{ sm: 1, md: 1, lg: 1, xl: 1 }}
         enableSearch={true}
-        entityActions={entityActions}
-        onRowClick={(t) => router.push(`/admin/feedback/${encodeURIComponent(t._id)}`)}
+        onRowClick={(t: FeedbackThreadRow) =>
+          router.push(`/admin/feedback/${encodeURIComponent(t._id)}`)
+        }
         getRowId={(t) => t._id}
+        itemRender={(t: FeedbackThreadRow) => {
+          const id = String(t._id);
+          const upvotes = typeof t.upvoteCount === "number" ? t.upvoteCount : 0;
+          const comments = typeof t.commentCount === "number" ? t.commentCount : 0;
+          return (
+            <Card className="border-white/10 bg-black/20 transition-colors hover:bg-black/30">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <CardTitle className="text-base text-white hover:underline">
+                      {t.title ?? "Untitled"}
+                    </CardTitle>
+                    <div className="text-xs text-white/50">
+                      {comments} comments • {upvotes} upvotes
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant={t.viewerHasUpvoted ? "default" : "outline"}
+                    className={
+                      t.viewerHasUpvoted
+                        ? "bg-orange-600 text-white hover:bg-orange-700"
+                        : ""
+                    }
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      void toggleUpvote({ threadId: id });
+                    }}
+                  >
+                    {t.viewerHasUpvoted ? "Upvoted" : "Upvote"}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      router.push(`/admin/feedback/${encodeURIComponent(id)}`);
+                    }}
+                  >
+                    Open thread
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        }}
+        emptyState={
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base text-white">No feedback yet</CardTitle>
+              <div className="text-sm text-white/60">
+                Be the first to create a recommendation.
+              </div>
+            </CardHeader>
+          </Card>
+        }
       />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

@@ -7,20 +7,20 @@ import {
   Plus,
 } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@acme/ui/card";
+import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
+import { useConvexAuth, useQuery } from "convex/react";
 
+import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
-import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import React from "react";
-import { cn } from "@acme/ui";
-import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@convex-config/_generated/api";
-import { useDataMode } from "~/components/dataMode/DataModeProvider";
-import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
+import { cn } from "@acme/ui";
 import { useActiveAccount } from "~/components/accounts/ActiveAccountProvider";
+import { useDataMode } from "~/components/dataMode/DataModeProvider";
+import { useRouter } from "next/navigation";
 
 const MOCK_IDEAS = [
   {
@@ -251,7 +251,7 @@ export default function AdminTradeIdeasPage() {
         data={ideas}
         columns={columns}
         defaultViewMode="grid"
-        viewModes={["grid", "list"]}
+        viewModes={[]}
         gridColumns={{ sm: 1, md: 2, lg: 3, xl: 4 }}
         enableSearch={true}
         title="Ideas"
@@ -259,10 +259,6 @@ export default function AdminTradeIdeasPage() {
         actions={
           <div className="flex items-center gap-2">
             <ActiveAccountSelector />
-            <Button className="bg-white text-black hover:bg-white/90">
-              <Plus className="mr-2 h-4 w-4" />
-              New Idea
-            </Button>
           </div>
         }
         onRowClick={(idea) => {
