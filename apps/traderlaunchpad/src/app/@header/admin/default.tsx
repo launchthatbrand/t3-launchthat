@@ -2,9 +2,9 @@ import * as React from "react";
 
 import AppHeader from "@acme/ui/layout/AppHeader";
 import { ThemeToggleButton } from "@acme/ui/theme";
+import { TraderLaunchpadAdminTeamSwitcher } from "~/components/organizations/TraderLaunchpadAdminTeamSwitcher";
 import { TraderLaunchpadNavUser } from "~/components/auth/TraderLaunchpadNavUser";
 import { TraderLaunchpadNotificationsMenu } from "~/components/notifications/TraderLaunchpadNotificationsMenu";
-import { TraderLaunchpadAdminTeamSwitcher } from "~/components/organizations/TraderLaunchpadAdminTeamSwitcher";
 
 export default function AdminHeaderDefault() {
   return (
@@ -18,7 +18,6 @@ export default function AdminHeaderDefault() {
         rightSlot={
           <div className="flex items-center gap-2">
             <ThemeToggleButton />
-            <TraderLaunchpadAdminTeamSwitcher />
             <TraderLaunchpadNotificationsMenu />
             <TraderLaunchpadNavUser afterSignOutUrl="/" />
           </div>

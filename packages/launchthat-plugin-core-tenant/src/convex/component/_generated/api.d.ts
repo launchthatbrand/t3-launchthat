@@ -41,11 +41,31 @@ export type Mounts = {
       {
         description?: string;
         logo?: string;
+        logoMediaId?: string;
         name: string;
         slug?: string;
         userId: string;
       },
       string
+    >;
+    createOrganizationMedia: FunctionReference<
+      "mutation",
+      "public",
+      {
+        contentType: string;
+        filename?: string;
+        organizationId: string;
+        size: number;
+        storageId: string;
+        uploadedByUserId: string;
+      },
+      string
+    >;
+    deleteOrganizationMedia: FunctionReference<
+      "mutation",
+      "public",
+      { mediaId: string },
+      null
     >;
     ensureMembership: FunctionReference<
       "mutation",
@@ -57,6 +77,12 @@ export type Mounts = {
         userId: string;
       },
       null
+    >;
+    generateOrganizationMediaUploadUrl: FunctionReference<
+      "mutation",
+      "public",
+      { organizationId: string },
+      string
     >;
     removeMembership: FunctionReference<
       "mutation",
@@ -94,7 +120,8 @@ export type Mounts = {
       "public",
       {
         description?: string;
-        logo: string | null | null;
+        logo?: string | null;
+        logoMediaId?: string | null;
         name?: string;
         organizationId: string;
         slug?: string;
@@ -125,6 +152,7 @@ export type Mounts = {
         createdAt?: number;
         description?: string;
         logo?: string;
+        logoMediaId?: string;
         name: string;
         ownerId: string;
         slug: string;
@@ -142,6 +170,7 @@ export type Mounts = {
         createdAt?: number;
         description?: string;
         logo?: string;
+        logoMediaId?: string;
         name: string;
         ownerId: string;
         slug: string;
@@ -159,10 +188,29 @@ export type Mounts = {
         createdAt?: number;
         description?: string;
         logo?: string;
+        logoMediaId?: string;
         name: string;
         ownerId: string;
         slug: string;
         updatedAt?: number;
+      }
+    >;
+    getOrganizationMediaById: FunctionReference<
+      "query",
+      "public",
+      { mediaId: string },
+      null | {
+        _creationTime: number;
+        _id: string;
+        contentType: string;
+        createdAt: number;
+        filename?: string;
+        organizationId: string;
+        size: number;
+        storageId: string;
+        updatedAt: number;
+        uploadedByUserId: string;
+        url: string | null;
       }
     >;
     listDomainsForOrg: FunctionReference<
@@ -189,6 +237,24 @@ export type Mounts = {
       { organizationId: string },
       Array<{ isActive: boolean; role: string; userId: string }>
     >;
+    listOrganizationMedia: FunctionReference<
+      "query",
+      "public",
+      { limit?: number; organizationId: string },
+      Array<{
+        _creationTime: number;
+        _id: string;
+        contentType: string;
+        createdAt: number;
+        filename?: string;
+        organizationId: string;
+        size: number;
+        storageId: string;
+        updatedAt: number;
+        uploadedByUserId: string;
+        url: string | null;
+      }>
+    >;
     listOrganizations: FunctionReference<
       "query",
       "public",
@@ -200,6 +266,7 @@ export type Mounts = {
         createdAt?: number;
         description?: string;
         logo?: string;
+        logoMediaId?: string;
         name: string;
         ownerId: string;
         slug: string;
@@ -212,7 +279,12 @@ export type Mounts = {
       { userId: string },
       Array<{
         isActive: boolean;
-        org: { _id: string; name: string; slug: string };
+        org: {
+          _id: string;
+          logoUrl: string | null;
+          name: string;
+          slug: string;
+        };
         organizationId: string;
         role: string;
       }>

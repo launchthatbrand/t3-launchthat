@@ -20,6 +20,7 @@ export default defineSchema({
     // Portal parity: basic branding fields.
     description: v.optional(v.string()),
     logo: v.optional(v.string()),
+    logoMediaId: v.optional(v.id("organizationMedia")),
 
     // Optional mapping to external identity providers
     clerkOrganizationId: v.optional(v.string()),
@@ -30,6 +31,19 @@ export default defineSchema({
     .index("by_owner", ["ownerId"])
     .index("by_slug", ["slug"])
     .index("by_clerk_org_id", ["clerkOrganizationId"]),
+
+  organizationMedia: defineTable({
+    organizationId: v.id("organizations"),
+    uploadedByUserId: v.string(),
+    storageId: v.id("_storage"),
+    contentType: v.string(),
+    size: v.number(),
+    filename: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_org_uploadedBy", ["organizationId", "uploadedByUserId"]),
 
   organizationDomains: defineTable({
     organizationId: v.id("organizations"),

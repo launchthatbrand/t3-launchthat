@@ -1,9 +1,44 @@
+import { mutation, query } from "../_generated/server";
+
+import { ConvexError } from "convex/values";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { components } from "../_generated/api";
 import { v } from "convex/values";
 
-import { components } from "../_generated/api";
-import { mutation, query } from "../_generated/server";
-import type { QueryCtx } from "../_generated/server";
-import { ConvexError } from "convex/values";
+interface ComponentOrganization {
+  _id: string;
+  _creationTime: number;
+  name: string;
+  slug: string;
+  ownerId: string;
+  clerkOrganizationId?: string;
+  description?: string;
+  logo?: string;
+  logoMediaId?: string;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+interface ComponentMembershipRow {
+  organizationId: string;
+  role: string;
+  isActive: boolean;
+  org: { _id: string; name: string; slug: string };
+}
+
+interface ComponentOrganizationMediaRow {
+  _id: string;
+  _creationTime: number;
+  organizationId: string;
+  uploadedByUserId: string;
+  storageId: string;
+  url: string | null;
+  contentType: string;
+  size: number;
+  filename?: string;
+  createdAt: number;
+  updatedAt: number;
+}
 
 const domainStatusValidator = v.union(
   v.literal("unconfigured"),
@@ -11,6 +46,30 @@ const domainStatusValidator = v.union(
   v.literal("verified"),
   v.literal("error"),
 );
+
+const resolveClerkUserIdFromIdentity = async (
+  ctx: QueryCtx | MutationCtx,
+): Promise<string> => {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) return "";
+
+  const subject = typeof identity.subject === "string" ? identity.subject.trim() : "";
+  if (subject) return subject;
+
+  const tokenIdentifier =
+    typeof identity.tokenIdentifier === "string" ? identity.tokenIdentifier.trim() : "";
+  if (!tokenIdentifier) return "";
+
+  const viewer =
+    (await ctx.db
+      .query("users")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return
+      .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", tokenIdentifier))
+      .first()) ?? null;
+
+  const clerkId = typeof viewer?.clerkId === "string" ? viewer.clerkId.trim() : "";
+  return clerkId;
+};
 
 export const listOrganizationsByUserId = query({
   args: { userId: v.string() },
@@ -23,6 +82,7 @@ export const listOrganizationsByUserId = query({
         _id: v.string(),
         name: v.string(),
         slug: v.string(),
+        logoUrl: v.union(v.string(), v.null()),
       }),
     }),
   ),
@@ -46,12 +106,11 @@ export const myOrganizations = query({
       slug: v.string(),
       customDomain: v.union(v.string(), v.null()),
       userRole: v.string(),
+      logoUrl: v.union(v.string(), v.null()),
     }),
   ),
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    const userId =
-      typeof identity?.subject === "string" ? identity.subject.trim() : "";
+    const userId = await resolveClerkUserIdFromIdentity(ctx);
     if (!userId) return [];
 
     const memberships = await ctx.runQuery(
@@ -59,13 +118,14 @@ export const myOrganizations = query({
       { userId },
     );
 
-    const result: Array<{
+    const result: {
       _id: string;
       name: string;
       slug: string;
       customDomain: string | null;
       userRole: string;
-    }> = [];
+      logoUrl: string | null;
+    }[] = [];
 
     for (const membership of memberships) {
       const org = membership.org;
@@ -88,6 +148,7 @@ export const myOrganizations = query({
         slug: org.slug,
         customDomain,
         userRole: membership.role,
+        logoUrl: org.logoUrl ?? null,
       });
     }
 
@@ -103,12 +164,14 @@ const requirePlatformAdmin = async (ctx: QueryCtx) => {
   let viewer =
     (await ctx.db
       .query("users")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return
       .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", identity.tokenIdentifier))
       .first()) ?? null;
 
   if (!viewer && typeof identity.subject === "string" && identity.subject.trim()) {
     viewer = await ctx.db
       .query("users")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return
       .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", identity.subject))
       .first();
   }
@@ -138,10 +201,10 @@ export const listAllOrganizations = query({
   ),
   handler: async (ctx, args) => {
     await requirePlatformAdmin(ctx);
-    const rows = await ctx.runQuery(
+    const rows = (await ctx.runQuery(
       components.launchthat_core_tenant.queries.listOrganizations,
       { search: args.search, limit: args.limit },
-    );
+    )) as unknown as ComponentOrganization[];
     return rows.map((row) => ({
       _id: String(row._id),
       _creationTime: row._creationTime,
@@ -190,31 +253,31 @@ export const updateOrganization = mutation({
     name: v.optional(v.string()),
     slug: v.optional(v.string()),
     description: v.optional(v.string()),
+    // Legacy (pre media-library): allow a raw URL to be set/cleared.
     logo: v.optional(v.union(v.string(), v.null())),
+    // Preferred: set/clear a logo from the org media library.
+    logoMediaId: v.optional(v.union(v.string(), v.null())),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    // Allow platform admins, or org owner/admin members.
-    const { identity } = await requirePlatformAdmin(ctx).catch(async (err) => {
-      // Not platform admin: fall back to membership check.
-      const identity = await ctx.auth.getUserIdentity();
-      if (!identity) throw err;
-      return { identity };
-    });
-
-    const userId = typeof identity.subject === "string" ? identity.subject.trim() : "";
+    const userId = await resolveClerkUserIdFromIdentity(ctx);
     if (!userId) throw new ConvexError("Unauthorized");
 
-    // If not platform admin, ensure membership role is owner/admin.
+    let isPlatformAdmin = false;
     try {
       await requirePlatformAdmin(ctx);
+      isPlatformAdmin = true;
     } catch {
-      const memberships = await ctx.runQuery(
+      isPlatformAdmin = false;
+    }
+
+    if (!isPlatformAdmin) {
+      const memberships = (await ctx.runQuery(
         components.launchthat_core_tenant.queries.listOrganizationsByUserId,
         { userId },
-      );
+      )) as unknown as ComponentMembershipRow[];
       const match = memberships.find((m) => String(m.org._id) === String(args.organizationId));
-      const role = match ? String(match.role) : "";
+      const role = match?.role ?? "";
       if (role !== "owner" && role !== "admin") {
         throw new ConvexError("Forbidden: admin access required.");
       }
@@ -226,8 +289,139 @@ export const updateOrganization = mutation({
       slug: args.slug,
       description: args.description,
       logo: args.logo ?? null,
+      logoMediaId: args.logoMediaId ?? null,
     });
 
+    return null;
+  },
+});
+
+const requireOrgAdminOrPlatformAdmin = async (
+  ctx: QueryCtx,
+  organizationId: string,
+): Promise<{ userId: string; isPlatformAdmin: boolean }> => {
+  const userId = await resolveClerkUserIdFromIdentity(ctx);
+  if (!userId) throw new ConvexError("Unauthorized");
+
+  try {
+    await requirePlatformAdmin(ctx);
+    return { userId, isPlatformAdmin: true };
+  } catch {
+    const memberships = (await ctx.runQuery(
+      components.launchthat_core_tenant.queries.listOrganizationsByUserId,
+      { userId },
+    )) as unknown as ComponentMembershipRow[];
+    const match = memberships.find((m) => String(m.org._id) === String(organizationId));
+    const role = match?.role ?? "";
+    if (role !== "owner" && role !== "admin") {
+      throw new ConvexError("Forbidden: org admin access required.");
+    }
+    return { userId, isPlatformAdmin: false };
+  }
+};
+
+export const generateOrganizationMediaUploadUrl = mutation({
+  args: { organizationId: v.string() },
+  returns: v.string(),
+  handler: async (ctx, args) => {
+    await requireOrgAdminOrPlatformAdmin(ctx, args.organizationId);
+    const url = (await ctx.runMutation(
+      components.launchthat_core_tenant.mutations.generateOrganizationMediaUploadUrl,
+      { organizationId: args.organizationId },
+    )) as unknown as string;
+    return url;
+  },
+});
+
+export const createOrganizationMedia = mutation({
+  args: {
+    organizationId: v.string(),
+    storageId: v.id("_storage"),
+    contentType: v.string(),
+    size: v.number(),
+    filename: v.optional(v.string()),
+  },
+  returns: v.object({
+    mediaId: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const { userId } = await requireOrgAdminOrPlatformAdmin(ctx, args.organizationId);
+    const mediaId = (await ctx.runMutation(
+      components.launchthat_core_tenant.mutations.createOrganizationMedia,
+      {
+        organizationId: args.organizationId,
+        storageId: args.storageId,
+        contentType: args.contentType,
+        size: args.size,
+        filename: args.filename,
+        uploadedByUserId: userId,
+      },
+    )) as unknown as string;
+    return { mediaId: String(mediaId) };
+  },
+});
+
+export const listOrganizationMedia = query({
+  args: {
+    organizationId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.string(),
+      _creationTime: v.number(),
+      organizationId: v.string(),
+      uploadedByUserId: v.string(),
+      storageId: v.string(),
+      url: v.union(v.string(), v.null()),
+      contentType: v.string(),
+      size: v.number(),
+      filename: v.optional(v.string()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    await requireOrgAdminOrPlatformAdmin(ctx, args.organizationId);
+    const rows = (await ctx.runQuery(
+      components.launchthat_core_tenant.queries.listOrganizationMedia,
+      {
+        organizationId: args.organizationId,
+        limit: args.limit,
+      },
+    )) as unknown as ComponentOrganizationMediaRow[];
+
+    return rows.map((row) => ({
+      _id: String(row._id),
+      _creationTime: row._creationTime,
+      organizationId: String(row.organizationId),
+      uploadedByUserId: row.uploadedByUserId,
+      storageId: String(row.storageId),
+      url: row.url,
+      contentType: row.contentType,
+      size: row.size,
+      filename: row.filename,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }));
+  },
+});
+
+export const deleteOrganizationMedia = mutation({
+  args: { mediaId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const row = (await ctx.runQuery(
+      components.launchthat_core_tenant.queries.getOrganizationMediaById,
+      {
+        mediaId: args.mediaId,
+      },
+    )) as unknown as ComponentOrganizationMediaRow | null;
+    if (!row) return null;
+    await requireOrgAdminOrPlatformAdmin(ctx, String(row.organizationId));
+    await ctx.runMutation(components.launchthat_core_tenant.mutations.deleteOrganizationMedia, {
+      mediaId: args.mediaId,
+    });
     return null;
   },
 });
@@ -366,15 +560,34 @@ export const getOrganizationById = query({
       name: v.string(),
       slug: v.string(),
       ownerId: v.string(),
+      description: v.optional(v.string()),
+      logoMediaId: v.optional(v.string()),
+      logoUrl: v.union(v.string(), v.null()),
     }),
   ),
   handler: async (ctx, args) => {
-    const org = await ctx.runQuery(
+    const org = (await ctx.runQuery(
       components.launchthat_core_tenant.queries.getOrganizationById,
       { organizationId: args.organizationId },
-    );
+    )) as unknown as ComponentOrganization | null;
     if (!org) return null;
-    return { _id: org._id, name: org.name, slug: org.slug, ownerId: org.ownerId };
+    const logoMediaId = typeof org.logoMediaId === "string" ? org.logoMediaId : undefined;
+    const logoRow = logoMediaId
+      ? ((await ctx.runQuery(components.launchthat_core_tenant.queries.getOrganizationMediaById, {
+        mediaId: logoMediaId,
+      })) as unknown as ComponentOrganizationMediaRow | null)
+      : null;
+    const logoUrl = logoRow?.url ?? null;
+
+    return {
+      _id: org._id,
+      name: org.name,
+      slug: org.slug,
+      ownerId: org.ownerId,
+      description: org.description,
+      logoMediaId,
+      logoUrl,
+    };
   },
 });
 

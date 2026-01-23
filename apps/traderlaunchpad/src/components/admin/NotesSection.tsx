@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Pencil, Plus, StickyNote, Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
+import { MediaLibraryDialog } from "launchthat-plugin-core-tenant/frontend";
 
 import { Button } from "@acme/ui/button";
 import {
@@ -16,6 +17,7 @@ import { ScrollArea } from "@acme/ui/scroll-area";
 import { cn } from "@acme/ui";
 import { format } from "date-fns";
 import { SimpleEditor } from "@acme/ui";
+import { api } from "@convex-config/_generated/api";
 
 export interface Note {
     id: string;
@@ -23,6 +25,14 @@ export interface Note {
     timestamp: number;
     entityId: string;
     entityLabel?: string; // e.g. "Order #123"
+}
+
+interface UserMediaRow {
+    _id: string;
+    url: string | null;
+    filename?: string;
+    contentType: string;
+    createdAt: number;
 }
 
 interface NotesSectionProps {
@@ -44,8 +54,10 @@ export function NotesSection({
     const [mounted, setMounted] = useState(false);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [draftHtml, setDraftHtml] = useState<string>("");
+    const [draftAttachments, setDraftAttachments] = useState<string[]>([]);
     const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
     const [editorKey, setEditorKey] = useState(0);
+    const [mediaDialogOpen, setMediaDialogOpen] = useState(false);
 
     // Stabilize relatedEntities dependency
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -120,6 +132,7 @@ export function NotesSection({
     const openCreateDialog = () => {
         setActiveNoteId(null);
         setDraftHtml("");
+        setDraftAttachments([]);
         setEditorKey((k) => k + 1);
         setDialogOpen(true);
     };
@@ -130,6 +143,7 @@ export function NotesSection({
         if (note.entityId !== entityId) return; // only edit own notes for now
         setActiveNoteId(noteId);
         setDraftHtml(note.content ?? "");
+        setDraftAttachments([]);
         setEditorKey((k) => k + 1);
         setDialogOpen(true);
     };
@@ -139,8 +153,23 @@ export function NotesSection({
         localStorage.setItem(`notes-${entityId}`, JSON.stringify(slim));
     };
 
+    const withAttachments = (html: string, urls: string[]) => {
+        if (!urls.length) return html;
+        const blocks = urls
+            .filter((u) => typeof u === "string" && u.trim())
+            .map(
+                (u) =>
+                    `<p><img src="${u
+                        .replace(/"/g, "&quot;")
+                        .trim()}" alt="attachment" /></p>`,
+            )
+            .join("");
+        return `${html}${blocks}`;
+    };
+
     const handleSave = () => {
-        const plain = htmlToPlain(draftHtml);
+        const mergedHtml = withAttachments(draftHtml, draftAttachments);
+        const plain = htmlToPlain(mergedHtml);
         if (!plain) return;
 
         const now = Date.now();
@@ -148,7 +177,7 @@ export function NotesSection({
         if (!activeNoteId) {
             const note: Note = {
                 id: crypto.randomUUID(),
-                content: draftHtml,
+                content: mergedHtml,
                 timestamp: now,
                 entityId,
                 entityLabel,
@@ -168,7 +197,7 @@ export function NotesSection({
             const next = notes
                 .map((n) =>
                     n.id === activeNoteId && n.entityId === entityId
-                        ? { ...n, content: draftHtml, timestamp: now }
+                        ? { ...n, content: mergedHtml, timestamp: now }
                         : n,
                 )
                 .sort((a, b) => b.timestamp - a.timestamp);
@@ -178,6 +207,7 @@ export function NotesSection({
         }
 
         setDialogOpen(false);
+        setDraftAttachments([]);
     };
 
     const deleteNote = (noteId: string, noteEntityId: string) => {
@@ -291,6 +321,33 @@ export function NotesSection({
                             />
                         </div>
 
+                        {draftAttachments.length ? (
+                            <div className="flex flex-wrap gap-2">
+                                {draftAttachments.map((url) => (
+                                    <div
+                                        key={url}
+                                        className="flex items-center gap-2 rounded-md border border-white/10 bg-black/30 px-2 py-1"
+                                    >
+                                        <span className="max-w-[240px] truncate text-xs text-muted-foreground">
+                                            {url}
+                                        </span>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                                            onClick={() =>
+                                                setDraftAttachments((prev) =>
+                                                    prev.filter((u) => u !== url),
+                                                )
+                                            }
+                                        >
+                                            Remove
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : null}
+
                         <DialogFooter>
                             <Button
                                 variant="outline"
@@ -299,12 +356,49 @@ export function NotesSection({
                             >
                                 Cancel
                             </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                                onClick={() => setMediaDialogOpen(true)}
+                            >
+                                Add image…
+                            </Button>
                             <Button onClick={handleSave} disabled={!htmlToPlain(draftHtml)}>
                                 Save
                             </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                <MediaLibraryDialog<
+                    { limit?: number },
+                    {},
+                    { storageId: string; contentType: string; size: number; filename?: string },
+                    UserMediaRow
+                >
+                    open={mediaDialogOpen}
+                    onOpenChange={setMediaDialogOpen}
+                    title="Your media"
+                    listRef={api.userMedia.listMyUserMedia}
+                    listArgs={{ limit: 100 }}
+                    generateUploadUrlRef={api.userMedia.generateUserMediaUploadUrl}
+                    uploadArgs={{}}
+                    createRef={api.userMedia.createUserMedia}
+                    buildCreateArgs={({ storageId, file }) => ({
+                        storageId,
+                        contentType: file.type || "application/octet-stream",
+                        size: file.size,
+                        filename: file.name,
+                    })}
+                    onSelect={(item) => {
+                        if (!item.url) return;
+                        const url = item.url;
+                        setDraftAttachments((prev) =>
+                            prev.includes(url) ? prev : [...prev, url],
+                        );
+                    }}
+                />
             </CardContent>
         </Card>
     );

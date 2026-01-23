@@ -76,5 +76,16 @@ export default defineSchema({
     .index("by_token", ["tokenIdentifier"])
     .index("by_clerk_id", ["clerkId"])
     .index("by_organization", ["organizationId"]),
+
+  userMedia: defineTable({
+    uploadedByUserId: v.string(),
+    storageId: v.id("_storage"),
+    contentType: v.string(),
+    size: v.number(),
+    filename: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_uploader", ["uploadedByUserId"])
+    .index("by_uploader_createdAt", ["uploadedByUserId", "createdAt"]),
 });
 

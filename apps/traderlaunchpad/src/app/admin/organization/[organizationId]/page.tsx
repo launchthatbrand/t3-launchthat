@@ -1,15 +1,15 @@
 "use client";
 
-import Image from "next/image";
-import React from "react";
-import { useParams } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { useMutation, useQuery } from "convex/react";
 
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import Image from "next/image";
 import { Input } from "@acme/ui/input";
-
+import { MediaLibraryDialog } from "launchthat-plugin-core-tenant/frontend";
+import React from "react";
 import { api } from "@convex-config/_generated/api";
+import { useParams } from "next/navigation";
 
 interface Org {
   _id: string;
@@ -17,7 +17,16 @@ interface Org {
   slug: string;
   ownerId: string;
   description?: string;
-  logo?: string;
+  logoMediaId?: string;
+  logoUrl: string | null;
+}
+
+interface OrganizationMediaRow {
+  _id: string;
+  url: string | null;
+  filename?: string;
+  contentType: string;
+  createdAt: number;
 }
 
 export default function AdminOrganizationPage() {
@@ -33,14 +42,21 @@ export default function AdminOrganizationPage() {
   const updateOrg = useMutation(api.coreTenant.organizations.updateOrganization);
   const [draftName, setDraftName] = React.useState("");
   const [draftSlug, setDraftSlug] = React.useState("");
-  const [draftLogo, setDraftLogo] = React.useState("");
+  const [draftLogoMediaId, setDraftLogoMediaId] = React.useState<string | null>(
+    null,
+  );
+  const [draftLogoPreviewUrl, setDraftLogoPreviewUrl] = React.useState<
+    string | null
+  >(null);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [logoPickerOpen, setLogoPickerOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (!org) return;
     setDraftName(org.name);
     setDraftSlug(org.slug);
-    setDraftLogo(org.logo ?? "");
+    setDraftLogoMediaId(org.logoMediaId ?? null);
+    setDraftLogoPreviewUrl(null);
   }, [org]);
 
   const canSave = Boolean(organizationId) && draftName.trim().length > 0 && !isSaving;
@@ -83,36 +99,33 @@ export default function AdminOrganizationPage() {
               </div>
 
               <div className="space-y-2">
-                <div className="text-muted-foreground text-xs">Featured image (URL)</div>
+                <div className="text-muted-foreground text-xs">Featured image</div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <Input
-                    value={draftLogo}
-                    onChange={(e) => setDraftLogo(e.target.value)}
-                    placeholder="https://…"
-                  />
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={!draftLogo.trim() || isSaving}
-                    onClick={async () => {
-                      if (!organizationId) return;
-                      setIsSaving(true);
-                      try {
-                        await updateOrg({ organizationId, logo: null });
-                        setDraftLogo("");
-                      } finally {
-                        setIsSaving(false);
-                      }
+                    disabled={isSaving}
+                    onClick={() => setLogoPickerOpen(true)}
+                  >
+                    Choose image…
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!draftLogoMediaId || isSaving}
+                    onClick={() => {
+                      setDraftLogoMediaId(null);
+                      setDraftLogoPreviewUrl(null);
                     }}
                   >
                     Remove
                   </Button>
                 </div>
 
-                {draftLogo.trim() ? (
-                  <div className="relative mt-2 h-32 w-full overflow-hidden rounded-md border bg-muted/20">
+                {(draftLogoPreviewUrl ?? org.logoUrl) ? (
+                  <div className="relative mt-2 h-32 w-32 w-full overflow-hidden rounded-md border bg-muted/20">
                     <Image
-                      src={draftLogo.trim()}
+                      src={(draftLogoPreviewUrl ?? org.logoUrl) ?? ""}
                       alt="Organization featured image"
                       fill
                       sizes="(max-width: 768px) 100vw, 700px"
@@ -133,7 +146,9 @@ export default function AdminOrganizationPage() {
                         organizationId,
                         name: draftName.trim(),
                         slug: draftSlug.trim(),
-                        logo: draftLogo.trim() ? draftLogo.trim() : null,
+                        // Clear legacy URL field; logo is now driven by org media library.
+                        logo: null,
+                        logoMediaId: draftLogoMediaId,
                       });
                     } finally {
                       setIsSaving(false);
@@ -147,6 +162,41 @@ export default function AdminOrganizationPage() {
           )}
         </CardContent>
       </Card>
+
+      {organizationId ? (
+        <MediaLibraryDialog<
+          { organizationId: string; limit?: number },
+          { organizationId: string },
+          {
+            organizationId: string;
+            storageId: string;
+            contentType: string;
+            size: number;
+            filename?: string;
+          },
+          OrganizationMediaRow
+        >
+          open={logoPickerOpen}
+          onOpenChange={setLogoPickerOpen}
+          title="Organization media"
+          listRef={api.coreTenant.organizations.listOrganizationMedia}
+          listArgs={{ organizationId, limit: 200 }}
+          generateUploadUrlRef={api.coreTenant.organizations.generateOrganizationMediaUploadUrl}
+          uploadArgs={{ organizationId }}
+          createRef={api.coreTenant.organizations.createOrganizationMedia}
+          buildCreateArgs={({ storageId, file }) => ({
+            organizationId,
+            storageId,
+            contentType: file.type || "application/octet-stream",
+            size: file.size,
+            filename: file.name,
+          })}
+          onSelect={(item) => {
+            setDraftLogoMediaId(item._id);
+            setDraftLogoPreviewUrl(item.url);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

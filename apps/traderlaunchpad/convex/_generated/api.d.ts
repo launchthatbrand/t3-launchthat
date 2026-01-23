@@ -32,6 +32,7 @@ import type * as traderlaunchpad_lib_resolve from "../traderlaunchpad/lib/resolv
 import type * as traderlaunchpad_mutations from "../traderlaunchpad/mutations.js";
 import type * as traderlaunchpad_queries from "../traderlaunchpad/queries.js";
 import type * as traderlaunchpad_types from "../traderlaunchpad/types.js";
+import type * as userMedia from "../userMedia.js";
 import type * as viewer_mutations from "../viewer/mutations.js";
 import type * as viewer_queries from "../viewer/queries.js";
 
@@ -74,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   "traderlaunchpad/mutations": typeof traderlaunchpad_mutations;
   "traderlaunchpad/queries": typeof traderlaunchpad_queries;
   "traderlaunchpad/types": typeof traderlaunchpad_types;
+  userMedia: typeof userMedia;
   "viewer/mutations": typeof viewer_mutations;
   "viewer/queries": typeof viewer_queries;
 }>;
@@ -97,11 +99,31 @@ export declare const components: {
         {
           description?: string;
           logo?: string;
+          logoMediaId?: string;
           name: string;
           slug?: string;
           userId: string;
         },
         string
+      >;
+      createOrganizationMedia: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          contentType: string;
+          filename?: string;
+          organizationId: string;
+          size: number;
+          storageId: string;
+          uploadedByUserId: string;
+        },
+        string
+      >;
+      deleteOrganizationMedia: FunctionReference<
+        "mutation",
+        "internal",
+        { mediaId: string },
+        null
       >;
       ensureMembership: FunctionReference<
         "mutation",
@@ -113,6 +135,12 @@ export declare const components: {
           userId: string;
         },
         null
+      >;
+      generateOrganizationMediaUploadUrl: FunctionReference<
+        "mutation",
+        "internal",
+        { organizationId: string },
+        string
       >;
       removeMembership: FunctionReference<
         "mutation",
@@ -150,7 +178,8 @@ export declare const components: {
         "internal",
         {
           description?: string;
-          logo: string | null | null;
+          logo?: string | null;
+          logoMediaId?: string | null;
           name?: string;
           organizationId: string;
           slug?: string;
@@ -181,6 +210,7 @@ export declare const components: {
           createdAt?: number;
           description?: string;
           logo?: string;
+          logoMediaId?: string;
           name: string;
           ownerId: string;
           slug: string;
@@ -198,6 +228,7 @@ export declare const components: {
           createdAt?: number;
           description?: string;
           logo?: string;
+          logoMediaId?: string;
           name: string;
           ownerId: string;
           slug: string;
@@ -215,10 +246,29 @@ export declare const components: {
           createdAt?: number;
           description?: string;
           logo?: string;
+          logoMediaId?: string;
           name: string;
           ownerId: string;
           slug: string;
           updatedAt?: number;
+        }
+      >;
+      getOrganizationMediaById: FunctionReference<
+        "query",
+        "internal",
+        { mediaId: string },
+        null | {
+          _creationTime: number;
+          _id: string;
+          contentType: string;
+          createdAt: number;
+          filename?: string;
+          organizationId: string;
+          size: number;
+          storageId: string;
+          updatedAt: number;
+          uploadedByUserId: string;
+          url: string | null;
         }
       >;
       listDomainsForOrg: FunctionReference<
@@ -245,6 +295,24 @@ export declare const components: {
         { organizationId: string },
         Array<{ isActive: boolean; role: string; userId: string }>
       >;
+      listOrganizationMedia: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; organizationId: string },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          contentType: string;
+          createdAt: number;
+          filename?: string;
+          organizationId: string;
+          size: number;
+          storageId: string;
+          updatedAt: number;
+          uploadedByUserId: string;
+          url: string | null;
+        }>
+      >;
       listOrganizations: FunctionReference<
         "query",
         "internal",
@@ -256,6 +324,7 @@ export declare const components: {
           createdAt?: number;
           description?: string;
           logo?: string;
+          logoMediaId?: string;
           name: string;
           ownerId: string;
           slug: string;
@@ -268,7 +337,12 @@ export declare const components: {
         { userId: string },
         Array<{
           isActive: boolean;
-          org: { _id: string; name: string; slug: string };
+          org: {
+            _id: string;
+            logoUrl: string | null;
+            name: string;
+            slug: string;
+          };
           organizationId: string;
           role: string;
         }>

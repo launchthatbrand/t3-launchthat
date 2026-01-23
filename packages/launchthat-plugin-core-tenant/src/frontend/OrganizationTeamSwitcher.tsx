@@ -82,6 +82,7 @@ export const OrganizationTeamSwitcher = (props: OrganizationTeamSwitcherProps) =
       slug: m.org.slug,
       customDomain: undefined,
       role: m.role,
+      logoUrl: m.org.logoUrl ?? null,
     }));
   }, [memberships]);
 

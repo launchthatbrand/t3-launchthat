@@ -11,6 +11,7 @@ interface OrganizationMembershipSummary {
     _id: Id<"organizations">;
     name: string;
     slug: string;
+    logoUrl: string | null;
   };
 }
 
@@ -51,6 +52,7 @@ const orgSummary = v.object({
   ownerId: v.string(),
   description: v.optional(v.string()),
   logo: v.optional(v.string()),
+  logoMediaId: v.optional(v.id("organizationMedia")),
   clerkOrganizationId: v.optional(v.string()),
   createdAt: v.optional(v.number()),
   updatedAt: v.optional(v.number()),
@@ -196,6 +198,7 @@ export const listOrganizationsByUserId = query({
         _id: v.id("organizations"),
         name: v.string(),
         slug: v.string(),
+        logoUrl: v.union(v.string(), v.null()),
       }),
     }),
   ),
@@ -216,14 +219,153 @@ export const listOrganizationsByUserId = query({
     for (const m of memberships) {
       const org = orgById.get(m.organizationId);
       if (!org) continue;
+
+      let logoUrl: string | null = null;
+      if (org.logoMediaId) {
+        const media = await ctx.db.get(org.logoMediaId as Id<"organizationMedia">);
+        if (media) {
+          logoUrl = await ctx.storage.getUrl(media.storageId);
+        }
+      }
+      if (!logoUrl && typeof org.logo === "string" && org.logo.trim()) {
+        logoUrl = org.logo.trim();
+      }
+
       result.push({
         organizationId: m.organizationId,
         role: String(m.role),
         isActive: Boolean(m.isActive),
-        org: { _id: org._id, name: org.name, slug: org.slug },
+        org: { _id: org._id, name: org.name, slug: org.slug, logoUrl },
       });
     }
     return result;
+  },
+});
+
+export const listOrganizationMedia = query({
+  args: {
+    organizationId: v.id("organizations"),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("organizationMedia"),
+      _creationTime: v.number(),
+      organizationId: v.id("organizations"),
+      uploadedByUserId: v.string(),
+      storageId: v.id("_storage"),
+      url: v.union(v.string(), v.null()),
+      contentType: v.string(),
+      size: v.number(),
+      filename: v.optional(v.string()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(Number(args.limit ?? 100), 500));
+    const rowsRaw = await ctx.db
+      .query("organizationMedia")
+      .withIndex("by_org", (q) => q.eq("organizationId", args.organizationId))
+      .order("desc")
+      .take(limit);
+    interface OrganizationMediaDoc {
+      _id: Id<"organizationMedia">;
+      _creationTime: number;
+      organizationId: Id<"organizations">;
+      uploadedByUserId: string;
+      storageId: Id<"_storage">;
+      contentType: string;
+      size: number;
+      filename?: string;
+      createdAt: number;
+      updatedAt: number;
+    }
+    const rows = rowsRaw as unknown as OrganizationMediaDoc[];
+
+    const result: {
+      _id: Id<"organizationMedia">;
+      _creationTime: number;
+      organizationId: Id<"organizations">;
+      uploadedByUserId: string;
+      storageId: Id<"_storage">;
+      url: string | null;
+      contentType: string;
+      size: number;
+      filename?: string;
+      createdAt: number;
+      updatedAt: number;
+    }[] = [];
+
+    for (const row of rows) {
+      const url = await ctx.storage.getUrl(row.storageId);
+      result.push({
+        _id: row._id,
+        _creationTime: row._creationTime,
+        organizationId: row.organizationId,
+        uploadedByUserId: row.uploadedByUserId,
+        storageId: row.storageId,
+        url,
+        contentType: row.contentType,
+        size: row.size,
+        filename: row.filename,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      });
+    }
+
+    return result;
+  },
+});
+
+export const getOrganizationMediaById = query({
+  args: { mediaId: v.id("organizationMedia") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("organizationMedia"),
+      _creationTime: v.number(),
+      organizationId: v.id("organizations"),
+      uploadedByUserId: v.string(),
+      storageId: v.id("_storage"),
+      url: v.union(v.string(), v.null()),
+      contentType: v.string(),
+      size: v.number(),
+      filename: v.optional(v.string()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const rowRaw = await ctx.db.get(args.mediaId);
+    interface OrganizationMediaDoc {
+      _id: Id<"organizationMedia">;
+      _creationTime: number;
+      organizationId: Id<"organizations">;
+      uploadedByUserId: string;
+      storageId: Id<"_storage">;
+      contentType: string;
+      size: number;
+      filename?: string;
+      createdAt: number;
+      updatedAt: number;
+    }
+    const row = rowRaw as unknown as OrganizationMediaDoc | null;
+    if (!row) return null;
+    const url = await ctx.storage.getUrl(row.storageId);
+    return {
+      _id: row._id,
+      _creationTime: row._creationTime,
+      organizationId: row.organizationId,
+      uploadedByUserId: row.uploadedByUserId,
+      storageId: row.storageId,
+      url,
+      contentType: row.contentType,
+      size: row.size,
+      filename: row.filename,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
   },
 });
 

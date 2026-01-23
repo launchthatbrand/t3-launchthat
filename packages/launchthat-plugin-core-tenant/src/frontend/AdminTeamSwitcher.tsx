@@ -45,6 +45,12 @@ export function AdminTeamSwitcher(props: {
       const nameValue = typeof obj.name === "string" ? obj.name : "Untitled";
       const slugValue = typeof obj.slug === "string" ? obj.slug : undefined;
       const customDomainValue = typeof obj.customDomain === "string" ? obj.customDomain : undefined;
+      const logoUrlValue =
+        typeof obj.logoUrl === "string"
+          ? obj.logoUrl
+          : obj.logoUrl === null
+            ? null
+            : undefined;
       const roleValue =
         typeof obj.userRole === "string"
           ? obj.userRole
@@ -59,6 +65,7 @@ export function AdminTeamSwitcher(props: {
           slug: slugValue,
           customDomain: customDomainValue,
           role: roleValue,
+          logoUrl: logoUrlValue,
         },
       ];
     });

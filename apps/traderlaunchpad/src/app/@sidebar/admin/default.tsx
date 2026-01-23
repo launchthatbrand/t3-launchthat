@@ -108,11 +108,11 @@ export default function AdminSidebarDefault() {
       className="overflow-hidden border-white/10 bg-black/35 text-white backdrop-blur-md"
     >
       {/* Remove default header padding so logo aligns with nav menu inset. */}
-      <SidebarHeader className="p-0">
+      <SidebarHeader className="p-1">
 
         <TraderLaunchpadAdminTeamSwitcher />
         {/* Match the nav menu inset so the logo aligns with items. */}
-        <SidebarMenu className="p-3 group-data-[collapsible=icon]:items-center">
+        {/* <SidebarMenu className="p-3 group-data-[collapsible=icon]:items-center">
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
@@ -146,7 +146,7 @@ export default function AdminSidebarDefault() {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-        </SidebarMenu>
+        </SidebarMenu> */}
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu className="p-3 gap-2 group-data-[collapsible=icon]:items-center">

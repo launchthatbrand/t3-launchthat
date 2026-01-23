@@ -35,6 +35,7 @@ export interface TeamSwitcherOrganization {
   role?: string;
   badgeLabel?: string;
   badgeDescription?: string;
+  logoUrl?: string | null;
 }
 
 interface TeamSwitcherProps {
@@ -92,13 +93,21 @@ export function TeamSwitcher({
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="data-[state=open]:bg-sidebar-accent h-auto data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:size-14! group-data-[collapsible=icon]:p-0! group-data-[collapsible=icon]:justify-center"
               disabled={isTriggerDisabled}
             >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <Building2 className="size-4" />
+              <div className="flex aspect-square size-12 items-center justify-center rounded-xl bg-transparent ring-1 ring-white/10 text-sidebar-primary-foreground">
+                {activeOrganization?.logoUrl ? (
+                  <img
+                    src={activeOrganization.logoUrl}
+                    alt={activeOrganization.name}
+                    className="h-full w-full rounded-xl object-cover"
+                  />
+                ) : (
+                  <Building2 className="size-4" />
+                )}
               </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
+              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="truncate font-medium">
                   {activeOrganization?.name ?? triggerPlaceholder.title}
                 </span>
@@ -108,11 +117,11 @@ export function TeamSwitcher({
                     ""}
                 </span>
               </div>
-              <ChevronsUpDown className="ml-auto" />
+              <ChevronsUpDown className="ml-auto group-data-[collapsible=icon]:hidden" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+            className="w-(--radix-dropdown-menu-trigger-width) min-w-80 rounded-lg"
             align="start"
             side={isMobile ? "bottom" : "right"}
             sideOffset={4}
@@ -142,8 +151,16 @@ export function TeamSwitcher({
                   onClick={() => onSelect?.(org)}
                   className="gap-2 p-2"
                 >
-                  <div className="flex size-6 items-center justify-center rounded-md border">
-                    {org.name.charAt(0).toUpperCase()}
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md border">
+                    {org.logoUrl ? (
+                      <img
+                        src={org.logoUrl}
+                        alt={org.name}
+                        className="h-full w-full rounded-md object-cover"
+                      />
+                    ) : (
+                      org.name.charAt(0).toUpperCase()
+                    )}
                   </div>
                   {org.name}
                   <DropdownMenuShortcut>

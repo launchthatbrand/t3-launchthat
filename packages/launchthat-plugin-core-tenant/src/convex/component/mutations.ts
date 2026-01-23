@@ -40,6 +40,7 @@ export const createOrganization = mutation({
     slug: v.optional(v.string()),
     description: v.optional(v.string()),
     logo: v.optional(v.string()),
+    logoMediaId: v.optional(v.id("organizationMedia")),
   },
   returns: v.id("organizations"),
   handler: async (ctx, args) => {
@@ -66,6 +67,7 @@ export const createOrganization = mutation({
       ownerId: args.userId,
       description: typeof args.description === "string" ? args.description : undefined,
       logo: typeof args.logo === "string" ? args.logo : undefined,
+      logoMediaId: args.logoMediaId,
       createdAt: now,
       updatedAt: now,
     });
@@ -89,7 +91,8 @@ export const updateOrganization = mutation({
     name: v.optional(v.string()),
     slug: v.optional(v.string()),
     description: v.optional(v.string()),
-    logo: v.union(v.string(), v.null(), v.optional(v.null())),
+    logo: v.optional(v.union(v.string(), v.null())),
+    logoMediaId: v.optional(v.union(v.id("organizationMedia"), v.null())),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -115,6 +118,12 @@ export const updateOrganization = mutation({
       patch.logo = next ? next : undefined;
     }
 
+    if (args.logoMediaId === null) {
+      patch.logoMediaId = undefined;
+    } else if (typeof args.logoMediaId === "string") {
+      patch.logoMediaId = args.logoMediaId;
+    }
+
     if (typeof args.slug === "string") {
       const nextSlug = normalizeSlug(args.slug.trim());
       if (!nextSlug) throw new Error("Organization slug cannot be empty");
@@ -133,6 +142,57 @@ export const updateOrganization = mutation({
     if (Object.keys(patch).length === 0) return null;
     patch.updatedAt = now;
     await ctx.db.patch(org._id, patch);
+    return null;
+  },
+});
+
+export const generateOrganizationMediaUploadUrl = mutation({
+  args: { organizationId: v.id("organizations") },
+  returns: v.string(),
+  handler: async (ctx, args) => {
+    // AuthZ is enforced at the app wrapper layer (platform admin / org admin).
+    // Here we just ensure the org exists and return an upload URL.
+    const org = await ctx.db.get(args.organizationId);
+    if (!org) throw new Error("Organization not found");
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const createOrganizationMedia = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    storageId: v.id("_storage"),
+    contentType: v.string(),
+    size: v.number(),
+    filename: v.optional(v.string()),
+    uploadedByUserId: v.string(),
+  },
+  returns: v.id("organizationMedia"),
+  handler: async (ctx, args) => {
+    const org = await ctx.db.get(args.organizationId);
+    if (!org) throw new Error("Organization not found");
+
+    const now = Date.now();
+    return await ctx.db.insert("organizationMedia", {
+      organizationId: args.organizationId,
+      uploadedByUserId: args.uploadedByUserId,
+      storageId: args.storageId,
+      contentType: args.contentType,
+      size: args.size,
+      filename: typeof args.filename === "string" && args.filename.trim() ? args.filename.trim() : undefined,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+export const deleteOrganizationMedia = mutation({
+  args: { mediaId: v.id("organizationMedia") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get(args.mediaId);
+    if (!row) return null;
+    await ctx.db.delete(row._id);
     return null;
   },
 });
