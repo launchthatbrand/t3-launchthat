@@ -1,14 +1,21 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 "use client";
 
-import { BuilderDndProvider, SortableItem } from "@acme/dnd";
+import {
+  BuilderDndProvider,
+  SortableContext,
+  SortableItem,
+  arrayMove,
+  verticalListSortingStrategy
+} from "@acme/dnd";
 import { Eye, EyeOff, Pencil, Plus, Save, Trash2 } from "lucide-react";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
 import { Button } from "@acme/ui/button";
-import type { DragEndEvent } from "@dnd-kit/core";
+import type { DragEndEvent } from "@acme/dnd";
 import Link from "next/link";
 import React from "react";
-import { arrayMove } from "@dnd-kit/sortable";
 import { cn } from "~/lib/utils";
 
 type OrgProfileSectionKindV1 = "hero" | "about" | "links" | "stats";
@@ -60,59 +67,59 @@ const normalizeConfig = (input: unknown): OrgPublicProfileConfigV1 => {
   const heroCtasRaw = input.heroCtas;
   const heroCtas: OrgHeroCta[] | undefined = Array.isArray(heroCtasRaw)
     ? heroCtasRaw
-        .map((c): OrgHeroCta | null => {
-          if (!isRecord(c)) return null;
-          const id = typeof c.id === "string" ? c.id : "";
-          const label = typeof c.label === "string" ? c.label : "";
-          const url = typeof c.url === "string" ? c.url : "";
-          if (!id || !label || !url) return null;
-          const variant =
-            c.variant === "outline" || c.variant === "primary"
-              ? (c.variant as OrgHeroCta["variant"])
-              : undefined;
-          return { id, label, url, variant };
-        })
-        .filter((x): x is OrgHeroCta => x !== null)
+      .map((c): OrgHeroCta | null => {
+        if (!isRecord(c)) return null;
+        const id = typeof c.id === "string" ? c.id : "";
+        const label = typeof c.label === "string" ? c.label : "";
+        const url = typeof c.url === "string" ? c.url : "";
+        if (!id || !label || !url) return null;
+        const variant =
+          c.variant === "outline" || c.variant === "primary"
+            ? (c.variant as OrgHeroCta["variant"])
+            : undefined;
+        return { id, label, url, variant };
+      })
+      .filter((x): x is OrgHeroCta => x !== null)
     : undefined;
 
   const linksRaw = input.links;
   const links: OrgPublicProfileConfigV1["links"] = Array.isArray(linksRaw)
     ? linksRaw
-        .map((l): { label: string; url: string } | null => {
-          if (!isRecord(l)) return null;
-          const label = typeof l.label === "string" ? l.label : "";
-          const url = typeof l.url === "string" ? l.url : "";
-          if (!label || !url) return null;
-          return { label, url };
-        })
-        .filter((x): x is { label: string; url: string } => x !== null)
+      .map((l): { label: string; url: string } | null => {
+        if (!isRecord(l)) return null;
+        const label = typeof l.label === "string" ? l.label : "";
+        const url = typeof l.url === "string" ? l.url : "";
+        if (!label || !url) return null;
+        return { label, url };
+      })
+      .filter((x): x is { label: string; url: string } => x !== null)
     : [];
 
   const sectionsRaw = input.sections;
   const sections: OrgPublicProfileConfigV1["sections"] = Array.isArray(sectionsRaw)
     ? sectionsRaw
-        .map((s): OrgPublicProfileConfigV1["sections"][number] | null => {
-          if (!isRecord(s)) return null;
-          const id = typeof s.id === "string" ? s.id : "";
-          const kind = s.kind;
-          if (kind !== "hero" && kind !== "about" && kind !== "links" && kind !== "stats") {
-            return null;
-          }
-          if (!id) return null;
-          return { id, kind, enabled: Boolean(s.enabled) };
-        })
-        .filter((x): x is OrgPublicProfileConfigV1["sections"][number] => x !== null)
+      .map((s): OrgPublicProfileConfigV1["sections"][number] | null => {
+        if (!isRecord(s)) return null;
+        const id = typeof s.id === "string" ? s.id : "";
+        const kind = s.kind;
+        if (kind !== "hero" && kind !== "about" && kind !== "links" && kind !== "stats") {
+          return null;
+        }
+        if (!id) return null;
+        return { id, kind, enabled: Boolean(s.enabled) };
+      })
+      .filter((x): x is OrgPublicProfileConfigV1["sections"][number] => x !== null)
     : DEFAULT_CONFIG.sections;
 
   const logoCropRaw = input.logoCrop;
   const logoCrop: OrgPublicProfileConfigV1["logoCrop"] =
     isRecord(logoCropRaw) &&
-    typeof logoCropRaw.x === "number" &&
-    typeof logoCropRaw.y === "number"
+      typeof logoCropRaw.x === "number" &&
+      typeof logoCropRaw.y === "number"
       ? {
-          x: Math.max(0, Math.min(100, logoCropRaw.x)),
-          y: Math.max(0, Math.min(100, logoCropRaw.y)),
-        }
+        x: Math.max(0, Math.min(100, logoCropRaw.x)),
+        y: Math.max(0, Math.min(100, logoCropRaw.y)),
+      }
       : DEFAULT_CONFIG.logoCrop;
 
   return {
@@ -514,7 +521,7 @@ function renderSection(props: {
                     ...props.config,
                     links: [...props.config.links, { label: "New link", url: "https://" }],
                   };
-                        props.onChangeConfigAction?.(next);
+                  props.onChangeConfigAction?.(next);
                 }}
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -539,7 +546,7 @@ function renderSection(props: {
                           const nextLinks = props.config.links.map((x, i) =>
                             i === idx ? { ...x, label: e.target.value } : x,
                           );
-                                props.onChangeConfigAction?.({ ...props.config, links: nextLinks });
+                          props.onChangeConfigAction?.({ ...props.config, links: nextLinks });
                         }}
                       />
                     </label>
@@ -552,7 +559,7 @@ function renderSection(props: {
                           const nextLinks = props.config.links.map((x, i) =>
                             i === idx ? { ...x, url: e.target.value } : x,
                           );
-                                props.onChangeConfigAction?.({ ...props.config, links: nextLinks });
+                          props.onChangeConfigAction?.({ ...props.config, links: nextLinks });
                         }}
                       />
                     </label>
@@ -577,7 +584,7 @@ function renderSection(props: {
                       className="h-9 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
                       onClick={() => {
                         const nextLinks = props.config.links.filter((_, i) => i !== idx);
-                              props.onChangeConfigAction?.({ ...props.config, links: nextLinks });
+                        props.onChangeConfigAction?.({ ...props.config, links: nextLinks });
                       }}
                     >
                       <Trash2 className="mr-2 h-4 w-4" />

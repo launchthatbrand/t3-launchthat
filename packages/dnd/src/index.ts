@@ -23,3 +23,8 @@ export type {
 
 export { NestedSortableList } from "./components/NestedSortableList";
 export type { NestedSortableListProps } from "./components/NestedSortableList";
+
+// Re-export commonly used dnd-kit helpers/types so apps can depend on `@acme/dnd`
+// instead of importing directly from `@dnd-kit/*`.
+export type { DragEndEvent } from "@dnd-kit/core";
+export { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
