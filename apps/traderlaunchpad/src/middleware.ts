@@ -8,6 +8,7 @@ import {
   fetchTenantByCustomDomain,
   fetchTenantBySlug,
 } from "~/lib/tenant-fetcher";
+import { isPlatformHost } from "~/lib/host-mode";
 
 const rootDomain =
   (String(env.NEXT_PUBLIC_ROOT_DOMAIN ?? "traderlaunchpad.com").split(":")[0] ??
@@ -107,6 +108,10 @@ const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
   const hostname = (host.split(":")[0] ?? "").toLowerCase();
 
   const rootDomainFormatted = rootDomain.toLowerCase();
+  const isPlatformMode = isPlatformHost({
+    hostOrHostname: hostname,
+    rootDomain: rootDomainFormatted,
+  });
   const authHost = getAuthHostForMiddleware(host, rootDomainFormatted);
   const authHostname = (authHost.split(":")[0] ?? "").toLowerCase();
   const isAuthHost = hostname === authHostname;
@@ -185,7 +190,13 @@ const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
 
   // Protected route logic
   if (isProtectedRoute(req)) {
-    // On tenant subdomains/custom domains, rely on the tenant session cookie.
+    // Platform mode (apex + first-party subdomains): rely on shared Clerk session.
+    if (isPlatformMode) {
+      await auth.protect();
+      return response;
+    }
+
+    // Whitelabel mode (vanity domains): rely on the tenant session cookie + auth-host bounce.
     if (!isAuthHost) {
       const hasSessionCookie = Boolean(req.cookies.get("tenant_session")?.value);
       if (!hasSessionCookie) {

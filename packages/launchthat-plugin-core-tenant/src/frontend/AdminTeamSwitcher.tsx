@@ -18,7 +18,12 @@ export type TenantLike = {
 export function AdminTeamSwitcher(props: {
   tenant: TenantLike;
   rootDomain: string;
-  organizationsQuery: any;
+  organizationsQuery: Parameters<typeof useQuery>[0];
+  /**
+   * Platform mode shows all orgs the user belongs to (discovery / switching).
+   * Whitelabel mode only shows the current org + Global.
+   */
+  mode?: "platform" | "whitelabel";
   /**
    * Root tenant slug that should resolve to apex (no subdomain).
    * Portal passes `PORTAL_TENANT_SLUG`; TraderLaunchpad can omit.
@@ -30,7 +35,8 @@ export function AdminTeamSwitcher(props: {
    */
   pinnedTenantSlug?: string;
 }) {
-  const organizationsResult = useQuery(props.organizationsQuery, {});
+  // Avoid leaking `any` from Convex hook generics; we validate shape below.
+  const organizationsResult = useQuery(props.organizationsQuery, {}) as unknown;
   const [switchingOrganizationId, setSwitchingOrganizationId] = useState<string | null>(null);
   const platformRootTenantSlug = String(props.rootTenantSlug ?? "platform")
     .trim()
@@ -100,6 +106,13 @@ export function AdminTeamSwitcher(props: {
   }, [props.tenant]);
 
   const effectiveOrganizations = useMemo(() => {
+    const mode = props.mode ?? "platform";
+
+    if (mode === "whitelabel") {
+      if (tenantFallbackOrganization?.slug) return [platformEntry, tenantFallbackOrganization];
+      return [platformEntry];
+    }
+
     if (organizations.length > 0) return [platformEntry, ...organizations];
     // If we're on a tenant host and the query is still loading (or returns empty),
     // keep a stable list that still allows navigating back to apex/global.
@@ -107,7 +120,7 @@ export function AdminTeamSwitcher(props: {
       return [platformEntry, tenantFallbackOrganization];
     }
     return tenantFallbackOrganization ? [tenantFallbackOrganization] : [];
-  }, [organizations, platformEntry, tenantFallbackOrganization]);
+  }, [organizations, platformEntry, props.mode, tenantFallbackOrganization]);
 
   const orderedOrganizations = useMemo(() => {
     const pinned = String(props.pinnedTenantSlug ?? "").trim().toLowerCase();

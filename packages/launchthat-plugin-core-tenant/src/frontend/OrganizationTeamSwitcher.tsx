@@ -13,6 +13,11 @@ import { buildOrganizationSwitchUrl, stripProtocol } from "./org-switching";
 export interface OrganizationTeamSwitcherProps {
   api: CoreTenantOrganizationsUiApi;
   userId: string | null | undefined;
+  /**
+   * Platform mode shows all orgs the user belongs to (discovery / switching).
+   * Whitelabel mode only shows the current org + Global.
+   */
+  mode?: "platform" | "whitelabel";
 
   /**
    * If provided, prefer this slug when determining the "active" org in the UI.
@@ -98,8 +103,16 @@ export const OrganizationTeamSwitcher = (props: OrganizationTeamSwitcherProps) =
       // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
       logoUrl: (m as any).org?.logoUrl ?? null,
     }));
+    const mode = props.mode ?? "platform";
+    if (mode === "whitelabel") {
+      const activeTenantSlug = (props.activeTenantSlug ?? "").trim().toLowerCase();
+      const current = activeTenantSlug
+        ? orgs.find((o) => (o.slug ?? "").trim().toLowerCase() === activeTenantSlug) ?? null
+        : null;
+      return current ? [platformEntry, current] : [platformEntry];
+    }
     return orgs.length > 0 ? [platformEntry, ...orgs] : orgs;
-  }, [memberships, platformEntry]);
+  }, [memberships, platformEntry, props.activeTenantSlug, props.mode]);
 
   const activeOrganizationId = React.useMemo(() => {
     if (!Array.isArray(memberships) || memberships.length === 0) return null;

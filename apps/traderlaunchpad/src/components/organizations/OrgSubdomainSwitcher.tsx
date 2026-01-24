@@ -13,6 +13,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useHostContext } from "~/context/HostContext";
 import { usePathname } from "next/navigation";
 import { useTenant } from "~/context/TenantContext";
+import { isPlatformHost } from "~/lib/host-mode";
 
 const isLocalHostHost = (host: string): boolean => {
   const hostname = (host.split(":")[0] ?? "").toLowerCase();
@@ -30,10 +31,6 @@ export function OrgSubdomainSwitcher(props: { className?: string }) {
   const { isAuthHost } = useHostContext();
   const pathname = usePathname();
   const tenant = useTenant();
-
-  // Tenant/custom hosts do not mount Clerk. Until this switcher is converted to tenant-session
-  // identity (Convex auth), only render it on the auth host.
-
 
   const { userId } = useAuth();
 
@@ -101,7 +98,23 @@ export function OrgSubdomainSwitcher(props: { className?: string }) {
   }, []);
 
   if (!userId) return null;
-  if (!isAuthHost) return null;
+
+  const mode = (() => {
+    if (typeof window === "undefined") return "platform" as const;
+    const rootDomain = env.NEXT_PUBLIC_ROOT_DOMAIN ?? "traderlaunchpad.com";
+    const isPlatform = isPlatformHost({
+      hostOrHostname: window.location.hostname,
+      rootDomain,
+    });
+    if (!isPlatform && tenant?.customDomain) {
+      const current = window.location.hostname.toLowerCase();
+      if (tenant.customDomain.toLowerCase() === current) return "whitelabel" as const;
+    }
+    return "platform" as const;
+  })();
+
+  // In whitelabel mode we do not mount Clerk UI on the vanity domain; only render switcher on auth host.
+  if (mode === "whitelabel" && !isAuthHost) return null;
 
   const redirectBasePath = pathname.startsWith("/admin")
     ? "/admin"
@@ -114,6 +127,7 @@ export function OrgSubdomainSwitcher(props: { className?: string }) {
       className={props.className}
       api={orgUiApi as unknown as CoreTenantOrganizationsUiApi}
       userId={userId}
+      mode={mode}
       activeTenantSlug={tenant?.slug ?? null}
       rootDomain={env.NEXT_PUBLIC_ROOT_DOMAIN ?? "traderlaunchpad.com"}
       preferLocalhostSubdomains={true}

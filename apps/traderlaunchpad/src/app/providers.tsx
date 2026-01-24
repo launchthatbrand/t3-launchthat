@@ -19,6 +19,7 @@ import { env } from "~/env";
 import { useSearchParams } from "next/navigation";
 import type { TenantSummary } from "~/lib/tenant-fetcher";
 import { isAuthHostForHost } from "~/lib/host";
+import { isPlatformHost } from "~/lib/host-mode";
 import { HostProvider } from "~/context/HostContext";
 import { TenantProvider } from "~/context/TenantContext";
 import { useConvexAuth } from "convex/react";
@@ -44,7 +45,9 @@ interface ProvidersProps {
 
 export function Providers({ children, tenant, host }: ProvidersProps) {
   const rootDomain = String(env.NEXT_PUBLIC_ROOT_DOMAIN ?? "traderlaunchpad.com");
-  const shouldUseClerk = isAuthHostForHost(host, rootDomain);
+  const shouldUseClerk =
+    isAuthHostForHost(host, rootDomain) ||
+    isPlatformHost({ hostOrHostname: host, rootDomain });
 
   return (
     <ThemeProvider>
