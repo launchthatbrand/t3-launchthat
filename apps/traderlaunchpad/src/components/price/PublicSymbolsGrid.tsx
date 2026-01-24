@@ -1,11 +1,12 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
-import { useAction } from "convex/react";
-import { api } from "@convex-config/_generated/api";
 import { ArrowRight, RefreshCw } from "lucide-react";
+
 import { Button } from "@acme/ui/button";
+import Link from "next/link";
+import React from "react";
+import { api } from "@convex-config/_generated/api";
+import { useAction } from "convex/react";
 
 export function PublicSymbolsGrid() {
   const list = useAction(api.traderlaunchpad.actions.pricedataListPublicSymbols);
@@ -79,7 +80,7 @@ export function PublicSymbolsGrid() {
           {symbols.map((symbol) => (
             <Link
               key={symbol}
-              href={`/s/${encodeURIComponent(symbol)}`}
+              href={`/symbol/${encodeURIComponent(symbol)}`}
               className="group rounded-3xl border border-white/10 bg-white/3 p-6 backdrop-blur-md transition-colors hover:bg-white/6"
             >
               <div className="flex items-start justify-between gap-4">

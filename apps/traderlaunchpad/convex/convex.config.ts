@@ -7,6 +7,7 @@ import launchthat_notifications from "../../../packages/launchthat-plugin-notifi
 import launchthat_onboarding from "../../../packages/launchthat-plugin-onboarding/src/convex/component/convex.config";
 import launchthat_pricedata from "../../../packages/launchthat-plugin-pricedata/src/convex/component/convex.config";
 import launchthat_push from "../../../packages/launchthat-plugin-push/src/convex/component/convex.config";
+import launchthat_shortlinks from "../../../packages/launchthat-plugin-shortlinks/src/convex/component/convex.config";
 import launchthat_traderlaunchpad from "../../../packages/launchthat-plugin-traderlaunchpad/src/convex/component/convex.config";
 
 const app = defineApp();
@@ -21,5 +22,5 @@ app.use(launchthat_traderlaunchpad);
 app.use(launchthat_pricedata);
 app.use(launchthat_discord);
 app.use(launchthat_onboarding);
-
+app.use(launchthat_shortlinks);
 export default app;

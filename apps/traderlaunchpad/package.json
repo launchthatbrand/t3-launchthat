@@ -61,6 +61,7 @@
     "launchthat-plugin-pricedata": "workspace:*",
     "launchthat-plugin-pwa": "workspace:*",
     "launchthat-plugin-traderlaunchpad": "workspace:*",
+    "launchthat-plugin-shortlinks": "workspace:*",
     "lightweight-charts": "^4.2.0",
     "lucide-react": "^0.555.0",
     "motion": "^12.23.24",

@@ -33,6 +33,8 @@ import type * as pushSubscriptions_actions from "../pushSubscriptions/actions.js
 import type * as pushSubscriptions_internalActions from "../pushSubscriptions/internalActions.js";
 import type * as pushSubscriptions_mutations from "../pushSubscriptions/mutations.js";
 import type * as pushSubscriptions_queries from "../pushSubscriptions/queries.js";
+import type * as shortlinks_mutations from "../shortlinks/mutations.js";
+import type * as shortlinks_queries from "../shortlinks/queries.js";
 import type * as traderlaunchpad_actions from "../traderlaunchpad/actions.js";
 import type * as traderlaunchpad_lib_resolve from "../traderlaunchpad/lib/resolve.js";
 import type * as traderlaunchpad_mutations from "../traderlaunchpad/mutations.js";
@@ -82,6 +84,8 @@ declare const fullApi: ApiFromModules<{
   "pushSubscriptions/internalActions": typeof pushSubscriptions_internalActions;
   "pushSubscriptions/mutations": typeof pushSubscriptions_mutations;
   "pushSubscriptions/queries": typeof pushSubscriptions_queries;
+  "shortlinks/mutations": typeof shortlinks_mutations;
+  "shortlinks/queries": typeof shortlinks_queries;
   "traderlaunchpad/actions": typeof traderlaunchpad_actions;
   "traderlaunchpad/lib/resolve": typeof traderlaunchpad_lib_resolve;
   "traderlaunchpad/mutations": typeof traderlaunchpad_mutations;
@@ -3962,6 +3966,63 @@ export declare const components: {
             title: string;
           }>;
           title?: string;
+        }
+      >;
+    };
+  };
+  launchthat_shortlinks: {
+    mutations: {
+      create: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          appKey: string;
+          createdByUserId?: string;
+          expiresAt?: number;
+          kind?: string;
+          path: string;
+          targetId?: string;
+        },
+        { code: string }
+      >;
+      upsertSettings: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          alphabet?: string;
+          appKey: string;
+          codeLength: number;
+          domain: string;
+          enabled: boolean;
+          updatedByUserId?: string;
+        },
+        null
+      >;
+    };
+    queries: {
+      getByCode: FunctionReference<
+        "query",
+        "internal",
+        { appKey: string; code: string },
+        {
+          appKey: string;
+          code: string;
+          disabledAt?: number;
+          expiresAt?: number;
+          kind?: string;
+          path: string;
+          targetId?: string;
+        } | null
+      >;
+      getSettings: FunctionReference<
+        "query",
+        "internal",
+        { appKey: string },
+        {
+          alphabet: string;
+          codeLength: number;
+          domain: string;
+          enabled: boolean;
         }
       >;
     };
