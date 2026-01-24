@@ -7,10 +7,11 @@ import {
   useSpring,
   useTransform,
 } from "motion/react";
-import { useRef, useState } from "react";
+import { createContext, useContext, useMemo, useRef, useState } from "react";
 
 import { IconLayoutNavbarCollapse } from "@tabler/icons-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 /* eslint-disable prefer-const */
 import type { MotionValue } from "motion/react";
 import { cn } from "@acme/ui";
@@ -25,6 +26,10 @@ type DockItem = {
 };
 
 const getItemLabel = (item: DockItem): string => item.label ?? item.title ?? "";
+
+const DockTouchContext = createContext<{ touchGestureActive: boolean } | null>(
+  null,
+);
 
 export const FloatingDock = ({
   items,
@@ -106,19 +111,98 @@ export const FloatingDockDesktop = ({
   className?: string;
 }) => {
   let mouseX = useMotionValue(Infinity);
+  const router = useRouter();
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [touchGestureActive, setTouchGestureActive] = useState(false);
+  const gestureStartedOnItemRef = useRef(false);
+
+  const ctxValue = useMemo(
+    () => ({ touchGestureActive }),
+    [touchGestureActive],
+  );
+
+  const startTouchGesture: React.PointerEventHandler<HTMLDivElement> = (e) => {
+    if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
+
+    const target = e.target as Element | null;
+    const startedOnItem =
+      !!target?.closest?.('a[data-dock-item="true"]') ??
+      false;
+    if (!startedOnItem) return;
+
+    gestureStartedOnItemRef.current = true;
+    setTouchGestureActive(true);
+    mouseX.set(e.pageX);
+
+    // Keep receiving pointer events even if the finger leaves the dock.
+    e.currentTarget.setPointerCapture(e.pointerId);
+    // Prevent page scroll while interacting with the dock.
+    e.preventDefault();
+  };
+
+  const moveTouchGesture: React.PointerEventHandler<HTMLDivElement> = (e) => {
+    if (!gestureStartedOnItemRef.current) return;
+    if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
+    mouseX.set(e.pageX);
+    e.preventDefault();
+  };
+
+  const endTouchGesture: React.PointerEventHandler<HTMLDivElement> = (e) => {
+    if (!gestureStartedOnItemRef.current) return;
+    if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
+
+    gestureStartedOnItemRef.current = false;
+    setTouchGestureActive(false);
+
+    const container = containerRef.current;
+    const anchors = container?.querySelectorAll<HTMLAnchorElement>(
+      'a[data-dock-item="true"]',
+    );
+    if (!anchors || anchors.length === 0) return;
+
+    const x = e.clientX;
+    let best: { href: string; dist: number } | null = null;
+
+    anchors.forEach((a) => {
+      const rect = a.getBoundingClientRect();
+      const center = rect.left + rect.width / 2;
+      const dist = Math.abs(x - center);
+      const href = a.getAttribute("href") ?? "";
+      if (!href) return;
+      if (!best || dist < best.dist) best = { href, dist };
+    });
+
+    if (best) {
+      router.push(best.href);
+    }
+
+    // Reset the dock sizing back to default after releasing the gesture,
+    // otherwise the last-touched icon stays expanded.
+    mouseX.set(Infinity);
+  };
+
   return (
-    <motion.div
-      onMouseMove={(e) => mouseX.set(e.pageX)}
-      onMouseLeave={() => mouseX.set(Infinity)}
-      className={cn(
-        "mx-auto hidden h-16 items-end gap-4 rounded-2xl bg-gray-50 px-4 pb-3 dark:bg-neutral-900 md:flex",
-        className,
-      )}
-    >
-      {items.map((item) => (
-        <IconContainer mouseX={mouseX} key={getItemLabel(item)} {...item} />
-      ))}
-    </motion.div>
+    <DockTouchContext.Provider value={ctxValue}>
+      <motion.div
+        ref={containerRef}
+        onMouseMove={(e) => mouseX.set(e.pageX)}
+        onMouseLeave={() => mouseX.set(Infinity)}
+        onPointerDown={startTouchGesture}
+        onPointerMove={moveTouchGesture}
+        onPointerUp={endTouchGesture}
+        onPointerCancel={endTouchGesture}
+        className={cn(
+          "mx-auto hidden h-16 items-end gap-4 rounded-2xl bg-gray-50 px-4 pb-3 dark:bg-neutral-900 md:flex",
+          // Allow "slide across icons" without triggering browser scroll/zoom.
+          "touch-none select-none",
+          className,
+        )}
+      >
+        {items.map((item) => (
+          <IconContainer mouseX={mouseX} key={getItemLabel(item)} {...item} />
+        ))}
+      </motion.div>
+    </DockTouchContext.Provider>
   );
 };
 
@@ -177,6 +261,7 @@ function IconContainer({
 
   const [hovered, setHovered] = useState(false);
   const resolvedLabel = label ?? title ?? "";
+  const touchCtx = useContext(DockTouchContext);
 
   const handlePointerUp: React.PointerEventHandler<HTMLAnchorElement> = (e) => {
     // On iOS Safari, tapped links can retain :focus until the next tap,
@@ -187,11 +272,21 @@ function IconContainer({
     }
   };
 
+  const handleClick: React.MouseEventHandler<HTMLAnchorElement> = (e) => {
+    // When we're doing a touch slide gesture, navigation is handled by the parent
+    // on pointer release. Prevent the anchor's default click to avoid double-nav.
+    if (touchCtx?.touchGestureActive) {
+      e.preventDefault();
+    }
+  };
+
   return (
     <Link
       href={href}
       aria-label={resolvedLabel}
       onPointerUp={handlePointerUp}
+      onClick={handleClick}
+      data-dock-item="true"
       className={cn(
         "inline-flex rounded-full outline-none",
         // Remove iOS tap highlight; prefer explicit active styles.
