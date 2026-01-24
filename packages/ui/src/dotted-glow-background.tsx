@@ -159,7 +159,14 @@ export const DottedGlowBackground = ({
     let raf = 0;
     let stopped = false;
 
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const prefersReducedMotion =
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    const isCoarsePointer = window.matchMedia?.("(pointer: coarse)").matches ?? false;
+    const shouldAnimate = !(prefersReducedMotion || isCoarsePointer);
+
+    // iOS Safari is especially sensitive to huge canvas surfaces at high DPR.
+    const rawDpr = Math.max(1, window.devicePixelRatio || 1);
+    const dpr = Math.min(rawDpr, 1.5);
 
     const resize = () => {
       const { width, height } = container.getBoundingClientRect();
@@ -207,6 +214,7 @@ export const DottedGlowBackground = ({
 
     const draw = (now: number) => {
       if (stopped) return;
+      // Keep `last` advancing even if we render a single frame.
       const dt = (now - last) / 1000; // seconds
       last = now;
       const { width, height } = container.getBoundingClientRect();
@@ -247,7 +255,7 @@ export const DottedGlowBackground = ({
         const a = 0.25 + 0.55 * lin; // 0.25..0.8 linearly
 
         // draw glow when bright
-        if (a > 0.6) {
+        if (shouldAnimate && a > 0.6) {
           const glow = (a - 0.6) / 0.4; // 0..1
           ctx.shadowColor = resolvedGlowColor;
           ctx.shadowBlur = 6 * glow;
@@ -263,7 +271,9 @@ export const DottedGlowBackground = ({
       }
       ctx.restore();
 
-      raf = requestAnimationFrame(draw);
+      if (shouldAnimate) {
+        raf = requestAnimationFrame(draw);
+      }
     };
 
     const handleResize = () => {
