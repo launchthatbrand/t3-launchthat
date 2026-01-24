@@ -1406,6 +1406,45 @@ export type Mounts = {
           userId: string;
         }>
       >;
+      listLatestForSymbol: FunctionReference<
+        "query",
+        "public",
+        {
+          limit?: number;
+          organizationId: string;
+          symbol: string;
+          userId: string;
+        },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          accountId: string;
+          avgEntryPrice?: number;
+          closedAt?: number;
+          connectionId: string;
+          createdAt: number;
+          direction: "long" | "short";
+          discordChannelId?: string;
+          discordChannelKind?: "mentors" | "members";
+          discordLastSyncedAt?: number;
+          discordMessageId?: string;
+          fees?: number;
+          instrumentId?: string;
+          lastExecutionAt?: number;
+          lastProcessedExecutionId?: string;
+          netQty: number;
+          openedAt: number;
+          organizationId: string;
+          positionId?: string;
+          realizedPnl?: number;
+          status: "open" | "closed";
+          symbol: string;
+          tags?: Array<string>;
+          thesis?: string;
+          updatedAt: number;
+          userId: string;
+        }>
+      >;
     };
   };
   tradingPlans: {
@@ -1415,6 +1454,12 @@ export type Mounts = {
         "public",
         { organizationId: string; planId: string; userId: string },
         null
+      >;
+      createOrgTradingPlanFromTemplate: FunctionReference<
+        "mutation",
+        "public",
+        { createdByUserId: string; name?: string; organizationId: string },
+        string
       >;
       createTradingPlanFromTemplate: FunctionReference<
         "mutation",
@@ -1469,6 +1514,111 @@ export type Mounts = {
           version: string;
         } | null
       >;
+      getMyOrgTradingPlan: FunctionReference<
+        "query",
+        "public",
+        { organizationId: string; userId: string },
+        {
+          _creationTime: number;
+          _id: string;
+          archivedAt?: number;
+          createdAt: number;
+          createdByUserId: string;
+          kpis: {
+            adherencePct: number;
+            avgRiskPerTradePct7d: number;
+            journalCompliancePct: number;
+            sessionDisciplinePct7d: number;
+            violations7d: number;
+          };
+          markets: Array<string>;
+          name: string;
+          organizationId: string;
+          risk: {
+            maxDailyLossPct: number;
+            maxOpenPositions: number;
+            maxRiskPerTradePct: number;
+            maxTradesPerDay: number;
+            maxWeeklyLossPct: number;
+          };
+          rules: Array<{
+            category: "Entry" | "Risk" | "Exit" | "Process" | "Psychology";
+            description: string;
+            id: string;
+            severity: "hard" | "soft";
+            title: string;
+          }>;
+          sessions: Array<{
+            days: Array<string>;
+            end: string;
+            id: string;
+            label: string;
+            start: string;
+            timezone: string;
+          }>;
+          strategySummary: string;
+          updatedAt: number;
+          version: string;
+        } | null
+      >;
+      getOrgTradingPlan: FunctionReference<
+        "query",
+        "public",
+        { organizationId: string; planId: string },
+        {
+          _creationTime: number;
+          _id: string;
+          archivedAt?: number;
+          createdAt: number;
+          createdByUserId: string;
+          kpis: {
+            adherencePct: number;
+            avgRiskPerTradePct7d: number;
+            journalCompliancePct: number;
+            sessionDisciplinePct7d: number;
+            violations7d: number;
+          };
+          markets: Array<string>;
+          name: string;
+          organizationId: string;
+          risk: {
+            maxDailyLossPct: number;
+            maxOpenPositions: number;
+            maxRiskPerTradePct: number;
+            maxTradesPerDay: number;
+            maxWeeklyLossPct: number;
+          };
+          rules: Array<{
+            category: "Entry" | "Risk" | "Exit" | "Process" | "Psychology";
+            description: string;
+            id: string;
+            severity: "hard" | "soft";
+            title: string;
+          }>;
+          sessions: Array<{
+            days: Array<string>;
+            end: string;
+            id: string;
+            label: string;
+            start: string;
+            timezone: string;
+          }>;
+          strategySummary: string;
+          updatedAt: number;
+          version: string;
+        } | null
+      >;
+      getOrgTradingPlanPolicy: FunctionReference<
+        "query",
+        "public",
+        { organizationId: string },
+        {
+          allowedPlanIds: Array<string>;
+          forcedPlanId: string | null;
+          updatedAt: number | null;
+          updatedByUserId: string | null;
+        }
+      >;
       getTradingPlan: FunctionReference<
         "query",
         "public",
@@ -1516,6 +1666,19 @@ export type Mounts = {
           version: string;
         } | null
       >;
+      listOrgTradingPlans: FunctionReference<
+        "query",
+        "public",
+        { includeArchived?: boolean; limit?: number; organizationId: string },
+        Array<{
+          _id: string;
+          archivedAt?: number;
+          createdAt: number;
+          name: string;
+          updatedAt: number;
+          version: string;
+        }>
+      >;
       listTradingPlans: FunctionReference<
         "query",
         "public",
@@ -1538,6 +1701,23 @@ export type Mounts = {
         "mutation",
         "public",
         { organizationId: string; planId: string; userId: string },
+        null
+      >;
+      setMyOrgTradingPlan: FunctionReference<
+        "mutation",
+        "public",
+        { organizationId: string; planId: string; userId: string },
+        null
+      >;
+      setOrgTradingPlanPolicy: FunctionReference<
+        "mutation",
+        "public",
+        {
+          allowedPlanIds: Array<string>;
+          forcedPlanId?: string | null;
+          organizationId: string;
+          updatedByUserId: string;
+        },
         null
       >;
     };

@@ -8,7 +8,11 @@ import { TraderLaunchpadAccountTab } from "launchthat-plugin-traderlaunchpad/fro
 export default function JournalDashboardPage() {
   return (
     <TraderLaunchpadAccountTab
-      api={{ queries: api.traderlaunchpad.queries, actions: api.traderlaunchpad.actions }}
+      api={{
+        queries: api.traderlaunchpad.queries,
+        mutations: api.traderlaunchpad.mutations,
+        actions: api.traderlaunchpad.actions,
+      }}
       initialTab="dashboard"
     />
   );

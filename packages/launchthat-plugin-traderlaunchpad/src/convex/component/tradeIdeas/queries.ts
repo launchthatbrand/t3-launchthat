@@ -189,6 +189,61 @@ export const getById = query({
   },
 });
 
+export const listLatestForSymbol = query({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    symbol: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("tradeIdeaGroups"),
+      _creationTime: v.number(),
+      organizationId: v.string(),
+      userId: v.string(),
+      connectionId: v.id("tradelockerConnections"),
+      accountId: v.string(),
+      positionId: v.optional(v.string()),
+      instrumentId: v.optional(v.string()),
+      symbol: v.string(),
+      status: v.union(v.literal("open"), v.literal("closed")),
+      direction: v.union(v.literal("long"), v.literal("short")),
+      openedAt: v.number(),
+      closedAt: v.optional(v.number()),
+      netQty: v.number(),
+      avgEntryPrice: v.optional(v.number()),
+      realizedPnl: v.optional(v.number()),
+      fees: v.optional(v.number()),
+      lastExecutionAt: v.optional(v.number()),
+      lastProcessedExecutionId: v.optional(v.string()),
+      thesis: v.optional(v.string()),
+      tags: v.optional(v.array(v.string())),
+      discordChannelKind: v.optional(v.union(v.literal("mentors"), v.literal("members"))),
+      discordChannelId: v.optional(v.string()),
+      discordMessageId: v.optional(v.string()),
+      discordLastSyncedAt: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(Number(args.limit ?? 50), 200));
+    const symbol = String(args.symbol ?? "").trim().toUpperCase();
+    if (!symbol) return [];
+
+    const rows = await ctx.db
+      .query("tradeIdeaGroups")
+      .withIndex("by_org_user_symbol_openedAt", (q: any) =>
+        q.eq("organizationId", args.organizationId).eq("userId", args.userId).eq("symbol", symbol),
+      )
+      .order("desc")
+      .take(limit);
+
+    return rows;
+  },
+});
+
 export const listEventsForGroup = query({
   args: {
     organizationId: v.string(),

@@ -1,0 +1,106 @@
+"use client";
+
+import React from "react";
+import { useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
+
+import { api } from "@convex-config/_generated/api";
+
+interface MembershipRow extends Record<string, unknown> {
+  _id: string;
+  name: string;
+  slug: string;
+  customDomain: string | null;
+  userRole: string;
+}
+
+export default function AdminSettingsOrganizationsPage() {
+  const router = useRouter();
+  const rows = useQuery(api.coreTenant.organizations.myOrganizations, {}) as
+    | MembershipRow[]
+    | undefined;
+
+  const columns = React.useMemo<ColumnDefinition<MembershipRow>[]>(() => {
+    return [
+      {
+        id: "name",
+        header: "Organization",
+        accessorKey: "name",
+        cell: (row: MembershipRow) => (
+          <div className="space-y-1">
+            <div className="font-medium">{row.name}</div>
+            <div className="text-muted-foreground font-mono text-xs">/{row.slug}</div>
+          </div>
+        ),
+        sortable: true,
+      },
+      {
+        id: "role",
+        header: "Role",
+        accessorKey: "userRole",
+        cell: (row: MembershipRow) => (
+          <span className="text-muted-foreground text-sm">{row.userRole}</span>
+        ),
+        sortable: true,
+      },
+      {
+        id: "domain",
+        header: "Domain",
+        accessorKey: "customDomain",
+        cell: (row: MembershipRow) => (
+          <span className="text-muted-foreground text-sm">{row.customDomain ?? "—"}</span>
+        ),
+        sortable: true,
+      },
+    ];
+  }, []);
+
+  const entityActions = React.useMemo<EntityAction<MembershipRow>[]>(() => {
+    return [
+      {
+        id: "go",
+        label: "Open",
+        variant: "outline",
+        onClick: (row: MembershipRow) => {
+          router.push(`/admin/settings/organizations/${encodeURIComponent(row._id)}`);
+        },
+      },
+    ];
+  }, [router]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Organizations</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <EntityList<MembershipRow>
+          data={Array.isArray(rows) ? rows : []}
+          columns={columns}
+          isLoading={rows === undefined}
+          defaultViewMode="list"
+          viewModes={["list"]}
+          enableSearch={true}
+          entityActions={entityActions}
+          onRowClick={(row: MembershipRow) => {
+            router.push(`/admin/settings/organizations/${encodeURIComponent(row._id)}`);
+          }}
+          getRowId={(row: MembershipRow) => row._id}
+          emptyState={
+            <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed">
+              <div className="text-lg font-medium">No organizations</div>
+              <div className="text-muted-foreground mt-1 text-sm">
+                You’re not currently a member of any organizations.
+              </div>
+            </div>
+          }
+        />
+      </CardContent>
+    </Card>
+  );
+}
+

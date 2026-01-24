@@ -26,6 +26,7 @@ import {
   demoCalendarDailyStats,
   demoDashboardStats,
   demoInsights,
+  demoOrgAggregateTradeIdeaAnalyticsSummary,
   demoReviewTrades,
 } from "@acme/demo-data";
 import { useAction, useConvexAuth, useQuery } from "convex/react";
@@ -47,6 +48,7 @@ import { useOnboardingStatus } from "~/lib/onboarding/getOnboardingStatus";
 import { useTradingCalendarStore } from "~/stores/tradingCalendarStore";
 import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
 import { useActiveAccount } from "~/components/accounts/ActiveAccountProvider";
+import { useTenant } from "~/context/TenantContext";
 
 function TooltipIcon({
   title,
@@ -229,6 +231,8 @@ export default function AdminDashboardPage() {
   const activeAccount = useActiveAccount();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const shouldQuery = isAuthenticated && !authLoading;
+  const tenant = useTenant();
+  const isOrgMode = Boolean(tenant && tenant.slug !== "platform");
 
   const onboarding = useOnboardingStatus();
   const [isDismissed, setIsDismissed] = React.useState(false);
@@ -282,6 +286,44 @@ export default function AdminDashboardPage() {
       reviewStatus: "todo" | "reviewed";
     }[]
     | undefined;
+
+  const orgAggregateSummaryLive = useQuery(
+    // NOTE: typed as any until Convex codegen runs.
+    (api as unknown as any).traderlaunchpad.queries.getOrgTradeIdeaAnalyticsSummary,
+    shouldQuery && isLive && isOrgMode
+      ? {
+          organizationId: tenant?._id,
+          limitPerUser: 200,
+          maxMembers: 100,
+          accountId: activeAccount.selected?.accountId,
+        }
+      : "skip",
+  ) as
+    | {
+      sampleSize: number;
+      closedTrades: number;
+      openTrades: number;
+      totalFees: number;
+      totalPnl: number;
+      memberCountTotal: number;
+      memberCountConsidered: number;
+      isTruncated: boolean;
+    }
+    | null
+    | undefined;
+
+  const orgAggregateSummary = isLive
+    ? orgAggregateSummaryLive
+    : (demoOrgAggregateTradeIdeaAnalyticsSummary as unknown as {
+        sampleSize: number;
+        closedTrades: number;
+        openTrades: number;
+        totalFees: number;
+        totalPnl: number;
+        memberCountTotal: number;
+        memberCountConsidered: number;
+        isTruncated: boolean;
+      });
 
   const liveReviewTrades: ReviewTradeRow[] = React.useMemo(() => {
     const rows = Array.isArray(recentClosed) ? recentClosed : [];
@@ -531,6 +573,53 @@ export default function AdminDashboardPage() {
           </Button>
         </div>
       </div>
+
+      {isOrgMode ? (
+        <Card className="border-white/10 bg-black/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Organization performance</CardTitle>
+            <CardDescription className="text-white/60">
+              {isLive
+                ? "Group totals across members in this organization."
+                : "Demo org totals (100 members) for previews/testing."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {orgAggregateSummary === undefined ? (
+              <div className="text-white/60 text-sm">Loading organization metrics…</div>
+            ) : orgAggregateSummary === null ? (
+              <div className="text-white/60 text-sm">
+                You don’t have access to organization totals.
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div className="text-white/60 text-xs">Total PnL (group)</div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {Number.isFinite(orgAggregateSummary.totalPnl)
+                      ? orgAggregateSummary.totalPnl.toFixed(2)
+                      : "—"}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div className="text-white/60 text-xs">Open trades (group)</div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {Number.isFinite(orgAggregateSummary.openTrades)
+                      ? orgAggregateSummary.openTrades
+                      : "—"}
+                  </div>
+                </div>
+                {orgAggregateSummary.isTruncated ? (
+                  <div className="sm:col-span-2 text-white/50 text-xs">
+                    Showing totals for {orgAggregateSummary.memberCountConsidered} of{" "}
+                    {orgAggregateSummary.memberCountTotal} members (truncated for performance).
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {!isDismissed && !onboarding.isComplete ? (
         <Card className="py-2 relative overflow-hidden border-orange-500/20 bg-linear-to-br from-orange-500/10 to-transparent">

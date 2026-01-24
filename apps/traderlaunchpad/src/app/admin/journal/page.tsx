@@ -7,9 +7,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
 import { demoCalendarDailyStats, demoDashboardStats, demoReviewTrades } from "@acme/demo-data";
 import { useConvexAuth, useQuery } from "convex/react";
 
+import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
+import type { ColumnDefinition } from "@acme/ui/entity-list/types";
 import { Calendar as DayCalendar } from "@acme/ui/calendar";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import Link from "next/link";
 import React from "react";
 import { TradingCalendarPanel } from "~/components/dashboard/TradingCalendarPanel";
@@ -18,9 +21,10 @@ import { api } from "@convex-config/_generated/api";
 import { cn } from "@acme/ui";
 import { createPortal } from "react-dom";
 import { format as formatDate } from "date-fns";
-import { useDataMode } from "~/components/dataMode/DataModeProvider";
-import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
 import { useActiveAccount } from "~/components/accounts/ActiveAccountProvider";
+import { useDataMode } from "~/components/dataMode/DataModeProvider";
+import { useRouter } from "next/navigation";
+import { useTenant } from "~/context/TenantContext";
 import { useTradingCalendarStore } from "~/stores/tradingCalendarStore";
 
 type LiveReviewRow = {
@@ -42,6 +46,13 @@ type DemoLikeReviewTrade = {
   pnl: number;
   tradeDate: string; // YYYY-MM-DD
 };
+
+interface InstrumentRow extends Record<string, unknown> {
+  symbol: string;
+  tradeCount: number;
+  totalPnl: number;
+  lastClosedAt: number;
+}
 
 const toDateKey = (tsMs: number): string => {
   const d = new Date(tsMs);
@@ -69,6 +80,7 @@ const computeStreakFromDailyStats = (dailyStats: Array<{ date: string }>): numbe
   return streak;
 };
 
+
 function TooltipIcon({
   title,
   description,
@@ -82,6 +94,7 @@ function TooltipIcon({
     left: number;
   } | null>(null);
   const triggerRef = React.useRef<HTMLDivElement | null>(null);
+
 
   const updateCoords = () => {
     if (!triggerRef.current) return;
@@ -140,6 +153,8 @@ function TooltipIcon({
 }
 
 export default function AdminJournalDashboardPage() {
+  const tenant = useTenant();
+  const isOrgMode = Boolean(tenant && tenant.slug !== "platform");
   const dataMode = useDataMode();
   const activeAccount = useActiveAccount();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
@@ -175,6 +190,101 @@ export default function AdminJournalDashboardPage() {
         };
       });
   }, [dataMode.effectiveMode, liveRowsRaw]);
+
+  const liveMySymbolStats = useQuery(
+    api.traderlaunchpad.queries.listMySymbolStats,
+    shouldQuery && dataMode.effectiveMode === "live" && !isOrgMode
+      ? { limit: 1500, accountId: activeAccount.selected?.accountId }
+      : "skip",
+  ) as InstrumentRow[] | undefined;
+
+  const liveOrgSymbolStats = useQuery(
+    api.traderlaunchpad.queries.listOrgSymbolStats,
+    shouldQuery && dataMode.effectiveMode === "live" && isOrgMode && tenant
+      ? { organizationId: tenant._id, limitPerUser: 200, maxMembers: 100 }
+      : "skip",
+  ) as
+    | { rows: InstrumentRow[]; memberCountTotal: number; memberCountConsidered: number; isTruncated: boolean }
+    | null
+    | undefined;
+
+  const demoSymbolStats = React.useMemo<InstrumentRow[]>(() => {
+    const map: Record<string, InstrumentRow> = {};
+    for (const t of demoLikeTrades) {
+      const symbol = String(t.symbol ?? "").trim().toUpperCase() || "UNKNOWN";
+      const cur =
+        map[symbol] ??
+        (map[symbol] = { symbol, tradeCount: 0, totalPnl: 0, lastClosedAt: 0 });
+      cur.tradeCount += 1;
+      cur.totalPnl += typeof t.pnl === "number" ? t.pnl : 0;
+    }
+    return Object.values(map);
+  }, [demoLikeTrades]);
+
+  const [instrumentSortBy, setInstrumentSortBy] = React.useState<"mostTraded" | "mostProfitable">(
+    "mostTraded",
+  );
+  const [instrumentSortDir, setInstrumentSortDir] = React.useState<"desc" | "asc">("desc");
+
+  const instrumentRows = React.useMemo<InstrumentRow[]>(() => {
+    const base: InstrumentRow[] =
+      dataMode.effectiveMode === "demo"
+        ? demoSymbolStats
+        : isOrgMode
+          ? Array.isArray(liveOrgSymbolStats?.rows)
+            ? liveOrgSymbolStats.rows
+            : []
+          : Array.isArray(liveMySymbolStats)
+            ? liveMySymbolStats
+            : [];
+
+    const sorted = [...base].sort((a, b) => {
+      const dir = instrumentSortDir === "asc" ? 1 : -1;
+      if (instrumentSortBy === "mostProfitable") {
+        return (a.totalPnl - b.totalPnl) * dir;
+      }
+      return (a.tradeCount - b.tradeCount) * dir;
+    });
+
+    return sorted;
+  }, [dataMode.effectiveMode, demoSymbolStats, instrumentSortBy, instrumentSortDir, isOrgMode, liveMySymbolStats, liveOrgSymbolStats]);
+
+  const instrumentColumns = React.useMemo<ColumnDefinition<InstrumentRow>[]>(() => {
+    return [
+      {
+        id: "symbol",
+        header: "Symbol",
+        accessorKey: "symbol",
+        cell: (r: InstrumentRow) => <div className="font-semibold">{r.symbol}</div>,
+        sortable: true,
+      },
+      {
+        id: "tradeCount",
+        header: "Trades",
+        accessorKey: "tradeCount",
+        cell: (r: InstrumentRow) => (
+          <span className="tabular-nums text-white/80">{r.tradeCount.toLocaleString()}</span>
+        ),
+        sortable: true,
+      },
+      {
+        id: "totalPnl",
+        header: "PnL",
+        accessorKey: "totalPnl",
+        cell: (r: InstrumentRow) => (
+          <span
+            className={cn(
+              "tabular-nums font-medium",
+              r.totalPnl >= 0 ? "text-emerald-300" : "text-rose-300",
+            )}
+          >
+            {r.totalPnl >= 0 ? "+" : "-"}${Math.abs(r.totalPnl).toFixed(0)}
+          </span>
+        ),
+        sortable: true,
+      },
+    ];
+  }, []);
 
   const [openTradeId, setOpenTradeId] = React.useState<string | null>(null);
   const selectedTradeDate = useTradingCalendarStore((state) => state.selectedDate);
@@ -235,6 +345,8 @@ export default function AdminJournalDashboardPage() {
   const tradesForSelectedDate = selectedTradeDate
     ? demoLikeTrades.filter((trade) => trade.tradeDate === selectedTradeDate)
     : demoLikeTrades;
+
+  const router = useRouter();
 
   return (
     <div className="relative animate-in fade-in space-y-8 text-white selection:bg-orange-500/30 duration-500">
@@ -329,6 +441,75 @@ export default function AdminJournalDashboardPage() {
               />
             </div>
           </div>
+
+          <Card className="border-white/10 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base">Trading Instruments</CardTitle>
+                  <div className="mt-1 text-xs text-white/60">
+                    {isOrgMode
+                      ? "Org-wide (members) • Sort by Most Traded / Most Profitable"
+                      : "Your trades • Sort by Most Traded / Most Profitable"}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant={instrumentSortBy === "mostTraded" ? "secondary" : "outline"}
+                    className="h-9 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                    onClick={() => setInstrumentSortBy("mostTraded")}
+                  >
+                    Most Traded
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={instrumentSortBy === "mostProfitable" ? "secondary" : "outline"}
+                    className="h-9 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                    onClick={() => setInstrumentSortBy("mostProfitable")}
+                  >
+                    Most Profitable
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-9 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                    onClick={() => setInstrumentSortDir((d) => (d === "desc" ? "asc" : "desc"))}
+                  >
+                    {instrumentSortDir === "desc" ? "Desc" : "Asc"}
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <EntityList<InstrumentRow>
+                data={instrumentRows}
+                columns={instrumentColumns}
+                isLoading={
+                  dataMode.effectiveMode === "live"
+                    ? isOrgMode
+                      ? liveOrgSymbolStats === undefined
+                      : liveMySymbolStats === undefined
+                    : false
+                }
+                defaultViewMode="list"
+                viewModes={["list"]}
+                enableSearch={true}
+                onRowClick={(r) =>
+                  router.push(`/admin/journal/symbol/${encodeURIComponent(r.symbol)}`)
+                }
+                getRowId={(r: InstrumentRow) => r.symbol}
+                emptyState={
+                  <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-white/10">
+                    <div className="text-lg font-medium text-white">No instruments</div>
+                    <div className="mt-1 text-sm text-white/60">
+                      No trades found to aggregate yet.
+                    </div>
+                  </div>
+                }
+              />
+            </CardContent>
+          </Card>
         </div>
 
         <div className="space-y-8">

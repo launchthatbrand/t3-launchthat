@@ -17,11 +17,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarSeparator,
 } from "@acme/ui/sidebar";
 
-import Image from "next/image";
 import Link from "next/link";
-import { OrgSubdomainSwitcher } from "~/components/organizations/OrgSubdomainSwitcher";
 import { TraderLaunchpadAdminTeamSwitcher } from "~/components/organizations/TraderLaunchpadAdminTeamSwitcher";
 import { usePathname } from "next/navigation";
 
@@ -36,7 +35,7 @@ const NAV_ICON_CLASS =
 // Keep nav icons the same size in both expanded + collapsed (icon) modes.
 const NAV_ICON_SIZE_CLASS = "h-6 w-6";
 
-const navItems: NavItem[] = [
+const primaryNavItems: NavItem[] = [
   {
     label: "Dashboard",
     href: "/admin/dashboard",
@@ -77,6 +76,9 @@ const navItems: NavItem[] = [
       />
     ),
   },
+] as const;
+
+const secondaryNavItems: NavItem[] = [
   {
     label: "Feedback",
     href: "/admin/feedback",
@@ -150,7 +152,7 @@ export default function AdminSidebarDefault() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu className="p-3 gap-2 group-data-[collapsible=icon]:items-center">
-          {navItems.map((item) => {
+          {primaryNavItems.map((item: NavItem) => {
             const isActive =
               item.href === "/admin/dashboard"
                 ? pathname === "/admin/dashboard" || pathname === "/admin"
@@ -165,6 +167,36 @@ export default function AdminSidebarDefault() {
                   size="default"
                   // Default SidebarMenuButton collapses smaller in icon mode; keep it roomy.
                   // Also override the default `[&>svg]:size-4` so icons stay bigger.
+                  className="h-11 rounded-xl text-white/80 hover:bg-white/8 hover:text-white data-[active=true]:bg-orange-500/15 data-[active=true]:text-orange-100 group-data-[collapsible=icon]:size-11! [&>svg]:size-6!"
+                >
+                  <Link
+                    href={item.href}
+                    className="gap-3 font-medium tracking-tight group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0"
+                  >
+                    {item.icon}
+                    <span className="group-data-[collapsible=icon]:hidden">
+                      {item.label}
+                    </span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+
+        <SidebarSeparator className="bg-white/10 w-[90%]!" />
+
+        <SidebarMenu className="p-3 pt-2 gap-2 group-data-[collapsible=icon]:items-center">
+          {secondaryNavItems.map((item: NavItem) => {
+            const isActive = pathname.startsWith(item.href);
+
+            return (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  tooltip={item.label}
+                  isActive={isActive}
+                  size="default"
                   className="h-11 rounded-xl text-white/80 hover:bg-white/8 hover:text-white data-[active=true]:bg-orange-500/15 data-[active=true]:text-orange-100 group-data-[collapsible=icon]:size-11! [&>svg]:size-6!"
                 >
                   <Link

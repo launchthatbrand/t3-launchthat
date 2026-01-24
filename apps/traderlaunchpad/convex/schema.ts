@@ -87,5 +87,21 @@ export default defineSchema({
   })
     .index("by_uploader", ["uploadedByUserId"])
     .index("by_uploader_createdAt", ["uploadedByUserId", "createdAt"]),
+
+  orgUserInvites: defineTable({
+    organizationId: v.string(),
+    email: v.string(),
+    role: v.string(),
+    token: v.string(),
+    createdByUserId: v.string(),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    redeemedAt: v.optional(v.number()),
+    redeemedByUserId: v.optional(v.string()),
+    revokedAt: v.optional(v.number()),
+  })
+    .index("by_org", ["organizationId"])
+    .index("by_token", ["token"])
+    .index("by_expiresAt", ["expiresAt"]),
 });
 

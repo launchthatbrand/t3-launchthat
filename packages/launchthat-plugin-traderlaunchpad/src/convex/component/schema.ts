@@ -74,6 +74,81 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_org_and_user", ["organizationId", "userId"]),
 
+  orgTradingPlans: defineTable({
+    organizationId: v.string(),
+    createdByUserId: v.string(),
+
+    name: v.string(),
+    version: v.string(),
+
+    strategySummary: v.string(),
+    markets: v.array(v.string()),
+    sessions: v.array(
+      v.object({
+        id: v.string(),
+        label: v.string(),
+        timezone: v.string(),
+        days: v.array(v.string()),
+        start: v.string(),
+        end: v.string(),
+      }),
+    ),
+    risk: v.object({
+      maxRiskPerTradePct: v.number(),
+      maxDailyLossPct: v.number(),
+      maxWeeklyLossPct: v.number(),
+      maxOpenPositions: v.number(),
+      maxTradesPerDay: v.number(),
+    }),
+    rules: v.array(
+      v.object({
+        id: v.string(),
+        title: v.string(),
+        description: v.string(),
+        category: v.union(
+          v.literal("Entry"),
+          v.literal("Risk"),
+          v.literal("Exit"),
+          v.literal("Process"),
+          v.literal("Psychology"),
+        ),
+        severity: v.union(v.literal("hard"), v.literal("soft")),
+      }),
+    ),
+    kpis: v.object({
+      adherencePct: v.number(),
+      sessionDisciplinePct7d: v.number(),
+      avgRiskPerTradePct7d: v.number(),
+      journalCompliancePct: v.number(),
+      violations7d: v.number(),
+    }),
+
+    archivedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_and_updatedAt", ["organizationId", "updatedAt"])
+    .index("by_org_and_createdAt", ["organizationId", "createdAt"])
+    .index("by_org_and_createdByUserId", ["organizationId", "createdByUserId"]),
+
+  orgTradingPlanPolicies: defineTable({
+    organizationId: v.string(),
+    allowedPlanIds: v.array(v.id("orgTradingPlans")),
+    forcedPlanId: v.optional(v.id("orgTradingPlans")),
+    updatedAt: v.number(),
+    updatedByUserId: v.string(),
+  }).index("by_org", ["organizationId"]),
+
+  orgTradingPlanAssignments: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+    activePlanId: v.id("orgTradingPlans"),
+    updatedAt: v.number(),
+  })
+    .index("by_org_and_user", ["organizationId", "userId"])
+    .index("by_org_and_plan", ["organizationId", "activePlanId"])
+    .index("by_org_and_updatedAt", ["organizationId", "updatedAt"]),
+
   journalProfiles: defineTable({
     organizationId: v.string(),
     userId: v.string(),

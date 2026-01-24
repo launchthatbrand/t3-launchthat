@@ -1946,6 +1946,45 @@ export declare const components: {
             userId: string;
           }>
         >;
+        listLatestForSymbol: FunctionReference<
+          "query",
+          "internal",
+          {
+            limit?: number;
+            organizationId: string;
+            symbol: string;
+            userId: string;
+          },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            accountId: string;
+            avgEntryPrice?: number;
+            closedAt?: number;
+            connectionId: string;
+            createdAt: number;
+            direction: "long" | "short";
+            discordChannelId?: string;
+            discordChannelKind?: "mentors" | "members";
+            discordLastSyncedAt?: number;
+            discordMessageId?: string;
+            fees?: number;
+            instrumentId?: string;
+            lastExecutionAt?: number;
+            lastProcessedExecutionId?: string;
+            netQty: number;
+            openedAt: number;
+            organizationId: string;
+            positionId?: string;
+            realizedPnl?: number;
+            status: "open" | "closed";
+            symbol: string;
+            tags?: Array<string>;
+            thesis?: string;
+            updatedAt: number;
+            userId: string;
+          }>
+        >;
       };
     };
     tradingPlans: {
@@ -1955,6 +1994,12 @@ export declare const components: {
           "internal",
           { organizationId: string; planId: string; userId: string },
           null
+        >;
+        createOrgTradingPlanFromTemplate: FunctionReference<
+          "mutation",
+          "internal",
+          { createdByUserId: string; name?: string; organizationId: string },
+          string
         >;
         createTradingPlanFromTemplate: FunctionReference<
           "mutation",
@@ -2009,6 +2054,111 @@ export declare const components: {
             version: string;
           } | null
         >;
+        getMyOrgTradingPlan: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; userId: string },
+          {
+            _creationTime: number;
+            _id: string;
+            archivedAt?: number;
+            createdAt: number;
+            createdByUserId: string;
+            kpis: {
+              adherencePct: number;
+              avgRiskPerTradePct7d: number;
+              journalCompliancePct: number;
+              sessionDisciplinePct7d: number;
+              violations7d: number;
+            };
+            markets: Array<string>;
+            name: string;
+            organizationId: string;
+            risk: {
+              maxDailyLossPct: number;
+              maxOpenPositions: number;
+              maxRiskPerTradePct: number;
+              maxTradesPerDay: number;
+              maxWeeklyLossPct: number;
+            };
+            rules: Array<{
+              category: "Entry" | "Risk" | "Exit" | "Process" | "Psychology";
+              description: string;
+              id: string;
+              severity: "hard" | "soft";
+              title: string;
+            }>;
+            sessions: Array<{
+              days: Array<string>;
+              end: string;
+              id: string;
+              label: string;
+              start: string;
+              timezone: string;
+            }>;
+            strategySummary: string;
+            updatedAt: number;
+            version: string;
+          } | null
+        >;
+        getOrgTradingPlan: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; planId: string },
+          {
+            _creationTime: number;
+            _id: string;
+            archivedAt?: number;
+            createdAt: number;
+            createdByUserId: string;
+            kpis: {
+              adherencePct: number;
+              avgRiskPerTradePct7d: number;
+              journalCompliancePct: number;
+              sessionDisciplinePct7d: number;
+              violations7d: number;
+            };
+            markets: Array<string>;
+            name: string;
+            organizationId: string;
+            risk: {
+              maxDailyLossPct: number;
+              maxOpenPositions: number;
+              maxRiskPerTradePct: number;
+              maxTradesPerDay: number;
+              maxWeeklyLossPct: number;
+            };
+            rules: Array<{
+              category: "Entry" | "Risk" | "Exit" | "Process" | "Psychology";
+              description: string;
+              id: string;
+              severity: "hard" | "soft";
+              title: string;
+            }>;
+            sessions: Array<{
+              days: Array<string>;
+              end: string;
+              id: string;
+              label: string;
+              start: string;
+              timezone: string;
+            }>;
+            strategySummary: string;
+            updatedAt: number;
+            version: string;
+          } | null
+        >;
+        getOrgTradingPlanPolicy: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string },
+          {
+            allowedPlanIds: Array<string>;
+            forcedPlanId: string | null;
+            updatedAt: number | null;
+            updatedByUserId: string | null;
+          }
+        >;
         getTradingPlan: FunctionReference<
           "query",
           "internal",
@@ -2056,6 +2206,19 @@ export declare const components: {
             version: string;
           } | null
         >;
+        listOrgTradingPlans: FunctionReference<
+          "query",
+          "internal",
+          { includeArchived?: boolean; limit?: number; organizationId: string },
+          Array<{
+            _id: string;
+            archivedAt?: number;
+            createdAt: number;
+            name: string;
+            updatedAt: number;
+            version: string;
+          }>
+        >;
         listTradingPlans: FunctionReference<
           "query",
           "internal",
@@ -2078,6 +2241,23 @@ export declare const components: {
           "mutation",
           "internal",
           { organizationId: string; planId: string; userId: string },
+          null
+        >;
+        setMyOrgTradingPlan: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; planId: string; userId: string },
+          null
+        >;
+        setOrgTradingPlanPolicy: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            allowedPlanIds: Array<string>;
+            forcedPlanId?: string | null;
+            organizationId: string;
+            updatedByUserId: string;
+          },
           null
         >;
       };

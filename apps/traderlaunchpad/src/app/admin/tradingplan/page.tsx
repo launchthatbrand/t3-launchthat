@@ -25,8 +25,13 @@ import { Progress } from "@acme/ui/progress";
 import React from "react";
 import { api } from "@convex-config/_generated/api";
 import { cn } from "@acme/ui";
-import { demoReviewTrades } from "@acme/demo-data";
+import {
+  demoOrgTradingPlanCumulativeSummary,
+  demoOrgTradingPlanLeaderboard,
+  demoReviewTrades,
+} from "@acme/demo-data";
 import { useDataMode } from "~/components/dataMode/DataModeProvider";
+import { useTenant } from "~/context/TenantContext";
 
 interface TradingPlanRule {
   id: string;
@@ -176,6 +181,17 @@ const toneForCategory: Record<
 };
 
 export default function AdminTradingPlanPage() {
+  const tenant = useTenant();
+  const isOrgMode = Boolean(tenant && tenant.slug !== "platform");
+
+  if (isOrgMode && tenant) {
+    return <OrgTradingPlanPage organizationId={tenant._id} />;
+  }
+
+  return <PersonalTradingPlanPage />;
+}
+
+function PersonalTradingPlanPage() {
   const dataMode = useDataMode();
   const isLive = dataMode.effectiveMode === "live";
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
@@ -775,6 +791,557 @@ export default function AdminTradingPlanPage() {
                   Back to platform dashboard <ArrowUpRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatCurrency(value: number): string {
+  const n = Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(n);
+}
+
+function formatNumber(value: number): string {
+  const n = Number.isFinite(value) ? value : 0;
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
+}
+
+function OrgTradingPlanPage(props: { organizationId: string }) {
+  const dataMode = useDataMode();
+  const isLive = dataMode.effectiveMode === "live";
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const shouldQuery = isAuthenticated && !authLoading;
+
+  const myOrganizations = useQuery(
+    api.coreTenant.organizations.myOrganizations,
+    shouldQuery ? {} : "skip",
+  ) as
+    | { _id: string; name: string; slug: string; userRole: string; customDomain: string | null }[]
+    | undefined;
+
+  const myRole =
+    myOrganizations?.find((o) => String(o._id) === String(props.organizationId))?.userRole ?? "";
+  const isOrgAdmin = myRole === "owner" || myRole === "admin";
+
+  const orgPlans = useQuery(
+    api.traderlaunchpad.queries.listOrgTradingPlans,
+    shouldQuery && isLive
+      ? { organizationId: props.organizationId, includeArchived: false, limit: 50 }
+      : "skip",
+  ) as TradingPlanListRow[] | undefined;
+
+  const orgPolicy = useQuery(
+    api.traderlaunchpad.queries.getOrgTradingPlanPolicy,
+    shouldQuery && isLive ? { organizationId: props.organizationId } : "skip",
+  ) as
+    | {
+        allowedPlanIds: string[];
+        forcedPlanId: string | null;
+        updatedAt: number | null;
+        updatedByUserId: string | null;
+      }
+    | undefined;
+
+  const myOrgPlan = useQuery(
+    api.traderlaunchpad.queries.getMyOrgTradingPlan,
+    shouldQuery && isLive ? { organizationId: props.organizationId } : "skip",
+  ) as TradingPlan | null | undefined;
+
+  const orgSummaryLive = useQuery(
+    api.traderlaunchpad.queries.getOrgTradingPlanCumulativeSummary,
+    shouldQuery && isLive ? { organizationId: props.organizationId } : "skip",
+  ) as
+    | {
+        sampleSize: number;
+        closedTrades: number;
+        openTrades: number;
+        totalFees: number;
+        totalPnl: number;
+        memberCountTotal: number;
+        memberCountEligible: number;
+        memberCountConsidered: number;
+        isTruncated: boolean;
+      }
+    | null
+    | undefined;
+
+  const leaderboardLive = useQuery(
+    api.traderlaunchpad.queries.getOrgTradingPlanLeaderboard,
+    shouldQuery && isLive ? { organizationId: props.organizationId } : "skip",
+  ) as
+    | {
+        userId: string;
+        name: string | null;
+        image: string | null;
+        planId: string;
+        sampleSize: number;
+        closedTrades: number;
+        openTrades: number;
+        totalFees: number;
+        totalPnl: number;
+        rank: number;
+        percentile: number;
+        isViewer: boolean;
+      }[]
+    | undefined;
+
+  interface OrgTradingPlanCumulativeSummary {
+    sampleSize: number;
+    closedTrades: number;
+    openTrades: number;
+    totalFees: number;
+    totalPnl: number;
+    memberCountTotal: number;
+    memberCountEligible: number;
+    memberCountConsidered: number;
+    isTruncated: boolean;
+  }
+
+  interface OrgTradingPlanLeaderboardRow {
+    userId: string;
+    name: string | null;
+    image: string | null;
+    planId: string;
+    sampleSize: number;
+    closedTrades: number;
+    openTrades: number;
+    totalFees: number;
+    totalPnl: number;
+    rank: number;
+    percentile: number;
+    isViewer: boolean;
+  }
+
+  const createOrgPlan = useMutation(api.traderlaunchpad.mutations.createOrgTradingPlanFromTemplate);
+  const setOrgPolicy = useMutation(api.traderlaunchpad.mutations.setOrgTradingPlanPolicy);
+  const setMyOrgPlan = useMutation(api.traderlaunchpad.mutations.setMyOrgTradingPlan);
+
+  const [createOpen, setCreateOpen] = React.useState(false);
+  const [newPlanName, setNewPlanName] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+
+  const demoOrgPlans: TradingPlanListRow[] = [
+    {
+      _id: "demo-org-plan-1",
+      name: "WSA Core Plan (Forced)",
+      version: "v1.0",
+      createdAt: Date.now() - 1000 * 60 * 60 * 24 * 45,
+      updatedAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
+    },
+    {
+      _id: "demo-org-plan-2",
+      name: "WSA Plan (Scalping Variant)",
+      version: "v1.0",
+      createdAt: Date.now() - 1000 * 60 * 60 * 24 * 30,
+      updatedAt: Date.now() - 1000 * 60 * 60 * 24 * 7,
+    },
+  ];
+
+  const demoPolicy = {
+    allowedPlanIds: ["demo-org-plan-1", "demo-org-plan-2"],
+    forcedPlanId: "demo-org-plan-1",
+    updatedAt: Date.now() - 1000 * 60 * 60 * 4,
+    updatedByUserId: "demo-admin",
+  } as const;
+
+  const demoMyOrgPlan: TradingPlan = { ...DEMO_PLAN, _id: "demo-org-plan-1" };
+
+  const effectiveOrgPlans: TradingPlanListRow[] = isLive ? (orgPlans ?? []) : demoOrgPlans;
+  const effectivePolicy = isLive ? orgPolicy : demoPolicy;
+  const effectiveMyOrgPlan: TradingPlan | null = isLive ? (myOrgPlan ?? null) : demoMyOrgPlan;
+  const demoSummary =
+    demoOrgTradingPlanCumulativeSummary as unknown as OrgTradingPlanCumulativeSummary;
+  const effectiveOrgSummary: OrgTradingPlanCumulativeSummary | null | undefined = isLive
+    ? orgSummaryLive
+    : demoSummary;
+  const demoLeaderboard =
+    demoOrgTradingPlanLeaderboard as unknown as OrgTradingPlanLeaderboardRow[];
+  const effectiveLeaderboard: OrgTradingPlanLeaderboardRow[] | undefined = isLive
+    ? leaderboardLive
+    : demoLeaderboard;
+
+  const allowedPlanIds = effectivePolicy?.allowedPlanIds ?? [];
+  const forcedPlanId = effectivePolicy?.forcedPlanId ?? null;
+
+  const canSelectPlan = !forcedPlanId;
+
+  const handleToggleAllowed = async (planId: string) => {
+    if (!isOrgAdmin) return;
+    if (!isLive) return;
+    if (!orgPolicy) return;
+    if (saving) return;
+
+    const next = new Set(allowedPlanIds);
+    if (next.has(planId)) next.delete(planId);
+    else next.add(planId);
+
+    const nextIds = Array.from(next).slice(0, 2);
+
+    // If forced is set but removed from allowed, clear forced.
+    const nextForced =
+      forcedPlanId && nextIds.includes(forcedPlanId) ? forcedPlanId : null;
+
+    setSaving(true);
+    try {
+      await setOrgPolicy({
+        organizationId: props.organizationId,
+        allowedPlanIds: nextIds,
+        forcedPlanId: nextForced,
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSetForced = async (planIdOrNull: string | null) => {
+    if (!isOrgAdmin) return;
+    if (!isLive) return;
+    if (saving) return;
+
+    // If forcing a plan that isn't currently allowed, allowed becomes just that plan.
+    const nextAllowed =
+      planIdOrNull && !allowedPlanIds.includes(planIdOrNull)
+        ? [planIdOrNull]
+        : allowedPlanIds.slice(0, 2);
+
+    setSaving(true);
+    try {
+      await setOrgPolicy({
+        organizationId: props.organizationId,
+        allowedPlanIds: nextAllowed,
+        forcedPlanId: planIdOrNull,
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCreateOrgPlan = async () => {
+    if (!isOrgAdmin) return;
+    if (!isLive) return;
+    if (saving) return;
+    setSaving(true);
+    try {
+      await createOrgPlan({
+        organizationId: props.organizationId,
+        name: newPlanName.trim() || undefined,
+      });
+      setNewPlanName("");
+      setCreateOpen(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSelectMyPlan = async (planId: string) => {
+    if (!canSelectPlan) return;
+    if (!isLive) return;
+    if (saving) return;
+    setSaving(true);
+    try {
+      await setMyOrgPlan({ organizationId: props.organizationId, planId });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!shouldQuery) {
+    return (
+      <div className="container py-10">
+        <Card className="border-white/10 bg-white/3">
+          <CardHeader>
+            <CardTitle>Organization trading plans</CardTitle>
+            <CardDescription className="text-white/60">
+              Sign in to view organization trading plans.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container py-10">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-white">Organization trading plans</h1>
+          <p className="mt-1 text-sm text-white/60">
+            Admins can approve 1–2 plans for members. Org analytics on this page only considers
+            members assigned to approved plan(s).
+          </p>
+        </div>
+
+        {isOrgAdmin ? (
+          <div className="flex items-center gap-2">
+            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+              <DialogTrigger asChild>
+                <Button className="border-0 bg-orange-600 text-white hover:bg-orange-700">
+                  Create org plan
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="border-white/10 bg-black/90 text-white">
+                <DialogHeader>
+                  <DialogTitle>Create organization trading plan</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-2">
+                  <Label htmlFor="orgPlanName" className="text-white/70">
+                    Name
+                  </Label>
+                  <Input
+                    id="orgPlanName"
+                    value={newPlanName}
+                    onChange={(e) => setNewPlanName(e.target.value)}
+                    placeholder="e.g. WSA Futures Plan v1"
+                    className="border-white/10 bg-black/50 text-white placeholder:text-white/40"
+                  />
+                  <div className="text-xs text-white/50">
+                    Creates from the default template (we’ll add a full editor next).
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                    onClick={() => setCreateOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    className="border-0 bg-orange-600 text-white hover:bg-orange-700"
+                    disabled={saving}
+                    onClick={handleCreateOrgPlan}
+                  >
+                    Create
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Approved plans</CardTitle>
+              <CardDescription className="text-white/60">
+                {forcedPlanId
+                  ? "A forced plan is enabled. Members cannot choose a different plan."
+                  : "Members can choose from the org-approved plans."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {effectiveOrgPlans.length === 0 ? (
+                <div className="rounded-lg border border-white/10 bg-black/30 p-4 text-sm text-white/70">
+                  {isOrgAdmin
+                    ? "No org plans yet. Create one to get started."
+                    : "No org plans have been configured yet."}
+                </div>
+              ) : (
+                effectiveOrgPlans.map((p) => {
+                  const isAllowed = allowedPlanIds.includes(p._id);
+                  const isForced = forcedPlanId === p._id;
+                  const isMine = effectiveMyOrgPlan?._id === p._id;
+
+                  return (
+                    <div
+                      key={p._id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/30 p-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-white">{p.name}</div>
+                        <div className="mt-0.5 text-xs text-white/60">
+                          {p.version} • Updated {new Date(p.updatedAt).toLocaleDateString()}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {isAllowed ? (
+                            <Badge className="bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20">
+                              Approved
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-white/5 text-white/60 hover:bg-white/10">
+                              Not approved
+                            </Badge>
+                          )}
+                          {isForced ? (
+                            <Badge className="bg-orange-500/10 text-orange-200 hover:bg-orange-500/20">
+                              Forced
+                            </Badge>
+                          ) : null}
+                          {isMine ? (
+                            <Badge className="bg-sky-500/10 text-sky-200 hover:bg-sky-500/20">
+                              Your plan
+                            </Badge>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-2">
+                        {isOrgAdmin ? (
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "h-8 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white",
+                              isAllowed ? "border-emerald-500/30" : "",
+                            )}
+                            disabled={saving}
+                            onClick={() => handleToggleAllowed(p._id)}
+                          >
+                            {isAllowed ? "Unapprove" : "Approve"}
+                          </Button>
+                        ) : null}
+
+                        {isOrgAdmin ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="h-8 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                                disabled={saving}
+                              >
+                                Force
+                                <ChevronDown className="ml-2 h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="border-white/10 bg-black/90 text-white">
+                              <DropdownMenuItem
+                                onSelect={() => handleSetForced(null)}
+                                className="cursor-pointer"
+                              >
+                                No forced plan
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator className="bg-white/10" />
+                              <DropdownMenuItem
+                                onSelect={() => handleSetForced(p._id)}
+                                className="cursor-pointer"
+                              >
+                                Force this plan
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : null}
+
+                        <Button
+                          className="h-8 border-0 bg-white/10 text-white hover:bg-white/20"
+                          disabled={saving || !canSelectPlan || !isAllowed}
+                          onClick={() => handleSelectMyPlan(p._id)}
+                        >
+                          Select
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Organization performance (approved plans)</CardTitle>
+              <CardDescription className="text-white/60">
+                Aggregated across members who selected an approved org plan.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLive && orgSummaryLive === undefined ? (
+                <div className="text-sm text-white/60">Loading organization metrics…</div>
+              ) : isLive && orgSummaryLive === null ? (
+                <div className="text-sm text-white/60">
+                  You don’t have access to organization totals.
+                </div>
+              ) : (
+                (() => {
+                  const s = effectiveOrgSummary ?? demoSummary;
+                  return (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+                    <div className="text-xs text-white/60">Total PnL</div>
+                    <div className="mt-1 text-lg font-semibold text-white">
+                      {formatCurrency(s.totalPnl)}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+                    <div className="text-xs text-white/60">Closed trades</div>
+                    <div className="mt-1 text-lg font-semibold text-white">
+                      {formatNumber(s.closedTrades)}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+                    <div className="text-xs text-white/60">Sample size</div>
+                    <div className="mt-1 text-lg font-semibold text-white">
+                      {formatNumber(s.sampleSize)}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+                    <div className="text-xs text-white/60">Members considered</div>
+                    <div className="mt-1 text-lg font-semibold text-white">
+                      {formatNumber(s.memberCountConsidered)} /{" "}
+                      {formatNumber(s.memberCountEligible)}
+                    </div>
+                    {s.isTruncated ? (
+                      <div className="mt-1 text-xs text-white/50">
+                        Truncated to protect performance.
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+                  );
+                })()
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Leaderboard</CardTitle>
+              <CardDescription className="text-white/60">
+                Member performance comparison (approved plans only).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {isLive && leaderboardLive === undefined ? (
+                <div className="text-sm text-white/60">Loading leaderboard…</div>
+              ) : isLive && (leaderboardLive ?? []).length === 0 ? (
+                <div className="text-sm text-white/60">
+                  No eligible members yet. Members must select an approved org plan to appear here.
+                </div>
+              ) : (
+                (effectiveLeaderboard ?? demoLeaderboard).slice(0, 12).map((row) => (
+                  <div
+                    key={row.userId}
+                    className={cn(
+                      "flex items-center justify-between rounded-lg border border-white/10 bg-black/30 p-2.5",
+                      row.isViewer ? "border-sky-500/30 bg-sky-500/5" : "",
+                    )}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <div className="text-xs font-semibold text-white/60">#{row.rank}</div>
+                        <div className="truncate text-sm font-semibold text-white">
+                          {row.name ?? "Member"}
+                        </div>
+                      </div>
+                      <div className="mt-0.5 text-xs text-white/50">
+                        {formatNumber(row.closedTrades)} closed • {row.percentile}% percentile
+                      </div>
+                    </div>
+                    <div className="text-sm font-semibold text-white">
+                      {formatCurrency(row.totalPnl)}
+                    </div>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </div>

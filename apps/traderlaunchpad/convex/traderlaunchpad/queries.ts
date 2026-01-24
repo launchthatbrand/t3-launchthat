@@ -12,6 +12,8 @@ import { paginationOptsValidator } from "convex/server";
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 
+const coreTenantQueries = components.launchthat_core_tenant.queries as any;
+
 const connectionsQueries = components.launchthat_traderlaunchpad.connections
   .queries as any;
 const rawQueries = components.launchthat_traderlaunchpad.raw.queries as any;
@@ -22,12 +24,976 @@ const tradeIdeasQueries = components.launchthat_traderlaunchpad.tradeIdeas
 const tradeIdeasAnalytics = components.launchthat_traderlaunchpad.tradeIdeas
   .analytics as any;
 const tradeIdeasNotes = components.launchthat_traderlaunchpad.tradeIdeas.notes as any;
+const tradeIdeasInternal = components.launchthat_traderlaunchpad.tradeIdeas.internalQueries as any;
 const tradingPlans = components.launchthat_traderlaunchpad.tradingPlans.index as any;
 const pricedataSources = (components as any).launchthat_pricedata?.sources?.queries as
   | any
   | undefined;
 const pricedataInstruments = (components as any).launchthat_pricedata?.instruments
   ?.queries as any | undefined;
+
+const resolveMembershipForOrg = async (ctx: any, organizationId: string, userId: string) => {
+  const memberships = (await ctx.runQuery(coreTenantQueries.listOrganizationsByUserId, {
+    userId,
+  })) as unknown as any[];
+
+  const match =
+    Array.isArray(memberships)
+      ? memberships.find((m) => {
+          const orgId = String((m as any)?.organizationId ?? (m as any)?.org?._id ?? "");
+          return orgId === organizationId;
+        })
+      : null;
+
+  if (!match) return null;
+  if (!Boolean((match as any)?.isActive)) return null;
+
+  const role = String((match as any)?.role ?? "");
+  return { role };
+};
+
+export const listMySymbolTrades = query({
+  args: {
+    symbol: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      tradeIdeaGroupId: v.string(),
+      symbol: v.string(),
+      direction: v.union(v.literal("long"), v.literal("short")),
+      status: v.union(v.literal("open"), v.literal("closed")),
+      openedAt: v.number(),
+      closedAt: v.optional(v.number()),
+      realizedPnl: v.optional(v.number()),
+      fees: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+
+    const symbol = String(args.symbol ?? "").trim().toUpperCase();
+    if (!symbol) return [];
+
+    const limit = Math.max(1, Math.min(Number(args.limit ?? 50), 200));
+
+    const rows = await ctx.runQuery(tradeIdeasQueries.listLatestForSymbol, {
+      organizationId,
+      userId,
+      symbol,
+      limit,
+    });
+
+    return (rows ?? []).map((r: any) => ({
+      tradeIdeaGroupId: String(r._id),
+      symbol: String(r.symbol ?? symbol),
+      direction: r.direction === "short" ? "short" : "long",
+      status: r.status === "closed" ? "closed" : "open",
+      openedAt: Number(r.openedAt ?? 0),
+      closedAt: typeof r.closedAt === "number" ? Number(r.closedAt) : undefined,
+      realizedPnl: typeof r.realizedPnl === "number" ? Number(r.realizedPnl) : undefined,
+      fees: typeof r.fees === "number" ? Number(r.fees) : undefined,
+    }));
+  },
+});
+
+export const listOrgUsers = query({
+  args: {
+    organizationId: v.string(),
+    limit: v.optional(v.number()),
+    includeInactive: v.optional(v.boolean()),
+  },
+  returns: v.array(
+    v.object({
+      userId: v.string(),
+      email: v.union(v.string(), v.null()),
+      name: v.union(v.string(), v.null()),
+      image: v.union(v.string(), v.null()),
+      role: v.string(),
+      isActive: v.boolean(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const viewerUserId = await resolveViewerUserId(ctx);
+    const organizationId = args.organizationId.trim();
+    const membership = await resolveMembershipForOrg(ctx, organizationId, viewerUserId);
+    if (!membership) return [];
+    if (membership.role !== "owner" && membership.role !== "admin") return [];
+
+    const limit = Math.max(1, Math.min(Number(args.limit ?? 200), 500));
+    const includeInactive = Boolean(args.includeInactive);
+
+    const membersRaw = (await ctx.runQuery(coreTenantQueries.listMembersByOrganizationId, {
+      organizationId,
+    })) as unknown as any[];
+
+    const members = Array.isArray(membersRaw) ? membersRaw : [];
+    const filtered = members.filter((m) => includeInactive || Boolean((m as any)?.isActive));
+
+    const rows = await Promise.all(
+      filtered.slice(0, limit).map(async (m) => {
+        const userId = String((m as any)?.userId ?? "");
+        const role = String((m as any)?.role ?? "viewer");
+        const isActive = Boolean((m as any)?.isActive);
+        if (!userId) {
+          return null;
+        }
+
+        const user = await ctx.db
+          .query("users")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", userId))
+          .first();
+
+        return {
+          userId,
+          email: typeof (user as any)?.email === "string" ? String((user as any).email) : null,
+          name: typeof (user as any)?.name === "string" ? String((user as any).name) : null,
+          image: typeof (user as any)?.image === "string" ? String((user as any).image) : null,
+          role,
+          isActive,
+        };
+      }),
+    );
+
+    return rows.filter((r): r is NonNullable<typeof r> => Boolean(r));
+  },
+});
+
+export const listOrgUserInvites = query({
+  args: {
+    organizationId: v.string(),
+    includeExpired: v.optional(v.boolean()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.string(),
+      email: v.string(),
+      role: v.string(),
+      token: v.string(),
+      createdAt: v.number(),
+      expiresAt: v.number(),
+      redeemedAt: v.optional(v.number()),
+      revokedAt: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const viewerUserId = await resolveViewerUserId(ctx);
+    const organizationId = args.organizationId.trim();
+    const membership = await resolveMembershipForOrg(ctx, organizationId, viewerUserId);
+    if (!membership) return [];
+    if (membership.role !== "owner" && membership.role !== "admin") return [];
+
+    const includeExpired = Boolean(args.includeExpired);
+    const limit = Math.max(1, Math.min(Number(args.limit ?? 100), 500));
+    const now = Date.now();
+
+    const rows = await ctx.db
+      .query("orgUserInvites")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .withIndex("by_org", (q: any) => q.eq("organizationId", organizationId))
+      .order("desc")
+      .take(limit);
+
+    return rows
+      .filter((r) => includeExpired || r.expiresAt > now)
+      .map((r) => ({
+        _id: String(r._id),
+        email: String(r.email ?? "").trim(),
+        role: String(r.role ?? "viewer"),
+        token: String(r.token ?? ""),
+        createdAt: Number(r.createdAt ?? 0),
+        expiresAt: Number(r.expiresAt ?? 0),
+        redeemedAt: typeof r.redeemedAt === "number" ? r.redeemedAt : undefined,
+        revokedAt: typeof r.revokedAt === "number" ? r.revokedAt : undefined,
+      }));
+  },
+});
+
+export const listMySymbolStats = query({
+  args: {
+    limit: v.optional(v.number()),
+    accountId: v.optional(v.string()),
+  },
+  returns: v.array(
+    v.object({
+      symbol: v.string(),
+      tradeCount: v.number(),
+      totalPnl: v.number(),
+      lastClosedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+
+    const limit = Math.max(10, Math.min(Number(args.limit ?? 500), 2000));
+    const rows = await ctx.runQuery(tradeIdeasNotes.listRecentClosedWithReviewStatus, {
+      organizationId,
+      userId,
+      limit,
+      accountId: args.accountId,
+    });
+
+    const statsBySymbol: Record<
+      string,
+      { symbol: string; tradeCount: number; totalPnl: number; lastClosedAt: number }
+    > = {};
+
+    for (const r of rows ?? []) {
+      const symbol = String((r as any)?.symbol ?? "").trim().toUpperCase() || "UNKNOWN";
+      const closedAt = Number((r as any)?.closedAt ?? 0);
+      const pnl = typeof (r as any)?.realizedPnl === "number" ? (r as any).realizedPnl : 0;
+
+      const cur =
+        statsBySymbol[symbol] ??
+        (statsBySymbol[symbol] = { symbol, tradeCount: 0, totalPnl: 0, lastClosedAt: 0 });
+      cur.tradeCount += 1;
+      cur.totalPnl += pnl;
+      if (closedAt > cur.lastClosedAt) cur.lastClosedAt = closedAt;
+    }
+
+    return Object.values(statsBySymbol);
+  },
+});
+
+export const listOrgSymbolStats = query({
+  args: {
+    organizationId: v.string(),
+    limitPerUser: v.optional(v.number()),
+    maxMembers: v.optional(v.number()),
+    accountId: v.optional(v.string()),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      rows: v.array(
+        v.object({
+          symbol: v.string(),
+          tradeCount: v.number(),
+          totalPnl: v.number(),
+          lastClosedAt: v.number(),
+        }),
+      ),
+      memberCountTotal: v.number(),
+      memberCountConsidered: v.number(),
+      isTruncated: v.boolean(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const viewerUserId = await resolveViewerUserId(ctx);
+    const organizationId = args.organizationId.trim();
+
+    const membership = await resolveMembershipForOrg(ctx, organizationId, viewerUserId);
+    if (!membership) return null;
+
+    const membersRaw = (await ctx.runQuery(coreTenantQueries.listMembersByOrganizationId, {
+      organizationId,
+    })) as unknown as any[];
+
+    const activeMembers = Array.isArray(membersRaw)
+      ? membersRaw.filter((m) => Boolean((m as any)?.isActive))
+      : [];
+
+    const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
+    const limitPerUser = clamp(args.limitPerUser ?? 200, 10, 500);
+    const maxMembers = clamp(args.maxMembers ?? 100, 1, 200);
+    const accountId = typeof args.accountId === "string" ? args.accountId.trim() : "";
+
+    const memberCountTotal = activeMembers.length;
+    const considered = activeMembers.slice(0, maxMembers);
+    const memberCountConsidered = considered.length;
+    const isTruncated = memberCountConsidered < memberCountTotal;
+
+    const statsBySymbol: Record<
+      string,
+      { symbol: string; tradeCount: number; totalPnl: number; lastClosedAt: number }
+    > = {};
+
+    // Aggregate per member.
+    for (const m of considered) {
+      const userId = String((m as any)?.userId ?? "");
+      if (!userId) continue;
+
+      const rows = await ctx.runQuery(tradeIdeasNotes.listRecentClosedWithReviewStatus, {
+        organizationId,
+        userId,
+        limit: limitPerUser,
+        accountId: accountId || undefined,
+      });
+
+      for (const r of rows ?? []) {
+        const symbol = String((r as any)?.symbol ?? "").trim().toUpperCase() || "UNKNOWN";
+        const closedAt = Number((r as any)?.closedAt ?? 0);
+        const pnl = typeof (r as any)?.realizedPnl === "number" ? (r as any).realizedPnl : 0;
+
+        const cur =
+          statsBySymbol[symbol] ??
+          (statsBySymbol[symbol] = { symbol, tradeCount: 0, totalPnl: 0, lastClosedAt: 0 });
+        cur.tradeCount += 1;
+        cur.totalPnl += pnl;
+        if (closedAt > cur.lastClosedAt) cur.lastClosedAt = closedAt;
+      }
+    }
+
+    return {
+      rows: Object.values(statsBySymbol),
+      memberCountTotal,
+      memberCountConsidered,
+      isTruncated,
+    };
+  },
+});
+
+export const listOrgSymbolLatestTrades = query({
+  args: {
+    organizationId: v.string(),
+    symbol: v.string(),
+    maxMembers: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      userId: v.string(),
+      email: v.union(v.string(), v.null()),
+      name: v.union(v.string(), v.null()),
+      role: v.union(v.string(), v.null()),
+      group: v.union(
+        v.null(),
+        v.object({
+          tradeIdeaGroupId: v.string(),
+          symbol: v.string(),
+          direction: v.union(v.literal("long"), v.literal("short")),
+          status: v.union(v.literal("open"), v.literal("closed")),
+          openedAt: v.number(),
+          closedAt: v.optional(v.number()),
+          realizedPnl: v.optional(v.number()),
+          fees: v.optional(v.number()),
+        }),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const viewerUserId = await resolveViewerUserId(ctx);
+    const organizationId = args.organizationId.trim();
+    const membership = await resolveMembershipForOrg(ctx, organizationId, viewerUserId);
+    if (!membership) return [];
+    if (membership.role !== "owner" && membership.role !== "admin") return [];
+
+    const symbol = String(args.symbol ?? "").trim().toUpperCase();
+    if (!symbol) return [];
+
+    const maxMembers = Math.max(1, Math.min(Number(args.maxMembers ?? 100), 200));
+
+    const membersRaw = (await ctx.runQuery(coreTenantQueries.listMembersByOrganizationId, {
+      organizationId,
+    })) as unknown as any[];
+
+    const activeMembers = Array.isArray(membersRaw)
+      ? membersRaw.filter((m) => Boolean((m as any)?.isActive))
+      : [];
+
+    const rows = await Promise.all(
+      activeMembers.slice(0, maxMembers).map(async (m) => {
+        const userId = String((m as any)?.userId ?? "");
+        if (!userId) return null;
+
+        const user = await ctx.db
+          .query("users")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", userId))
+          .first();
+
+        const latest = await ctx.runQuery(tradeIdeasInternal.getLatestGroupForSymbol, {
+          organizationId,
+          userId,
+          symbol,
+        });
+
+        const group =
+          latest && typeof latest === "object"
+            ? {
+                tradeIdeaGroupId: String((latest as any)._id),
+                symbol: String((latest as any).symbol ?? symbol),
+                direction:
+                  (latest as any).direction === "short"
+                    ? ("short" as const)
+                    : ("long" as const),
+                status:
+                  (latest as any).status === "closed"
+                    ? ("closed" as const)
+                    : ("open" as const),
+                openedAt: Number((latest as any).openedAt ?? 0),
+                closedAt:
+                  typeof (latest as any).closedAt === "number"
+                    ? Number((latest as any).closedAt)
+                    : undefined,
+                realizedPnl:
+                  typeof (latest as any).realizedPnl === "number"
+                    ? Number((latest as any).realizedPnl)
+                    : undefined,
+                fees:
+                  typeof (latest as any).fees === "number"
+                    ? Number((latest as any).fees)
+                    : undefined,
+              }
+            : null;
+
+        return {
+          userId,
+          email: typeof (user as any)?.email === "string" ? String((user as any).email) : null,
+          name: typeof (user as any)?.name === "string" ? String((user as any).name) : null,
+          role: typeof (m as any)?.role === "string" ? String((m as any).role) : null,
+          group,
+        };
+      }),
+    );
+
+    return rows.filter((r): r is NonNullable<typeof r> => Boolean(r));
+  },
+});
+
+export const getOrgTradeIdeaAnalyticsSummary = query({
+  args: {
+    organizationId: v.optional(v.string()),
+    limitPerUser: v.optional(v.number()),
+    maxMembers: v.optional(v.number()),
+    accountId: v.optional(v.string()),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      sampleSize: v.number(),
+      closedTrades: v.number(),
+      openTrades: v.number(),
+      totalFees: v.number(),
+      totalPnl: v.number(),
+      memberCountTotal: v.number(),
+      memberCountConsidered: v.number(),
+      isTruncated: v.boolean(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const viewerUserId = await resolveViewerUserId(ctx);
+
+    // Prefer explicit org context passed by the app (tenant headers -> TenantProvider).
+    // This is the most reliable in local dev where we may not have orgId embedded in the token.
+    const organizationIdFromArgs =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : null;
+
+    // Fallback: attempt to infer from identity (server-minted tokens) or from env default.
+    const rawOrgIdCandidates = [
+      (identity as any)?.organizationId,
+      (identity as any)?.claims?.organizationId,
+      (identity as any)?.customClaims?.organizationId,
+      (identity as any)?.tokenClaims?.organizationId,
+    ];
+    const rawOrgId =
+      rawOrgIdCandidates.find((v) => typeof v === "string" && v.trim()) ?? null;
+
+    const organizationId = organizationIdFromArgs
+      ? organizationIdFromArgs
+      : rawOrgId
+        ? String(rawOrgId).trim()
+        : resolveOrganizationId();
+
+    // Authorization: viewer must be a member of this organization.
+    const viewerMemberships = (await ctx.runQuery(
+      coreTenantQueries.listOrganizationsByUserId,
+      { userId: viewerUserId },
+    )) as unknown as any[];
+
+    const isMember = Array.isArray(viewerMemberships)
+      ? viewerMemberships.some((m) => {
+          const orgId =
+            (m && typeof m === "object" && (m as any).organizationId) ??
+            (m && typeof m === "object" && (m as any).org?._id) ??
+            "";
+          return String(orgId) === String(organizationId);
+        })
+      : false;
+
+    if (!isMember) return null;
+
+    const membersRaw = (await ctx.runQuery(coreTenantQueries.listMembersByOrganizationId, {
+      organizationId,
+    })) as unknown as any[];
+
+    const activeMembers = Array.isArray(membersRaw)
+      ? membersRaw.filter((m) => Boolean((m as any)?.isActive))
+      : [];
+
+    const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
+    const limitPerUser = clamp(args.limitPerUser ?? 200, 10, 500);
+    const maxMembers = clamp(args.maxMembers ?? 100, 1, 200);
+    const accountId = typeof args.accountId === "string" ? args.accountId.trim() : "";
+
+    const memberCountTotal = activeMembers.length;
+    const considered = activeMembers.slice(0, maxMembers);
+    const memberCountConsidered = considered.length;
+    const isTruncated = memberCountConsidered < memberCountTotal;
+
+    const summaries = await Promise.all(
+      considered.map(async (m) => {
+        const userId = String((m as any)?.userId ?? "");
+        if (!userId) return null;
+        const summary = await ctx.runQuery(tradeIdeasAnalytics.getSummary, {
+          organizationId,
+          userId,
+          accountId: accountId || undefined,
+          limit: limitPerUser,
+        });
+        return summary && typeof summary === "object" ? (summary as any) : null;
+      }),
+    );
+
+    let sampleSize = 0;
+    let closedTrades = 0;
+    let openTrades = 0;
+    let totalFees = 0;
+    let totalPnl = 0;
+
+    for (const s of summaries) {
+      if (!s) continue;
+      sampleSize += typeof s.sampleSize === "number" ? s.sampleSize : 0;
+      closedTrades += typeof s.closedTrades === "number" ? s.closedTrades : 0;
+      openTrades += typeof s.openTrades === "number" ? s.openTrades : 0;
+      totalFees += typeof s.totalFees === "number" ? s.totalFees : 0;
+      totalPnl += typeof s.totalPnl === "number" ? s.totalPnl : 0;
+    }
+
+    return {
+      sampleSize,
+      closedTrades,
+      openTrades,
+      totalFees,
+      totalPnl,
+      memberCountTotal,
+      memberCountConsidered,
+      isTruncated,
+    };
+  },
+});
+
+export const listOrgTradingPlans = query({
+  args: {
+    organizationId: v.string(),
+    includeArchived: v.optional(v.boolean()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.string(),
+      name: v.string(),
+      version: v.string(),
+      archivedAt: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const viewerUserId = await resolveViewerUserId(ctx);
+    const organizationId = args.organizationId.trim();
+    const membership = await resolveMembershipForOrg(ctx, organizationId, viewerUserId);
+    if (!membership) return [];
+
+    const rows = await ctx.runQuery(tradingPlans.listOrgTradingPlans, {
+      organizationId,
+      includeArchived: args.includeArchived,
+      limit: args.limit,
+    });
+
+    return (rows ?? []).map((r: any) => ({
+      _id: String(r._id),
+      name: String(r.name ?? "Untitled"),
+      version: String(r.version ?? "v1.0"),
+      archivedAt: typeof r.archivedAt === "number" ? Number(r.archivedAt) : undefined,
+      createdAt: Number(r.createdAt ?? 0),
+      updatedAt: Number(r.updatedAt ?? 0),
+    }));
+  },
+});
+
+export const getOrgTradingPlanPolicy = query({
+  args: {
+    organizationId: v.string(),
+  },
+  returns: v.object({
+    allowedPlanIds: v.array(v.string()),
+    forcedPlanId: v.union(v.string(), v.null()),
+    updatedAt: v.union(v.number(), v.null()),
+    updatedByUserId: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, args) => {
+    const viewerUserId = await resolveViewerUserId(ctx);
+    const organizationId = args.organizationId.trim();
+    const membership = await resolveMembershipForOrg(ctx, organizationId, viewerUserId);
+    if (!membership) {
+      return { allowedPlanIds: [], forcedPlanId: null, updatedAt: null, updatedByUserId: null };
+    }
+
+    const policy = await ctx.runQuery(tradingPlans.getOrgTradingPlanPolicy, { organizationId });
+
+    const allowedPlanIds = Array.isArray((policy as any)?.allowedPlanIds)
+      ? (policy as any).allowedPlanIds.map((id: any) => String(id))
+      : [];
+
+    const forcedPlanId =
+      (policy as any)?.forcedPlanId && typeof (policy as any).forcedPlanId === "string"
+        ? String((policy as any).forcedPlanId)
+        : null;
+
+    return {
+      allowedPlanIds,
+      forcedPlanId,
+      updatedAt: typeof (policy as any)?.updatedAt === "number" ? Number((policy as any).updatedAt) : null,
+      updatedByUserId:
+        typeof (policy as any)?.updatedByUserId === "string" ? String((policy as any).updatedByUserId) : null,
+    };
+  },
+});
+
+export const getMyOrgTradingPlan = query({
+  args: {
+    organizationId: v.string(),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.string(),
+      name: v.string(),
+      version: v.string(),
+      strategySummary: v.string(),
+      markets: v.array(v.string()),
+      sessions: v.array(
+        v.object({
+          id: v.string(),
+          label: v.string(),
+          timezone: v.string(),
+          days: v.array(v.string()),
+          start: v.string(),
+          end: v.string(),
+        }),
+      ),
+      risk: v.object({
+        maxRiskPerTradePct: v.number(),
+        maxDailyLossPct: v.number(),
+        maxWeeklyLossPct: v.number(),
+        maxOpenPositions: v.number(),
+        maxTradesPerDay: v.number(),
+      }),
+      rules: v.array(
+        v.object({
+          id: v.string(),
+          title: v.string(),
+          description: v.string(),
+          category: v.union(
+            v.literal("Entry"),
+            v.literal("Risk"),
+            v.literal("Exit"),
+            v.literal("Process"),
+            v.literal("Psychology"),
+          ),
+          severity: v.union(v.literal("hard"), v.literal("soft")),
+        }),
+      ),
+      kpis: v.object({
+        adherencePct: v.number(),
+        sessionDisciplinePct7d: v.number(),
+        avgRiskPerTradePct7d: v.number(),
+        journalCompliancePct: v.number(),
+        violations7d: v.number(),
+      }),
+      archivedAt: v.optional(v.number()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const viewerUserId = await resolveViewerUserId(ctx);
+    const organizationId = args.organizationId.trim();
+    const membership = await resolveMembershipForOrg(ctx, organizationId, viewerUserId);
+    if (!membership) return null;
+
+    const plan = await ctx.runQuery(tradingPlans.getMyOrgTradingPlan, {
+      organizationId,
+      userId: viewerUserId,
+    });
+    if (!plan) return null;
+
+    return {
+      _id: String((plan as any)._id),
+      name: String((plan as any).name ?? "Untitled"),
+      version: String((plan as any).version ?? "v1.0"),
+      strategySummary: String((plan as any).strategySummary ?? ""),
+      markets: Array.isArray((plan as any).markets) ? (plan as any).markets.map((m: any) => String(m)) : [],
+      sessions: Array.isArray((plan as any).sessions)
+        ? (plan as any).sessions.map((s: any) => ({
+            id: String(s?.id ?? ""),
+            label: String(s?.label ?? ""),
+            timezone: String(s?.timezone ?? ""),
+            days: Array.isArray(s?.days) ? s.days.map((d: any) => String(d)) : [],
+            start: String(s?.start ?? ""),
+            end: String(s?.end ?? ""),
+          }))
+        : [],
+      risk: {
+        maxRiskPerTradePct: Number((plan as any).risk?.maxRiskPerTradePct ?? 0),
+        maxDailyLossPct: Number((plan as any).risk?.maxDailyLossPct ?? 0),
+        maxWeeklyLossPct: Number((plan as any).risk?.maxWeeklyLossPct ?? 0),
+        maxOpenPositions: Number((plan as any).risk?.maxOpenPositions ?? 0),
+        maxTradesPerDay: Number((plan as any).risk?.maxTradesPerDay ?? 0),
+      },
+      rules: Array.isArray((plan as any).rules)
+        ? (plan as any).rules.map((r: any) => ({
+            id: String(r?.id ?? ""),
+            title: String(r?.title ?? ""),
+            description: String(r?.description ?? ""),
+            category:
+              r?.category === "Risk" ||
+              r?.category === "Exit" ||
+              r?.category === "Process" ||
+              r?.category === "Psychology"
+                ? r.category
+                : "Entry",
+            severity: r?.severity === "hard" ? "hard" : "soft",
+          }))
+        : [],
+      kpis: {
+        adherencePct: Number((plan as any).kpis?.adherencePct ?? 0),
+        sessionDisciplinePct7d: Number((plan as any).kpis?.sessionDisciplinePct7d ?? 0),
+        avgRiskPerTradePct7d: Number((plan as any).kpis?.avgRiskPerTradePct7d ?? 0),
+        journalCompliancePct: Number((plan as any).kpis?.journalCompliancePct ?? 0),
+        violations7d: Number((plan as any).kpis?.violations7d ?? 0),
+      },
+      archivedAt: typeof (plan as any).archivedAt === "number" ? Number((plan as any).archivedAt) : undefined,
+      createdAt: Number((plan as any).createdAt ?? 0),
+      updatedAt: Number((plan as any).updatedAt ?? 0),
+    };
+  },
+});
+
+export const getOrgTradingPlanCumulativeSummary = query({
+  args: {
+    organizationId: v.string(),
+    planId: v.optional(v.string()),
+    limitPerUser: v.optional(v.number()),
+    maxMembers: v.optional(v.number()),
+    accountId: v.optional(v.string()),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      sampleSize: v.number(),
+      closedTrades: v.number(),
+      openTrades: v.number(),
+      totalFees: v.number(),
+      totalPnl: v.number(),
+      memberCountTotal: v.number(),
+      memberCountEligible: v.number(),
+      memberCountConsidered: v.number(),
+      isTruncated: v.boolean(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const viewerUserId = await resolveViewerUserId(ctx);
+    const organizationId = args.organizationId.trim();
+    const membership = await resolveMembershipForOrg(ctx, organizationId, viewerUserId);
+    if (!membership) return null;
+
+    const membersRaw = (await ctx.runQuery(coreTenantQueries.listMembersByOrganizationId, {
+      organizationId,
+    })) as unknown as any[];
+
+    const activeMembers = Array.isArray(membersRaw)
+      ? membersRaw.filter((m) => Boolean((m as any)?.isActive))
+      : [];
+
+    const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
+    const limitPerUser = clamp(args.limitPerUser ?? 200, 10, 500);
+    const maxMembers = clamp(args.maxMembers ?? 100, 1, 200);
+    const accountId = typeof args.accountId === "string" ? args.accountId.trim() : "";
+    const planIdFilter = typeof args.planId === "string" && args.planId.trim() ? args.planId.trim() : "";
+
+    const eligible: Array<{ userId: string; planId: string }> = [];
+    for (const m of activeMembers) {
+      const userId = String((m as any)?.userId ?? "");
+      if (!userId) continue;
+      const plan = await ctx.runQuery(tradingPlans.getMyOrgTradingPlan, { organizationId, userId });
+      if (!plan) continue;
+      const planId = String((plan as any)?._id ?? "");
+      if (!planId) continue;
+      if (planIdFilter && planId !== planIdFilter) continue;
+      eligible.push({ userId, planId });
+    }
+
+    const memberCountTotal = activeMembers.length;
+    const memberCountEligible = eligible.length;
+    const considered = eligible.slice(0, maxMembers);
+    const memberCountConsidered = considered.length;
+    const isTruncated = memberCountConsidered < memberCountEligible;
+
+    const summaries = await Promise.all(
+      considered.map(async (m) => {
+        const summary = await ctx.runQuery(tradeIdeasAnalytics.getSummary, {
+          organizationId,
+          userId: m.userId,
+          accountId: accountId || undefined,
+          limit: limitPerUser,
+        });
+        return summary && typeof summary === "object" ? (summary as any) : null;
+      }),
+    );
+
+    let sampleSize = 0;
+    let closedTrades = 0;
+    let openTrades = 0;
+    let totalFees = 0;
+    let totalPnl = 0;
+
+    for (const s of summaries) {
+      if (!s) continue;
+      sampleSize += typeof s.sampleSize === "number" ? s.sampleSize : 0;
+      closedTrades += typeof s.closedTrades === "number" ? s.closedTrades : 0;
+      openTrades += typeof s.openTrades === "number" ? s.openTrades : 0;
+      totalFees += typeof s.totalFees === "number" ? s.totalFees : 0;
+      totalPnl += typeof s.totalPnl === "number" ? s.totalPnl : 0;
+    }
+
+    return {
+      sampleSize,
+      closedTrades,
+      openTrades,
+      totalFees,
+      totalPnl,
+      memberCountTotal,
+      memberCountEligible,
+      memberCountConsidered,
+      isTruncated,
+    };
+  },
+});
+
+export const getOrgTradingPlanLeaderboard = query({
+  args: {
+    organizationId: v.string(),
+    planId: v.optional(v.string()),
+    limitPerUser: v.optional(v.number()),
+    maxMembers: v.optional(v.number()),
+    accountId: v.optional(v.string()),
+  },
+  returns: v.array(
+    v.object({
+      userId: v.string(),
+      name: v.union(v.string(), v.null()),
+      image: v.union(v.string(), v.null()),
+      planId: v.string(),
+      sampleSize: v.number(),
+      closedTrades: v.number(),
+      openTrades: v.number(),
+      totalFees: v.number(),
+      totalPnl: v.number(),
+      rank: v.number(),
+      percentile: v.number(),
+      isViewer: v.boolean(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    const viewerUserId = await resolveViewerUserId(ctx);
+    const organizationId = args.organizationId.trim();
+    const membership = await resolveMembershipForOrg(ctx, organizationId, viewerUserId);
+    if (!membership) return [];
+
+    const membersRaw = (await ctx.runQuery(coreTenantQueries.listMembersByOrganizationId, {
+      organizationId,
+    })) as unknown as any[];
+
+    const activeMembers = Array.isArray(membersRaw)
+      ? membersRaw.filter((m) => Boolean((m as any)?.isActive))
+      : [];
+
+    const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
+    const limitPerUser = clamp(args.limitPerUser ?? 200, 10, 500);
+    const maxMembers = clamp(args.maxMembers ?? 100, 1, 200);
+    const accountId = typeof args.accountId === "string" ? args.accountId.trim() : "";
+    const planIdFilter = typeof args.planId === "string" && args.planId.trim() ? args.planId.trim() : "";
+
+    const eligibleUserIds: string[] = [];
+    const userIdToPlanId: Record<string, string> = {};
+
+    for (const m of activeMembers) {
+      const userId = String((m as any)?.userId ?? "");
+      if (!userId) continue;
+      const plan = await ctx.runQuery(tradingPlans.getMyOrgTradingPlan, { organizationId, userId });
+      if (!plan) continue;
+      const planId = String((plan as any)?._id ?? "");
+      if (!planId) continue;
+      if (planIdFilter && planId !== planIdFilter) continue;
+      eligibleUserIds.push(userId);
+      userIdToPlanId[userId] = planId;
+    }
+
+    const consideredUserIds = eligibleUserIds.slice(0, maxMembers);
+    const summaries = await Promise.all(
+      consideredUserIds.map(async (userId) => {
+        const summary = await ctx.runQuery(tradeIdeasAnalytics.getSummary, {
+          organizationId,
+          userId,
+          accountId: accountId || undefined,
+          limit: limitPerUser,
+        });
+        return { userId, summary: summary && typeof summary === "object" ? (summary as any) : null };
+      }),
+    );
+
+    const rows = await Promise.all(
+      summaries.map(async ({ userId, summary }) => {
+        const viewer = await ctx.db
+          .query("users")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", userId))
+          .first();
+
+        return {
+          userId,
+          name: typeof (viewer as any)?.name === "string" ? String((viewer as any).name) : null,
+          image: typeof (viewer as any)?.image === "string" ? String((viewer as any).image) : null,
+          planId: userIdToPlanId[userId] ?? "",
+          sampleSize: typeof summary?.sampleSize === "number" ? summary.sampleSize : 0,
+          closedTrades: typeof summary?.closedTrades === "number" ? summary.closedTrades : 0,
+          openTrades: typeof summary?.openTrades === "number" ? summary.openTrades : 0,
+          totalFees: typeof summary?.totalFees === "number" ? summary.totalFees : 0,
+          totalPnl: typeof summary?.totalPnl === "number" ? summary.totalPnl : 0,
+          isViewer: userId === viewerUserId,
+        };
+      }),
+    );
+
+    const sorted = rows.sort((a, b) => b.totalPnl - a.totalPnl);
+    const n = sorted.length;
+
+    return sorted.map((row, idx) => {
+      const rank = idx + 1;
+      const percentile = n > 0 ? Math.round(((n - rank + 1) / n) * 100) : 0;
+      return { ...row, rank, percentile };
+    });
+  },
+});
 
 const tradeOrderView = v.object({
   _id: v.string(),
