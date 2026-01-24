@@ -1,8 +1,6 @@
-import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { demoPublicProfiles, demoPublicUsers, demoReviewTrades } from "@acme/demo-data";
 
-import { AffiliatePageShell } from "../../../../../components/affiliates/AffiliatePageShell";
-import { Button } from "@acme/ui/button";
 import Link from "next/link";
 import React from "react";
 import { notFound } from "next/navigation";
@@ -60,27 +58,19 @@ export default async function PublicUserTradeIdeasPage({
   const profiles = demoPublicProfiles as unknown as PublicProfileOnly[];
   const profileOnly = profiles.find((p) => p.username.toLowerCase() === decoded.toLowerCase());
 
-  if (!user && !profileOnly) return notFound();
+  // If the user exists in demo data but is marked private, keep 404.
   if (user && !user.isPublic) return notFound();
 
   const displayName = user?.displayName ?? profileOnly?.username ?? decoded;
 
   return (
-    <AffiliatePageShell
-      title={`${displayName} — TradeIdeas`}
-      subtitle={`@${decoded} • Public trade ideas`}
-    >
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Button
-          asChild
-          variant="outline"
-          className="h-10 rounded-full border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
-        >
-          <Link href={`/u/${encodeURIComponent(decoded)}`}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to profile
-          </Link>
-        </Button>
+    <div className="grid gap-4">
+      <div className="mb-2">
+        <div className="text-sm text-white/55">@{decoded}</div>
+        <h2 className="text-2xl font-bold tracking-tight text-white">
+          {displayName} — Trade ideas
+        </h2>
+        <div className="mt-2 text-sm text-white/60">Public trade ideas shared by this user.</div>
       </div>
 
       <div className="grid gap-4">
@@ -135,7 +125,7 @@ export default async function PublicUserTradeIdeasPage({
       </div>
 
       <div className="h-24" />
-    </AffiliatePageShell>
+    </div>
   );
 }
 

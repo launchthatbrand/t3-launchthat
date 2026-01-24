@@ -21,10 +21,10 @@ export const metadata: Metadata = {
       : "http://localhost:3000",
   ),
   title: "Trader Launchpad",
-  description: "Trader Launchpad - Mission Control for serious traders",
+  description: "Trader Launchpad - Mission Control for trading groups",
   openGraph: {
     title: "Trader Launchpad",
-    description: "Trader Launchpad - Mission Control for serious traders",
+    description: "Trader Launchpad - Mission Control for trading groups",
     url: "https://traderlaunchpad.vercel.app",
     siteName: "Trader Launchpad",
   },
@@ -203,7 +203,7 @@ export default async function RootLayout(props: {
                 sidebarDefaultOpen={false}
 
               >
-                <div className="container py-6">
+                <div className="container py-6 flex-1">
                   {props.children}
                 </div>
               </StandardLayout>

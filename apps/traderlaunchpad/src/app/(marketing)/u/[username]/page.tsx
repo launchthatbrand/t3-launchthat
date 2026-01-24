@@ -1,15 +1,12 @@
 import {
-  ArrowLeft,
   Award,
   BarChart3,
   Crown,
-  ExternalLink,
   Shield,
   TrendingUp,
 } from "lucide-react";
 import { demoPublicProfiles, demoPublicUsers, demoReviewTrades } from "@acme/demo-data";
 
-import { AffiliatePageShell } from "../../../../components/affiliates/AffiliatePageShell";
 import { Button } from "@acme/ui/button";
 import Link from "next/link";
 import React from "react";
@@ -95,7 +92,7 @@ export default async function PublicUserPage({
   const profiles = demoPublicProfiles as unknown as PublicProfileOnly[];
   const profileOnly = profiles.find((p) => p.username.toLowerCase() === decoded.toLowerCase());
 
-  if (!user && !profileOnly) return notFound();
+  // If the user exists in demo data but is marked private, keep 404.
   if (user && !user.isPublic) return notFound();
 
   const displayName = user?.displayName ?? profileOnly?.username ?? decoded;
@@ -111,49 +108,25 @@ export default async function PublicUserPage({
   );
 
   return (
-    <AffiliatePageShell
-      title={displayName}
-      subtitle={`@${decoded} • Public profile`}
-    >
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Button
-          asChild
-          variant="outline"
-          className="h-10 rounded-full border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
-        >
-          <Link href="/users">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            All users
-          </Link>
-        </Button>
-        <div className="ml-auto flex items-center gap-3 text-sm text-white/60">
-          <Link
-            href="/brokers"
-            className="inline-flex items-center gap-2 hover:text-white"
-          >
-            Brokers <ExternalLink className="h-4 w-4" />
-          </Link>
-          <Link
-            href="/firms"
-            className="inline-flex items-center gap-2 hover:text-white"
-          >
-            Prop firms <ExternalLink className="h-4 w-4" />
-          </Link>
-        </div>
-      </div>
-
+    <>
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left: Profile + badges */}
         <div className="lg:col-span-1">
           <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/30 p-7 backdrop-blur-md">
             <div className="flex items-start gap-4">
               <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/30">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={avatarUrl ?? ""}
-                  alt={decoded}
-                  className="h-full w-full object-cover opacity-95"
-                />
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={avatarUrl}
+                    alt={decoded}
+                    className="h-full w-full object-cover opacity-95"
+                  />
+                ) : (
+                  <div className="text-sm font-semibold text-white/70">
+                    {String(displayName).slice(0, 1).toUpperCase()}
+                  </div>
+                )}
               </div>
               <div className="min-w-0">
                 <div className="truncate text-xl font-bold text-white">
@@ -377,6 +350,6 @@ export default async function PublicUserPage({
       </div>
 
       <div className="h-24" />
-    </AffiliatePageShell>
+    </>
   );
 }

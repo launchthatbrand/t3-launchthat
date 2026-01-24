@@ -12,6 +12,11 @@ export const getUserByClerkId = query({
       email: v.string(),
       name: v.optional(v.string()),
       image: v.optional(v.string()),
+      bio: v.optional(v.string()),
+      avatarUrl: v.optional(v.string()),
+      coverUrl: v.optional(v.string()),
+      avatarMediaId: v.optional(v.id("userMedia")),
+      coverMediaId: v.optional(v.id("userMedia")),
       organizationId: v.optional(v.string()),
       tokenIdentifier: v.optional(v.string()),
       clerkId: v.optional(v.string()),
@@ -20,14 +25,30 @@ export const getUserByClerkId = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const project = (user: any | null) => {
+    const resolveMediaUrl = async (mediaId: unknown): Promise<string | undefined> => {
+      if (!mediaId) return undefined;
+      const row = await ctx.db.get(mediaId as any);
+      const storageId = (row as any)?.storageId;
+      if (!storageId) return undefined;
+      const url = await ctx.storage.getUrl(storageId);
+      return typeof url === "string" ? url : undefined;
+    };
+
+    const project = async (user: any | null) => {
       if (!user) return null;
+      const avatarUrlFromMedia = await resolveMediaUrl(user.avatarMediaId);
+      const coverUrlFromMedia = await resolveMediaUrl(user.coverMediaId);
       return {
         _id: user._id,
         _creationTime: user._creationTime,
         email: user.email,
         name: user.name ?? undefined,
         image: user.image ?? undefined,
+        bio: typeof user.bio === "string" ? user.bio : undefined,
+        avatarMediaId: user.avatarMediaId ?? undefined,
+        coverMediaId: user.coverMediaId ?? undefined,
+        avatarUrl: avatarUrlFromMedia ?? (typeof user.image === "string" ? user.image : undefined),
+        coverUrl: coverUrlFromMedia,
         organizationId: user.organizationId ?? undefined,
         tokenIdentifier: user.tokenIdentifier ?? undefined,
         clerkId: user.clerkId ?? undefined,
@@ -43,14 +64,14 @@ export const getUserByClerkId = query({
           q.eq("tokenIdentifier", identity.tokenIdentifier),
         )
         .unique();
-      return project(user ?? null);
+      return await project(user ?? null);
     }
 
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", args.clerkId))
       .first();
-    return project(user ?? null);
+    return await project(user ?? null);
   },
 });
 

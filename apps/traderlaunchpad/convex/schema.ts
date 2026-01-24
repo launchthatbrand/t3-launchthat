@@ -49,6 +49,11 @@ export default defineSchema({
     clerkId: v.optional(v.string()),
     name: v.optional(v.string()),
     image: v.optional(v.string()),
+    bio: v.optional(v.string()),
+
+    // User-scoped media (stored in `userMedia`).
+    avatarMediaId: v.optional(v.id("userMedia")),
+    coverMediaId: v.optional(v.id("userMedia")),
 
     /**
      * Per-user data source mode.

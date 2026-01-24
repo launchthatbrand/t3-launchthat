@@ -103,7 +103,7 @@ export default async function HomePage() {
                   </span>
                   <div className="h-px w-12 bg-linear-to-l from-transparent to-white/30 md:w-24" />
                 </div>
-                <span className="block leading-none">Smart Traders</span>
+                <span className="block leading-none">Trading Communities</span>
               </h1>
 
               <p className="mx-auto mt-8 max-w-2xl text-lg font-medium text-center text-gray-400 md:text-xl">
@@ -171,8 +171,8 @@ export default async function HomePage() {
                       <span className="block leading-none">
                         <FlipWords
                           words={[
-                            "Smart Traders",
-                            "Disciplined Traders",
+                            "Trading Groups",
+                            "Market Analytics",
                             "Data-Driven Traders",
                           ]}
                           duration={4000}

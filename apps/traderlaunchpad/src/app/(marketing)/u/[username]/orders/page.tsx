@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import {
   demoAdminOrders,
   demoPublicProfiles,
@@ -6,9 +6,7 @@ import {
   demoReviewTrades,
 } from "@acme/demo-data";
 
-import { AffiliatePageShell } from "../../../../../components/affiliates/AffiliatePageShell";
 import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { cn } from "@acme/ui";
 import Link from "next/link";
 import React from "react";
@@ -74,7 +72,7 @@ export default async function PublicUserOrdersPage({
   const profiles = demoPublicProfiles as unknown as PublicProfileOnly[];
   const profileOnly = profiles.find((p) => p.username.toLowerCase() === decoded.toLowerCase());
 
-  if (!user && !profileOnly) return notFound();
+  // If the user exists in demo data but is marked private, keep 404.
   if (user && !user.isPublic) return notFound();
 
   const displayName = user?.displayName ?? profileOnly?.username ?? decoded;
@@ -86,26 +84,12 @@ export default async function PublicUserOrdersPage({
   const orders = allOrders.filter((o) => (o.tradeId ? tradeIds.has(o.tradeId) : false));
 
   return (
-    <AffiliatePageShell title={`${displayName} — Orders`} subtitle={`@${decoded} • Public orders`}>
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Button
-          asChild
-          variant="outline"
-          className="h-10 rounded-full border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
-        >
-          <Link href={`/u/${encodeURIComponent(decoded)}`}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to profile
-          </Link>
-        </Button>
-        <div className="ml-auto flex items-center gap-2 text-xs text-white/50">
-          <Link href={`/u/${encodeURIComponent(decoded)}/trades`} className="hover:text-white">
-            Trades
-          </Link>
-          <span className="text-white/20">•</span>
-          <Link href={`/u/${encodeURIComponent(decoded)}/tradeideas`} className="hover:text-white">
-            TradeIdeas
-          </Link>
+    <>
+      <div className="mb-4">
+        <div className="text-sm text-white/55">@{decoded}</div>
+        <h2 className="text-2xl font-bold tracking-tight text-white">{displayName} — Orders</h2>
+        <div className="mt-2 text-sm text-white/60">
+          Filled orders that make up the public trades for this user.
         </div>
       </div>
 
@@ -174,7 +158,7 @@ export default async function PublicUserOrdersPage({
       </div>
 
       <div className="h-24" />
-    </AffiliatePageShell>
+    </>
   );
 }
 

@@ -1,11 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { demoAdminOrders, demoPublicProfiles, demoPublicUsers } from "@acme/demo-data";
 
-import { AffiliatePageShell } from "../../../../../../components/affiliates/AffiliatePageShell";
-import { ArrowLeft } from "lucide-react";
 import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import Link from "next/link";
 import React from "react";
 import { TradingChartCard } from "~/components/charts/TradingChartCard";
 import { cn } from "@acme/ui";
@@ -73,26 +69,18 @@ export default async function PublicUserOrderDetailPage({
     const displayName = user?.displayName ?? profileOnly?.username ?? decoded;
 
     return (
-        <div className="relative min-h-screen pt-28 text-white">
-            <div className="container mx-auto max-w-7xl px-4">
-                <AffiliatePageShell
-                    title={`${displayName} — Order`}
-                    subtitle={`@${decoded} • ${order.symbol} • ${order.date}`}
-                >
-                    <div className="mb-6 flex flex-wrap items-center gap-3">
-                        <Button
-                            asChild
-                            variant="outline"
-                            className="h-10 rounded-full border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
-                        >
-                            <Link href={`/u/${encodeURIComponent(decoded)}/orders`}>
-                                <ArrowLeft className="mr-2 h-4 w-4" />
-                                Back to orders
-                            </Link>
-                        </Button>
-                    </div>
+        <>
+            <div className="mb-4">
+                <div className="text-sm text-white/55">@{decoded}</div>
+                <h2 className="text-2xl font-bold tracking-tight text-white">
+                    {displayName} — Order
+                </h2>
+                <div className="mt-2 text-sm text-white/60">
+                    {order.symbol} • {order.date}
+                </div>
+            </div>
 
-                    <div className="grid gap-6 lg:grid-cols-3">
+            <div className="grid gap-6 lg:grid-cols-3">
                         <div className="space-y-6 lg:col-span-2">
                             <TradingChartCard
                                 title="Chart"
@@ -187,9 +175,7 @@ export default async function PublicUserOrderDetailPage({
                     </div>
 
                     <div className="h-24" />
-                </AffiliatePageShell>
-            </div>
-        </div>
+        </>
     );
 }
 

@@ -35,3 +35,43 @@ export const setDataMode = mutation({
   },
 });
 
+export const updateViewerProfile = mutation({
+  args: {
+    name: v.optional(v.string()),
+    bio: v.optional(v.string()),
+    avatarMediaId: v.optional(v.union(v.id("userMedia"), v.null())),
+    coverMediaId: v.optional(v.union(v.id("userMedia"), v.null())),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new ConvexError("Unauthorized");
+    }
+
+    const userDocId = await ctx.runMutation(api.coreTenant.mutations.createOrGetUser, {});
+    if (!userDocId) throw new ConvexError("Unauthorized");
+
+    const now = Date.now();
+    const patch: Record<string, unknown> = { updatedAt: now };
+
+    if (typeof args.name === "string") {
+      const next = args.name.trim();
+      patch.name = next || undefined;
+    }
+    if (typeof args.bio === "string") {
+      const next = args.bio.trim();
+      patch.bio = next || undefined;
+    }
+    if (args.avatarMediaId !== undefined) {
+      patch.avatarMediaId = args.avatarMediaId === null ? undefined : args.avatarMediaId;
+    }
+    if (args.coverMediaId !== undefined) {
+      patch.coverMediaId = args.coverMediaId === null ? undefined : args.coverMediaId;
+    }
+
+    await ctx.db.patch(userDocId, patch as any);
+    return null;
+  },
+});
+

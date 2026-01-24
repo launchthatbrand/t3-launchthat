@@ -15,29 +15,7 @@ interface PublicOrgRow {
   logoUrl: string | null;
 }
 
-const buildOrgUrl = (slug: string): string => {
-  if (typeof window === "undefined") return `/${encodeURIComponent(slug)}`;
-
-  const host = window.location.host; // includes port
-  const hostname = window.location.hostname.toLowerCase();
-  const port = window.location.port;
-  const proto = window.location.protocol;
-
-  // Local dev: localhost:3000 → slug.localhost:3000
-  if (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname.endsWith(".localhost") ||
-    hostname.endsWith(".127.0.0.1")
-  ) {
-    const base = hostname === "127.0.0.1" ? "127.0.0.1" : "localhost";
-    return `${proto}//${encodeURIComponent(slug)}.${base}${port ? `:${port}` : ""}/`;
-  }
-
-  // Production: www.traderlaunchpad.com → slug.traderlaunchpad.com
-  const root = host.replace(/^www\./i, "");
-  return `${proto}//${encodeURIComponent(slug)}.${root}/`;
-};
+const buildOrgProfileUrl = (slug: string): string => `/org/${encodeURIComponent(slug)}`;
 
 export default function OrgsArchivePage() {
   const rows = useQuery(api.coreTenant.organizations.listOrganizationsPublic, {
@@ -55,17 +33,25 @@ export default function OrgsArchivePage() {
         {orgs.map((org) => (
           <Link
             key={org._id}
-            href={buildOrgUrl(org.slug)}
+            href={buildOrgProfileUrl(org.slug)}
             className="group overflow-hidden rounded-3xl border border-white/10 bg-black/30 backdrop-blur-md transition-colors hover:bg-white/6"
           >
             <div className="p-5">
               <div className="flex items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={org.logoUrl ?? ""}
-                  alt={org.name}
-                  className="h-10 w-10 rounded-xl border border-white/10 bg-black/30 object-cover"
-                />
+                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                  {org.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={org.logoUrl}
+                      alt={org.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="text-xs font-semibold text-white/70">
+                      {(org.name || "O").slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                </div>
                 <div className="min-w-0">
                   <div className="truncate text-base font-semibold text-white">{org.name}</div>
                   <div className="truncate text-xs text-white/50">{org.slug}</div>

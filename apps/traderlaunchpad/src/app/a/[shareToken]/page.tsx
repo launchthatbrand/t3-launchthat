@@ -7,6 +7,16 @@ import { useParams } from "next/navigation";
 import { api } from "@convex-config/_generated/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
 
+const weekdayLabels: Record<number, string> = {
+  0: "Sun",
+  1: "Mon",
+  2: "Tue",
+  3: "Wed",
+  4: "Thu",
+  5: "Fri",
+  6: "Sat",
+};
+
 const formatMoney = (n: number): string => {
   const v = Number.isFinite(n) ? n : 0;
   return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(v);
@@ -32,6 +42,17 @@ export default function SharedAnalyticsReportPage() {
   }) as unknown as
     | {
         name: string;
+        spec: {
+          version: number;
+          timezone?: string;
+          rangePreset?: string;
+          fromMs?: number;
+          toMs?: number;
+          weekdays?: number[];
+          symbols?: string[];
+          direction?: ("long" | "short")[];
+          includeUnrealized?: boolean;
+        };
         result: {
           headline: {
             netPnl: number;
@@ -60,6 +81,25 @@ export default function SharedAnalyticsReportPage() {
   }
 
   const h = shared.result.headline;
+  const s = shared.spec ?? { version: 1 };
+
+  const weekdayText =
+    Array.isArray(s.weekdays) && s.weekdays.length > 0
+      ? s.weekdays.map((d) => weekdayLabels[d] ?? String(d)).join(", ")
+      : "All";
+
+  const symbolsText =
+    Array.isArray(s.symbols) && s.symbols.length > 0 ? s.symbols.join(", ") : "All";
+
+  const directionText =
+    Array.isArray(s.direction) && s.direction.length > 0 ? s.direction.join(", ") : "All";
+
+  const rangeText =
+    s.rangePreset === "custom" && typeof s.fromMs === "number" && typeof s.toMs === "number"
+      ? `${new Date(s.fromMs).toLocaleDateString()} → ${new Date(s.toMs).toLocaleDateString()}`
+      : typeof s.rangePreset === "string"
+        ? s.rangePreset
+        : "30d";
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
@@ -67,6 +107,39 @@ export default function SharedAnalyticsReportPage() {
         <div className="text-sm text-muted-foreground">Shared analytics report</div>
         <h1 className="text-2xl font-bold tracking-tight">{shared.name}</h1>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Filters</CardTitle>
+          <CardDescription>Exact settings used to compute this report.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-muted-foreground">Timezone</div>
+            <div className="font-medium">{s.timezone || "UTC"}</div>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-muted-foreground">Range</div>
+            <div className="font-medium">{rangeText}</div>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-muted-foreground">Weekdays</div>
+            <div className="font-medium">{weekdayText}</div>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-muted-foreground">Symbols</div>
+            <div className="font-medium">{symbolsText}</div>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-muted-foreground">Direction</div>
+            <div className="font-medium">{directionText}</div>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-muted-foreground">Include unrealized</div>
+            <div className="font-medium">{s.includeUnrealized === false ? "No" : "Yes"}</div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card>

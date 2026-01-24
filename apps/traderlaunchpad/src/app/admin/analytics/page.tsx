@@ -217,8 +217,8 @@ export default function AdminAnalyticsPage() {
         const email = typeof user?.email === "string" ? user.email : "";
         const name = typeof user?.name === "string" ? user.name : "";
         const fallback = email ? (email.split("@")[0] ?? "") : "";
-        const raw = name ?? fallback ?? "me";
-        const slug = slugify(raw) ?? "me";
+        const raw = name || fallback || "me";
+        const slug = slugify(raw) || "me";
         if (!cancelled) setShareUsername(slug);
       } catch {
         // ignore, keep "me"
@@ -321,7 +321,10 @@ export default function AdminAnalyticsPage() {
             onValueChange={(v) =>
               setSpec((s) => ({
                 ...s,
-                rangePreset: (v as ReportSpecV1["rangePreset"]) || "30d",
+                rangePreset:
+                  v === "7d" || v === "30d" || v === "90d" || v === "ytd" || v === "all"
+                    ? v
+                    : "30d",
               }))
             }
           >
@@ -469,13 +472,18 @@ export default function AdminAnalyticsPage() {
                 <Button
                   onClick={async () => {
                     const name = saveName.trim() || "Untitled report";
-                    const out = await createReport({
+                    const outUnknown: unknown = await createReport({
                       name,
                       accountId: activeAccount.selected?.accountId,
                       visibility: saveVisibility,
                       spec,
                     });
-                    if (out.reportId) setSelectedSavedReportId(out.reportId);
+                    const out =
+                      outUnknown && typeof outUnknown === "object"
+                        ? (outUnknown as { reportId?: unknown })
+                        : null;
+                    const reportId = typeof out?.reportId === "string" ? out.reportId : "";
+                    if (reportId) setSelectedSavedReportId(reportId);
                     setSaveOpen(false);
                   }}
                 >
