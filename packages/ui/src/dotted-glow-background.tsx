@@ -159,27 +159,7 @@ export const DottedGlowBackground = ({
     let raf = 0;
     let stopped = false;
 
-    const prefersReducedMotion =
-      typeof window !== "undefined" &&
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const isCoarsePointer =
-      typeof window !== "undefined" &&
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(pointer: coarse)").matches;
-
-    const dprRaw = Math.max(1, window.devicePixelRatio || 1);
-    const dprCap = isCoarsePointer ? 1 : 1.5;
-    const dpr = Math.min(dprCap, dprRaw);
-
-    const effectiveGap = isCoarsePointer ? Math.ceil(gap * 1.5) : gap;
-    const effectiveRadius = isCoarsePointer ? Math.max(1, radius - 0.5) : radius;
-    const effectiveSpeedScale = Math.max(
-      0,
-      speedScale * (prefersReducedMotion ? 0.2 : isCoarsePointer ? 0.5 : 1),
-    );
-    const targetFps = prefersReducedMotion ? 20 : isCoarsePointer ? 30 : 60;
-    const minFrameMs = targetFps > 0 ? 1000 / targetFps : 0;
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
 
     const resize = () => {
       const { width, height } = container.getBoundingClientRect();
@@ -200,15 +180,14 @@ export const DottedGlowBackground = ({
     const regenDots = () => {
       dots = [];
       const { width, height } = container.getBoundingClientRect();
-      const cols = Math.ceil(width / effectiveGap) + 2;
-      const rows = Math.ceil(height / effectiveGap) + 2;
+      const cols = Math.ceil(width / gap) + 2;
+      const rows = Math.ceil(height / gap) + 2;
       const min = Math.min(speedMin, speedMax);
       const max = Math.max(speedMin, speedMax);
       for (let i = -1; i < cols; i++) {
         for (let j = -1; j < rows; j++) {
-          const x =
-            i * effectiveGap + (j % 2 === 0 ? 0 : effectiveGap * 0.5); // offset every other row
-          const y = j * effectiveGap;
+          const x = i * gap + (j % 2 === 0 ? 0 : gap * 0.5); // offset every other row
+          const y = j * gap;
           // Randomize phase and speed slightly per dot
           const phase = Math.random() * Math.PI * 2;
           const span = Math.max(max - min, 0);
@@ -225,21 +204,15 @@ export const DottedGlowBackground = ({
     regenDots();
 
     let last = performance.now();
-    let lastDraw = last;
 
     const draw = (now: number) => {
       if (stopped) return;
-      if (minFrameMs > 0 && now - lastDraw < minFrameMs) {
-        raf = requestAnimationFrame(draw);
-        return;
-      }
-      lastDraw = now;
       const dt = (now - last) / 1000; // seconds
       last = now;
       const { width, height } = container.getBoundingClientRect();
 
       ctx.clearRect(0, 0, el.width, el.height);
-      ctx.globalAlpha = isCoarsePointer ? Math.min(opacity, 0.5) : opacity;
+      ctx.globalAlpha = opacity;
 
       // optional subtle background fade for depth (defaults to 0 = transparent)
       if (backgroundOpacity > 0) {
@@ -264,7 +237,7 @@ export const DottedGlowBackground = ({
       ctx.save();
       ctx.fillStyle = resolvedColor;
 
-      const time = (now / 1000) * effectiveSpeedScale;
+      const time = (now / 1000) * Math.max(speedScale, 0);
       for (let i = 0; i < dots.length; i++) {
         const d = dots[i];
         if (!d) continue;
@@ -277,8 +250,7 @@ export const DottedGlowBackground = ({
         if (a > 0.6) {
           const glow = (a - 0.6) / 0.4; // 0..1
           ctx.shadowColor = resolvedGlowColor;
-          const blurBase = prefersReducedMotion ? 2 : isCoarsePointer ? 3 : 6;
-          ctx.shadowBlur = blurBase * glow;
+          ctx.shadowBlur = 6 * glow;
         } else {
           ctx.shadowColor = "transparent";
           ctx.shadowBlur = 0;
@@ -286,7 +258,7 @@ export const DottedGlowBackground = ({
 
         ctx.globalAlpha = a * opacity;
         ctx.beginPath();
-        ctx.arc(d.x, d.y, effectiveRadius, 0, Math.PI * 2);
+        ctx.arc(d.x, d.y, radius, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
