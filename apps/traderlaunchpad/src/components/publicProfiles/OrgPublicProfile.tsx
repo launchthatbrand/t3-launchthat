@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 "use client";
 
 import {
@@ -8,12 +5,12 @@ import {
   SortableContext,
   SortableItem,
   arrayMove,
-  verticalListSortingStrategy
+  verticalListSortingStrategy,
 } from "@acme/dnd";
+import type { DragEndEvent, SortingStrategy } from "@acme/dnd";
 import { Eye, EyeOff, Pencil, Plus, Save, Trash2 } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
-import type { DragEndEvent } from "@acme/dnd";
 import Link from "next/link";
 import React from "react";
 import { cn } from "~/lib/utils";
@@ -157,16 +154,23 @@ export function OrgPublicProfile(props: {
 
   const handleMoveSection = (event: DragEndEvent) => {
     if (!canEditInline) return;
-    const activeId = String(event.active.id);
-    const overId = String(event.over?.id ?? "");
+    // Normalize event shape for consistent type/lint behavior.
+    const e = event as unknown as {
+      active: { id: string | number };
+      over?: { id: string | number } | null;
+    };
+
+    const activeId = String(e.active.id);
+    const overId = e.over ? String(e.over.id) : "";
     if (!activeId || !overId || activeId === overId) return;
 
     const from = config.sections.findIndex((s) => s.id === activeId);
     const to = config.sections.findIndex((s) => s.id === overId);
     if (from < 0 || to < 0) return;
+    const move = arrayMove as unknown as <T,>(items: T[], from: number, to: number) => T[];
     props.onChangeConfigAction?.({
       ...config,
-      sections: arrayMove(config.sections, from, to),
+      sections: move(config.sections, from, to),
     });
   };
 
@@ -226,7 +230,7 @@ export function OrgPublicProfile(props: {
         <BuilderDndProvider onDragEnd={handleMoveSection}>
           <SortableContext
             items={config.sections.map((s) => s.id)}
-            strategy={verticalListSortingStrategy}
+            strategy={verticalListSortingStrategy as SortingStrategy}
           >
             {visibleSections.map((section) => (
               <SortableItem
