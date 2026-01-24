@@ -63,6 +63,8 @@ export default async function RootLayout(props: {
   const headerList = await headers();
   const host = getHostFromHeaders(headerList);
   const tenant = await getActiveTenantFromHeaders();
+  const userAgent = headerList.get("user-agent") ?? "";
+  const isMobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent);
   const pathnameHeader = headerList.get("x-pathname");
   const pathname =
     typeof pathnameHeader === "string" && pathnameHeader.length > 0
@@ -107,14 +109,16 @@ export default async function RootLayout(props: {
           <ThemeProvider>
             {/* Background */}
             <div className="pointer-events-none fixed inset-0 z-0">
-              <DottedGlowBackground
-                color="rgba(255, 100, 0, 0.15)"
-                glowColor="rgba(255, 120, 0, 0.6)"
-                gap={24}
-                radius={1.5}
-                speedMin={0.2}
-                speedMax={0.8}
-              />
+              {isMobileUa ? null : (
+                <DottedGlowBackground
+                  color="rgba(255, 100, 0, 0.15)"
+                  glowColor="rgba(255, 120, 0, 0.6)"
+                  gap={24}
+                  radius={1.5}
+                  speedMin={0.2}
+                  speedMax={0.8}
+                />
+              )}
 
               <div className="absolute top-1/4 left-1/4 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-600/20 blur-[140px]" />
               <div className="absolute right-0 bottom-0 h-[720px] w-[720px] translate-x-1/3 translate-y-1/3 rounded-full bg-orange-500/10 blur-[160px]" />

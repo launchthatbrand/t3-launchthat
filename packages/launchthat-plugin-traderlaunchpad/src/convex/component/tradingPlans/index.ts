@@ -564,7 +564,10 @@ export const getMyOrgTradingPlan = query({
       const assignedPlan = await resolvePlan(assignment.activePlanId);
       if (assignedPlan) {
         if (allowedPlanIds.length === 0) return assignedPlan;
-        if (allowedPlanIds.some((id) => id === assignment.activePlanId)) return assignedPlan;
+        if (
+          allowedPlanIds.some((id: Id<"orgTradingPlans">) => id === assignment.activePlanId)
+        )
+          return assignedPlan;
       }
     }
 
@@ -599,7 +602,10 @@ export const setMyOrgTradingPlan = mutation({
 
     if (!effectivePlanId) return null;
 
-    if (allowedPlanIds.length > 0 && !allowedPlanIds.some((id) => id === effectivePlanId)) {
+    if (
+      allowedPlanIds.length > 0 &&
+      !allowedPlanIds.some((id: Id<"orgTradingPlans">) => id === effectivePlanId)
+    ) {
       return null;
     }
 
