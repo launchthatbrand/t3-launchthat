@@ -85,7 +85,15 @@ const computeTenantOrigin = (args: {
 
   // Expected tenant hosts we consider "correct" for this tenant.
   const expectedHosts = new Set<string>();
-  if (rootHost) expectedHosts.add(`${args.tenantSlug}.${rootHost}`);
+  if (rootHost) {
+    // Root tenant slug (platform/global) lives on the apex domain.
+    if (args.tenantSlug === args.defaultTenantSlug) {
+      expectedHosts.add(rootHost);
+      expectedHosts.add(`www.${rootHost}`);
+    } else {
+      expectedHosts.add(`${args.tenantSlug}.${rootHost}`);
+    }
+  }
   if (args.orgCustomDomain) expectedHosts.add(args.orgCustomDomain.toLowerCase());
 
   const { hostname: authHostname, port: authPort } = parseHostAndPort(
@@ -130,7 +138,10 @@ const computeTenantOrigin = (args: {
       tenantOrigin = `http://${args.tenantSlug}.${base}${authPort ? `:${authPort}` : ""}`;
     }
   } else {
-    tenantOrigin = `https://${args.tenantSlug}.${rootHost}`;
+    tenantOrigin =
+      args.tenantSlug === args.defaultTenantSlug
+        ? `https://${rootHost}`
+        : `https://${args.tenantSlug}.${rootHost}`;
   }
 
   const rewritten = new URL(
@@ -247,7 +258,7 @@ export async function GET(req: NextRequest) {
       }
       return `http://${slug}.${base}${authPort ? `:${authPort}` : ""}`;
     }
-    return `https://${slug}.${rootHost}`;
+    return slug === defaultTenantSlug ? `https://${rootHost}` : `https://${slug}.${rootHost}`;
   })();
 
   const finalReturnTo = (() => {

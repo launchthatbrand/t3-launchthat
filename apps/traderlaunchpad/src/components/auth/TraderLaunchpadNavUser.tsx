@@ -6,6 +6,7 @@ import { useHostContext } from "~/context/HostContext";
 import { useTenant } from "~/context/TenantContext";
 import { useClerk, useSession } from "@clerk/nextjs";
 import { LogOut, Settings, User } from "lucide-react";
+import { isPlatformHost } from "~/lib/host-mode";
 
 import { Button } from "@acme/ui/button";
 import { useDataMode } from "~/components/dataMode/DataModeProvider";
@@ -21,8 +22,15 @@ import {
 } from "~/components/ui/dropdown-menu";
 
 export function TraderLaunchpadNavUser(props: { afterSignOutUrl?: string }) {
-  const { isAuthHost } = useHostContext();
-  return isAuthHost ? (
+  const { isAuthHost, hostname, rootDomain } = useHostContext();
+  const shouldUseClerk =
+    isAuthHost ||
+    isPlatformHost({
+      hostOrHostname: hostname,
+      rootDomain,
+    });
+
+  return shouldUseClerk ? (
     <TraderLaunchpadNavUserClerk afterSignOutUrl={props.afterSignOutUrl} />
   ) : (
     <TraderLaunchpadNavUserTenant />
