@@ -176,15 +176,40 @@ function IconContainer({
   });
 
   const [hovered, setHovered] = useState(false);
+  const resolvedLabel = label ?? title ?? "";
+
+  const handlePointerUp: React.PointerEventHandler<HTMLAnchorElement> = (e) => {
+    // On iOS Safari, tapped links can retain :focus until the next tap,
+    // which feels "stuck" for a bottom tab bar. Blur after touch/pen taps,
+    // but preserve keyboard focus and normal desktop mouse behavior.
+    if (e.pointerType === "touch" || e.pointerType === "pen") {
+      e.currentTarget.blur();
+    }
+  };
 
   return (
-    <Link href={href}>
+    <Link
+      href={href}
+      aria-label={resolvedLabel}
+      onPointerUp={handlePointerUp}
+      className={cn(
+        "inline-flex rounded-full outline-none",
+        // Remove iOS tap highlight; prefer explicit active styles.
+        "touch-manipulation [-webkit-tap-highlight-color:transparent]",
+        // Only show focus styles for keyboard navigation.
+        "focus-visible:ring-2 focus-visible:ring-orange-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-black",
+      )}
+    >
       <motion.div
         ref={ref}
         style={{ width, height }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        className="relative flex aspect-square items-center justify-center rounded-full bg-gray-200 dark:bg-neutral-800"
+        className={cn(
+          "relative flex aspect-square items-center justify-center rounded-full bg-gray-200 dark:bg-neutral-800",
+          // Make taps feel more "native".
+          "active:scale-95",
+        )}
       >
         <AnimatePresence>
           {hovered && (
@@ -194,7 +219,7 @@ function IconContainer({
               exit={{ opacity: 0, y: 2, x: "-50%" }}
               className="absolute -top-8 left-1/2 w-fit whitespace-pre rounded-md border border-gray-200 bg-gray-100 px-2 py-0.5 text-xs text-neutral-700 dark:border-neutral-900 dark:bg-neutral-800 dark:text-white"
             >
-              {label ?? title}
+              {resolvedLabel}
             </motion.div>
           )}
         </AnimatePresence>
