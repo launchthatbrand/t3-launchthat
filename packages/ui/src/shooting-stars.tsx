@@ -69,8 +69,12 @@ export const ShootingStars: React.FC<ShootingStarsProps> = ({
         typeof window.matchMedia === "function" &&
         window.matchMedia("(pointer: coarse)").matches;
 
+    // Mobile/tablet: skip rendering + skip any work.
+    if (prefersReducedMotion || isCoarsePointer) {
+        return null;
+    }
+
     useEffect(() => {
-        if (prefersReducedMotion) return;
         // On coarse pointer devices (phones), keep this effect ultra light.
         const effectiveMinDelay = isCoarsePointer ? Math.max(minDelay, 8000) : minDelay;
         const effectiveMaxDelay = isCoarsePointer ? Math.max(maxDelay, 14000) : maxDelay;
@@ -105,10 +109,9 @@ export const ShootingStars: React.FC<ShootingStarsProps> = ({
                 timeoutRef.current = null;
             }
         };
-    }, [minSpeed, maxSpeed, minDelay, maxDelay, prefersReducedMotion, isCoarsePointer]);
+    }, [minSpeed, maxSpeed, minDelay, maxDelay, isCoarsePointer]);
 
     useEffect(() => {
-        if (prefersReducedMotion) return;
         if (!star) return;
 
         let last = performance.now();
@@ -167,7 +170,7 @@ export const ShootingStars: React.FC<ShootingStarsProps> = ({
                 rafRef.current = null;
             }
         };
-    }, [star, starHeight, starWidth, prefersReducedMotion, isCoarsePointer]);
+    }, [star, starHeight, starWidth, isCoarsePointer]);
 
     return (
         <svg
