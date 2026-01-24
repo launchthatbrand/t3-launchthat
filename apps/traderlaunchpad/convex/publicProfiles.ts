@@ -5,6 +5,14 @@ import type { Id } from "./_generated/dataModel";
 
 import { userPublicProfileConfigV1Validator } from "./publicProfiles/types";
 
+const slugifyUsername = (value: string): string =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/(^-|-$)/g, "");
+
 export const getUserPublicProfileByUsername = query({
   args: { username: v.string() },
   returns: v.union(
@@ -20,14 +28,40 @@ export const getUserPublicProfileByUsername = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const username = args.username.trim().toLowerCase();
-    if (!username) return null;
+    const raw = args.username.trim().toLowerCase();
+    if (!raw) return null;
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_public_username", (q) => q.eq("publicUsername", username))
-      .first();
+    // Accept a few common variants so legacy usernames still resolve.
+    // Canonical format is slug-only (a-z0-9-), but older/demo data may contain dots.
+    const canonical = slugifyUsername(raw);
+    const dotVariant = canonical.replace(/-/g, ".");
+    const candidates = Array.from(
+      new Set([raw, canonical, dotVariant].filter((x) => typeof x === "string" && x.trim())),
+    );
+
+    let user: any = null;
+    let matchedUsername = "";
+    for (const candidate of candidates) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      user =
+        (await ctx.db
+          .query("users")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .withIndex("by_public_username", (q: any) =>
+            q.eq("publicUsername", candidate),
+          )
+          .first()) ?? null;
+      if (user) {
+        matchedUsername = candidate;
+        break;
+      }
+    }
     if (!user) return null;
+
+    const resolvedPublicUsername =
+      typeof user.publicUsername === "string" && user.publicUsername.trim()
+        ? user.publicUsername.trim().toLowerCase()
+        : matchedUsername;
 
     const resolveMediaUrl = async (mediaId: unknown): Promise<string | null> => {
       if (!mediaId) return null;
@@ -43,11 +77,11 @@ export const getUserPublicProfileByUsername = query({
     const displayName =
       (typeof user.name === "string" && user.name.trim() ? user.name.trim() : "") ||
       user.email.split("@")[0] ||
-      username;
+      resolvedPublicUsername;
 
     return {
       _id: user._id,
-      publicUsername: username,
+      publicUsername: resolvedPublicUsername,
       displayName,
       bio: typeof (user as any).bio === "string" ? (user as any).bio : undefined,
       avatarUrl,

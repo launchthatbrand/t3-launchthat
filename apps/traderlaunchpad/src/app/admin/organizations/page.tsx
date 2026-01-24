@@ -65,7 +65,7 @@ export default function AdminSettingsOrganizationsPage() {
         label: "Open",
         variant: "outline",
         onClick: (row: MembershipRow) => {
-          router.push(`/admin/organizations/${encodeURIComponent(row._id)}`);
+          router.push(`/admin/organization/${encodeURIComponent(row._id)}/public-profile`);
         },
       },
     ];
@@ -86,7 +86,7 @@ export default function AdminSettingsOrganizationsPage() {
           enableSearch={true}
           entityActions={entityActions}
           onRowClick={(row: MembershipRow) => {
-            router.push(`/admin/organization/${encodeURIComponent(row._id)}`);
+            router.push(`/admin/organization/${encodeURIComponent(row._id)}/public-profile`);
           }}
           getRowId={(row: MembershipRow) => row._id}
           emptyState={

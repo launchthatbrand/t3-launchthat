@@ -47,10 +47,19 @@ export const ReviewsSection = ({
 }) => {
   const reviews = (demoReviews as unknown as DemoReviewLite[])
     .filter((r) => {
-      if (target.kind !== r.target.kind) return false;
-      if (target.kind === "firm") return r.target.slug === target.slug;
-      if (target.kind === "broker") return r.target.slug === target.slug;
-      return r.target.username.toLowerCase() === target.username.toLowerCase();
+      switch (target.kind) {
+        case "firm":
+          return r.target.kind === "firm" && r.target.slug === target.slug;
+        case "broker":
+          return r.target.kind === "broker" && r.target.slug === target.slug;
+        case "user":
+          return (
+            r.target.kind === "user" &&
+            r.target.username.toLowerCase() === target.username.toLowerCase()
+          );
+        default:
+          return false;
+      }
     })
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
@@ -122,12 +131,20 @@ export const ReviewsSection = ({
                       className="group/author flex items-center gap-3"
                     >
                       <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-black/30">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={r.author.avatarUrl ?? ""}
-                          alt={r.author.username}
-                          className="h-full w-full object-cover opacity-95"
-                        />
+                        {r.author.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={r.author.avatarUrl}
+                            alt={r.author.username}
+                            className="h-full w-full object-cover opacity-95"
+                          />
+                        ) : (
+                          <div className="text-xs font-semibold text-white/70">
+                            {(r.author.displayName || r.author.username || "U")
+                              .slice(0, 1)
+                              .toUpperCase()}
+                          </div>
+                        )}
                       </div>
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-white/90 group-hover/author:text-white">

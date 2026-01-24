@@ -195,7 +195,14 @@ export declare const components: {
         "internal",
         {
           config: null | {
+            heroCtas?: Array<{
+              id: string;
+              label: string;
+              url: string;
+              variant?: "primary" | "outline";
+            }>;
             links: Array<{ label: string; url: string }>;
+            logoCrop?: { x: number; y: number };
             sections: Array<{
               enabled: boolean;
               id: string;
@@ -235,7 +242,14 @@ export declare const components: {
           name: string;
           ownerId: string;
           publicProfileConfig?: {
+            heroCtas?: Array<{
+              id: string;
+              label: string;
+              url: string;
+              variant?: "primary" | "outline";
+            }>;
             links: Array<{ label: string; url: string }>;
+            logoCrop?: { x: number; y: number };
             sections: Array<{
               enabled: boolean;
               id: string;
@@ -262,7 +276,14 @@ export declare const components: {
           name: string;
           ownerId: string;
           publicProfileConfig?: {
+            heroCtas?: Array<{
+              id: string;
+              label: string;
+              url: string;
+              variant?: "primary" | "outline";
+            }>;
             links: Array<{ label: string; url: string }>;
+            logoCrop?: { x: number; y: number };
             sections: Array<{
               enabled: boolean;
               id: string;
@@ -289,7 +310,14 @@ export declare const components: {
           name: string;
           ownerId: string;
           publicProfileConfig?: {
+            heroCtas?: Array<{
+              id: string;
+              label: string;
+              url: string;
+              variant?: "primary" | "outline";
+            }>;
             links: Array<{ label: string; url: string }>;
+            logoCrop?: { x: number; y: number };
             sections: Array<{
               enabled: boolean;
               id: string;
@@ -376,7 +404,14 @@ export declare const components: {
           name: string;
           ownerId: string;
           publicProfileConfig?: {
+            heroCtas?: Array<{
+              id: string;
+              label: string;
+              url: string;
+              variant?: "primary" | "outline";
+            }>;
             links: Array<{ label: string; url: string }>;
+            logoCrop?: { x: number; y: number };
             sections: Array<{
               enabled: boolean;
               id: string;

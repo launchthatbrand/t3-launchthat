@@ -56,6 +56,7 @@ export function UserPublicProfile(props: {
 
   const coverUrl = props.user.coverUrl ?? null;
   const avatarUrl = props.user.avatarUrl ?? null;
+  const handle = `@${props.user.publicUsername}`;
 
   return (
     <div className={cn("flex flex-1 flex-col", props.className)}>
@@ -87,13 +88,13 @@ export function UserPublicProfile(props: {
                 className="overflow-hidden rounded-3xl border border-white/10 bg-black/30 backdrop-blur-md"
               >
                 <div className="relative">
-                  <div className="h-32 bg-linear-to-r from-orange-500/25 via-orange-500/10 to-transparent" />
+                  <div className="h-44 bg-linear-to-r from-orange-500/25 via-orange-500/10 to-transparent" />
                   {coverUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={coverUrl}
                       alt=""
-                      className="absolute inset-0 h-full w-full object-cover opacity-40"
+                      className="absolute inset-0 h-full w-full object-cover opacity-45"
                     />
                   ) : null}
                   <div className="pointer-events-none absolute -left-24 -top-20 h-56 w-56 rounded-full bg-orange-500/20 blur-3xl" />
@@ -101,9 +102,9 @@ export function UserPublicProfile(props: {
                 </div>
 
                 <div className="px-6 pb-6">
-                  <div className="-mt-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                  <div className="-mt-12 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                     <div className="flex items-start gap-4">
-                      <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/40 md:h-24 md:w-24">
+                      <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-black/50 shadow-[0_18px_60px_rgba(0,0,0,0.35)] md:h-28 md:w-28">
                         {avatarUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -112,7 +113,7 @@ export function UserPublicProfile(props: {
                             className="h-full w-full object-cover opacity-95"
                           />
                         ) : (
-                          <div className="text-2xl font-semibold text-white/70">
+                          <div className="text-3xl font-semibold text-white/70">
                             {(props.user.displayName || "U").slice(0, 1).toUpperCase()}
                           </div>
                         )}
@@ -125,12 +126,48 @@ export function UserPublicProfile(props: {
                         <h1 className="truncate text-2xl font-bold tracking-tight text-white md:text-4xl">
                           {props.user.displayName}
                         </h1>
-                        <div className="mt-1 text-sm text-white/55">@{props.user.publicUsername}</div>
+                        <div className="mt-1 text-sm text-white/55">{handle}</div>
                         <div className="mt-3 max-w-2xl text-sm leading-relaxed text-white/65">
                           {props.user.bio?.trim()
                             ? props.user.bio
                             : "Connect your broker, journal trades, and share your edge with the fleet."}
                         </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between lg:flex-col lg:items-end">
+                      <div className="flex flex-wrap items-center justify-start gap-3 lg:justify-end">
+                        {[
+                          { label: "Followers", value: "—" },
+                          { label: "Following", value: "—" },
+                          { label: "Likes", value: "—" },
+                        ].map((s) => (
+                          <div
+                            key={s.label}
+                            className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-right backdrop-blur-md"
+                          >
+                            <div className="text-lg font-semibold tabular-nums text-white">
+                              {s.value}
+                            </div>
+                            <div className="text-xs text-white/55">{s.label}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-start gap-2 lg:justify-end">
+                        <Button
+                          variant="outline"
+                          className="h-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                          disabled={props.mode === "admin"}
+                        >
+                          Follow
+                        </Button>
+                        <Button
+                          className="h-10 rounded-full border-0 bg-orange-600 text-white hover:bg-orange-700"
+                          disabled={props.mode === "admin"}
+                        >
+                          Get in touch
+                        </Button>
                       </div>
                     </div>
                   </div>

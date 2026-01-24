@@ -50,6 +50,17 @@ const domainStatusValidator = v.union(
 
 const orgPublicProfileConfigV1Validator = v.object({
   version: v.literal("v1"),
+  heroCtas: v.optional(
+    v.array(
+      v.object({
+        id: v.string(),
+        label: v.string(),
+        url: v.string(),
+        variant: v.optional(v.union(v.literal("primary"), v.literal("outline"))),
+      }),
+    ),
+  ),
+  logoCrop: v.optional(v.object({ x: v.number(), y: v.number() })),
   links: v.array(v.object({ label: v.string(), url: v.string() })),
   sections: v.array(
     v.object({
@@ -174,7 +185,7 @@ export const myOrganizations = query({
   },
 });
 
-const requirePlatformAdmin = async (ctx: QueryCtx) => {
+const requirePlatformAdmin = async (ctx: QueryCtx | MutationCtx) => {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new ConvexError("Unauthorized");
 
@@ -360,7 +371,7 @@ export const updateOrganizationPublicProfileConfig = mutation({
 });
 
 const requireOrgAdminOrPlatformAdmin = async (
-  ctx: QueryCtx,
+  ctx: QueryCtx | MutationCtx,
   organizationId: string,
 ): Promise<{ userId: string; isPlatformAdmin: boolean }> => {
   const userId = await resolveClerkUserIdFromIdentity(ctx);
