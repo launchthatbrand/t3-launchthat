@@ -1,14 +1,27 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 "use client";
 
-import React from "react";
-import { useParams } from "next/navigation";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 
-import { api } from "@convex-config/_generated/api";
-import { OrgPublicProfile, type OrgPublicProfileConfigV1 } from "~/components/publicProfiles/OrgPublicProfile";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@acme/ui/dialog";
+import { ImageCropper } from "@acme/ui";
 import { Button } from "@acme/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@acme/ui/dialog";
 import { MediaLibraryDialog } from "launchthat-plugin-core-tenant/frontend";
+import { OrgPublicProfile } from "~/components/publicProfiles/OrgPublicProfile";
+import type { OrgPublicProfileConfigV1 } from "~/components/publicProfiles/OrgPublicProfile";
+import React from "react";
+import { api } from "@convex-config/_generated/api";
+import { useParams } from "next/navigation";
 
 interface OrgRow {
   _id: string;
@@ -26,6 +39,10 @@ interface OrganizationMediaRow {
   filename?: string;
   contentType: string;
   createdAt: number;
+}
+
+interface FileWithPreview {
+  preview: string;
 }
 
 const DEFAULT_CONFIG: OrgPublicProfileConfigV1 = {
@@ -52,12 +69,12 @@ const normalizeConfig = (raw: unknown): OrgPublicProfileConfigV1 => {
       : DEFAULT_CONFIG.heroCtas,
     logoCrop:
       v.logoCrop &&
-      typeof (v.logoCrop as any).x === "number" &&
-      typeof (v.logoCrop as any).y === "number"
+        typeof (v.logoCrop as any).x === "number" &&
+        typeof (v.logoCrop as any).y === "number"
         ? {
-            x: Math.max(0, Math.min(100, Number((v.logoCrop as any).x))),
-            y: Math.max(0, Math.min(100, Number((v.logoCrop as any).y))),
-          }
+          x: Math.max(0, Math.min(100, Number((v.logoCrop as any).x))),
+          y: Math.max(0, Math.min(100, Number((v.logoCrop as any).y))),
+        }
         : DEFAULT_CONFIG.logoCrop,
     links: Array.isArray(v.links) ? (v.links as OrgPublicProfileConfigV1["links"]) : [],
     sections: Array.isArray(v.sections) ? (v.sections as OrgPublicProfileConfigV1["sections"]) : DEFAULT_CONFIG.sections,
@@ -88,23 +105,62 @@ export default function AdminOrgPublicProfilePage() {
 
   const saveConfig = useMutation(api.coreTenant.organizations.updateOrganizationPublicProfileConfig);
   const updateOrg = useMutation(api.coreTenant.organizations.updateOrganization);
+  const generateUploadUrl = useMutation(api.coreTenant.organizations.generateOrganizationMediaUploadUrl);
+  const createOrgMedia = useMutation(api.coreTenant.organizations.createOrganizationMedia);
 
   const [draft, setDraft] = React.useState<OrgPublicProfileConfigV1>(DEFAULT_CONFIG);
   const [isSaving, setIsSaving] = React.useState(false);
   const [logoPickerOpen, setLogoPickerOpen] = React.useState(false);
   const [logoUrlOverride, setLogoUrlOverride] = React.useState<string | null>(null);
+  const [logoPreviewOpen, setLogoPreviewOpen] = React.useState(false);
+  const [pendingSelectedMedia, setPendingSelectedMedia] = React.useState<OrganizationMediaRow | null>(null);
+  const [libraryInitialSelectedId, setLibraryInitialSelectedId] = React.useState<string | null>(null);
+  const [libraryFinalizeOnSelect, setLibraryFinalizeOnSelect] = React.useState(false);
   const [cropOpen, setCropOpen] = React.useState(false);
-  const [cropX, setCropX] = React.useState(50);
-  const [cropY, setCropY] = React.useState(50);
+  const [logoCropFile, setLogoCropFile] = React.useState<FileWithPreview | null>(null);
+  const hasInitializedDraftRef = React.useRef(false);
+
+  const dataUrlToFile = React.useCallback((dataUrl: string, filename: string) => {
+    const [header, base64] = dataUrl.split(",", 2);
+    if (!header || !base64) return null;
+    const match = /data:(.*?);base64/.exec(header);
+    const mime = match?.[1] ?? "image/png";
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new File([bytes], filename, { type: mime });
+  }, []);
+
+  React.useEffect(() => {
+    if (!cropOpen) setLogoCropFile(null);
+  }, [cropOpen]);
+
+  const handleFinalizeLogo = React.useCallback(async (mediaId: string) => {
+    if (!canEdit || !organizationId) return;
+    try {
+      setIsSaving(true);
+      await updateOrg({
+        organizationId,
+        logo: null,
+        logoMediaId: mediaId,
+      });
+    } finally {
+      setIsSaving(false);
+      setLogoUrlOverride(null);
+    }
+  }, [canEdit, organizationId, updateOrg]);
 
   React.useEffect(() => {
     if (!org) return;
+    // Avoid clobbering local edits when org refetches (e.g. while changing logo / cropping).
+    const isEditing = cropOpen || logoPickerOpen || isSaving;
+    if (hasInitializedDraftRef.current && isEditing) return;
+
     setDraft(normalizeConfig(org.publicProfileConfig));
     setLogoUrlOverride(null);
-    const nextCrop = normalizeConfig(org.publicProfileConfig).logoCrop ?? DEFAULT_CONFIG.logoCrop;
-    setCropX(nextCrop?.x ?? 50);
-    setCropY(nextCrop?.y ?? 50);
-  }, [org]);
+    setLogoCropFile(null);
+    hasInitializedDraftRef.current = true;
+  }, [org, cropOpen, logoPickerOpen, isSaving]);
 
   if (!org) return null;
 
@@ -116,6 +172,8 @@ export default function AdminOrgPublicProfilePage() {
         isSaving={isSaving}
         onEditLogoAction={() => {
           if (!canEdit) return;
+          setLibraryFinalizeOnSelect(false);
+          setLibraryInitialSelectedId(null);
           setLogoPickerOpen(true);
         }}
         onSaveAction={async () => {
@@ -154,6 +212,8 @@ export default function AdminOrgPublicProfilePage() {
           open={logoPickerOpen}
           onOpenChange={setLogoPickerOpen}
           title="Organization media"
+          initialSelectedId={libraryInitialSelectedId}
+          selectLabel="Select Image"
           listRef={api.coreTenant.organizations.listOrganizationMedia}
           listArgs={{ organizationId, limit: 200 }}
           generateUploadUrlRef={api.coreTenant.organizations.generateOrganizationMediaUploadUrl}
@@ -168,138 +228,153 @@ export default function AdminOrgPublicProfilePage() {
           })}
           onSelect={(item: OrganizationMediaRow) => {
             if (!canEdit) return;
-            setLogoPickerOpen(false);
-            setLogoUrlOverride(item.url);
-            setCropOpen(true);
+            if (libraryFinalizeOnSelect) {
+              // Final step after cropping: the library is reopened with the cropped image preselected,
+              // and the user explicitly confirms by clicking "Select Image".
+              setLogoPickerOpen(false);
+              void handleFinalizeLogo(item._id);
+              setLibraryFinalizeOnSelect(false);
+              setLibraryInitialSelectedId(null);
+              return;
+            }
 
-            void (async () => {
-              await updateOrg({
-                organizationId,
-                logo: null,
-                logoMediaId: item._id,
-              });
-            })();
+            // Step 1: pick from media library -> step 2 preview dialog (crop or save).
+            setLogoPickerOpen(false);
+            setPendingSelectedMedia(item);
+            setLogoPreviewOpen(true);
           }}
         />
       ) : null}
 
-      <Dialog
-        open={cropOpen}
-        onOpenChange={(open) => {
-          setCropOpen(open);
-        }}
-      >
-        <DialogContent className="border-white/10 bg-black/90 text-white">
+      <Dialog open={logoPreviewOpen} onOpenChange={setLogoPreviewOpen}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Crop logo</DialogTitle>
+            <DialogTitle>Review logo</DialogTitle>
+            <DialogDescription>
+              Crop the image or save it as-is. Cropping creates a new media item.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="text-sm text-white/70">
-              Drag (or click) to choose the focal point for the square avatar crop.
-            </div>
-
-            <div
-              className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-black/40"
-              onPointerDown={(e) => {
-                const el = e.currentTarget;
-                el.setPointerCapture(e.pointerId);
-                const rect = el.getBoundingClientRect();
-                const x = ((e.clientX - rect.left) / rect.width) * 100;
-                const y = ((e.clientY - rect.top) / rect.height) * 100;
-                setCropX(Math.max(0, Math.min(100, x)));
-                setCropY(Math.max(0, Math.min(100, y)));
-              }}
-              onPointerMove={(e) => {
-                if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
-                const rect = e.currentTarget.getBoundingClientRect();
-                const x = ((e.clientX - rect.left) / rect.width) * 100;
-                const y = ((e.clientY - rect.top) / rect.height) * 100;
-                setCropX(Math.max(0, Math.min(100, x)));
-                setCropY(Math.max(0, Math.min(100, y)));
-              }}
-            >
-              {(logoUrlOverride ?? org.logoUrl) ? (
+            <div className="mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-xl border border-border/60 bg-muted/10">
+              {pendingSelectedMedia?.url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={(logoUrlOverride ?? org.logoUrl) as string}
-                  alt=""
-                  className="absolute inset-0 h-full w-full object-cover opacity-95"
-                  style={{ objectPosition: `${cropX}% ${cropY}%` }}
+                  src={pendingSelectedMedia.url}
+                  alt={pendingSelectedMedia.filename ?? "Selected image"}
+                  className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-sm text-white/60">
-                  Pick a logo first
+                <div className="text-muted-foreground flex h-full w-full items-center justify-center text-sm">
+                  No preview available
                 </div>
               )}
-
-              <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/10" />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="text-xs text-white/70">
-                Horizontal
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={cropX}
-                  onChange={(e) => setCropX(Number(e.target.value))}
-                  className="mt-2 w-full"
-                />
-              </label>
-
-              <label className="text-xs text-white/70">
-                Vertical
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={cropY}
-                  onChange={(e) => setCropY(Number(e.target.value))}
-                  className="mt-2 w-full"
-                />
-              </label>
             </div>
           </div>
 
           <DialogFooter>
+            <DialogClose asChild>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setPendingSelectedMedia(null);
+                  setLogoPreviewOpen(false);
+                  setLogoPickerOpen(true);
+                }}
+              >
+                Back to library
+              </Button>
+            </DialogClose>
             <Button
               type="button"
               variant="outline"
-              className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
-              onClick={() => setCropOpen(false)}
-            >
-              Close
-            </Button>
-
-            <Button
-              type="button"
-              className="border-0 bg-orange-600 text-white hover:bg-orange-700"
-              disabled={!canEdit || !organizationId}
+              disabled={!pendingSelectedMedia?.url}
               onClick={() => {
-                if (!canEdit || !organizationId) return;
-                const next: OrgPublicProfileConfigV1 = {
-                  ...draft,
-                  logoCrop: { x: cropX, y: cropY },
-                };
-                setDraft(next);
-                setIsSaving(true);
-                void (async () => {
-                  try {
-                    await saveConfig({ organizationId, config: next });
-                    setCropOpen(false);
-                  } finally {
-                    setIsSaving(false);
-                  }
-                })();
+                const url = pendingSelectedMedia?.url ?? null;
+                if (!url) return;
+                setLogoCropFile({ preview: url });
+                setCropOpen(true);
               }}
             >
-              Save crop
+              Crop
+            </Button>
+            <Button
+              type="button"
+              disabled={!pendingSelectedMedia?._id}
+              onClick={() => {
+                const id = pendingSelectedMedia?._id ?? "";
+                if (!id) return;
+                void handleFinalizeLogo(id);
+                setPendingSelectedMedia(null);
+                setLogoPreviewOpen(false);
+              }}
+            >
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {logoCropFile ? (
+        <ImageCropper
+          dialogOpen={cropOpen}
+          setDialogOpen={setCropOpen}
+          selectedFile={logoCropFile}
+          setSelectedFile={setLogoCropFile}
+          showTrigger={false}
+          cropButtonLabel="Crop Image"
+          onCropped={(result) => {
+            if (!canEdit || !organizationId) return;
+            const maybeDataUrl = (result as { dataUrl?: string }).dataUrl;
+            if (!maybeDataUrl) return;
+
+            // Show cropped result immediately while we upload it.
+            setLogoUrlOverride(maybeDataUrl);
+
+            void (async () => {
+              try {
+                const file = dataUrlToFile(maybeDataUrl, `org-logo-cropped-${Date.now()}.png`);
+                if (!file) return;
+
+                const uploadUrl = await generateUploadUrl({ organizationId });
+                const uploadRes = await fetch(uploadUrl, {
+                  method: "POST",
+                  headers: { "Content-Type": file.type },
+                  body: file,
+                });
+                if (!uploadRes.ok) {
+                  throw new Error(`Upload failed: ${uploadRes.status} ${uploadRes.statusText}`);
+                }
+                const uploadJson = (await uploadRes.json()) as { storageId?: string };
+                const storageId = uploadJson.storageId;
+                if (!storageId) throw new Error("Upload response missing storageId");
+
+                const created = await createOrgMedia({
+                  organizationId,
+                  // Convex expects Id<"_storage">; upload returns a string id.
+                  storageId: storageId as unknown as never,
+                  contentType: file.type || "application/octet-stream",
+                  size: file.size,
+                  filename: file.name,
+                });
+                const mediaId = (created as { mediaId?: string }).mediaId;
+                if (!mediaId) throw new Error("createOrganizationMedia missing mediaId");
+
+                // Close crop + preview, return to library with the new media preselected.
+                setCropOpen(false);
+                setLogoPreviewOpen(false);
+                setPendingSelectedMedia(null);
+                setLibraryInitialSelectedId(mediaId);
+                setLibraryFinalizeOnSelect(true);
+                setLogoPickerOpen(true);
+              } catch (err) {
+                console.error("[AdminOrgPublicProfile] crop upload error", err);
+              }
+            })();
+          }}
+        />
+      ) : null}
 
       <div className="h-24" />
     </div>

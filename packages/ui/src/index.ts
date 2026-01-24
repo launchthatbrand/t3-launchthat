@@ -44,6 +44,7 @@ export * from "./dotted-glow-background";
 export * from "./features-section";
 export * from "./orbiting-circles";
 export * from "./marquee";
+export * from "./image-crop";
 
 // UI micro-interactions (avoid name collisions with shadcn `Button`/`Card`)
 export { Button as MovingBorderButton, MovingBorder } from "./moving-border";

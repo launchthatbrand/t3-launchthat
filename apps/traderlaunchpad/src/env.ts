@@ -32,6 +32,10 @@ export const env = createEnv({
     LAUNCHTHAT_JWT_AUDIENCE: z.string().min(1).optional(),
     LAUNCHTHAT_JWT_KID: z.string().min(1).optional(),
     LAUNCHTHAT_JWT_PRIVATE_KEY: z.string().min(1).optional(),
+
+    // Web Push (server-side): VAPID private key used to sign push requests.
+    // Optional so Convex/CI environments can run without push configured.
+    VAPID_PRIVATE_KEY: z.string().min(1).optional(),
   },
 
   /**
@@ -45,6 +49,10 @@ export const env = createEnv({
       .min(1)
       .optional()
       .default("traderlaunchpad.com"),
+
+    // Web Push (client-side): VAPID public key used for PushManager.subscribe().
+    // Optional so environments without push configured still run.
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().min(1).optional(),
   },
   /**
    * Destructure all variables from `process.env` to make sure they aren't tree-shaken away.
@@ -54,6 +62,7 @@ export const env = createEnv({
 
     NEXT_PUBLIC_CONVEX_URL: process.env.NEXT_PUBLIC_CONVEX_URL,
     NEXT_PUBLIC_ROOT_DOMAIN: process.env.NEXT_PUBLIC_ROOT_DOMAIN,
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
   },
   skipValidation:
     !!process.env.CI || process.env.npm_lifecycle_event === "lint",

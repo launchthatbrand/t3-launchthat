@@ -26,6 +26,7 @@ import { useConvexAuth } from "convex/react";
 import { ConvexUserEnsurer } from "~/app/ConvexUserEnsurer";
 import { TenantConvexProvider } from "launchthat-plugin-core-tenant/next/components/tenant-convex-provider";
 import { ThemeProvider } from "@acme/ui/theme";
+import { PushNotificationsClient } from "~/components/pwa/PushNotificationsClient";
 
 const convexUrl = String(env.NEXT_PUBLIC_CONVEX_URL ?? "");
 if (!convexUrl) {
@@ -57,6 +58,7 @@ export function Providers({ children, tenant, host }: ProvidersProps) {
             <TenantProvider value={tenant}>
               <HostProvider host={host}>
                 <ConvexUserEnsurer />
+                <PushNotificationsClient />
                 <DataModeProvider>
                   <ActiveAccountProvider>
                     <TraderLaunchpadOnboardingGate>{children}</TraderLaunchpadOnboardingGate>
@@ -70,6 +72,7 @@ export function Providers({ children, tenant, host }: ProvidersProps) {
         <TenantProvider value={tenant}>
           <HostProvider host={host}>
             <TenantConvexProvider convexUrl={convexUrl} nodeEnv={env.NODE_ENV}>
+              <PushNotificationsClient />
               <DataModeProvider>
                 <ActiveAccountProvider>
                   <TraderLaunchpadOnboardingGate>{children}</TraderLaunchpadOnboardingGate>

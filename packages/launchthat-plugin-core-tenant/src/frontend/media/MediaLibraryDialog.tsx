@@ -32,6 +32,23 @@ export interface MediaLibraryDialogProps<
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
+  /**
+   * When the dialog opens, preselect this item id if present in the list.
+   * Useful when you create a new media item and want it highlighted immediately.
+   */
+  initialSelectedId?: string | null;
+  /**
+   * Label for the confirm button (defaults to "Select").
+   */
+  selectLabel?: string;
+  /**
+   * If false, selecting will NOT auto-close the dialog (defaults to true).
+   */
+  closeOnSelect?: boolean;
+  /**
+   * If true, preserves internal selection when dialog closes (defaults to false).
+   */
+  keepSelectionOnClose?: boolean;
 
   /** A Convex query that returns media items with URLs. */
   listRef: FunctionReference<"query", "public", ListArgs, Item[]>;
@@ -94,12 +111,20 @@ export function MediaLibraryDialog<
 
   React.useEffect(() => {
     if (!props.open) {
-      setSelectedId(null);
+      if (!props.keepSelectionOnClose) setSelectedId(null);
       setIsUploading(false);
       setError(null);
       if (inputRef.current) inputRef.current.value = "";
     }
   }, [props.open]);
+
+  React.useEffect(() => {
+    if (!props.open) return;
+    const initial = typeof props.initialSelectedId === "string" ? props.initialSelectedId : "";
+    if (!initial) return;
+    if (selectedId) return;
+    setSelectedId(initial);
+  }, [props.open, props.initialSelectedId, selectedId]);
 
   const list = Array.isArray(items) ? items : [];
 
@@ -166,10 +191,11 @@ export function MediaLibraryDialog<
               onClick={() => {
                 if (!selected) return;
                 props.onSelect(selected);
-                props.onOpenChange(false);
+                const closeOnSelect = props.closeOnSelect !== false;
+                if (closeOnSelect) props.onOpenChange(false);
               }}
             >
-              Select
+              {props.selectLabel ?? "Select"}
             </Button>
           </div>
 

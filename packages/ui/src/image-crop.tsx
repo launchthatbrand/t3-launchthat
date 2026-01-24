@@ -15,16 +15,18 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DialogTrigger,
 } from "@acme/ui/dialog"
-import { FileWithPath, useDropzone } from "react-dropzone"
 
 import "react-image-crop/dist/ReactCrop.css"
 
 import { CropIcon, Trash2Icon } from "lucide-react"
 
-export type FileWithPreview = FileWithPath & {
+export type FileWithPreview = {
   preview: string
 }
 interface ImageCropperProps {
@@ -32,6 +34,13 @@ interface ImageCropperProps {
   setDialogOpen: React.Dispatch<React.SetStateAction<boolean>>
   selectedFile: FileWithPreview | null
   setSelectedFile: React.Dispatch<React.SetStateAction<FileWithPreview | null>>
+  showTrigger?: boolean
+  cropButtonLabel?: string
+  onCropped?: (result: {
+    dataUrl?: string
+    percentCrop: Crop
+    pixelCrop?: PixelCrop
+  }) => void
 }
 
 export function ImageCropper({
@@ -39,30 +48,45 @@ export function ImageCropper({
   setDialogOpen,
   selectedFile,
   setSelectedFile,
+  showTrigger = true,
+  cropButtonLabel = "Crop",
+  onCropped,
 }: ImageCropperProps) {
   const aspect = 1
 
   const imgRef = React.useRef<HTMLImageElement | null>(null)
 
   const [crop, setCrop] = React.useState<Crop>()
-  const [croppedImageUrl, setCroppedImageUrl] = React.useState<string>("")
+  const [lastPercentCrop, setLastPercentCrop] = React.useState<Crop>()
+  const [lastPixelCrop, setLastPixelCrop] = React.useState<PixelCrop>()
   const [croppedImage, setCroppedImage] = React.useState<string>("")
 
   function onImageLoad(e: SyntheticEvent<HTMLImageElement>) {
     if (aspect) {
       const { width, height } = e.currentTarget
-      setCrop(centerAspectCrop(width, height, aspect))
+      const next = centerAspectCrop(width, height, aspect)
+      setCrop(next)
+      setLastPercentCrop(next)
+      console.debug("[ImageCropper] onImageLoad", {
+        width,
+        height,
+        next,
+        src: selectedFile?.preview,
+      })
     }
   }
 
   function onCropComplete(crop: PixelCrop) {
     if (imgRef.current && crop.width && crop.height) {
-      const croppedImageUrl = getCroppedImg(imgRef.current, crop)
-      setCroppedImageUrl(croppedImageUrl)
+      setLastPixelCrop(crop)
+      console.debug("[ImageCropper] onCropComplete", { crop })
     }
   }
 
-  function getCroppedImg(image: HTMLImageElement, crop: PixelCrop): string {
+  function getCroppedImg(
+    image: HTMLImageElement,
+    crop: PixelCrop,
+  ): string | null {
     const canvas = document.createElement("canvas")
     const scaleX = image.naturalWidth / image.width
     const scaleY = image.naturalHeight / image.height
@@ -88,34 +112,78 @@ export function ImageCropper({
       )
     }
 
-    return canvas.toDataURL("image/png", 1.0)
+    try {
+      return canvas.toDataURL("image/png", 1.0)
+    } catch {
+      // Likely a cross-origin / tainted canvas. We can still use the crop coords.
+      return null
+    }
   }
 
   async function onCrop() {
     try {
-      setCroppedImage(croppedImageUrl)
+      console.debug("[ImageCropper] onCrop click", {
+        dialogOpen,
+        lastPercentCrop,
+        lastPixelCrop,
+        hasImg: Boolean(imgRef.current),
+      })
       setDialogOpen(false)
+      const percentCrop = lastPercentCrop ?? crop
+      if (percentCrop) {
+        const dataUrl =
+          imgRef.current && lastPixelCrop
+            ? getCroppedImg(imgRef.current, lastPixelCrop) ?? undefined
+            : undefined
+
+        if (dataUrl) setCroppedImage(dataUrl)
+
+        console.debug("[ImageCropper] onCropped firing", {
+          percentCrop,
+          hasDataUrl: Boolean(dataUrl),
+        })
+        onCropped?.({
+          dataUrl,
+          percentCrop,
+          pixelCrop: lastPixelCrop,
+        })
+      } else {
+        console.warn("[ImageCropper] onCrop: missing percentCrop")
+      }
     } catch (error) {
+      console.error("[ImageCropper] onCrop error", error)
       alert("Something went wrong!")
     }
   }
 
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-      <DialogTrigger>
-        <Avatar className="size-36 cursor-pointer ring-offset-2 ring-2 ring-slate-200">
-          <AvatarImage
-            src={croppedImage ? croppedImage : selectedFile?.preview}
-            alt="@shadcn"
-          />
-          <AvatarFallback>CN</AvatarFallback>
-        </Avatar>
-      </DialogTrigger>
+      {showTrigger ? (
+        <DialogTrigger type="button">
+          <Avatar className="size-36 cursor-pointer ring-offset-2 ring-2 ring-slate-200">
+            <AvatarImage
+              src={croppedImage ? croppedImage : selectedFile?.preview}
+              alt="@shadcn"
+            />
+            <AvatarFallback>CN</AvatarFallback>
+          </Avatar>
+        </DialogTrigger>
+      ) : null}
       <DialogContent className="p-0 gap-0">
-        <div className="p-6 size-full">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Crop image</DialogTitle>
+          <DialogDescription>
+            Select the square crop region for this image.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="p-6 size-full max-w-md">
           <ReactCrop
             crop={crop}
-            onChange={(_, percentCrop) => setCrop(percentCrop)}
+            onChange={(_, percentCrop) => {
+              setCrop(percentCrop)
+              setLastPercentCrop(percentCrop)
+              console.debug("[ImageCropper] onChange", { percentCrop })
+            }}
             onComplete={(c) => onCropComplete(c)}
             aspect={aspect}
             className="w-full"
@@ -127,6 +195,7 @@ export function ImageCropper({
                 alt="Image Cropper Shell"
                 src={selectedFile?.preview}
                 onLoad={onImageLoad}
+                crossOrigin="anonymous"
               />
               <AvatarFallback className="size-full min-h-[460px] rounded-none">
                 Loading...
@@ -149,9 +218,17 @@ export function ImageCropper({
               Cancel
             </Button>
           </DialogClose>
-          <Button type="submit" size={"sm"} className="w-fit" onClick={onCrop}>
+          <Button
+            type="button"
+            size={"sm"}
+            className="w-fit"
+            onClick={(e) => {
+              e.preventDefault()
+              void onCrop()
+            }}
+          >
             <CropIcon className="mr-1.5 size-4" />
-            Crop
+            {cropButtonLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

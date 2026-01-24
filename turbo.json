@@ -54,7 +54,9 @@
     "PORT",
     "STRIPE_SECRET_KEY",
     "SUPPORT_EMAIL_DOMAIN",
-    "SITE_URL"
+    "SITE_URL",
+    "NEXT_PUBLIC_VAPID_PUBLIC_KEY",
+    "VAPID_PRIVATE_KEY"
   ],
   "globalPassThroughEnv": [
     "NODE_ENV",
