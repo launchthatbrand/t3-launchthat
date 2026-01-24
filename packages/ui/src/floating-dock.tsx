@@ -14,7 +14,7 @@ import Link from "next/link";
 /* eslint-disable prefer-const */
 import type { MotionValue } from "motion/react";
 import { cn } from "@acme/ui";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 type DockItem = {
   href: string;
@@ -112,6 +112,7 @@ export const FloatingDockDesktop = ({
 }) => {
   let mouseX = useMotionValue(Infinity);
   const router = useRouter();
+  const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [touchGestureActive, setTouchGestureActive] = useState(false);
   const gestureStartedOnItemRef = useRef(false);
@@ -203,7 +204,12 @@ export const FloatingDockDesktop = ({
         )}
       >
         {items.map((item) => (
-          <IconContainer mouseX={mouseX} key={getItemLabel(item)} {...item} />
+          <IconContainer
+            mouseX={mouseX}
+            key={getItemLabel(item)}
+            currentPathname={pathname}
+            {...item}
+          />
         ))}
       </motion.div>
     </DockTouchContext.Provider>
@@ -216,12 +222,14 @@ function IconContainer({
   title,
   icon,
   href,
+  currentPathname,
 }: {
   mouseX: MotionValue;
   label?: string;
   title?: string;
   icon: React.ReactNode;
   href: string;
+  currentPathname: string;
 }) {
   let ref = useRef<HTMLDivElement>(null);
 
@@ -266,6 +274,25 @@ function IconContainer({
   const [hovered, setHovered] = useState(false);
   const resolvedLabel = label ?? title ?? "";
   const touchCtx = useContext(DockTouchContext);
+  const touchGestureActive = touchCtx?.touchGestureActive === true;
+
+  const isActiveRoute =
+    currentPathname === href ||
+    (href.length > 1 && currentPathname.startsWith(`${href}/`));
+
+  // While sliding on touch, show ALL labels:
+  // - closest label is largest/brightest
+  // - others stay visible but smaller/dimmer
+  const touchLabelOpacity = useTransform(
+    distance,
+    [-220, -120, 0, 120, 220],
+    [0.35, 0.65, 1, 0.65, 0.35],
+  );
+  const touchLabelScale = useTransform(
+    distance,
+    [-220, -120, 0, 120, 220],
+    [0.88, 0.98, 1.16, 0.98, 0.88],
+  );
 
   const handlePointerUp: React.PointerEventHandler<HTMLAnchorElement> = (e) => {
     // On iOS Safari, tapped links can retain :focus until the next tap,
@@ -288,6 +315,7 @@ function IconContainer({
     <Link
       href={href}
       aria-label={resolvedLabel}
+      aria-current={isActiveRoute ? "page" : undefined}
       onPointerUp={handlePointerUp}
       onClick={handleClick}
       data-dock-item="true"
@@ -308,20 +336,34 @@ function IconContainer({
           "relative flex aspect-square items-center justify-center rounded-full bg-gray-200 dark:bg-neutral-800",
           // Make taps feel more "native".
           "active:scale-95",
+          // Active route highlight.
+          isActiveRoute
+            ? "ring-2 ring-orange-500/50 shadow-[0_0_0_1px_rgba(249,115,22,0.25)]"
+            : null,
         )}
       >
-        <AnimatePresence>
-          {hovered && (
-            <motion.div
-              initial={{ opacity: 0, y: 10, x: "-50%" }}
-              animate={{ opacity: 1, y: 0, x: "-50%" }}
-              exit={{ opacity: 0, y: 2, x: "-50%" }}
-              className="absolute -top-8 left-1/2 w-fit whitespace-pre rounded-md border border-gray-200 bg-gray-100 px-2 py-0.5 text-xs text-neutral-700 dark:border-neutral-900 dark:bg-neutral-800 dark:text-white"
-            >
-              {resolvedLabel}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {touchGestureActive ? (
+          <motion.div
+            style={{ opacity: touchLabelOpacity, scale: touchLabelScale }}
+            className="pointer-events-none absolute -top-9 left-1/2 w-fit -translate-x-1/2 whitespace-pre rounded-md border border-gray-200 bg-gray-100 px-2.5 py-1 text-sm font-medium text-neutral-800 shadow-sm dark:border-neutral-900 dark:bg-neutral-800 dark:text-white"
+          >
+            {resolvedLabel}
+          </motion.div>
+        ) : (
+          <AnimatePresence>
+            {hovered && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, x: "-50%" }}
+                animate={{ opacity: 1, y: 0, x: "-50%" }}
+                exit={{ opacity: 0, y: 2, x: "-50%" }}
+                transition={{ duration: 0.12 }}
+                className="absolute -top-9 left-1/2 w-fit whitespace-pre rounded-md border border-gray-200 bg-gray-100 px-2.5 py-1 text-sm font-medium text-neutral-800 dark:border-neutral-900 dark:bg-neutral-800 dark:text-white"
+              >
+                {resolvedLabel}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
         <motion.div
           style={{ width: widthIcon, height: heightIcon }}
           className="flex items-center justify-center"
