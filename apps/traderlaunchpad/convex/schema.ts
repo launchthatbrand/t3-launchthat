@@ -98,19 +98,6 @@ export default defineSchema({
     .index("by_uploader", ["uploadedByUserId"])
     .index("by_uploader_createdAt", ["uploadedByUserId", "createdAt"]),
 
-  pushSubscriptions: defineTable({
-    userId: v.string(),
-    endpoint: v.string(),
-    p256dh: v.string(),
-    auth: v.string(),
-    expirationTime: v.optional(v.union(v.number(), v.null())),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_userId", ["userId"])
-    .index("by_endpoint", ["endpoint"])
-    .index("by_userId_and_endpoint", ["userId", "endpoint"]),
-
   orgUserInvites: defineTable({
     organizationId: v.string(),
     email: v.string(),

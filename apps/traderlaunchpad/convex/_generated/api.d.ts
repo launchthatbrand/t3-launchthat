@@ -30,6 +30,7 @@ import type * as onboarding_queries from "../onboarding/queries.js";
 import type * as publicProfiles_types from "../publicProfiles/types.js";
 import type * as publicProfiles from "../publicProfiles.js";
 import type * as pushSubscriptions_actions from "../pushSubscriptions/actions.js";
+import type * as pushSubscriptions_internalActions from "../pushSubscriptions/internalActions.js";
 import type * as pushSubscriptions_mutations from "../pushSubscriptions/mutations.js";
 import type * as pushSubscriptions_queries from "../pushSubscriptions/queries.js";
 import type * as traderlaunchpad_actions from "../traderlaunchpad/actions.js";
@@ -78,6 +79,7 @@ declare const fullApi: ApiFromModules<{
   "publicProfiles/types": typeof publicProfiles_types;
   publicProfiles: typeof publicProfiles;
   "pushSubscriptions/actions": typeof pushSubscriptions_actions;
+  "pushSubscriptions/internalActions": typeof pushSubscriptions_internalActions;
   "pushSubscriptions/mutations": typeof pushSubscriptions_mutations;
   "pushSubscriptions/queries": typeof pushSubscriptions_queries;
   "traderlaunchpad/actions": typeof traderlaunchpad_actions;
@@ -552,6 +554,58 @@ export declare const components: {
           userId: string;
         },
         { continueCursor: string | null; isDone: boolean; page: Array<any> }
+      >;
+    };
+  };
+  launchthat_push: {
+    mutations: {
+      deleteMyPushSubscription: FunctionReference<
+        "mutation",
+        "internal",
+        { endpoint?: string },
+        null
+      >;
+      upsertMyPushSubscription: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          subscription: {
+            endpoint: string;
+            expirationTime?: number | null;
+            keys: { auth: string; p256dh: string };
+          };
+        },
+        null
+      >;
+    };
+    queries: {
+      getMySubscriptionRowId: FunctionReference<
+        "query",
+        "internal",
+        {},
+        string | null
+      >;
+      listMySubscriptions: FunctionReference<
+        "query",
+        "internal",
+        {},
+        Array<{
+          auth: string;
+          endpoint: string;
+          expirationTime?: number | null;
+          p256dh: string;
+        }>
+      >;
+      listSubscriptionsByUserId: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        Array<{
+          auth: string;
+          endpoint: string;
+          expirationTime?: number | null;
+          p256dh: string;
+        }>
       >;
     };
   };

@@ -17,7 +17,8 @@ export const listMySubscriptions = query({
     const userId = await resolveViewerUserId(ctx);
     const rows = await ctx.db
       .query("pushSubscriptions")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .withIndex("by_userId", (q: any) => q.eq("userId", userId))
       .collect();
 
     return rows.map((r) => ({
@@ -31,6 +32,20 @@ export const listMySubscriptions = query({
             ? null
             : undefined,
     }));
+  },
+});
+
+export const getMySubscriptionRowId = query({
+  args: {},
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx) => {
+    const userId = await resolveViewerUserId(ctx);
+    const row = await ctx.db
+      .query("pushSubscriptions")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .withIndex("by_userId", (q: any) => q.eq("userId", userId))
+      .first();
+    return row ? String(row._id) : null;
   },
 });
 
@@ -49,7 +64,8 @@ export const listSubscriptionsByUserId = query({
     if (!userId) return [];
     const rows = await ctx.db
       .query("pushSubscriptions")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .withIndex("by_userId", (q: any) => q.eq("userId", userId))
       .collect();
 
     return rows.map((r) => ({

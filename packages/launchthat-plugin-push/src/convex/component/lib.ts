@@ -1,8 +1,8 @@
 import { ConvexError } from "convex/values";
-import type { MutationCtx, QueryCtx } from "convex/server";
 
 export const resolveViewerUserId = async (
-  ctx: QueryCtx | MutationCtx,
+  // Use `any` to avoid coupling to generated Convex ctx types in this reusable component.
+  ctx: any,
 ): Promise<string> => {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new ConvexError("Unauthorized");

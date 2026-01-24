@@ -58,5 +58,8 @@
       "@clerk/clerk-react>@clerk/shared": "3.9.5"
     }
   },
-  "prettier": "@acme/prettier-config"
+  "prettier": "@acme/prettier-config",
+  "dependencies": {
+    "@block65/webcrypto-web-push": "^1.0.0"
+  }
 }

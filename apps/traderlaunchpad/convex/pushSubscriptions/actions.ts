@@ -1,7 +1,7 @@
 "use node";
 
 import { action } from "../_generated/server";
-import { env } from "../../src/env";
+import { components } from "../_generated/api";
 import { resolveViewerUserId } from "../traderlaunchpad/lib/resolve";
 import { v } from "convex/values";
 import webpush from "web-push";
@@ -12,9 +12,6 @@ import webpush from "web-push";
   @typescript-eslint/no-unsafe-assignment,
   @typescript-eslint/no-unsafe-member-access
 */
-
-// Avoid importing typed `api` in actions (can trigger TS deep instantiation).
-const apiUntyped: any = require("../_generated/api").api;
 
 interface PushSub {
   endpoint: string;
@@ -38,16 +35,8 @@ export const sendTestPushToMe = action({
   handler: async (ctx, args) => {
     await resolveViewerUserId(ctx);
 
-    const viewerSettings = await ctx.runQuery(
-      apiUntyped.viewer.queries.getViewerSettings,
-      {},
-    );
-    if (!viewerSettings?.isAdmin) {
-      throw new Error("Forbidden: admin access required.");
-    }
-
-    const vapidPublicKey = String(env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "").trim();
-    const vapidPrivateKey = String(env.VAPID_PRIVATE_KEY ?? "").trim();
+    const vapidPublicKey = String(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "").trim();
+    const vapidPrivateKey = String(process.env.VAPID_PRIVATE_KEY ?? "").trim();
     if (!vapidPublicKey || !vapidPrivateKey) {
       throw new Error(
         "Missing VAPID keys in Convex env (NEXT_PUBLIC_VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY).",
@@ -55,13 +44,13 @@ export const sendTestPushToMe = action({
     }
 
     webpush.setVapidDetails(
-      "mailto:support@traderlaunchpad.com",
+      String(process.env.VAPID_SUBJECT ?? "mailto:support@traderlaunchpad.com").trim(),
       vapidPublicKey,
       vapidPrivateKey,
     );
 
     const subs: PushSub[] = await ctx.runQuery(
-      apiUntyped.pushSubscriptions.queries.listMySubscriptions,
+      components.launchthat_push.queries.listMySubscriptions,
       {},
     );
 

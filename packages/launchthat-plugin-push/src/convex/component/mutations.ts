@@ -35,7 +35,8 @@ export const upsertMyPushSubscription = mutation({
 
     const existing = await ctx.db
       .query("pushSubscriptions")
-      .withIndex("by_userId_and_endpoint", (q) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .withIndex("by_userId_and_endpoint", (q: any) =>
         q.eq("userId", userId).eq("endpoint", endpoint),
       )
       .first();
@@ -76,13 +77,15 @@ export const deleteMyPushSubscription = mutation({
     const rows = endpoint
       ? await ctx.db
           .query("pushSubscriptions")
-          .withIndex("by_userId_and_endpoint", (q) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .withIndex("by_userId_and_endpoint", (q: any) =>
             q.eq("userId", userId).eq("endpoint", endpoint),
           )
           .collect()
       : await ctx.db
           .query("pushSubscriptions")
-          .withIndex("by_userId", (q) => q.eq("userId", userId))
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .withIndex("by_userId", (q: any) => q.eq("userId", userId))
           .collect();
 
     for (const row of rows) {

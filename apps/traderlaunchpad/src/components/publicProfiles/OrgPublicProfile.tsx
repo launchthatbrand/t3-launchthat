@@ -2,12 +2,11 @@
 
 import {
   BuilderDndProvider,
-  SortableContext,
   SortableItem,
   arrayMove,
-  verticalListSortingStrategy,
 } from "@acme/dnd";
-import type { DragEndEvent, SortingStrategy } from "@acme/dnd";
+import type { DragEndEvent } from "@acme/dnd";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Eye, EyeOff, Pencil, Plus, Save, Trash2 } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
@@ -230,7 +229,7 @@ export function OrgPublicProfile(props: {
         <BuilderDndProvider onDragEnd={handleMoveSection}>
           <SortableContext
             items={config.sections.map((s) => s.id)}
-            strategy={verticalListSortingStrategy as SortingStrategy}
+            strategy={verticalListSortingStrategy}
           >
             {visibleSections.map((section) => (
               <SortableItem
