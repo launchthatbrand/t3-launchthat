@@ -3,6 +3,7 @@ import * as React from "react";
 import AppHeader from "@acme/ui/layout/AppHeader";
 import { OrgWorkspaceHeader } from "~/components/organizations/OrgWorkspaceHeader";
 import { ThemeToggleButton } from "@acme/ui/theme";
+import { AddToHomeScreenHeaderButton } from "launchthat-plugin-pwa/frontend";
 import { TraderLaunchpadNavUser } from "~/components/auth/TraderLaunchpadNavUser";
 import { TraderLaunchpadNotificationsMenu } from "~/components/notifications/TraderLaunchpadNotificationsMenu";
 
@@ -17,6 +18,10 @@ export default function AdminHeaderDefault() {
         // image="/images/tl-logo-1.png"
         rightSlot={
           <div className="flex items-center gap-2">
+            <AddToHomeScreenHeaderButton
+              appName="Trader Launchpad"
+              buttonClassName="text-white hover:text-white"
+            />
             <ThemeToggleButton />
             <TraderLaunchpadNotificationsMenu />
             <TraderLaunchpadNavUser afterSignOutUrl="/" />

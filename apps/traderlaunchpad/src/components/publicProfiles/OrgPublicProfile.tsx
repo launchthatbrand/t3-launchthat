@@ -5,11 +5,11 @@ import {
   SortableItem,
   arrayMove,
 } from "@acme/dnd";
-import type { DragEndEvent } from "@acme/dnd";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { Eye, EyeOff, Pencil, Plus, Save, Trash2 } from "lucide-react";
+import { SortableContext, verticalListSortingStrategy } from "@acme/dnd"
 
 import { Button } from "@acme/ui/button";
+import type { DragEndEvent } from "@acme/dnd";
 import Link from "next/link";
 import React from "react";
 import { cn } from "~/lib/utils";
@@ -166,7 +166,7 @@ export function OrgPublicProfile(props: {
     const from = config.sections.findIndex((s) => s.id === activeId);
     const to = config.sections.findIndex((s) => s.id === overId);
     if (from < 0 || to < 0) return;
-    const move = arrayMove as unknown as <T,>(items: T[], from: number, to: number) => T[];
+    const move = arrayMove as unknown as <T, >(items: T[], from: number, to: number) => T[];
     props.onChangeConfigAction?.({
       ...config,
       sections: move(config.sections, from, to),

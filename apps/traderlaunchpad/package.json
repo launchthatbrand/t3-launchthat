@@ -59,6 +59,7 @@
     "launchthat-plugin-notifications": "workspace:*",
     "launchthat-plugin-onboarding": "workspace:*",
     "launchthat-plugin-pricedata": "workspace:*",
+    "launchthat-plugin-pwa": "workspace:*",
     "launchthat-plugin-traderlaunchpad": "workspace:*",
     "lightweight-charts": "^4.2.0",
     "lucide-react": "^0.555.0",

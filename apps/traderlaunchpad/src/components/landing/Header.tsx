@@ -7,6 +7,7 @@ import React from "react";
 import { TraderLaunchpadNavUser } from "~/components/auth/TraderLaunchpadNavUser";
 import { NavItems } from "~/components/ui/resizable-navbar";
 import { ThemeToggleButton } from "@acme/ui/theme";
+import { AddToHomeScreenHeaderButton } from "launchthat-plugin-pwa/frontend";
 
 export function Header() {
   const navItems = [
@@ -57,6 +58,10 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-4">
+          <AddToHomeScreenHeaderButton
+            appName="Trader Launchpad"
+            buttonClassName="text-white hover:text-white"
+          />
           <ThemeToggleButton />
           {/* Portal parity: tenant hosts derive auth state from /api/me; auth host uses Clerk session */}
           <TraderLaunchpadNavUser />
