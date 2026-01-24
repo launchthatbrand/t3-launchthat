@@ -212,6 +212,7 @@ export const upsertTradePosition = mutation({
     openedAt: v.optional(v.number()),
     qty: v.optional(v.number()),
     avgPrice: v.optional(v.number()),
+    unrealizedPnl: v.optional(v.number()),
     raw: v.any(),
   },
   returns: v.object({
@@ -239,6 +240,7 @@ export const upsertTradePosition = mutation({
         openedAt: args.openedAt,
         qty: args.qty,
         avgPrice: args.avgPrice,
+        unrealizedPnl: args.unrealizedPnl,
         raw: args.raw,
         updatedAt: now,
       });
@@ -256,7 +258,78 @@ export const upsertTradePosition = mutation({
       openedAt: args.openedAt,
       qty: args.qty,
       avgPrice: args.avgPrice,
+      unrealizedPnl: args.unrealizedPnl,
       raw: args.raw,
+      updatedAt: now,
+    });
+    return { id, wasNew: true };
+  },
+});
+
+export const upsertTradeRealizationEvent = mutation({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    connectionId: v.id("tradelockerConnections"),
+    accountId: v.string(),
+    externalEventId: v.string(),
+    externalOrderId: v.optional(v.string()),
+    externalPositionId: v.string(),
+    tradeIdeaGroupId: v.optional(v.id("tradeIdeaGroups")),
+    closedAt: v.number(),
+    realizedPnl: v.number(),
+    fees: v.optional(v.number()),
+    qtyClosed: v.optional(v.number()),
+    raw: v.any(),
+  },
+  returns: v.object({
+    id: v.id("tradeRealizationEvents"),
+    wasNew: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("tradeRealizationEvents")
+      .withIndex("by_org_user_externalEventId", (q: any) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("userId", args.userId)
+          .eq("externalEventId", args.externalEventId),
+      )
+      .first();
+
+    const now = Date.now();
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        connectionId: args.connectionId,
+        accountId: args.accountId,
+        externalOrderId: args.externalOrderId,
+        externalPositionId: args.externalPositionId,
+        tradeIdeaGroupId: args.tradeIdeaGroupId,
+        closedAt: args.closedAt,
+        realizedPnl: args.realizedPnl,
+        fees: args.fees,
+        qtyClosed: args.qtyClosed,
+        raw: args.raw,
+        updatedAt: now,
+      });
+      return { id: existing._id, wasNew: false };
+    }
+
+    const id = await ctx.db.insert("tradeRealizationEvents", {
+      organizationId: args.organizationId,
+      userId: args.userId,
+      connectionId: args.connectionId,
+      accountId: args.accountId,
+      externalEventId: args.externalEventId,
+      externalOrderId: args.externalOrderId,
+      externalPositionId: args.externalPositionId,
+      tradeIdeaGroupId: args.tradeIdeaGroupId,
+      closedAt: args.closedAt,
+      realizedPnl: args.realizedPnl,
+      fees: args.fees,
+      qtyClosed: args.qtyClosed,
+      raw: args.raw,
+      createdAt: now,
       updatedAt: now,
     });
     return { id, wasNew: true };

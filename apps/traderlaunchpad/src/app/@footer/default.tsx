@@ -1,4 +1,4 @@
 export default function DefaultFooter() {
-  return null;
+  return <div className="bg-sidebar flex h-20 items-center border-t p-6">DefaultFooter</div>;
 }
 

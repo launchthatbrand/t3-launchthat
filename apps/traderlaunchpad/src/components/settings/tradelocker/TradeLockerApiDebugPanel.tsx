@@ -34,6 +34,8 @@ type TestId =
   | "reportClosedPositionsHistory"
   | "reportBalanceHistory"
   | "reportOrderHistory"
+  | "backendCloseTradesHistory"
+  | "backendReportsDiscovery"
   | "history";
 
 const stringify = (value: unknown) => {
@@ -43,6 +45,34 @@ const stringify = (value: unknown) => {
     return String(value);
   }
 };
+
+const COMMON_TRADE_REPORT_PATHS: Array<{ label: string; path: string }> = [
+  { label: "close-trades-history", path: "/trade/reports/close-trades-history" },
+  { label: "close-trade-history", path: "/trade/reports/close-trade-history" },
+  { label: "closed-trades-history", path: "/trade/reports/closed-trades-history" },
+  { label: "close-trades", path: "/trade/reports/close-trades" },
+  { label: "closed-trades", path: "/trade/reports/closed-trades" },
+  { label: "trades-history", path: "/trade/reports/trades-history" },
+  { label: "trade-history", path: "/trade/reports/trade-history" },
+  { label: "trades", path: "/trade/reports/trades" },
+  { label: "closed-positions-history", path: "/trade/reports/closed-positions-history" },
+  { label: "close-positions-history", path: "/trade/reports/close-positions-history" },
+  { label: "positions-closed-history", path: "/trade/reports/positions-closed-history" },
+  { label: "closed-positions", path: "/trade/reports/closed-positions" },
+  { label: "order-history", path: "/trade/reports/order-history" },
+  { label: "orders-history", path: "/trade/reports/orders-history" },
+  { label: "orders", path: "/trade/reports/orders" },
+  { label: "balance-history", path: "/trade/reports/balance-history" },
+  { label: "equity-history", path: "/trade/reports/equity-history" },
+  { label: "account-balance-history", path: "/trade/reports/account-balance-history" },
+  { label: "account-history", path: "/trade/reports/account-history" },
+  { label: "deals-history", path: "/trade/reports/deals-history" },
+  { label: "deal-history", path: "/trade/reports/deal-history" },
+  { label: "deals", path: "/trade/reports/deals" },
+  { label: "positions-history", path: "/trade/reports/positions-history" },
+  { label: "position-history", path: "/trade/reports/position-history" },
+  { label: "positions", path: "/trade/reports/positions" },
+];
 
 export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
   const probeConfig = useAction(
@@ -138,7 +168,8 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
           id === "reportTradesHistory" ||
           id === "reportClosedPositionsHistory" ||
           id === "reportBalanceHistory" ||
-          id === "reportOrderHistory"
+          id === "reportOrderHistory" ||
+          id === "backendCloseTradesHistory"
         ) {
           const path =
             id === "userMe"
@@ -151,7 +182,9 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
                     ? "/user/me/reports/closed-positions-history?accNum={accNum}"
                     : id === "reportBalanceHistory"
                       ? "/user/me/reports/balance-history?accNum={accNum}"
-                      : "/user/me/reports/order-history?accNum={accNum}";
+            : id === "reportOrderHistory"
+                      ? "/user/me/reports/order-history?accNum={accNum}"
+                      : "/backend-api/trade/reports/close-trades-history";
 
           const res = (await probeBackendPath({
             accountRowId: props.accountRowId,
@@ -162,6 +195,40 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             accountRowId: props.accountRowId,
             testId: id as TradeLockerDebugTestId,
             value: res,
+          });
+          return;
+        }
+
+        if (id === "backendReportsDiscovery") {
+          const results: Array<{
+            label: string;
+            path: string;
+            ok: boolean;
+            status?: number;
+            textPreview?: string;
+            jsonPreview?: unknown;
+          }> = [];
+
+          for (const entry of COMMON_TRADE_REPORT_PATHS) {
+            const res = (await probeBackendPath({
+              accountRowId: props.accountRowId,
+              path: entry.path,
+            })) as any;
+
+            results.push({
+              label: entry.label,
+              path: entry.path,
+              ok: Boolean(res?.ok),
+              status: typeof res?.status === "number" ? res.status : undefined,
+              textPreview: typeof res?.textPreview === "string" ? res.textPreview : undefined,
+              jsonPreview: res?.jsonPreview,
+            });
+          }
+
+          setResult({
+            accountRowId: props.accountRowId,
+            testId: "backendReportsDiscovery",
+            value: { candidates: COMMON_TRADE_REPORT_PATHS, results },
           });
           return;
         }
@@ -209,6 +276,8 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
     await runTest("reportClosedPositionsHistory");
     await runTest("reportBalanceHistory");
     await runTest("reportOrderHistory");
+    await runTest("backendCloseTradesHistory");
+    await runTest("backendReportsDiscovery");
     await runTest("history");
   };
 
@@ -664,10 +733,70 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
           </div>
 
           <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-sm font-semibold text-white/80">
+                14) Close trades history (backend-api)
+              </div>
+              <div className="flex items-center gap-2">
+                {statusBadge(getResultValue("backendCloseTradesHistory"))}
+                {copyButton("backendCloseTradesHistory")}
+              </div>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+                disabled={busy !== null}
+                onClick={() => void runTest("backendCloseTradesHistory")}
+              >
+                {busy === "backendCloseTradesHistory" ? "Running…" : "Run"}
+              </Button>
+              <Badge variant="outline" className="border-white/15 text-white/70">
+                {"/backend-api/trade/reports/close-trades-history"}
+              </Badge>
+            </div>
+            {getResultValue("backendCloseTradesHistory") ? (
+              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+                {stringify(getResultValue("backendCloseTradesHistory"))}
+              </pre>
+            ) : null}
+          </div>
+
+          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-sm font-semibold text-white/80">
+                15) Discover /trade/reports/* endpoints
+              </div>
+              <div className="flex items-center gap-2">
+                {statusBadge(getResultValue("backendReportsDiscovery"))}
+                {copyButton("backendReportsDiscovery")}
+              </div>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+                disabled={busy !== null}
+                onClick={() => void runTest("backendReportsDiscovery")}
+              >
+                {busy === "backendReportsDiscovery" ? "Running…" : "Run"}
+              </Button>
+              <Badge variant="outline" className="border-white/15 text-white/70">
+                {"/trade/reports/* (common candidates)"}
+              </Badge>
+            </div>
+            {getResultValue("backendReportsDiscovery") ? (
+              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+                {stringify(getResultValue("backendReportsDiscovery"))}
+              </pre>
+            ) : null}
+          </div>
+
+          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="space-y-0.5">
                 <div className="text-sm font-semibold text-white/80">
-                  14) Market data history (AUDJPY)
+                  16) Market data history (AUDJPY)
                 </div>
                 <div className="text-xs text-white/60">
                   Uses Trade endpoint: `/trade/history` with `tradableInstrumentId`.

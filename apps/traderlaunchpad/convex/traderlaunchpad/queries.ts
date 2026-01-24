@@ -98,6 +98,77 @@ export const listMySymbolTrades = query({
   },
 });
 
+export const listMyCalendarDailyStats = query({
+  args: {
+    accountId: v.optional(v.string()),
+    daysBack: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      date: v.string(), // YYYY-MM-DD
+      pnl: v.number(), // realized
+      wins: v.number(),
+      losses: v.number(),
+      unrealizedPnl: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    return await ctx.runQuery(tradeIdeasAnalytics.listCalendarDailyStats, {
+      organizationId,
+      userId,
+      accountId: args.accountId,
+      daysBack: args.daysBack,
+    });
+  },
+});
+
+export const listMyCalendarRealizationEvents = query({
+  args: {
+    accountId: v.optional(v.string()),
+    daysBack: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      externalEventId: v.string(),
+      tradeIdeaGroupId: v.optional(v.string()),
+      externalPositionId: v.string(),
+      externalOrderId: v.optional(v.string()),
+      symbol: v.union(v.string(), v.null()),
+      direction: v.union(v.literal("long"), v.literal("short"), v.null()),
+      closedAt: v.number(),
+      realizedPnl: v.number(),
+      fees: v.optional(v.number()),
+      qtyClosed: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const rows = await ctx.runQuery(tradeIdeasAnalytics.listCalendarRealizationEvents, {
+      organizationId,
+      userId,
+      accountId: args.accountId,
+      daysBack: args.daysBack,
+    });
+    return (rows ?? []).map((r: any) => ({
+      externalEventId: String(r.externalEventId ?? ""),
+      tradeIdeaGroupId:
+        typeof r.tradeIdeaGroupId === "string" ? String(r.tradeIdeaGroupId) : undefined,
+      externalPositionId: String(r.externalPositionId ?? ""),
+      externalOrderId: typeof r.externalOrderId === "string" ? r.externalOrderId : undefined,
+      symbol: typeof r.symbol === "string" ? r.symbol : null,
+      direction:
+        r.direction === "short" ? "short" : r.direction === "long" ? "long" : null,
+      closedAt: Number(r.closedAt ?? 0),
+      realizedPnl: typeof r.realizedPnl === "number" ? r.realizedPnl : 0,
+      fees: typeof r.fees === "number" ? r.fees : undefined,
+      qtyClosed: typeof r.qtyClosed === "number" ? r.qtyClosed : undefined,
+    }));
+  },
+});
+
 export const listOrgUsers = query({
   args: {
     organizationId: v.string(),

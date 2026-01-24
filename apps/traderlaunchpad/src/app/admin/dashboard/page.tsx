@@ -37,7 +37,8 @@ import { Calendar as DayCalendar } from "@acme/ui/calendar";
 import Link from "next/link";
 import { Progress } from "@acme/ui/progress";
 import React from "react";
-import { TradingCalendarPanel } from "~/components/dashboard/TradingCalendarPanel";
+import { TradingCalendarWithDrilldown } from "~/components/dashboard/TradingCalendarWithDrilldown";
+import type { TradingCalendarWithDrilldownTradeRow } from "~/components/dashboard/TradingCalendarWithDrilldown";
 import { TradingTimingInsights } from "~/components/dashboard/TradingTimingInsights";
 import { api } from "@convex-config/_generated/api";
 import { cn } from "@acme/ui";
@@ -287,9 +288,41 @@ export default function AdminDashboardPage() {
     }[]
     | undefined;
 
+  const liveCalendarDailyStats = useQuery(
+    api.traderlaunchpad.queries.listMyCalendarDailyStats,
+    shouldQuery && isLive
+      ? { daysBack: 90, accountId: activeAccount.selected?.accountId }
+      : "skip",
+  ) as
+    | {
+      date: string;
+      pnl: number;
+      wins: number;
+      losses: number;
+      unrealizedPnl?: number;
+    }[]
+    | undefined;
+
+  const liveCalendarEvents = useQuery(
+    api.traderlaunchpad.queries.listMyCalendarRealizationEvents,
+    shouldQuery && isLive
+      ? { daysBack: 90, accountId: activeAccount.selected?.accountId }
+      : "skip",
+  ) as
+    | {
+      externalEventId: string;
+      tradeIdeaGroupId?: string;
+      externalPositionId: string;
+      symbol: string | null;
+      direction: "long" | "short" | null;
+      closedAt: number;
+      realizedPnl: number;
+      qtyClosed?: number;
+    }[]
+    | undefined;
+
   const orgAggregateSummaryLive = useQuery(
-    // NOTE: typed as any until Convex codegen runs.
-    (api as unknown as any).traderlaunchpad.queries.getOrgTradeIdeaAnalyticsSummary,
+    api.traderlaunchpad.queries.getOrgTradeIdeaAnalyticsSummary,
     shouldQuery && isLive && isOrgMode
       ? {
           organizationId: tenant?._id,
@@ -356,18 +389,10 @@ export default function AdminDashboardPage() {
 
   const calendarDailyStats: TradingCalendarDailyStat[] = React.useMemo(() => {
     if (!isLive) return demoCalendarDailyStats as unknown as TradingCalendarDailyStat[];
-
-    const map: Record<string, TradingCalendarDailyStat> = {};
-    for (const t of reviewTrades) {
-      const key = t.tradeDate;
-      const stat =
-        map[key] ?? (map[key] = { date: key, pnl: 0, wins: 0, losses: 0 });
-      stat.pnl += t.pnl;
-      if (t.pnl >= 0) stat.wins += 1;
-      else stat.losses += 1;
-    }
-    return Object.values(map);
-  }, [isLive, reviewTrades]);
+    return Array.isArray(liveCalendarDailyStats)
+      ? (liveCalendarDailyStats as unknown as TradingCalendarDailyStat[])
+      : [];
+  }, [isLive, liveCalendarDailyStats]);
 
   const streak = React.useMemo(() => {
     return isLive ? computeStreakFromDailyStats(calendarDailyStats) : demoDashboardStats.streak;
@@ -520,6 +545,58 @@ export default function AdminDashboardPage() {
     if (!selectedDateObj) return "All dates";
     return formatDate(selectedDateObj, "MMM d, yyyy");
   }, [selectedDateObj]);
+
+  const calendarTradeIdeaIdByEventId = React.useMemo(() => {
+    const map = new Map<string, string>();
+    const rows = Array.isArray(liveCalendarEvents) ? liveCalendarEvents : [];
+    for (const r of rows) {
+      const eventId = String(r.externalEventId ?? "").trim();
+      const gid = typeof r.tradeIdeaGroupId === "string" ? r.tradeIdeaGroupId : "";
+      if (eventId && gid) map.set(eventId, gid);
+    }
+    return map;
+  }, [liveCalendarEvents]);
+
+  const getCalendarTradeHref = React.useCallback(
+    (eventId: string) => {
+      if (dataMode.effectiveMode === "demo") return `/admin/trade/${eventId}`;
+      const gid = calendarTradeIdeaIdByEventId.get(eventId);
+      return gid ? `/admin/tradeidea/${encodeURIComponent(gid)}` : "/admin/orders";
+    },
+    [calendarTradeIdeaIdByEventId, dataMode.effectiveMode],
+  );
+
+  const calendarTrades: TradingCalendarWithDrilldownTradeRow[] = React.useMemo(() => {
+    if (!isLive) {
+      return reviewTrades.map((t) => ({
+        id: t.id,
+        tradeDate: t.tradeDate,
+        symbol: t.symbol,
+        type: t.type,
+        reviewed: t.reviewed,
+        reason: t.reason,
+        pnl: t.pnl,
+      }));
+    }
+
+    const rows = Array.isArray(liveCalendarEvents) ? liveCalendarEvents : [];
+    return rows.map((e) => {
+      const tradeDate = toDateKey(e.closedAt);
+      const qtyLabel =
+        typeof e.qtyClosed === "number" && Number.isFinite(e.qtyClosed) && e.qtyClosed !== 0
+          ? ` • ${Math.abs(e.qtyClosed)}`
+          : "";
+      return {
+        id: String(e.externalEventId ?? `${e.externalPositionId}:${e.closedAt}`),
+        tradeDate,
+        symbol: typeof e.symbol === "string" && e.symbol.trim() ? e.symbol.trim() : "—",
+        type: e.direction === "short" ? "Short" : "Long",
+        reviewed: false,
+        reason: `Partial close${qtyLabel}`,
+        pnl: typeof e.realizedPnl === "number" ? e.realizedPnl : 0,
+      };
+    });
+  }, [isLive, liveCalendarEvents, reviewTrades]);
 
   const handleSelectDate = (d: Date | undefined) => {
     if (!d) {
@@ -720,7 +797,7 @@ export default function AdminDashboardPage() {
       {/* Date filter (moved down; syncs with TradingCalendarPanel) */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
         <div className="flex flex-wrap items-center gap-2">
-          <ActiveAccountSelector />
+          <ActiveAccountSelector className="w-full sm:w-auto" />
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -772,7 +849,15 @@ export default function AdminDashboardPage() {
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="space-y-8 lg:col-span-2">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+          <TradingCalendarWithDrilldown
+            dailyStats={calendarDailyStats}
+            trades={calendarTrades}
+            selectedDate={selectedTradeDate}
+            onSelectDateAction={setSelectedTradeDate}
+            getTradeHref={getCalendarTradeHref}
+          />
+
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-4">
             <Card className="p-2 gap-2 relative overflow-hidden border-l-4 border-white/10 border-l-emerald-500 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
               <CardHeader className=" p-0 flex flex-row items-center justify-between space-y-0 pb-1.5">
                 <CardTitle className="text-muted-foreground text-[11px] font-medium">
@@ -788,11 +873,11 @@ export default function AdminDashboardPage() {
                   />
                 </div>
               </CardHeader>
-              <CardContent className="p-3 pt-0">
-                <div className="text-lg font-bold leading-none tabular-nums">
+              <CardContent className="p-2 pt-0 sm:p-3 sm:pt-0">
+                <div className="text-base font-bold leading-none tabular-nums sm:text-lg">
                   ${dashboardStats.balance.toLocaleString()}
                 </div>
-                <p className="text-muted-foreground mt-0.5 text-[11px] leading-tight">
+                <p className="text-muted-foreground mt-0.5 hidden text-[11px] leading-tight sm:block">
                   <span className="font-medium text-emerald-500">
                     +{dashboardStats.monthlyReturn}%
                   </span>{" "}
@@ -814,8 +899,8 @@ export default function AdminDashboardPage() {
                   />
                 </div>
               </CardHeader>
-              <CardContent className="p-3 pt-0">
-                <div className="text-lg font-bold leading-none tabular-nums">
+              <CardContent className="p-2 pt-0 sm:p-3 sm:pt-0">
+                <div className="text-base font-bold leading-none tabular-nums sm:text-lg">
                   {dashboardStats.winRate}%
                 </div>
                 <Progress
@@ -838,11 +923,11 @@ export default function AdminDashboardPage() {
                   />
                 </div>
               </CardHeader>
-              <CardContent className="p-3 pt-0">
-                <div className="text-lg font-bold leading-none tabular-nums">
+              <CardContent className="p-2 pt-0 sm:p-3 sm:pt-0">
+                <div className="text-base font-bold leading-none tabular-nums sm:text-lg">
                   {dashboardStats.profitFactor}
                 </div>
-                <p className="text-muted-foreground mt-0.5 text-[11px] leading-tight">
+                <p className="text-muted-foreground mt-0.5 hidden text-[11px] leading-tight sm:block">
                   Target: 2.0+{" "}
                   <span className="ml-1 font-medium text-amber-500">
                     (Excellent)
@@ -864,11 +949,11 @@ export default function AdminDashboardPage() {
                   />
                 </div>
               </CardHeader>
-              <CardContent className="p-3 pt-0">
-                <div className="text-lg font-bold leading-none tabular-nums">
+              <CardContent className="p-2 pt-0 sm:p-3 sm:pt-0">
+                <div className="text-base font-bold leading-none tabular-nums sm:text-lg">
                   {dashboardStats.streak} Days
                 </div>
-                <p className="text-muted-foreground mt-0.5 text-[11px] leading-tight">
+                <p className="text-muted-foreground mt-0.5 hidden text-[11px] leading-tight sm:block">
                   Keep it up! Consistency is key.
                 </p>
               </CardContent>
@@ -937,14 +1022,6 @@ export default function AdminDashboardPage() {
 
         <div className="space-y-8 lg:col-span-2">
           {/* KPI Grid */}
-
-          <TradingCalendarPanel
-            dailyStats={calendarDailyStats}
-            selectedDate={selectedTradeDate}
-            onSelectDateAction={setSelectedTradeDate}
-            className="min-h-[340px]"
-            contentClassName="h-full"
-          />
 
           {/* Equity Curve Placeholder */}
           <Card className="border-white/10 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
@@ -1268,6 +1345,7 @@ export default function AdminDashboardPage() {
           </Card>
         </div>
       </div>
+
     </div>
   );
 }

@@ -129,4 +129,27 @@ export const hasAnyOpenGroup = query({
   },
 });
 
+export const getGroupIdByPositionId = query({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    accountId: v.string(),
+    positionId: v.string(),
+  },
+  returns: v.union(v.id("tradeIdeaGroups"), v.null()),
+  handler: async (ctx, args) => {
+    const doc = await ctx.db
+      .query("tradeIdeaGroups")
+      .withIndex("by_org_user_accountId_positionId", (q: any) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("userId", args.userId)
+          .eq("accountId", args.accountId)
+          .eq("positionId", args.positionId),
+      )
+      .unique();
+    return doc ? doc._id : null;
+  },
+});
+
 

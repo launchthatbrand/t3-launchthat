@@ -25,16 +25,16 @@ export function ActiveAccountSelector(props: { className?: string }) {
 
   return (
     <div className={props.className}>
-      <div className="flex items-center gap-2">
+      <div className="flex w-full items-center gap-2">
         <Label className="sr-only">Account</Label>
         <Select
           value={selectedRowId}
           onValueChange={(v) => void account.setSelectedAccountRowId(v)}
         >
-          <SelectTrigger className="h-9 min-w-[220px] border-white/15 bg-transparent text-white hover:bg-white/10">
+          <SelectTrigger className="h-9 w-full min-w-0 border-white/15 bg-transparent text-white hover:bg-white/10 sm:w-auto sm:min-w-[220px]">
             <SelectValue placeholder="Select account…">{selectedLabel}</SelectValue>
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="w-(--radix-select-trigger-width) max-w-[calc(100vw-2rem)]">
             {account.options.map((o) => (
               <SelectItem key={o.accountRowId} value={o.accountRowId}>
                 <div className="flex items-center gap-2">

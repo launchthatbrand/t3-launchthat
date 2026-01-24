@@ -985,6 +985,27 @@ export declare const components: {
             raw: any;
             side?: "buy" | "sell";
             symbol?: string;
+            unrealizedPnl?: number;
+            userId: string;
+          },
+          { id: string; wasNew: boolean }
+        >;
+        upsertTradeRealizationEvent: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accountId: string;
+            closedAt: number;
+            connectionId: string;
+            externalEventId: string;
+            externalOrderId?: string;
+            externalPositionId: string;
+            fees?: number;
+            organizationId: string;
+            qtyClosed?: number;
+            raw: any;
+            realizedPnl: number;
+            tradeIdeaGroupId?: string;
             userId: string;
           },
           { id: string; wasNew: boolean }
@@ -1616,8 +1637,58 @@ export declare const components: {
             winRate: number;
           }>
         >;
+        listCalendarDailyStats: FunctionReference<
+          "query",
+          "internal",
+          {
+            accountId?: string;
+            daysBack?: number;
+            organizationId: string;
+            userId: string;
+          },
+          Array<{
+            date: string;
+            losses: number;
+            pnl: number;
+            unrealizedPnl?: number;
+            wins: number;
+          }>
+        >;
+        listCalendarRealizationEvents: FunctionReference<
+          "query",
+          "internal",
+          {
+            accountId?: string;
+            daysBack?: number;
+            organizationId: string;
+            userId: string;
+          },
+          Array<{
+            closedAt: number;
+            direction: "long" | "short" | null;
+            externalEventId: string;
+            externalOrderId?: string;
+            externalPositionId: string;
+            fees?: number;
+            qtyClosed?: number;
+            realizedPnl: number;
+            symbol: string | null;
+            tradeIdeaGroupId?: string;
+          }>
+        >;
       };
       internalQueries: {
+        getGroupIdByPositionId: FunctionReference<
+          "query",
+          "internal",
+          {
+            accountId: string;
+            organizationId: string;
+            positionId: string;
+            userId: string;
+          },
+          string | null
+        >;
         getLatestGroupForSymbol: FunctionReference<
           "query",
           "internal",

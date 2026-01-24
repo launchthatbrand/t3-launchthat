@@ -359,6 +359,8 @@ export default defineSchema({
     openedAt: v.optional(v.number()),
     qty: v.optional(v.number()),
     avgPrice: v.optional(v.number()),
+    // As-of last sync snapshot (optional, broker-dependent).
+    unrealizedPnl: v.optional(v.number()),
     raw: v.any(),
     updatedAt: v.number(),
   })
@@ -368,6 +370,58 @@ export default defineSchema({
       "externalPositionId",
     ])
     .index("by_org_user_openedAt", ["organizationId", "userId", "openedAt"]),
+
+  tradeRealizationEvents: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+    connectionId: v.id("tradelockerConnections"),
+    accountId: v.string(),
+
+    // Stable unique key for idempotent upserts.
+    externalEventId: v.string(),
+
+    // Broker identifiers.
+    externalOrderId: v.optional(v.string()),
+    externalPositionId: v.string(),
+
+    // Link to journaling.
+    tradeIdeaGroupId: v.optional(v.id("tradeIdeaGroups")),
+
+    // Event timing and economics.
+    closedAt: v.number(),
+    realizedPnl: v.number(),
+    fees: v.optional(v.number()),
+    qtyClosed: v.optional(v.number()),
+
+    raw: v.any(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_user_externalEventId", [
+      "organizationId",
+      "userId",
+      "externalEventId",
+    ])
+    .index("by_org_user_closedAt", ["organizationId", "userId", "closedAt"])
+    .index("by_org_user_accountId_closedAt", [
+      "organizationId",
+      "userId",
+      "accountId",
+      "closedAt",
+    ])
+    .index("by_org_user_accountId_externalPositionId_closedAt", [
+      "organizationId",
+      "userId",
+      "accountId",
+      "externalPositionId",
+      "closedAt",
+    ])
+    .index("by_org_user_tradeIdeaGroupId_closedAt", [
+      "organizationId",
+      "userId",
+      "tradeIdeaGroupId",
+      "closedAt",
+    ]),
 
   tradeAccountStates: defineTable({
     organizationId: v.string(),

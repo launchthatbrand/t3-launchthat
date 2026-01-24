@@ -10,9 +10,9 @@ import StandardLayout from "@acme/ui/layout/StandardLayout";
 import { ThemeProvider } from "@acme/ui/theme";
 import { Toaster } from "@acme/ui/toast";
 import { env } from "~/env";
-import { headers } from "next/headers";
-import { getHostFromHeaders } from "~/lib/host";
 import { getActiveTenantFromHeaders } from "~/lib/tenant-headers";
+import { getHostFromHeaders } from "~/lib/host";
+import { headers } from "next/headers";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -194,7 +194,7 @@ export default async function RootLayout(props: {
                 appName="Trader Launchpad"
                 sidebar={showSidebar ? props.sidebar : undefined}
                 header={showHeader ? props.header : null}
-                footer={null}
+                footer={props.footer}
                 sidebarVariant="inset"
                 showSidebar={showSidebar}
                 className="bg-transparent"

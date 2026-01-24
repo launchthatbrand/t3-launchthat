@@ -1537,7 +1537,7 @@ export const probeBackendPathForAccount = action({
   handler: async (ctx, args) => {
     const accountIdInput = args.accountId.trim();
     const accNumInput = Number(args.accNum);
-    const path = String(args.path ?? "").trim();
+    let path = String(args.path ?? "").trim();
 
     if (!accountIdInput || !Number.isFinite(accNumInput) || accNumInput <= 0) {
       return {
@@ -1596,6 +1596,14 @@ export const probeBackendPathForAccount = action({
       secrets.environment === "live" ? "live" : "demo",
     );
     const baseUrl = jwtHost ? `https://${jwtHost}/backend-api` : baseUrlFallback;
+
+    // Some callers may pass a path that already includes `/backend-api/...` even though
+    // `baseUrl` itself already ends with `/backend-api`. Normalize to avoid
+    // `/backend-api/backend-api/...` 404s.
+    if (baseUrl.endsWith("/backend-api") && path.startsWith("/backend-api/")) {
+      path = path.slice("/backend-api".length);
+      if (!path.startsWith("/")) path = `/${path}`;
+    }
 
     const rotateTokens = async (): Promise<boolean> => {
       const res = await tradeLockerRefreshTokens({ baseUrl, refreshToken });
@@ -3206,6 +3214,7 @@ type NormalizedPosition = {
   openedAt?: number;
   qty?: number;
   avgPrice?: number;
+  unrealizedPnl?: number;
   raw: any;
 };
 
@@ -3257,6 +3266,14 @@ const normalizePositions = (payload: any): NormalizedPosition[] => {
       qty: parseNumberLike(row?.qty ?? row?.quantity),
       avgPrice: parseNumberLike(
         row?.avgPrice ?? row?.averagePrice ?? row?.price,
+      ),
+      unrealizedPnl: parseNumberLike(
+        row?.unrealizedPnl ??
+          row?.unrealizedPnL ??
+          row?.unrealizedProfit ??
+          row?.unrealizedPL ??
+          row?.profitUnrealized ??
+          row?.pnlUnrealized,
       ),
       raw: row,
     });
@@ -4073,6 +4090,7 @@ export const syncTradeLockerConnection = action({
           openedAt: p.openedAt,
           qty: p.qty,
           avgPrice: p.avgPrice,
+          unrealizedPnl: p.unrealizedPnl,
           raw: p.raw,
       });
       positionsUpserted++;
@@ -4126,14 +4144,59 @@ export const syncTradeLockerConnection = action({
       if (upsertRes?.wasNew) executionsNew++;
     }
 
-    // Phase 1 TradeIdeas: rebuild “episodes” per instrumentId (open iff netQty != 0).
-    const touchedInstrumentIds = new Set<string>();
+    // TradeIdeas (preferred): rebuild per broker positionId when available.
+    const openPositionIds = new Set<string>();
     for (const p of positions) {
-      if (typeof p.instrumentId === "string" && p.instrumentId.trim()) {
-        touchedInstrumentIds.add(p.instrumentId.trim());
+      const id = String(p.externalPositionId ?? "").trim();
+      if (id) openPositionIds.add(id);
+    }
+
+    const positionIdsFromExecutions = new Set<string>();
+    for (const e of executions) {
+      const id = typeof e.externalPositionId === "string" ? e.externalPositionId.trim() : "";
+      if (id) positionIdsFromExecutions.add(id);
+    }
+
+    const allPositionIds = new Set<string>();
+    for (const id of openPositionIds) allPositionIds.add(id);
+    for (const id of positionIdsFromExecutions) allPositionIds.add(id);
+
+    for (const positionId of allPositionIds) {
+      try {
+        const res = await ctx.runMutation(
+          api.tradeIdeas.mutations.rebuildTradeIdeaForPosition as any,
+          {
+            organizationId: args.organizationId,
+            userId: args.userId,
+            connectionId,
+            accountId: tradeAccountId,
+            positionId,
+            isOpen: openPositionIds.has(positionId),
+          },
+        );
+        groupsTouched++;
+        tradeIdeaGroupIds.push(res.tradeIdeaGroupId as Id<"tradeIdeaGroups">);
+      } catch (err) {
+        await log(ctx, {
+          organizationId: args.organizationId,
+          level: "warn",
+          message: "TradeIdea rebuild failed for position",
+          metadata: {
+            userId: args.userId,
+            positionId,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        });
       }
     }
+
+    // Fallback: rebuild synthetic “episodes” for executions without broker positionId.
+    // (keeps legacy behavior for brokers that omit position identifiers).
+    const touchedInstrumentIds = new Set<string>();
     for (const e of executions) {
+      const hasPos =
+        typeof e.externalPositionId === "string" && e.externalPositionId.trim();
+      if (hasPos) continue;
       if (typeof e.instrumentId === "string" && e.instrumentId.trim()) {
         touchedInstrumentIds.add(e.instrumentId.trim());
       }
@@ -4167,6 +4230,235 @@ export const syncTradeLockerConnection = action({
           },
         });
       }
+    }
+
+    // Realization events: prefer TradeLocker report endpoint which actually includes realized PnL
+    // and close timestamps (ordersHistory often lacks these fields).
+    const parseNumberLike = (v: unknown): number | undefined => {
+      if (typeof v === "number") return Number.isFinite(v) ? v : undefined;
+      if (typeof v === "string") {
+        const trimmed = v.trim();
+        if (!trimmed) return undefined;
+        const n = Number(trimmed);
+        return Number.isFinite(n) ? n : undefined;
+      }
+      return undefined;
+    };
+
+    const normalizeMaybeMs = (ts: number): number => {
+      // Heuristic: if seconds (10 digits-ish), convert to ms.
+      if (ts > 0 && ts < 10_000_000_000) return ts * 1000;
+      return ts;
+    };
+
+    const extractPositionIdFromRaw = (raw: any): string => {
+      const pos =
+        (typeof raw?.positionId === "string" && raw.positionId.trim()) ||
+        (typeof raw?.posId === "string" && raw.posId.trim()) ||
+        (typeof raw?.tradeId === "string" && raw.tradeId.trim()) ||
+        (raw?.positionId || raw?.posId || raw?.tradeId
+          ? String(raw.positionId ?? raw.posId ?? raw.tradeId).trim()
+          : "");
+      return pos;
+    };
+
+    const extractRealizedPnlFromRaw = (raw: any): number | undefined => {
+      return (
+        parseNumberLike(raw?.realizedPnl) ??
+        parseNumberLike(raw?.realizedPnL) ??
+        parseNumberLike(raw?.pnl) ??
+        parseNumberLike(raw?.profit) ??
+        parseNumberLike(raw?.realizedProfit) ??
+        parseNumberLike(raw?.netProfit) ??
+        parseNumberLike(raw?.realizedPL) ??
+        parseNumberLike(raw?.closedPnl)
+      );
+    };
+
+    // 1) Report-driven events: `/trade/reports/close-trades-history`
+    let reportEventsInserted = 0;
+    try {
+      // Pull one page; most accounts are fine under this cap for now.
+      // If pagination is needed later, the debug panel output includes `links.next`.
+      let reportRes = await tradeLockerApi({
+        baseUrl,
+        accessToken,
+        accNum: tradeAccNum,
+        path: "/trade/reports/close-trades-history",
+      });
+      if (reportRes.status === 401 || reportRes.status === 403) {
+        const refreshed = await rotateTokens("close_trades_history_401_403");
+        if (refreshed) {
+          reportRes = await tradeLockerApi({
+            baseUrl,
+            accessToken,
+            accNum: tradeAccNum,
+            path: "/trade/reports/close-trades-history",
+          });
+        }
+      }
+
+      const rows = Array.isArray((reportRes.json as any)?.data)
+        ? ((reportRes.json as any).data as any[])
+        : [];
+      console.log("[tradelocker.sync.close_trades_history]", {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        status: reportRes.status,
+        ok: reportRes.ok,
+        rows: rows.length,
+        sampleKeys:
+          rows[0] && typeof rows[0] === "object"
+            ? Object.keys(rows[0] as Record<string, unknown>).slice(0, 30)
+            : [],
+      });
+
+      for (const r of rows) {
+        const positionId = extractPositionIdFromRaw(r);
+        if (!positionId) continue;
+
+        const closedAtRaw =
+          parseNumberLike(r?.closeMilliseconds) ??
+          parseNumberLike(r?.closeMs) ??
+          parseNumberLike(r?.closeTime) ??
+          parseNumberLike(r?.closedAt);
+        const closedAt =
+          typeof closedAtRaw === "number" ? normalizeMaybeMs(closedAtRaw) : undefined;
+        if (!closedAt || !Number.isFinite(closedAt) || closedAt <= 0) continue;
+
+        const realizedPnl = extractRealizedPnlFromRaw(r);
+        if (typeof realizedPnl !== "number") continue;
+
+        const qtyClosed =
+          parseNumberLike(r?.closeAmount) ??
+          parseNumberLike(r?.qty) ??
+          parseNumberLike(r?.quantity) ??
+          parseNumberLike(r?.volume);
+        const commission = parseNumberLike(r?.commission);
+        const swap = parseNumberLike(r?.swap);
+        // Store "fees" as a single number (most brokers expose commission/swap as negatives).
+        const fees =
+          typeof commission === "number" || typeof swap === "number"
+            ? (typeof commission === "number" ? commission : 0) +
+              (typeof swap === "number" ? swap : 0)
+            : undefined;
+
+        const externalOrderId =
+          typeof r?.closeOrderId === "string" && r.closeOrderId.trim()
+            ? r.closeOrderId.trim()
+            : typeof r?.orderId === "string" && r.orderId.trim()
+              ? r.orderId.trim()
+              : undefined;
+
+        const externalEventId = [
+          positionId,
+          externalOrderId ?? "no_order",
+          String(Math.round(closedAt)),
+          String(Math.round(realizedPnl * 100) / 100),
+        ].join(":");
+
+        const groupId = await ctx.runQuery(
+          api.tradeIdeas.internalQueries.getGroupIdByPositionId as any,
+          {
+            organizationId: args.organizationId,
+            userId: args.userId,
+            accountId: tradeAccountId,
+            positionId,
+          },
+        );
+
+        await ctx.runMutation(api.raw.mutations.upsertTradeRealizationEvent as any, {
+          organizationId: args.organizationId,
+          userId: args.userId,
+          connectionId,
+          accountId: tradeAccountId,
+          externalEventId,
+          externalOrderId,
+          externalPositionId: positionId,
+          tradeIdeaGroupId: groupId ?? undefined,
+          closedAt,
+          realizedPnl,
+          fees,
+          qtyClosed,
+          raw: r,
+        });
+        reportEventsInserted++;
+      }
+      console.log("[tradelocker.sync.close_trades_history_inserted]", {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        inserted: reportEventsInserted,
+      });
+    } catch (err) {
+      console.log("[tradelocker.sync.close_trades_history_error]", {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      // Fallback below can still populate events for other brokers.
+    }
+
+    // 2) Fallback: per partial close from ordersHistory when it contains PnL + closedAt.
+    for (const o of ordersHistory) {
+      const raw = o.raw;
+      const positionId = extractPositionIdFromRaw(raw);
+      if (!positionId) continue;
+
+      const realizedPnl = extractRealizedPnlFromRaw(raw);
+      if (typeof realizedPnl !== "number") continue;
+
+      const closedAt =
+        typeof o.closedAt === "number"
+          ? o.closedAt
+          : typeof raw?.closedAt === "number"
+            ? raw.closedAt
+            : typeof raw?.closeTime === "number"
+              ? raw.closeTime
+              : undefined;
+      if (typeof closedAt !== "number" || !Number.isFinite(closedAt) || closedAt <= 0) {
+        continue;
+      }
+
+      const qtyClosed = parseNumberLike(raw?.qty ?? raw?.quantity ?? raw?.volume);
+      const fees = parseNumberLike(raw?.fees);
+      const externalOrderId =
+        typeof o.externalOrderId === "string" && o.externalOrderId.trim()
+          ? o.externalOrderId.trim()
+          : undefined;
+
+      // Deterministic, stable id for idempotent upsert.
+      const externalEventId = [
+        positionId,
+        externalOrderId ?? "no_order",
+        String(Math.round(closedAt)),
+        String(Math.round(realizedPnl * 100) / 100),
+      ].join(":");
+
+      const groupId = await ctx.runQuery(
+        api.tradeIdeas.internalQueries.getGroupIdByPositionId as any,
+        {
+          organizationId: args.organizationId,
+          userId: args.userId,
+          accountId: tradeAccountId,
+          positionId,
+        },
+      );
+
+      await ctx.runMutation(api.raw.mutations.upsertTradeRealizationEvent as any, {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        connectionId,
+        accountId: tradeAccountId,
+        externalEventId,
+        externalOrderId,
+        externalPositionId: positionId,
+        tradeIdeaGroupId: groupId ?? undefined,
+        closedAt,
+        realizedPnl,
+        fees,
+        qtyClosed,
+        raw,
+      });
     }
 
     await ctx.runMutation(

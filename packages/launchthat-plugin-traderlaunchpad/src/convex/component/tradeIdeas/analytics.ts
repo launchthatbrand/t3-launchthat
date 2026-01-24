@@ -2,6 +2,12 @@ import { v } from "convex/values";
 
 import { query } from "../server";
 
+const toDateKey = (tsMs: number): string => {
+  const d = new Date(tsMs);
+  if (Number.isNaN(d.getTime())) return "1970-01-01";
+  return d.toISOString().slice(0, 10);
+};
+
 const tradeIdeaView = v.object({
   _id: v.id("tradeIdeaGroups"),
   _creationTime: v.number(),
@@ -206,5 +212,189 @@ export const listByInstrument = query({
       .slice(0, limit);
 
     return rows;
+  },
+});
+
+export const listCalendarDailyStats = query({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    accountId: v.optional(v.string()),
+    daysBack: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      date: v.string(), // YYYY-MM-DD
+      pnl: v.number(), // realized
+      wins: v.number(),
+      losses: v.number(),
+      unrealizedPnl: v.optional(v.number()), // as-of last sync, shown on today only
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const accountId = typeof args.accountId === "string" ? args.accountId.trim() : "";
+    const daysBack = Math.max(1, Math.min(365, Number(args.daysBack ?? 60)));
+    const now = Date.now();
+    const fromClosedAt = now - daysBack * 24 * 60 * 60 * 1000;
+
+    const events = accountId
+      ? await ctx.db
+          .query("tradeRealizationEvents")
+          .withIndex("by_org_user_accountId_closedAt", (q: any) =>
+            q
+              .eq("organizationId", args.organizationId)
+              .eq("userId", args.userId)
+              .eq("accountId", accountId)
+              .gte("closedAt", fromClosedAt)
+              .lte("closedAt", now),
+          )
+          .order("asc")
+          .take(5000)
+      : await ctx.db
+          .query("tradeRealizationEvents")
+          .withIndex("by_org_user_closedAt", (q: any) =>
+            q
+              .eq("organizationId", args.organizationId)
+              .eq("userId", args.userId)
+              .gte("closedAt", fromClosedAt)
+              .lte("closedAt", now),
+          )
+          .order("asc")
+          .take(5000);
+
+    const byDate: Record<string, { date: string; pnl: number; wins: number; losses: number }> = {};
+    for (const e of events as any[]) {
+      const closedAt = typeof e.closedAt === "number" ? e.closedAt : 0;
+      const pnl = typeof e.realizedPnl === "number" ? e.realizedPnl : 0;
+      if (!closedAt || !Number.isFinite(closedAt)) continue;
+      const date = toDateKey(closedAt);
+      const row = byDate[date] ?? (byDate[date] = { date, pnl: 0, wins: 0, losses: 0 });
+      row.pnl += Number.isFinite(pnl) ? pnl : 0;
+      if (pnl >= 0) row.wins += 1;
+      else row.losses += 1;
+    }
+
+    // Unrealized (as-of last sync): sum current open positions unrealized and attach to today's date.
+    const positions = await ctx.db
+      .query("tradePositions")
+      .withIndex("by_org_user_openedAt", (q: any) =>
+        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
+      )
+      .order("desc")
+      .take(1000);
+    const unrealizedTotal = (positions as any[]).reduce((acc, p) => {
+      const v = typeof p.unrealizedPnl === "number" ? p.unrealizedPnl : 0;
+      return acc + (Number.isFinite(v) ? v : 0);
+    }, 0);
+
+    const todayKey = toDateKey(now);
+    const base = Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
+    if (Number.isFinite(unrealizedTotal) && unrealizedTotal !== 0) {
+      const existing = byDate[todayKey];
+      if (existing) {
+        return base.map((r) =>
+          r.date === todayKey ? { ...r, unrealizedPnl: unrealizedTotal } : r,
+        );
+      }
+      return [
+        ...base,
+        { date: todayKey, pnl: 0, wins: 0, losses: 0, unrealizedPnl: unrealizedTotal },
+      ].sort((a, b) => a.date.localeCompare(b.date));
+    }
+    return base;
+  },
+});
+
+export const listCalendarRealizationEvents = query({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    accountId: v.optional(v.string()),
+    daysBack: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      externalEventId: v.string(),
+      tradeIdeaGroupId: v.optional(v.id("tradeIdeaGroups")),
+      externalPositionId: v.string(),
+      externalOrderId: v.optional(v.string()),
+      symbol: v.union(v.string(), v.null()),
+      direction: v.union(v.literal("long"), v.literal("short"), v.null()),
+      closedAt: v.number(),
+      realizedPnl: v.number(),
+      fees: v.optional(v.number()),
+      qtyClosed: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const accountId = typeof args.accountId === "string" ? args.accountId.trim() : "";
+    const daysBack = Math.max(1, Math.min(365, Number(args.daysBack ?? 60)));
+    const now = Date.now();
+    const fromClosedAt = now - daysBack * 24 * 60 * 60 * 1000;
+
+    const rows = accountId
+      ? await ctx.db
+          .query("tradeRealizationEvents")
+          .withIndex("by_org_user_accountId_closedAt", (q: any) =>
+            q
+              .eq("organizationId", args.organizationId)
+              .eq("userId", args.userId)
+              .eq("accountId", accountId)
+              .gte("closedAt", fromClosedAt)
+              .lte("closedAt", now),
+          )
+          .order("desc")
+          .take(2000)
+      : await ctx.db
+          .query("tradeRealizationEvents")
+          .withIndex("by_org_user_closedAt", (q: any) =>
+            q
+              .eq("organizationId", args.organizationId)
+              .eq("userId", args.userId)
+              .gte("closedAt", fromClosedAt)
+              .lte("closedAt", now),
+          )
+          .order("desc")
+          .take(2000);
+
+    const groupIds = Array.from(
+      new Set(
+        (rows as any[])
+          .map((r) => r.tradeIdeaGroupId)
+          .filter((id): id is string => typeof id === "string" && Boolean(id)),
+      ),
+    );
+
+    const groupById = new Map<string, { symbol: string; direction: "long" | "short" }>();
+    for (const id of groupIds) {
+      const g = await ctx.db.get(id as any);
+      const symbol = typeof (g as any)?.symbol === "string" ? (g as any).symbol : "";
+      const direction =
+        (g as any)?.direction === "short"
+          ? "short"
+          : (g as any)?.direction === "long"
+            ? "long"
+            : null;
+      if (symbol && direction) {
+        groupById.set(id, { symbol, direction });
+      }
+    }
+
+    return (rows as any[]).map((r) => {
+      const gid = typeof r.tradeIdeaGroupId === "string" ? r.tradeIdeaGroupId : null;
+      const meta = gid ? groupById.get(gid) : undefined;
+      return {
+        externalEventId: String(r.externalEventId ?? ""),
+        tradeIdeaGroupId: gid ? (gid as any) : undefined,
+        externalPositionId: String(r.externalPositionId ?? ""),
+        externalOrderId: typeof r.externalOrderId === "string" ? r.externalOrderId : undefined,
+        symbol: meta?.symbol ?? null,
+        direction: meta?.direction ?? null,
+        closedAt: Number(r.closedAt ?? 0),
+        realizedPnl: typeof r.realizedPnl === "number" ? r.realizedPnl : 0,
+        fees: typeof r.fees === "number" ? r.fees : undefined,
+        qtyClosed: typeof r.qtyClosed === "number" ? r.qtyClosed : undefined,
+      };
+    });
   },
 });

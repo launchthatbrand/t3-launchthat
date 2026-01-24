@@ -1,5 +1,7 @@
 "use client";
 
+// Uses shared calendar + mobile drilldown (drawer) component.
+
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight, Brain, Calendar, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
@@ -15,7 +17,10 @@ import { Calendar as DayCalendar } from "@acme/ui/calendar";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
 import Link from "next/link";
 import React from "react";
-import { TradingCalendarPanel } from "~/components/dashboard/TradingCalendarPanel";
+import {
+  TradingCalendarWithDrilldown,
+  type TradingCalendarWithDrilldownTradeRow,
+} from "~/components/dashboard/TradingCalendarWithDrilldown";
 import { TradingTimingInsights } from "~/components/dashboard/TradingTimingInsights";
 import { api } from "@convex-config/_generated/api";
 import { cn } from "@acme/ui";
@@ -316,22 +321,43 @@ export default function AdminJournalDashboardPage() {
       ? demoLikeTrades.reduce((sum, t) => sum + t.pnl, 0) / totalTrades
       : 0;
 
+  const liveCalendarDailyStats = useQuery(
+    api.traderlaunchpad.queries.listMyCalendarDailyStats,
+    shouldQuery && dataMode.effectiveMode === "live"
+      ? { daysBack: 90, accountId: activeAccount.selected?.accountId }
+      : "skip",
+  ) as
+    | {
+      date: string;
+      pnl: number;
+      wins: number;
+      losses: number;
+      unrealizedPnl?: number;
+    }[]
+    | undefined;
+
+  const liveCalendarEvents = useQuery(
+    api.traderlaunchpad.queries.listMyCalendarRealizationEvents,
+    shouldQuery && dataMode.effectiveMode === "live"
+      ? { daysBack: 90, accountId: activeAccount.selected?.accountId }
+      : "skip",
+  ) as
+    | {
+      externalEventId: string;
+      tradeIdeaGroupId?: string;
+      externalPositionId: string;
+      symbol: string | null;
+      direction: "long" | "short" | null;
+      closedAt: number;
+      realizedPnl: number;
+      qtyClosed?: number;
+    }[]
+    | undefined;
+
   const dailyStats = React.useMemo(() => {
     if (dataMode.effectiveMode === "demo") return demoCalendarDailyStats;
-
-    const map: Record<
-      string,
-      { date: string; pnl: number; wins: number; losses: number }
-    > = {};
-    for (const t of demoLikeTrades) {
-      const key = t.tradeDate;
-      const stat = map[key] ?? (map[key] = { date: key, pnl: 0, wins: 0, losses: 0 });
-      stat.pnl += t.pnl;
-      if (t.pnl >= 0) stat.wins += 1;
-      else stat.losses += 1;
-    }
-    return Object.values(map);
-  }, [dataMode.effectiveMode, demoLikeTrades]);
+    return Array.isArray(liveCalendarDailyStats) ? liveCalendarDailyStats : [];
+  }, [dataMode.effectiveMode, liveCalendarDailyStats]);
 
   const streak = React.useMemo(() => {
     if (dataMode.effectiveMode === "demo") return demoDashboardStats.streak;
@@ -357,6 +383,67 @@ export default function AdminJournalDashboardPage() {
     }
     setSelectedTradeDate(formatDate(d, "yyyy-MM-dd"));
   };
+
+  const getTradeHref = React.useCallback(
+    (tradeId: string) => {
+      if (dataMode.effectiveMode === "demo") return `/admin/trade/${tradeId}`;
+      return `/admin/tradeidea/${encodeURIComponent(tradeId)}`;
+    },
+    [dataMode.effectiveMode],
+  );
+
+  const calendarTradeIdeaIdByEventId = React.useMemo(() => {
+    const map = new Map<string, string>();
+    const rows = Array.isArray(liveCalendarEvents) ? liveCalendarEvents : [];
+    for (const r of rows) {
+      const eventId = String(r.externalEventId ?? "").trim();
+      const gid = typeof r.tradeIdeaGroupId === "string" ? r.tradeIdeaGroupId : "";
+      if (eventId && gid) map.set(eventId, gid);
+    }
+    return map;
+  }, [liveCalendarEvents]);
+
+  const getCalendarTradeHref = React.useCallback(
+    (eventId: string) => {
+      if (dataMode.effectiveMode === "demo") return `/admin/trade/${eventId}`;
+      const gid = calendarTradeIdeaIdByEventId.get(eventId);
+      return gid ? `/admin/tradeidea/${encodeURIComponent(gid)}` : "/admin/orders";
+    },
+    [calendarTradeIdeaIdByEventId, dataMode.effectiveMode],
+  );
+
+  const calendarTrades: TradingCalendarWithDrilldownTradeRow[] = React.useMemo(() => {
+    if (dataMode.effectiveMode === "demo") {
+      return demoLikeTrades.map((t) => ({
+        id: t.id,
+        tradeDate: t.tradeDate,
+        symbol: t.symbol,
+        type: t.type,
+        reviewed: t.reviewed,
+        reason: t.reason,
+        pnl: t.pnl,
+      }));
+    }
+
+    const rows = Array.isArray(liveCalendarEvents) ? liveCalendarEvents : [];
+    return rows.map((e) => {
+      const d = new Date(e.closedAt);
+      const tradeDate = Number.isNaN(d.getTime()) ? "1970-01-01" : d.toISOString().slice(0, 10);
+      const qtyLabel =
+        typeof e.qtyClosed === "number" && Number.isFinite(e.qtyClosed) && e.qtyClosed !== 0
+          ? ` • ${Math.abs(e.qtyClosed)}`
+          : "";
+      return {
+        id: String(e.externalEventId ?? `${e.externalPositionId}:${e.closedAt}`),
+        tradeDate,
+        symbol: typeof e.symbol === "string" && e.symbol.trim() ? e.symbol.trim() : "—",
+        type: e.direction === "short" ? "Short" : "Long",
+        reviewed: false,
+        reason: `Partial close${qtyLabel}`,
+        pnl: typeof e.realizedPnl === "number" ? e.realizedPnl : 0,
+      };
+    });
+  }, [dataMode.effectiveMode, demoLikeTrades, liveCalendarEvents]);
 
   const tradesForSelectedDate = selectedTradeDate
     ? demoLikeTrades.filter((trade) => trade.tradeDate === selectedTradeDate)
@@ -419,7 +506,7 @@ export default function AdminJournalDashboardPage() {
           ) : null}
 
           {!isOrgStats ? (
-            <ActiveAccountSelector />
+            <ActiveAccountSelector className="w-full sm:w-auto" />
           ) : (
             <Badge
               variant="secondary"
@@ -462,12 +549,12 @@ export default function AdminJournalDashboardPage() {
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="space-y-8 lg:col-span-2">
-          <TradingCalendarPanel
+          <TradingCalendarWithDrilldown
             dailyStats={dailyStats}
+            trades={calendarTrades}
             selectedDate={selectedTradeDate}
             onSelectDateAction={setSelectedTradeDate}
-            className="min-h-[340px]"
-            contentClassName="h-full"
+            getTradeHref={getCalendarTradeHref}
           />
 
           <div className="relative">
@@ -749,6 +836,7 @@ export default function AdminJournalDashboardPage() {
           </Card>
         </div>
       </div>
+
     </div>
   );
 }

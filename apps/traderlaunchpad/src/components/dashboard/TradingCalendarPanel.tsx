@@ -19,9 +19,16 @@ interface DailyStat {
   pnl: number;
   wins: number;
   losses: number;
+  unrealizedPnl?: number;
 }
 
 export type TradingCalendarDailyStat = DailyStat;
+
+const formatPnl = (value: number): string =>
+  new Intl.NumberFormat(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value);
 
 const buildMonthDays = (monthOffset: number) => {
   const today = new Date();
@@ -166,12 +173,13 @@ export function TradingCalendarPanel({
         className={contentClassName}
         onClick={() => onSelectDateAction(null)}
       >
-        <div className="grid grid-cols-7 gap-2 text-xs">
+        <div className="grid grid-cols-7 gap-0 sm:gap-2 text-xs">
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
             <div key={day} className="text-center text-white/60">
               {day}
             </div>
           ))}
+          {/* Tight mobile grid: no gaps, no rounded day cells */}
           {days.map(({ date, inMonth }) => {
             const key = toDateKey(date);
             const stat = dailyMap[key];
@@ -191,9 +199,11 @@ export function TradingCalendarPanel({
                   onSelectDateAction(key);
                 }}
                 className={cn(
-                  "flex flex-col gap-1 rounded-md border border-white/10 bg-black/20 p-2 text-left transition hover:border-orange-500/60 hover:bg-white/5",
+                  "flex flex-col gap-1 border border-white/10 bg-black/20 p-1 text-left transition hover:border-orange-500/60 hover:bg-white/5 sm:rounded-md sm:p-2",
+                  // Collapse borders on mobile so it feels like one continuous grid.
+                  "rounded-none -ml-px -mt-px sm:ml-0 sm:mt-0",
                   !inMonth && "bg-black/10 text-white/30",
-                  isSelected && "border-orange-500 bg-orange-500/10",
+                  isSelected && "z-10 border-orange-500 bg-orange-500/10",
                   isGood &&
                     !isSelected &&
                     "border-orange-400/40 bg-linear-to-b from-orange-500/10 to-transparent shadow-[0_0_0_1px_rgba(249,115,22,0.15)]",
@@ -221,15 +231,31 @@ export function TradingCalendarPanel({
                       )}
                     >
                       {pnl >= 0 ? "+" : ""}
-                      {pnl}
+                      {formatPnl(pnl)}
                     </div>
+                    {typeof stat?.unrealizedPnl === "number" &&
+                    Number.isFinite(stat.unrealizedPnl) &&
+                    stat.unrealizedPnl !== 0 ? (
+                      <div
+                        className={cn(
+                          "text-[10px] font-medium tabular-nums",
+                          stat.unrealizedPnl >= 0
+                            ? "text-emerald-300"
+                            : "text-rose-300",
+                        )}
+                      >
+                        U {stat.unrealizedPnl >= 0 ? "+" : ""}
+                        {formatPnl(stat.unrealizedPnl)}
+                      </div>
+                    ) : null}
                     <div className="text-[10px] text-white/60">
                       {stat?.wins ?? 0}W / {stat?.losses ?? 0}L
                     </div>
                   </div>
                 ) : (
                   <div className="mt-1 text-[10px] text-white/30">
-                    — No trades
+                    <span className="sm:hidden">—</span>
+                    <span className="hidden sm:inline">— No trades</span>
                   </div>
                 )}
               </button>

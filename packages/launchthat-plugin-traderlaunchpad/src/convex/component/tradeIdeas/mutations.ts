@@ -395,6 +395,10 @@ export const rebuildTradeIdeaForPosition = mutation({
     const symbol = typeof first.symbol === "string" && first.symbol.trim()
       ? first.symbol.trim()
       : "UNKNOWN";
+    const instrumentId =
+      typeof first.instrumentId === "string" && first.instrumentId.trim()
+        ? first.instrumentId.trim()
+        : undefined;
 
     const signedQty = (e: any): number => {
       const qty = typeof e.qty === "number" ? e.qty : 0;
@@ -444,6 +448,21 @@ export const rebuildTradeIdeaForPosition = mutation({
     const closedAt =
       status === "closed" ? (lastExecutionAt ?? Date.now()) : undefined;
 
+    // Realized PnL should accumulate from partial closes while position remains open.
+    // We sum realized events for this broker positionId (account-scoped).
+    const realizedRows = await ctx.db
+      .query("tradeRealizationEvents")
+      .withIndex("by_org_user_accountId_externalPositionId_closedAt", (q: any) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("userId", args.userId)
+          .eq("accountId", args.accountId)
+          .eq("externalPositionId", args.positionId),
+      )
+      .order("asc")
+      .take(2000);
+    const realizedPnl = realizedRows.reduce((acc, r) => acc + (r.realizedPnl ?? 0), 0);
+
     // Avoid calling ctx.runMutation recursively; call local mutation handler logic directly.
     const groupId = await ctx.db
       .query("tradeIdeaGroups")
@@ -460,6 +479,7 @@ export const rebuildTradeIdeaForPosition = mutation({
         if (existing) {
           await ctx.db.patch(existing._id, {
             connectionId: args.connectionId,
+            instrumentId,
             symbol,
             status,
             direction,
@@ -467,7 +487,7 @@ export const rebuildTradeIdeaForPosition = mutation({
             closedAt,
             netQty,
             avgEntryPrice,
-            realizedPnl: existing.realizedPnl ?? 0,
+            realizedPnl,
             fees,
             lastExecutionAt,
             lastProcessedExecutionId,
@@ -481,6 +501,7 @@ export const rebuildTradeIdeaForPosition = mutation({
           connectionId: args.connectionId,
           accountId: args.accountId,
           positionId: args.positionId,
+          instrumentId,
           symbol,
           status,
           direction,
@@ -488,7 +509,7 @@ export const rebuildTradeIdeaForPosition = mutation({
           closedAt,
           netQty,
           avgEntryPrice,
-          realizedPnl: 0,
+          realizedPnl,
           fees,
           lastExecutionAt,
           lastProcessedExecutionId,

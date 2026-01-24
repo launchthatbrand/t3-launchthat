@@ -12,6 +12,12 @@ import {
   weekdayLabel,
 } from "./tradingCalendarRecommendations";
 
+const formatPnl = (value: number): string =>
+  new Intl.NumberFormat(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value);
+
 const buildMonthDays = (monthOffset: number) => {
   const today = new Date();
   const year = today.getFullYear();
@@ -130,7 +136,7 @@ export const TradingCalendarMobile = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-[10px]">
+      <div className="grid grid-cols-7 gap-0 text-[10px]">
         {["S", "M", "Tu", "W", "Th", "F", "S"].map((d, idx) => (
           <div
             key={`${d}-${idx}`}
@@ -141,7 +147,8 @@ export const TradingCalendarMobile = ({
         ))}
       </div>
 
-      <div className="mt-2 grid grid-cols-7 gap-1">
+      <div className="mt-2 overflow-hidden rounded-2xl border border-white/10">
+        <div className="grid grid-cols-7 gap-0">
         {days.map(({ date, inMonth }) => {
           const key = toDateKey(date);
           const stat = dailyMap[key];
@@ -158,15 +165,23 @@ export const TradingCalendarMobile = ({
               : "bg-red-400/80"
             : "bg-white/10";
 
+          const hasUnrealized =
+            typeof stat?.unrealizedPnl === "number" &&
+            Number.isFinite(stat.unrealizedPnl) &&
+            stat.unrealizedPnl !== 0;
+
           return (
             <button
               key={key}
               type="button"
               onClick={() => onSelectDateAction(isSelected ? null : key)}
               className={cn(
-                "relative aspect-square rounded-xl border border-white/10 bg-black/25 p-1 text-left transition-colors hover:bg-white/6 focus-visible:ring-2 focus-visible:ring-orange-400/50 focus-visible:outline-hidden",
+                // Tight grid: no gaps, no rounded day cells (native calendar feel).
+                "relative aspect-square rounded-none border border-white/10 bg-black/25 p-1 text-left transition-colors hover:bg-white/6 focus-visible:ring-2 focus-visible:ring-orange-400/50 focus-visible:outline-hidden",
+                // Collapse borders between cells.
+                "-ml-px -mt-px",
                 !inMonth && "opacity-50",
-                isSelected && "border-orange-500/40 bg-orange-500/10",
+                isSelected && "z-10 border-orange-500/50 bg-orange-500/10",
                 isGood &&
                   !isSelected &&
                   "border-orange-400/35 bg-linear-to-b from-orange-500/10 to-transparent",
@@ -189,6 +204,14 @@ export const TradingCalendarMobile = ({
               ) : isBad ? (
                 <AlertTriangle className="absolute top-1 right-1 h-3.5 w-3.5 text-red-300" />
               ) : null}
+              {hasUnrealized ? (
+                <div
+                  className={cn(
+                    "absolute right-1 bottom-[9px] left-1 h-0.5 rounded-full",
+                    stat!.unrealizedPnl! >= 0 ? "bg-emerald-400/70" : "bg-rose-400/70",
+                  )}
+                />
+              ) : null}
               <div
                 className={cn(
                   "absolute right-1 bottom-1 left-1 h-1 rounded-full",
@@ -198,6 +221,7 @@ export const TradingCalendarMobile = ({
             </button>
           );
         })}
+        </div>
       </div>
 
       <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-3">
@@ -231,8 +255,23 @@ export const TradingCalendarMobile = ({
                   )}
                 >
                   {selected.pnl >= 0 ? "+" : ""}
-                  {selected.pnl}
+                  {formatPnl(selected.pnl)}
                 </div>
+                {typeof selected.unrealizedPnl === "number" &&
+                Number.isFinite(selected.unrealizedPnl) &&
+                selected.unrealizedPnl !== 0 ? (
+                  <div
+                    className={cn(
+                      "mt-1 text-[10px] font-medium tabular-nums",
+                      selected.unrealizedPnl >= 0
+                        ? "text-emerald-200"
+                        : "text-rose-200",
+                    )}
+                  >
+                    Unrealized {selected.unrealizedPnl >= 0 ? "+" : ""}
+                    {formatPnl(selected.unrealizedPnl)}
+                  </div>
+                ) : null}
               </div>
             </div>
           ) : (

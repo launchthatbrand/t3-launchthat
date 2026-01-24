@@ -17,6 +17,8 @@ export type TradeLockerDebugTestId =
   | "reportClosedPositionsHistory"
   | "reportBalanceHistory"
   | "reportOrderHistory"
+  | "backendCloseTradesHistory"
+  | "backendReportsDiscovery"
   | "history";
 
 type StoredResult = {
