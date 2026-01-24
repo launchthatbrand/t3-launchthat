@@ -109,19 +109,8 @@ export default async function RootLayout(props: {
           <ThemeProvider>
             {/* Background */}
             <div className="pointer-events-none fixed inset-0 z-0">
-              {/* Optimized for mobile via lower DPR / density inside component. */}
-              {isMobileUa ? (
-                <DottedGlowBackground
-                  color="rgba(255, 100, 0, 0.10)"
-                  glowColor="rgba(255, 120, 0, 0.35)"
-                  gap={32}
-                  radius={1.2}
-                  opacity={0.35}
-                  speedMin={0.18}
-                  speedMax={0.55}
-                  speedScale={0.6}
-                />
-              ) : (
+              {/* Desktop-only: avoid initializing canvas/RAF on mobile. */}
+              {isMobileUa ? null : (
                 <DottedGlowBackground
                   color="rgba(255, 100, 0, 0.15)"
                   glowColor="rgba(255, 120, 0, 0.6)"
