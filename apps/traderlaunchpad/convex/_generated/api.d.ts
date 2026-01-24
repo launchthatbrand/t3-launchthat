@@ -620,6 +620,278 @@ export declare const components: {
     };
   };
   launchthat_traderlaunchpad: {
+    analytics: {
+      mutations: {
+        createMyAnalyticsReport: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accountId?: string;
+            name: string;
+            organizationId: string;
+            spec: {
+              direction?: Array<"long" | "short">;
+              fromMs?: number;
+              includeUnrealized?: boolean;
+              maxHoldMs?: number;
+              maxPnl?: number;
+              minHoldMs?: number;
+              minPnl?: number;
+              rangePreset: "7d" | "30d" | "90d" | "ytd" | "all" | "custom";
+              symbols?: Array<string>;
+              timezone: string;
+              toMs?: number;
+              version: 1;
+              weekdays?: Array<number>;
+            };
+            userId: string;
+            visibility: "private" | "link";
+          },
+          { reportId: string }
+        >;
+        deleteMyAnalyticsReport: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; reportId: string; userId: string },
+          null
+        >;
+        disableShareLink: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; reportId: string; userId: string },
+          null
+        >;
+        enableShareLink: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; reportId: string; userId: string },
+          { shareToken: string }
+        >;
+        updateMyAnalyticsReport: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accountId?: string;
+            name?: string;
+            organizationId: string;
+            reportId: string;
+            spec?: {
+              direction?: Array<"long" | "short">;
+              fromMs?: number;
+              includeUnrealized?: boolean;
+              maxHoldMs?: number;
+              maxPnl?: number;
+              minHoldMs?: number;
+              minPnl?: number;
+              rangePreset: "7d" | "30d" | "90d" | "ytd" | "all" | "custom";
+              symbols?: Array<string>;
+              timezone: string;
+              toMs?: number;
+              version: 1;
+              weekdays?: Array<number>;
+            };
+            userId: string;
+            visibility?: "private" | "link";
+          },
+          null
+        >;
+      };
+      queries: {
+        getMyAnalyticsReport: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; reportId: string; userId: string },
+          {
+            accountId?: string;
+            createdAt: number;
+            name: string;
+            reportId: string;
+            shareToken?: string;
+            spec: {
+              direction?: Array<"long" | "short">;
+              fromMs?: number;
+              includeUnrealized?: boolean;
+              maxHoldMs?: number;
+              maxPnl?: number;
+              minHoldMs?: number;
+              minPnl?: number;
+              rangePreset: "7d" | "30d" | "90d" | "ytd" | "all" | "custom";
+              symbols?: Array<string>;
+              timezone: string;
+              toMs?: number;
+              version: 1;
+              weekdays?: Array<number>;
+            };
+            updatedAt: number;
+            visibility: "private" | "link";
+          } | null
+        >;
+        getSharedAnalyticsReport: FunctionReference<
+          "query",
+          "internal",
+          { shareToken: string },
+          {
+            name: string;
+            ownerOrganizationId: string;
+            ownerUserId: string;
+            reportId: string;
+            result: {
+              byHour: Array<{
+                closeEventCount: number;
+                hour: number;
+                pnl: number;
+              }>;
+              bySymbol: Array<{
+                closeEventCount: number;
+                pnl: number;
+                symbol: string;
+              }>;
+              byWeekday: Array<{
+                closeEventCount: number;
+                pnl: number;
+                weekday: number;
+              }>;
+              drawdown: Array<{
+                date: string;
+                drawdown: number;
+                equity: number;
+                peak: number;
+              }>;
+              equityCurve: Array<{
+                cumulative: number;
+                date: string;
+                pnl: number;
+              }>;
+              fromMs: number;
+              headline: {
+                avgHoldMs: number;
+                avgLoss: number;
+                avgWin: number;
+                closeEventCount: number;
+                expectancy: number;
+                grossLoss: number;
+                grossWin: number;
+                losses: number;
+                netPnl: number;
+                profitFactor: number;
+                realizedPnl: number;
+                totalFees: number;
+                tradeCount: number;
+                unrealizedPnl: number;
+                winRate: number;
+                wins: number;
+              };
+              isTruncated: boolean;
+              timezone: string;
+              toMs: number;
+            };
+            spec: {
+              direction?: Array<"long" | "short">;
+              fromMs?: number;
+              includeUnrealized?: boolean;
+              maxHoldMs?: number;
+              maxPnl?: number;
+              minHoldMs?: number;
+              minPnl?: number;
+              rangePreset: "7d" | "30d" | "90d" | "ytd" | "all" | "custom";
+              symbols?: Array<string>;
+              timezone: string;
+              toMs?: number;
+              version: 1;
+              weekdays?: Array<number>;
+            };
+          } | null
+        >;
+        listMyAnalyticsReports: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; userId: string },
+          Array<{
+            accountId?: string;
+            createdAt: number;
+            name: string;
+            reportId: string;
+            shareToken?: string;
+            updatedAt: number;
+            visibility: "private" | "link";
+          }>
+        >;
+        runAnalyticsReport: FunctionReference<
+          "query",
+          "internal",
+          {
+            accountId?: string;
+            organizationId: string;
+            spec: {
+              direction?: Array<"long" | "short">;
+              fromMs?: number;
+              includeUnrealized?: boolean;
+              maxHoldMs?: number;
+              maxPnl?: number;
+              minHoldMs?: number;
+              minPnl?: number;
+              rangePreset: "7d" | "30d" | "90d" | "ytd" | "all" | "custom";
+              symbols?: Array<string>;
+              timezone: string;
+              toMs?: number;
+              version: 1;
+              weekdays?: Array<number>;
+            };
+            userId: string;
+          },
+          {
+            byHour: Array<{
+              closeEventCount: number;
+              hour: number;
+              pnl: number;
+            }>;
+            bySymbol: Array<{
+              closeEventCount: number;
+              pnl: number;
+              symbol: string;
+            }>;
+            byWeekday: Array<{
+              closeEventCount: number;
+              pnl: number;
+              weekday: number;
+            }>;
+            drawdown: Array<{
+              date: string;
+              drawdown: number;
+              equity: number;
+              peak: number;
+            }>;
+            equityCurve: Array<{
+              cumulative: number;
+              date: string;
+              pnl: number;
+            }>;
+            fromMs: number;
+            headline: {
+              avgHoldMs: number;
+              avgLoss: number;
+              avgWin: number;
+              closeEventCount: number;
+              expectancy: number;
+              grossLoss: number;
+              grossWin: number;
+              losses: number;
+              netPnl: number;
+              profitFactor: number;
+              realizedPnl: number;
+              totalFees: number;
+              tradeCount: number;
+              unrealizedPnl: number;
+              winRate: number;
+              wins: number;
+            };
+            isTruncated: boolean;
+            timezone: string;
+            toMs: number;
+          }
+        >;
+      };
+    };
     connections: {
       drafts: {
         consumeConnectDraft: FunctionReference<

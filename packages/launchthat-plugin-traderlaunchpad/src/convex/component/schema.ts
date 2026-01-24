@@ -446,6 +446,21 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_org_user_accountId", ["organizationId", "userId", "accountId"]),
 
+  analyticsReports: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+    name: v.string(),
+    accountId: v.optional(v.string()),
+    visibility: v.union(v.literal("private"), v.literal("link")),
+    shareToken: v.optional(v.string()),
+    shareEnabledAt: v.optional(v.number()),
+    spec: v.any(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_user_updatedAt", ["organizationId", "userId", "updatedAt"])
+    .index("by_shareToken", ["shareToken"]),
+
   tradeIdeaGroups: defineTable({
     organizationId: v.string(),
     userId: v.string(),

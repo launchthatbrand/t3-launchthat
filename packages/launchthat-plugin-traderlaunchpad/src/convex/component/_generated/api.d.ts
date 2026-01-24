@@ -8,6 +8,10 @@
  * @module
  */
 
+import type * as analytics_index from "../analytics/index.js";
+import type * as analytics_mutations from "../analytics/mutations.js";
+import type * as analytics_queries from "../analytics/queries.js";
+import type * as analytics_types from "../analytics/types.js";
 import type * as connections_drafts from "../connections/drafts.js";
 import type * as connections_index from "../connections/index.js";
 import type * as connections_internalQueries from "../connections/internalQueries.js";
@@ -45,6 +49,10 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "analytics/index": typeof analytics_index;
+  "analytics/mutations": typeof analytics_mutations;
+  "analytics/queries": typeof analytics_queries;
+  "analytics/types": typeof analytics_types;
   "connections/drafts": typeof connections_drafts;
   "connections/index": typeof connections_index;
   "connections/internalQueries": typeof connections_internalQueries;
@@ -68,6 +76,270 @@ declare const fullApi: ApiFromModules<{
   "tradingPlans/index": typeof tradingPlans_index;
 }>;
 export type Mounts = {
+  analytics: {
+    mutations: {
+      createMyAnalyticsReport: FunctionReference<
+        "mutation",
+        "public",
+        {
+          accountId?: string;
+          name: string;
+          organizationId: string;
+          spec: {
+            direction?: Array<"long" | "short">;
+            fromMs?: number;
+            includeUnrealized?: boolean;
+            maxHoldMs?: number;
+            maxPnl?: number;
+            minHoldMs?: number;
+            minPnl?: number;
+            rangePreset: "7d" | "30d" | "90d" | "ytd" | "all" | "custom";
+            symbols?: Array<string>;
+            timezone: string;
+            toMs?: number;
+            version: 1;
+            weekdays?: Array<number>;
+          };
+          userId: string;
+          visibility: "private" | "link";
+        },
+        { reportId: string }
+      >;
+      deleteMyAnalyticsReport: FunctionReference<
+        "mutation",
+        "public",
+        { organizationId: string; reportId: string; userId: string },
+        null
+      >;
+      disableShareLink: FunctionReference<
+        "mutation",
+        "public",
+        { organizationId: string; reportId: string; userId: string },
+        null
+      >;
+      enableShareLink: FunctionReference<
+        "mutation",
+        "public",
+        { organizationId: string; reportId: string; userId: string },
+        { shareToken: string }
+      >;
+      updateMyAnalyticsReport: FunctionReference<
+        "mutation",
+        "public",
+        {
+          accountId?: string;
+          name?: string;
+          organizationId: string;
+          reportId: string;
+          spec?: {
+            direction?: Array<"long" | "short">;
+            fromMs?: number;
+            includeUnrealized?: boolean;
+            maxHoldMs?: number;
+            maxPnl?: number;
+            minHoldMs?: number;
+            minPnl?: number;
+            rangePreset: "7d" | "30d" | "90d" | "ytd" | "all" | "custom";
+            symbols?: Array<string>;
+            timezone: string;
+            toMs?: number;
+            version: 1;
+            weekdays?: Array<number>;
+          };
+          userId: string;
+          visibility?: "private" | "link";
+        },
+        null
+      >;
+    };
+    queries: {
+      getMyAnalyticsReport: FunctionReference<
+        "query",
+        "public",
+        { organizationId: string; reportId: string; userId: string },
+        {
+          accountId?: string;
+          createdAt: number;
+          name: string;
+          reportId: string;
+          shareToken?: string;
+          spec: {
+            direction?: Array<"long" | "short">;
+            fromMs?: number;
+            includeUnrealized?: boolean;
+            maxHoldMs?: number;
+            maxPnl?: number;
+            minHoldMs?: number;
+            minPnl?: number;
+            rangePreset: "7d" | "30d" | "90d" | "ytd" | "all" | "custom";
+            symbols?: Array<string>;
+            timezone: string;
+            toMs?: number;
+            version: 1;
+            weekdays?: Array<number>;
+          };
+          updatedAt: number;
+          visibility: "private" | "link";
+        } | null
+      >;
+      getSharedAnalyticsReport: FunctionReference<
+        "query",
+        "public",
+        { shareToken: string },
+        {
+          name: string;
+          ownerOrganizationId: string;
+          ownerUserId: string;
+          reportId: string;
+          result: {
+            byHour: Array<{
+              closeEventCount: number;
+              hour: number;
+              pnl: number;
+            }>;
+            bySymbol: Array<{
+              closeEventCount: number;
+              pnl: number;
+              symbol: string;
+            }>;
+            byWeekday: Array<{
+              closeEventCount: number;
+              pnl: number;
+              weekday: number;
+            }>;
+            drawdown: Array<{
+              date: string;
+              drawdown: number;
+              equity: number;
+              peak: number;
+            }>;
+            equityCurve: Array<{
+              cumulative: number;
+              date: string;
+              pnl: number;
+            }>;
+            fromMs: number;
+            headline: {
+              avgHoldMs: number;
+              avgLoss: number;
+              avgWin: number;
+              closeEventCount: number;
+              expectancy: number;
+              grossLoss: number;
+              grossWin: number;
+              losses: number;
+              netPnl: number;
+              profitFactor: number;
+              realizedPnl: number;
+              totalFees: number;
+              tradeCount: number;
+              unrealizedPnl: number;
+              winRate: number;
+              wins: number;
+            };
+            isTruncated: boolean;
+            timezone: string;
+            toMs: number;
+          };
+          spec: {
+            direction?: Array<"long" | "short">;
+            fromMs?: number;
+            includeUnrealized?: boolean;
+            maxHoldMs?: number;
+            maxPnl?: number;
+            minHoldMs?: number;
+            minPnl?: number;
+            rangePreset: "7d" | "30d" | "90d" | "ytd" | "all" | "custom";
+            symbols?: Array<string>;
+            timezone: string;
+            toMs?: number;
+            version: 1;
+            weekdays?: Array<number>;
+          };
+        } | null
+      >;
+      listMyAnalyticsReports: FunctionReference<
+        "query",
+        "public",
+        { organizationId: string; userId: string },
+        Array<{
+          accountId?: string;
+          createdAt: number;
+          name: string;
+          reportId: string;
+          shareToken?: string;
+          updatedAt: number;
+          visibility: "private" | "link";
+        }>
+      >;
+      runAnalyticsReport: FunctionReference<
+        "query",
+        "public",
+        {
+          accountId?: string;
+          organizationId: string;
+          spec: {
+            direction?: Array<"long" | "short">;
+            fromMs?: number;
+            includeUnrealized?: boolean;
+            maxHoldMs?: number;
+            maxPnl?: number;
+            minHoldMs?: number;
+            minPnl?: number;
+            rangePreset: "7d" | "30d" | "90d" | "ytd" | "all" | "custom";
+            symbols?: Array<string>;
+            timezone: string;
+            toMs?: number;
+            version: 1;
+            weekdays?: Array<number>;
+          };
+          userId: string;
+        },
+        {
+          byHour: Array<{ closeEventCount: number; hour: number; pnl: number }>;
+          bySymbol: Array<{
+            closeEventCount: number;
+            pnl: number;
+            symbol: string;
+          }>;
+          byWeekday: Array<{
+            closeEventCount: number;
+            pnl: number;
+            weekday: number;
+          }>;
+          drawdown: Array<{
+            date: string;
+            drawdown: number;
+            equity: number;
+            peak: number;
+          }>;
+          equityCurve: Array<{ cumulative: number; date: string; pnl: number }>;
+          fromMs: number;
+          headline: {
+            avgHoldMs: number;
+            avgLoss: number;
+            avgWin: number;
+            closeEventCount: number;
+            expectancy: number;
+            grossLoss: number;
+            grossWin: number;
+            losses: number;
+            netPnl: number;
+            profitFactor: number;
+            realizedPnl: number;
+            totalFees: number;
+            tradeCount: number;
+            unrealizedPnl: number;
+            winRate: number;
+            wins: number;
+          };
+          isTruncated: boolean;
+          timezone: string;
+          toMs: number;
+        }
+      >;
+    };
+  };
   connections: {
     drafts: {
       consumeConnectDraft: FunctionReference<

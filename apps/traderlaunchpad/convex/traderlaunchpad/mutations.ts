@@ -18,6 +18,7 @@ const connectionsQueries = components.launchthat_traderlaunchpad.connections.que
 const connectionsMutations = components.launchthat_traderlaunchpad.connections.mutations as any;
 const coreTenantQueries = components.launchthat_core_tenant.queries as any;
 const coreTenantMutations = components.launchthat_core_tenant.mutations as any;
+const analyticsMutations = components.launchthat_traderlaunchpad.analytics.mutations as any;
 
 const resolveMembershipForOrg = async (ctx: any, organizationId: string, userId: string) => {
   const memberships = (await ctx.runQuery(coreTenantQueries.listOrganizationsByUserId, {
@@ -194,6 +195,99 @@ export const revokeOrgUserInvite = mutation({
     if (String((invite as any).organizationId) !== organizationId) return null;
 
     await ctx.db.patch((invite as any)._id, { revokedAt: Date.now() });
+    return null;
+  },
+});
+
+export const createMyAnalyticsReport = mutation({
+  args: {
+    name: v.string(),
+    accountId: v.optional(v.string()),
+    visibility: v.union(v.literal("private"), v.literal("link")),
+    spec: v.any(),
+  },
+  returns: v.object({ reportId: v.string() }),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const out = await ctx.runMutation(analyticsMutations.createMyAnalyticsReport, {
+      organizationId,
+      userId,
+      name: args.name,
+      accountId: args.accountId,
+      visibility: args.visibility,
+      spec: args.spec,
+    });
+    return { reportId: String((out as any)?.reportId ?? "") };
+  },
+});
+
+export const updateMyAnalyticsReport = mutation({
+  args: {
+    reportId: v.string(),
+    name: v.optional(v.string()),
+    accountId: v.optional(v.string()),
+    visibility: v.optional(v.union(v.literal("private"), v.literal("link"))),
+    spec: v.optional(v.any()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    await ctx.runMutation(analyticsMutations.updateMyAnalyticsReport, {
+      organizationId,
+      userId,
+      reportId: args.reportId as any,
+      name: args.name,
+      accountId: args.accountId,
+      visibility: args.visibility,
+      spec: args.spec,
+    });
+    return null;
+  },
+});
+
+export const enableMyAnalyticsReportShareLink = mutation({
+  args: { reportId: v.string() },
+  returns: v.object({ shareToken: v.string() }),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const out = await ctx.runMutation(analyticsMutations.enableShareLink, {
+      organizationId,
+      userId,
+      reportId: args.reportId as any,
+    });
+    return { shareToken: String((out as any)?.shareToken ?? "") };
+  },
+});
+
+export const disableMyAnalyticsReportShareLink = mutation({
+  args: { reportId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    await ctx.runMutation(analyticsMutations.disableShareLink, {
+      organizationId,
+      userId,
+      reportId: args.reportId as any,
+    });
+    return null;
+  },
+});
+
+export const deleteMyAnalyticsReport = mutation({
+  args: { reportId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    await ctx.runMutation(analyticsMutations.deleteMyAnalyticsReport, {
+      organizationId,
+      userId,
+      reportId: args.reportId as any,
+    });
     return null;
   },
 });

@@ -5,6 +5,7 @@ import * as React from "react";
 import {
   IconBrandTabler,
   IconBulb,
+  IconChartBar,
   IconMessageCircle,
   IconNotebook,
   IconSettings,
@@ -51,6 +52,16 @@ const primaryNavItems: NavItem[] = [
     href: "/admin/journal",
     icon: (
       <IconNotebook
+        stroke={1}
+        className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
+      />
+    ),
+  },
+  {
+    label: "Analytics",
+    href: "/admin/analytics",
+    icon: (
+      <IconChartBar
         stroke={1}
         className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
       />

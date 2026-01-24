@@ -23,6 +23,7 @@ const tradeIdeasQueries = components.launchthat_traderlaunchpad.tradeIdeas
   .queries as any;
 const tradeIdeasAnalytics = components.launchthat_traderlaunchpad.tradeIdeas
   .analytics as any;
+const analyticsQueries = components.launchthat_traderlaunchpad.analytics.queries as any;
 const tradeIdeasNotes = components.launchthat_traderlaunchpad.tradeIdeas.notes as any;
 const tradeIdeasInternal = components.launchthat_traderlaunchpad.tradeIdeas.internalQueries as any;
 const tradingPlans = components.launchthat_traderlaunchpad.tradingPlans.index as any;
@@ -283,6 +284,84 @@ export const listMyTradeIdeaRealizationEvents = query({
       fees: typeof r.fees === "number" ? r.fees : undefined,
       qtyClosed: typeof r.qtyClosed === "number" ? r.qtyClosed : undefined,
     }));
+  },
+});
+
+export const runMyAnalyticsReport = query({
+  args: {
+    accountId: v.optional(v.string()),
+    spec: v.any(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    return await ctx.runQuery(analyticsQueries.runAnalyticsReport, {
+      organizationId,
+      userId,
+      accountId: args.accountId,
+      spec: args.spec,
+    });
+  },
+});
+
+export const listMyAnalyticsReports = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      reportId: v.string(),
+      name: v.string(),
+      accountId: v.optional(v.string()),
+      visibility: v.union(v.literal("private"), v.literal("link")),
+      shareToken: v.optional(v.string()),
+      updatedAt: v.number(),
+      createdAt: v.number(),
+    }),
+  ),
+  handler: async (ctx) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const rows = await ctx.runQuery(analyticsQueries.listMyAnalyticsReports, {
+      organizationId,
+      userId,
+    });
+    return (rows ?? []).map((r: any) => ({
+      reportId: String(r.reportId ?? ""),
+      name: String(r.name ?? ""),
+      accountId: typeof r.accountId === "string" ? r.accountId : undefined,
+      visibility: r.visibility === "link" ? "link" : "private",
+      shareToken: typeof r.shareToken === "string" ? r.shareToken : undefined,
+      updatedAt: Number(r.updatedAt ?? 0),
+      createdAt: Number(r.createdAt ?? 0),
+    }));
+  },
+});
+
+export const getMyAnalyticsReport = query({
+  args: {
+    reportId: v.string(),
+  },
+  returns: v.union(v.any(), v.null()),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    return await ctx.runQuery(analyticsQueries.getMyAnalyticsReport, {
+      organizationId,
+      userId,
+      reportId: args.reportId as any,
+    });
+  },
+});
+
+export const getSharedAnalyticsReport = query({
+  args: {
+    shareToken: v.string(),
+  },
+  returns: v.union(v.any(), v.null()),
+  handler: async (ctx, args) => {
+    return await ctx.runQuery(analyticsQueries.getSharedAnalyticsReport, {
+      shareToken: args.shareToken,
+    });
   },
 });
 
