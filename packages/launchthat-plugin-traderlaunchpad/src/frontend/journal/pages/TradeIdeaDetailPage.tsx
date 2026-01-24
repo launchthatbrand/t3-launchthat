@@ -41,6 +41,24 @@ type TradeIdeaEvent = Record<string, unknown> & {
   executedAt: number;
 };
 
+type TradeIdeaRealizationEvent = {
+  externalEventId: string;
+  externalPositionId: string;
+  externalOrderId?: string;
+  openAtMs?: number;
+  openPrice?: number;
+  closePrice?: number;
+  commission?: number;
+  swap?: number;
+  openOrderId?: string;
+  openTradeId?: string;
+  closeTradeId?: string;
+  closedAt: number;
+  realizedPnl: number;
+  fees?: number;
+  qtyClosed?: number;
+};
+
 type TradeIdeaNote = {
   _id: string;
   reviewStatus: "todo" | "reviewed";
@@ -67,6 +85,101 @@ const eventColumns: ColumnDefinition<TradeIdeaEvent>[] = [
   { id: "externalPositionId", header: "Position", accessorKey: "externalPositionId" },
 ];
 
+const realizationColumns: ColumnDefinition<TradeIdeaRealizationEvent>[] = [
+  {
+    id: "closedAt",
+    header: "Closed",
+    accessorKey: "closedAt",
+    cell: (row: TradeIdeaRealizationEvent) =>
+      typeof row.closedAt === "number" ? formatAge(row.closedAt) : "—",
+  },
+  {
+    id: "qtyClosed",
+    header: "Close size",
+    accessorKey: "qtyClosed",
+    cell: (row: TradeIdeaRealizationEvent) =>
+      typeof row.qtyClosed === "number" ? row.qtyClosed : "—",
+  },
+  {
+    id: "realizedPnl",
+    header: "Net P&L",
+    accessorKey: "realizedPnl",
+    cell: (row: TradeIdeaRealizationEvent) =>
+      typeof row.realizedPnl === "number" ? row.realizedPnl.toFixed(2) : "—",
+  },
+  {
+    id: "commission",
+    header: "Comm",
+    accessorKey: "commission",
+    cell: (row: TradeIdeaRealizationEvent) =>
+      typeof row.commission === "number" ? row.commission.toFixed(2) : "—",
+  },
+  {
+    id: "swap",
+    header: "Swap",
+    accessorKey: "swap",
+    cell: (row: TradeIdeaRealizationEvent) =>
+      typeof row.swap === "number" ? row.swap.toFixed(2) : "—",
+  },
+  {
+    id: "fees",
+    header: "Fees",
+    accessorKey: "fees",
+    cell: (row: TradeIdeaRealizationEvent) =>
+      typeof row.fees === "number" ? row.fees.toFixed(2) : "—",
+  },
+  {
+    id: "prices",
+    header: "Entry → Exit",
+    accessorKey: "closePrice",
+    cell: (row: TradeIdeaRealizationEvent) =>
+      typeof row.openPrice === "number" && typeof row.closePrice === "number"
+        ? `${row.openPrice.toFixed(3)} → ${row.closePrice.toFixed(3)}`
+        : "—",
+  },
+  {
+    id: "hold",
+    header: "Hold",
+    accessorKey: "openAtMs",
+    cell: (row: TradeIdeaRealizationEvent) =>
+      typeof row.openAtMs === "number" && typeof row.closedAt === "number"
+        ? (() => {
+            const ms = Math.max(0, row.closedAt - row.openAtMs);
+            const totalMinutes = Math.floor(ms / 60000);
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            if (hours <= 0) return `${minutes}m`;
+            if (minutes <= 0) return `${hours}h`;
+            return `${hours}h ${minutes}m`;
+          })()
+        : "—",
+  },
+  {
+    id: "ids",
+    header: "IDs",
+    accessorKey: "externalEventId",
+    cell: (row: TradeIdeaRealizationEvent) => (
+      <details className="text-xs">
+        <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+          show
+        </summary>
+        <div className="mt-1 space-y-1">
+          <div className="break-all">event: {row.externalEventId}</div>
+          <div className="break-all">position: {row.externalPositionId}</div>
+          {row.openOrderId ? <div className="break-all">open order: {row.openOrderId}</div> : null}
+          {row.externalOrderId ? (
+            <div className="break-all">close order: {row.externalOrderId}</div>
+          ) : null}
+          {row.openTradeId ? <div className="break-all">open trade: {row.openTradeId}</div> : null}
+          {row.closeTradeId ? (
+            <div className="break-all">close trade: {row.closeTradeId}</div>
+          ) : null}
+        </div>
+      </details>
+    ),
+  },
+];
+
 export function TraderLaunchpadTradeIdeaDetailPage(props: {
   api: TraderLaunchpadApiAdapter;
   tradeIdeaGroupId: string;
@@ -86,9 +199,31 @@ export function TraderLaunchpadTradeIdeaDetailPage(props: {
     limit: 200,
   }) as TradeIdeaEvent[] | undefined;
 
+  const realizationEvents = useQuery(tlQueries.listMyTradeIdeaRealizationEvents, {
+    tradeIdeaGroupId: props.tradeIdeaGroupId,
+    limit: 2000,
+  }) as TradeIdeaRealizationEvent[] | undefined;
+
   const note = useQuery(tlQueries.getMyTradeIdeaNoteForGroup, {
     tradeIdeaGroupId: props.tradeIdeaGroupId,
   }) as TradeIdeaNote | undefined;
+
+  const realizationTotals = React.useMemo(() => {
+    const rows = Array.isArray(realizationEvents) ? realizationEvents : [];
+    let realizedPnl = 0;
+    let commission = 0;
+    let swap = 0;
+    let fees = 0;
+    let qtyClosed = 0;
+    for (const r of rows) {
+      if (typeof r.realizedPnl === "number") realizedPnl += r.realizedPnl;
+      if (typeof r.commission === "number") commission += r.commission;
+      if (typeof r.swap === "number") swap += r.swap;
+      if (typeof r.fees === "number") fees += r.fees;
+      if (typeof r.qtyClosed === "number") qtyClosed += r.qtyClosed;
+    }
+    return { count: rows.length, realizedPnl, commission, swap, fees, qtyClosed };
+  }, [realizationEvents]);
 
   const [draft, setDraft] = React.useState<{
     thesis: string;
@@ -335,6 +470,34 @@ export function TraderLaunchpadTradeIdeaDetailPage(props: {
                   Save
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          <Separator />
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <CardTitle>Realizations</CardTitle>
+              <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
+                <Badge variant="outline">{realizationTotals.count} events</Badge>
+                <Badge variant="outline">Size {realizationTotals.qtyClosed.toFixed(2)}</Badge>
+                <Badge variant="outline">P&L {realizationTotals.realizedPnl.toFixed(2)}</Badge>
+                <Badge variant="outline">Fees {realizationTotals.fees.toFixed(2)}</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {realizationEvents === undefined ? (
+                <div className="text-muted-foreground text-sm">Loading…</div>
+              ) : realizationEvents.length === 0 ? (
+                <div className="text-muted-foreground text-sm">No realizations yet.</div>
+              ) : (
+                <EntityList<TradeIdeaRealizationEvent>
+                  data={realizationEvents as any}
+                  columns={realizationColumns as any}
+                  viewModes={["list"]}
+                  enableSearch={false}
+                />
+              )}
             </CardContent>
           </Card>
 

@@ -31,20 +31,33 @@ export interface TradingCalendarWithDrilldownTradeRow {
   reviewed: boolean;
   reason: string;
   pnl: number;
+  qtyClosed?: number;
+  fees?: number;
+  commission?: number;
+  swap?: number;
+  openAtMs?: number;
+  closedAtMs?: number;
+  openPrice?: number;
+  closePrice?: number;
+  externalPositionId?: string;
+  openOrderId?: string;
+  closeOrderId?: string;
+  openTradeId?: string;
+  closeTradeId?: string;
 }
 
-export type TradingCalendarWithDrilldownProps = {
+export interface TradingCalendarWithDrilldownProps {
   dailyStats: TradingCalendarWithDrilldownDailyStat[];
   trades: TradingCalendarWithDrilldownTradeRow[];
   selectedDate: string | null;
   onSelectDateAction: (next: string | null) => void;
-  getTradeHref: (tradeId: string) => string;
+  getTradeHrefAction: (tradeId: string) => string;
 
   className?: string;
   mobileCalendarClassName?: string;
   desktopCalendarClassName?: string;
   desktopCalendarContentClassName?: string;
-};
+}
 
 const useIsMobileCalendarUi = (): boolean => {
   const [isMobile, setIsMobile] = React.useState(false);
@@ -65,13 +78,16 @@ export const TradingCalendarWithDrilldown = ({
   trades,
   selectedDate,
   onSelectDateAction,
-  getTradeHref,
+  getTradeHrefAction,
   className,
   mobileCalendarClassName,
   desktopCalendarClassName,
   desktopCalendarContentClassName,
 }: TradingCalendarWithDrilldownProps) => {
   const isMobileCalendarUi = useIsMobileCalendarUi();
+  const [expandedIdsByTradeId, setExpandedIdsByTradeId] = React.useState<
+    Record<string, boolean>
+  >({});
 
   const selectedDateObj = React.useMemo(() => {
     if (!selectedDate) return undefined;
@@ -111,6 +127,16 @@ export const TradingCalendarWithDrilldown = ({
     },
     [onSelectDateAction, selectedDateObj],
   );
+
+  const formatHoldTime = React.useCallback((durationMs: number): string => {
+    const ms = Math.max(0, Math.floor(durationMs));
+    const totalMinutes = Math.floor(ms / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours <= 0) return `${minutes}m`;
+    if (minutes <= 0) return `${hours}h`;
+    return `${hours}h ${minutes}m`;
+  }, []);
 
   const selectedDayStat = React.useMemo(() => {
     if (!selectedDate) return null;
@@ -275,47 +301,161 @@ export const TradingCalendarWithDrilldown = ({
                     <div className="max-h-[45vh] space-y-2 overflow-y-auto pr-1">
                       {mobileDrawerTrades.length > 0 ? (
                         mobileDrawerTrades.map((trade) => (
-                          <Link
+                          <div
                             key={trade.id}
-                            href={getTradeHref(trade.id)}
-                            className="flex items-center justify-between rounded-lg border border-white/10 bg-white/3 p-3 transition-colors hover:bg-white/6"
+                            className="rounded-lg border border-white/10 bg-white/3 p-3"
                           >
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 text-sm font-medium">
-                                <span className="truncate">{trade.symbol}</span>
-                                <span
-                                  className={cn(
-                                    "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
-                                    trade.type === "Long"
-                                      ? "bg-emerald-500/10 text-emerald-300"
-                                      : "bg-red-500/10 text-red-300",
-                                  )}
-                                >
-                                  {trade.type}
-                                </span>
-                                <span
-                                  className={cn(
-                                    "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
-                                    trade.reviewed
-                                      ? "bg-emerald-500/10 text-emerald-300"
-                                      : "bg-amber-500/10 text-amber-300",
-                                  )}
-                                >
-                                  {trade.reviewed ? "Reviewed" : "Needs Review"}
-                                </span>
-                              </div>
-                              <div className="text-xs text-white/60">{trade.reason}</div>
-                            </div>
-                            <div
-                              className={cn(
-                                "shrink-0 pl-3 text-sm font-semibold tabular-nums",
-                                trade.pnl >= 0 ? "text-emerald-300" : "text-red-300",
-                              )}
+                            <Link
+                              href={getTradeHrefAction(trade.id)}
+                              className="flex items-center justify-between transition-colors hover:text-white"
                             >
-                              {trade.pnl >= 0 ? "+" : ""}
-                              {trade.pnl}
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 text-sm font-medium">
+                                  <span className="truncate">{trade.symbol}</span>
+                                  <span
+                                    className={cn(
+                                      "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
+                                      trade.type === "Long"
+                                        ? "bg-emerald-500/10 text-emerald-300"
+                                        : "bg-red-500/10 text-red-300",
+                                    )}
+                                  >
+                                    {trade.type}
+                                  </span>
+                                  <span
+                                    className={cn(
+                                      "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
+                                      trade.reviewed
+                                        ? "bg-emerald-500/10 text-emerald-300"
+                                        : "bg-amber-500/10 text-amber-300",
+                                    )}
+                                  >
+                                    {trade.reviewed ? "Reviewed" : "Needs Review"}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-white/60">{trade.reason}</div>
+                              </div>
+                              <div
+                                className={cn(
+                                  "shrink-0 pl-3 text-sm font-semibold tabular-nums",
+                                  trade.pnl >= 0 ? "text-emerald-300" : "text-red-300",
+                                )}
+                              >
+                                {trade.pnl >= 0 ? "+" : ""}
+                                {formatPnl(trade.pnl)}
+                              </div>
+                            </Link>
+
+                            <div className="mt-1 text-[11px] text-white/70">
+                              {typeof trade.qtyClosed === "number" &&
+                              Number.isFinite(trade.qtyClosed) ? (
+                                <>
+                                  Size {trade.qtyClosed}
+                                  <span className="px-1.5 text-white/30">•</span>
+                                </>
+                              ) : null}
+                              {typeof trade.openAtMs === "number" &&
+                              typeof trade.closedAtMs === "number" &&
+                              Number.isFinite(trade.openAtMs) &&
+                              Number.isFinite(trade.closedAtMs) &&
+                              trade.closedAtMs > trade.openAtMs ? (
+                                <>
+                                  Hold {formatHoldTime(trade.closedAtMs - trade.openAtMs)}
+                                  <span className="px-1.5 text-white/30">•</span>
+                                </>
+                              ) : null}
+                              {typeof trade.fees === "number" && Number.isFinite(trade.fees) ? (
+                                <>
+                                  Fees {trade.fees >= 0 ? "+" : ""}
+                                  {formatPnl(trade.fees)}
+                                </>
+                              ) : null}
+                              {typeof trade.openPrice === "number" &&
+                              typeof trade.closePrice === "number" &&
+                              Number.isFinite(trade.openPrice) &&
+                              Number.isFinite(trade.closePrice) ? (
+                                <>
+                                  <span className="px-1.5 text-white/30">•</span>
+                                  {formatPnl(trade.openPrice)} → {formatPnl(trade.closePrice)}
+                                </>
+                              ) : null}
                             </div>
-                          </Link>
+
+                            <div className="mt-2 flex items-center justify-between gap-3">
+                              {Boolean(
+                                trade.openOrderId ??
+                                  trade.closeOrderId ??
+                                  trade.openTradeId ??
+                                  trade.closeTradeId ??
+                                  trade.externalPositionId,
+                              ) && (
+                                <button
+                                  type="button"
+                                  className="text-[11px] font-medium text-white/60 underline underline-offset-2 hover:text-white"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setExpandedIdsByTradeId((prev) => ({
+                                      ...prev,
+                                      [trade.id]: !prev[trade.id],
+                                    }));
+                                  }}
+                                >
+                                  {expandedIdsByTradeId[trade.id] ? "Hide IDs" : "Show IDs"}
+                                </button>
+                              )}
+
+                              {typeof trade.commission === "number" ||
+                              typeof trade.swap === "number" ? (
+                                <div className="ml-auto text-[11px] text-white/55 tabular-nums">
+                                  {typeof trade.commission === "number" &&
+                                  Number.isFinite(trade.commission)
+                                    ? `C:${trade.commission >= 0 ? "+" : ""}${formatPnl(
+                                        trade.commission,
+                                      )}`
+                                    : null}
+                                  {typeof trade.swap === "number" && Number.isFinite(trade.swap)
+                                    ? ` S:${trade.swap >= 0 ? "+" : ""}${formatPnl(trade.swap)}`
+                                    : null}
+                                </div>
+                              ) : null}
+                            </div>
+
+                            {expandedIdsByTradeId[trade.id] ? (
+                              <div className="mt-2 space-y-1 rounded-md border border-white/10 bg-black/30 p-2 text-[11px] text-white/70">
+                                {trade.externalPositionId ? (
+                                  <div className="break-all">
+                                    <span className="text-white/50">Position:</span>{" "}
+                                    {trade.externalPositionId}
+                                  </div>
+                                ) : null}
+                                {trade.openOrderId ? (
+                                  <div className="break-all">
+                                    <span className="text-white/50">Open order:</span>{" "}
+                                    {trade.openOrderId}
+                                  </div>
+                                ) : null}
+                                {trade.closeOrderId ? (
+                                  <div className="break-all">
+                                    <span className="text-white/50">Close order:</span>{" "}
+                                    {trade.closeOrderId}
+                                  </div>
+                                ) : null}
+                                {trade.openTradeId ? (
+                                  <div className="break-all">
+                                    <span className="text-white/50">Open trade:</span>{" "}
+                                    {trade.openTradeId}
+                                  </div>
+                                ) : null}
+                                {trade.closeTradeId ? (
+                                  <div className="break-all">
+                                    <span className="text-white/50">Close trade:</span>{" "}
+                                    {trade.closeTradeId}
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
                         ))
                       ) : (
                         <div className="rounded-lg border border-white/10 bg-white/3 p-4 text-sm text-white/70">

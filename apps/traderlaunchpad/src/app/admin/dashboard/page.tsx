@@ -579,7 +579,9 @@ export default function AdminDashboardPage() {
       }));
     }
 
-    const rows = Array.isArray(liveCalendarEvents) ? liveCalendarEvents : [];
+    const rows = Array.isArray(liveCalendarEvents)
+      ? (liveCalendarEvents as unknown as any[])
+      : [];
     return rows.map((e) => {
       const tradeDate = toDateKey(e.closedAt);
       const qtyLabel =
@@ -594,6 +596,20 @@ export default function AdminDashboardPage() {
         reviewed: false,
         reason: `Partial close${qtyLabel}`,
         pnl: typeof e.realizedPnl === "number" ? e.realizedPnl : 0,
+        qtyClosed: typeof e.qtyClosed === "number" ? e.qtyClosed : undefined,
+        fees: typeof e.fees === "number" ? e.fees : undefined,
+        commission: typeof e.commission === "number" ? e.commission : undefined,
+        swap: typeof e.swap === "number" ? e.swap : undefined,
+        openAtMs: typeof e.openAtMs === "number" ? e.openAtMs : undefined,
+        closedAtMs: typeof e.closedAt === "number" ? e.closedAt : undefined,
+        openPrice: typeof e.openPrice === "number" ? e.openPrice : undefined,
+        closePrice: typeof e.closePrice === "number" ? e.closePrice : undefined,
+        externalPositionId:
+          typeof e.externalPositionId === "string" ? e.externalPositionId : undefined,
+        openOrderId: typeof e.openOrderId === "string" ? e.openOrderId : undefined,
+        closeOrderId: typeof e.externalOrderId === "string" ? e.externalOrderId : undefined,
+        openTradeId: typeof e.openTradeId === "string" ? e.openTradeId : undefined,
+        closeTradeId: typeof e.closeTradeId === "string" ? e.closeTradeId : undefined,
       };
     });
   }, [isLive, liveCalendarEvents, reviewTrades]);
@@ -854,7 +870,7 @@ export default function AdminDashboardPage() {
             trades={calendarTrades}
             selectedDate={selectedTradeDate}
             onSelectDateAction={setSelectedTradeDate}
-            getTradeHref={getCalendarTradeHref}
+            getTradeHrefAction={getCalendarTradeHref}
           />
 
           <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-4">

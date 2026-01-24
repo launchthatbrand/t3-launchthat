@@ -443,16 +443,28 @@ export type Mounts = {
         "public",
         {
           accountId: string;
+          closePrice?: number;
+          closeTradeId?: string;
           closedAt: number;
+          commission?: number;
           connectionId: string;
           externalEventId: string;
           externalOrderId?: string;
           externalPositionId: string;
           fees?: number;
+          instrumentId?: string;
+          openAtMs?: number;
+          openOrderId?: string;
+          openPrice?: number;
+          openTradeId?: string;
+          orderType?: string;
           organizationId: string;
+          positionSide?: string;
           qtyClosed?: number;
           raw: any;
           realizedPnl: number;
+          swap?: number;
+          tradableInstrumentId?: string;
           tradeIdeaGroupId?: string;
           userId: string;
         },
@@ -1112,15 +1124,92 @@ export type Mounts = {
           userId: string;
         },
         Array<{
+          closePrice?: number;
+          closeTradeId?: string;
           closedAt: number;
+          commission?: number;
           direction: "long" | "short" | null;
           externalEventId: string;
           externalOrderId?: string;
           externalPositionId: string;
           fees?: number;
+          instrumentId?: string;
+          openAtMs?: number;
+          openOrderId?: string;
+          openPrice?: number;
+          openTradeId?: string;
+          orderType?: string;
+          positionSide?: string;
           qtyClosed?: number;
           realizedPnl: number;
+          swap?: number;
           symbol: string | null;
+          tradableInstrumentId?: string;
+          tradeIdeaGroupId?: string;
+        }>
+      >;
+      listPositionRealizationEvents: FunctionReference<
+        "query",
+        "public",
+        {
+          accountId: string;
+          limit?: number;
+          organizationId: string;
+          positionId: string;
+          userId: string;
+        },
+        Array<{
+          closePrice?: number;
+          closeTradeId?: string;
+          closedAt: number;
+          commission?: number;
+          externalEventId: string;
+          externalOrderId?: string;
+          externalPositionId: string;
+          fees?: number;
+          instrumentId?: string;
+          openAtMs?: number;
+          openOrderId?: string;
+          openPrice?: number;
+          openTradeId?: string;
+          orderType?: string;
+          positionSide?: string;
+          qtyClosed?: number;
+          realizedPnl: number;
+          swap?: number;
+          tradableInstrumentId?: string;
+          tradeIdeaGroupId?: string;
+        }>
+      >;
+      listTradeIdeaRealizationEvents: FunctionReference<
+        "query",
+        "public",
+        {
+          limit?: number;
+          organizationId: string;
+          tradeIdeaGroupId: string;
+          userId: string;
+        },
+        Array<{
+          closePrice?: number;
+          closeTradeId?: string;
+          closedAt: number;
+          commission?: number;
+          externalEventId: string;
+          externalOrderId?: string;
+          externalPositionId: string;
+          fees?: number;
+          instrumentId?: string;
+          openAtMs?: number;
+          openOrderId?: string;
+          openPrice?: number;
+          openTradeId?: string;
+          orderType?: string;
+          positionSide?: string;
+          qtyClosed?: number;
+          realizedPnl: number;
+          swap?: number;
+          tradableInstrumentId?: string;
           tradeIdeaGroupId?: string;
         }>
       >;

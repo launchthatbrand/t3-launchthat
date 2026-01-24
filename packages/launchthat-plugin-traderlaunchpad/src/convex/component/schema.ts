@@ -388,6 +388,20 @@ export default defineSchema({
     tradeIdeaGroupId: v.optional(v.id("tradeIdeaGroups")),
 
     // Event timing and economics.
+    // Close-trade report (preferred source) fields.
+    openAtMs: v.optional(v.number()),
+    openPrice: v.optional(v.number()),
+    closePrice: v.optional(v.number()),
+    commission: v.optional(v.number()),
+    swap: v.optional(v.number()),
+    openOrderId: v.optional(v.string()),
+    openTradeId: v.optional(v.string()),
+    closeTradeId: v.optional(v.string()),
+    instrumentId: v.optional(v.string()),
+    tradableInstrumentId: v.optional(v.string()),
+    positionSide: v.optional(v.string()), // e.g. "Buy"/"Sell"
+    orderType: v.optional(v.string()), // e.g. "Market"
+
     closedAt: v.number(),
     realizedPnl: v.number(),
     fees: v.optional(v.number()),

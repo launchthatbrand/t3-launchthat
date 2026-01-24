@@ -137,6 +137,18 @@ export const listMyCalendarRealizationEvents = query({
       externalOrderId: v.optional(v.string()),
       symbol: v.union(v.string(), v.null()),
       direction: v.union(v.literal("long"), v.literal("short"), v.null()),
+      openAtMs: v.optional(v.number()),
+      openPrice: v.optional(v.number()),
+      closePrice: v.optional(v.number()),
+      commission: v.optional(v.number()),
+      swap: v.optional(v.number()),
+      openOrderId: v.optional(v.string()),
+      openTradeId: v.optional(v.string()),
+      closeTradeId: v.optional(v.string()),
+      instrumentId: v.optional(v.string()),
+      tradableInstrumentId: v.optional(v.string()),
+      positionSide: v.optional(v.string()),
+      orderType: v.optional(v.string()),
       closedAt: v.number(),
       realizedPnl: v.number(),
       fees: v.optional(v.number()),
@@ -161,6 +173,111 @@ export const listMyCalendarRealizationEvents = query({
       symbol: typeof r.symbol === "string" ? r.symbol : null,
       direction:
         r.direction === "short" ? "short" : r.direction === "long" ? "long" : null,
+      openAtMs: typeof r.openAtMs === "number" ? r.openAtMs : undefined,
+      openPrice: typeof r.openPrice === "number" ? r.openPrice : undefined,
+      closePrice: typeof r.closePrice === "number" ? r.closePrice : undefined,
+      commission: typeof r.commission === "number" ? r.commission : undefined,
+      swap: typeof r.swap === "number" ? r.swap : undefined,
+      openOrderId: typeof r.openOrderId === "string" ? r.openOrderId : undefined,
+      openTradeId: typeof r.openTradeId === "string" ? r.openTradeId : undefined,
+      closeTradeId: typeof r.closeTradeId === "string" ? r.closeTradeId : undefined,
+      instrumentId: typeof r.instrumentId === "string" ? r.instrumentId : undefined,
+      tradableInstrumentId:
+        typeof r.tradableInstrumentId === "string" ? r.tradableInstrumentId : undefined,
+      positionSide: typeof r.positionSide === "string" ? r.positionSide : undefined,
+      orderType: typeof r.orderType === "string" ? r.orderType : undefined,
+      closedAt: Number(r.closedAt ?? 0),
+      realizedPnl: typeof r.realizedPnl === "number" ? r.realizedPnl : 0,
+      fees: typeof r.fees === "number" ? r.fees : undefined,
+      qtyClosed: typeof r.qtyClosed === "number" ? r.qtyClosed : undefined,
+    }));
+  },
+});
+
+export const listMyTradeIdeaRealizationEvents = query({
+  args: {
+    tradeIdeaGroupId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      externalEventId: v.string(),
+      tradeIdeaGroupId: v.optional(v.string()),
+      externalPositionId: v.string(),
+      externalOrderId: v.optional(v.string()),
+      openAtMs: v.optional(v.number()),
+      openPrice: v.optional(v.number()),
+      closePrice: v.optional(v.number()),
+      commission: v.optional(v.number()),
+      swap: v.optional(v.number()),
+      openOrderId: v.optional(v.string()),
+      openTradeId: v.optional(v.string()),
+      closeTradeId: v.optional(v.string()),
+      instrumentId: v.optional(v.string()),
+      tradableInstrumentId: v.optional(v.string()),
+      positionSide: v.optional(v.string()),
+      orderType: v.optional(v.string()),
+      closedAt: v.number(),
+      realizedPnl: v.number(),
+      fees: v.optional(v.number()),
+      qtyClosed: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+
+    const tradeIdeaGroupId = String(args.tradeIdeaGroupId ?? "").trim();
+    if (!tradeIdeaGroupId) return [];
+
+    const tradeIdea = await ctx.runQuery(tradeIdeasQueries.getById, {
+      tradeIdeaGroupId: tradeIdeaGroupId as any,
+    });
+
+    const rows = await ctx.runQuery(tradeIdeasAnalytics.listTradeIdeaRealizationEvents, {
+      organizationId,
+      userId,
+      tradeIdeaGroupId: tradeIdeaGroupId as any,
+      limit: args.limit,
+    });
+
+    // Fallback for older events that predate tradeIdeaGroupId linking.
+    const shouldFallback =
+      (!rows || rows.length === 0) &&
+      typeof (tradeIdea as any)?.accountId === "string" &&
+      typeof (tradeIdea as any)?.positionId === "string";
+
+    const fallbackRows = shouldFallback
+      ? await ctx.runQuery(tradeIdeasAnalytics.listPositionRealizationEvents, {
+          organizationId,
+          userId,
+          accountId: String((tradeIdea as any).accountId),
+          positionId: String((tradeIdea as any).positionId),
+          limit: args.limit,
+        })
+      : [];
+
+    const out = (rows && rows.length > 0 ? rows : fallbackRows) ?? [];
+
+    return out.map((r: any) => ({
+      externalEventId: String(r.externalEventId ?? ""),
+      tradeIdeaGroupId:
+        typeof r.tradeIdeaGroupId === "string" ? String(r.tradeIdeaGroupId) : undefined,
+      externalPositionId: String(r.externalPositionId ?? ""),
+      externalOrderId: typeof r.externalOrderId === "string" ? r.externalOrderId : undefined,
+      openAtMs: typeof r.openAtMs === "number" ? r.openAtMs : undefined,
+      openPrice: typeof r.openPrice === "number" ? r.openPrice : undefined,
+      closePrice: typeof r.closePrice === "number" ? r.closePrice : undefined,
+      commission: typeof r.commission === "number" ? r.commission : undefined,
+      swap: typeof r.swap === "number" ? r.swap : undefined,
+      openOrderId: typeof r.openOrderId === "string" ? r.openOrderId : undefined,
+      openTradeId: typeof r.openTradeId === "string" ? r.openTradeId : undefined,
+      closeTradeId: typeof r.closeTradeId === "string" ? r.closeTradeId : undefined,
+      instrumentId: typeof r.instrumentId === "string" ? r.instrumentId : undefined,
+      tradableInstrumentId:
+        typeof r.tradableInstrumentId === "string" ? r.tradableInstrumentId : undefined,
+      positionSide: typeof r.positionSide === "string" ? r.positionSide : undefined,
+      orderType: typeof r.orderType === "string" ? r.orderType : undefined,
       closedAt: Number(r.closedAt ?? 0),
       realizedPnl: typeof r.realizedPnl === "number" ? r.realizedPnl : 0,
       fees: typeof r.fees === "number" ? r.fees : undefined,

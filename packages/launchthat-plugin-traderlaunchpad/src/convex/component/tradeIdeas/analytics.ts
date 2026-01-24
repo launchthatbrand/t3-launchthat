@@ -320,6 +320,18 @@ export const listCalendarRealizationEvents = query({
       externalOrderId: v.optional(v.string()),
       symbol: v.union(v.string(), v.null()),
       direction: v.union(v.literal("long"), v.literal("short"), v.null()),
+      openAtMs: v.optional(v.number()),
+      openPrice: v.optional(v.number()),
+      closePrice: v.optional(v.number()),
+      commission: v.optional(v.number()),
+      swap: v.optional(v.number()),
+      openOrderId: v.optional(v.string()),
+      openTradeId: v.optional(v.string()),
+      closeTradeId: v.optional(v.string()),
+      instrumentId: v.optional(v.string()),
+      tradableInstrumentId: v.optional(v.string()),
+      positionSide: v.optional(v.string()),
+      orderType: v.optional(v.string()),
       closedAt: v.number(),
       realizedPnl: v.number(),
       fees: v.optional(v.number()),
@@ -390,11 +402,176 @@ export const listCalendarRealizationEvents = query({
         externalOrderId: typeof r.externalOrderId === "string" ? r.externalOrderId : undefined,
         symbol: meta?.symbol ?? null,
         direction: meta?.direction ?? null,
+        openAtMs: typeof r.openAtMs === "number" ? r.openAtMs : undefined,
+        openPrice: typeof r.openPrice === "number" ? r.openPrice : undefined,
+        closePrice: typeof r.closePrice === "number" ? r.closePrice : undefined,
+        commission: typeof r.commission === "number" ? r.commission : undefined,
+        swap: typeof r.swap === "number" ? r.swap : undefined,
+        openOrderId: typeof r.openOrderId === "string" ? r.openOrderId : undefined,
+        openTradeId: typeof r.openTradeId === "string" ? r.openTradeId : undefined,
+        closeTradeId: typeof r.closeTradeId === "string" ? r.closeTradeId : undefined,
+        instrumentId: typeof r.instrumentId === "string" ? r.instrumentId : undefined,
+        tradableInstrumentId:
+          typeof r.tradableInstrumentId === "string" ? r.tradableInstrumentId : undefined,
+        positionSide: typeof r.positionSide === "string" ? r.positionSide : undefined,
+        orderType: typeof r.orderType === "string" ? r.orderType : undefined,
         closedAt: Number(r.closedAt ?? 0),
         realizedPnl: typeof r.realizedPnl === "number" ? r.realizedPnl : 0,
         fees: typeof r.fees === "number" ? r.fees : undefined,
         qtyClosed: typeof r.qtyClosed === "number" ? r.qtyClosed : undefined,
       };
     });
+  },
+});
+
+export const listTradeIdeaRealizationEvents = query({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    tradeIdeaGroupId: v.id("tradeIdeaGroups"),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      externalEventId: v.string(),
+      tradeIdeaGroupId: v.optional(v.id("tradeIdeaGroups")),
+      externalPositionId: v.string(),
+      externalOrderId: v.optional(v.string()),
+      openAtMs: v.optional(v.number()),
+      openPrice: v.optional(v.number()),
+      closePrice: v.optional(v.number()),
+      commission: v.optional(v.number()),
+      swap: v.optional(v.number()),
+      openOrderId: v.optional(v.string()),
+      openTradeId: v.optional(v.string()),
+      closeTradeId: v.optional(v.string()),
+      instrumentId: v.optional(v.string()),
+      tradableInstrumentId: v.optional(v.string()),
+      positionSide: v.optional(v.string()),
+      orderType: v.optional(v.string()),
+      closedAt: v.number(),
+      realizedPnl: v.number(),
+      fees: v.optional(v.number()),
+      qtyClosed: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(5000, Number(args.limit ?? 2000)));
+
+    const rows = await ctx.db
+      .query("tradeRealizationEvents")
+      .withIndex("by_org_user_tradeIdeaGroupId_closedAt", (q: any) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("userId", args.userId)
+          .eq("tradeIdeaGroupId", args.tradeIdeaGroupId)
+          .lte("closedAt", Date.now()),
+      )
+      .order("desc")
+      .take(limit);
+
+    return (rows as any[]).map((r) => ({
+      externalEventId: String(r.externalEventId ?? ""),
+      tradeIdeaGroupId:
+        typeof r.tradeIdeaGroupId === "string" ? (r.tradeIdeaGroupId as any) : undefined,
+      externalPositionId: String(r.externalPositionId ?? ""),
+      externalOrderId: typeof r.externalOrderId === "string" ? r.externalOrderId : undefined,
+      openAtMs: typeof r.openAtMs === "number" ? r.openAtMs : undefined,
+      openPrice: typeof r.openPrice === "number" ? r.openPrice : undefined,
+      closePrice: typeof r.closePrice === "number" ? r.closePrice : undefined,
+      commission: typeof r.commission === "number" ? r.commission : undefined,
+      swap: typeof r.swap === "number" ? r.swap : undefined,
+      openOrderId: typeof r.openOrderId === "string" ? r.openOrderId : undefined,
+      openTradeId: typeof r.openTradeId === "string" ? r.openTradeId : undefined,
+      closeTradeId: typeof r.closeTradeId === "string" ? r.closeTradeId : undefined,
+      instrumentId: typeof r.instrumentId === "string" ? r.instrumentId : undefined,
+      tradableInstrumentId:
+        typeof r.tradableInstrumentId === "string" ? r.tradableInstrumentId : undefined,
+      positionSide: typeof r.positionSide === "string" ? r.positionSide : undefined,
+      orderType: typeof r.orderType === "string" ? r.orderType : undefined,
+      closedAt: Number(r.closedAt ?? 0),
+      realizedPnl: typeof r.realizedPnl === "number" ? r.realizedPnl : 0,
+      fees: typeof r.fees === "number" ? r.fees : undefined,
+      qtyClosed: typeof r.qtyClosed === "number" ? r.qtyClosed : undefined,
+    }));
+  },
+});
+
+export const listPositionRealizationEvents = query({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    accountId: v.string(),
+    positionId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      externalEventId: v.string(),
+      tradeIdeaGroupId: v.optional(v.id("tradeIdeaGroups")),
+      externalPositionId: v.string(),
+      externalOrderId: v.optional(v.string()),
+      openAtMs: v.optional(v.number()),
+      openPrice: v.optional(v.number()),
+      closePrice: v.optional(v.number()),
+      commission: v.optional(v.number()),
+      swap: v.optional(v.number()),
+      openOrderId: v.optional(v.string()),
+      openTradeId: v.optional(v.string()),
+      closeTradeId: v.optional(v.string()),
+      instrumentId: v.optional(v.string()),
+      tradableInstrumentId: v.optional(v.string()),
+      positionSide: v.optional(v.string()),
+      orderType: v.optional(v.string()),
+      closedAt: v.number(),
+      realizedPnl: v.number(),
+      fees: v.optional(v.number()),
+      qtyClosed: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const accountId = String(args.accountId ?? "").trim();
+    const positionId = String(args.positionId ?? "").trim();
+    if (!accountId || !positionId) return [];
+
+    const limit = Math.max(1, Math.min(5000, Number(args.limit ?? 2000)));
+
+    const rows = await ctx.db
+      .query("tradeRealizationEvents")
+      .withIndex("by_org_user_accountId_externalPositionId_closedAt", (q: any) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("userId", args.userId)
+          .eq("accountId", accountId)
+          .eq("externalPositionId", positionId)
+          .lte("closedAt", Date.now()),
+      )
+      .order("desc")
+      .take(limit);
+
+    return (rows as any[]).map((r) => ({
+      externalEventId: String(r.externalEventId ?? ""),
+      tradeIdeaGroupId:
+        typeof r.tradeIdeaGroupId === "string" ? (r.tradeIdeaGroupId as any) : undefined,
+      externalPositionId: String(r.externalPositionId ?? ""),
+      externalOrderId: typeof r.externalOrderId === "string" ? r.externalOrderId : undefined,
+      openAtMs: typeof r.openAtMs === "number" ? r.openAtMs : undefined,
+      openPrice: typeof r.openPrice === "number" ? r.openPrice : undefined,
+      closePrice: typeof r.closePrice === "number" ? r.closePrice : undefined,
+      commission: typeof r.commission === "number" ? r.commission : undefined,
+      swap: typeof r.swap === "number" ? r.swap : undefined,
+      openOrderId: typeof r.openOrderId === "string" ? r.openOrderId : undefined,
+      openTradeId: typeof r.openTradeId === "string" ? r.openTradeId : undefined,
+      closeTradeId: typeof r.closeTradeId === "string" ? r.closeTradeId : undefined,
+      instrumentId: typeof r.instrumentId === "string" ? r.instrumentId : undefined,
+      tradableInstrumentId:
+        typeof r.tradableInstrumentId === "string" ? r.tradableInstrumentId : undefined,
+      positionSide: typeof r.positionSide === "string" ? r.positionSide : undefined,
+      orderType: typeof r.orderType === "string" ? r.orderType : undefined,
+      closedAt: Number(r.closedAt ?? 0),
+      realizedPnl: typeof r.realizedPnl === "number" ? r.realizedPnl : 0,
+      fees: typeof r.fees === "number" ? r.fees : undefined,
+      qtyClosed: typeof r.qtyClosed === "number" ? r.qtyClosed : undefined,
+    }));
   },
 });

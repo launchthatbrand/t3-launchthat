@@ -4317,6 +4317,14 @@ export const syncTradeLockerConnection = action({
         const positionId = extractPositionIdFromRaw(r);
         if (!positionId) continue;
 
+        const openAtMsRaw =
+          parseNumberLike(r?.openMilliseconds) ??
+          parseNumberLike(r?.openMs) ??
+          parseNumberLike(r?.openTime) ??
+          parseNumberLike(r?.openedAt);
+        const openAtMs =
+          typeof openAtMsRaw === "number" ? normalizeMaybeMs(openAtMsRaw) : undefined;
+
         const closedAtRaw =
           parseNumberLike(r?.closeMilliseconds) ??
           parseNumberLike(r?.closeMs) ??
@@ -4334,6 +4342,8 @@ export const syncTradeLockerConnection = action({
           parseNumberLike(r?.qty) ??
           parseNumberLike(r?.quantity) ??
           parseNumberLike(r?.volume);
+        const openPrice = parseNumberLike(r?.averageOpenPrice ?? r?.avgOpenPrice);
+        const closePrice = parseNumberLike(r?.closePrice);
         const commission = parseNumberLike(r?.commission);
         const swap = parseNumberLike(r?.swap);
         // Store "fees" as a single number (most brokers expose commission/swap as negatives).
@@ -4341,6 +4351,39 @@ export const syncTradeLockerConnection = action({
           typeof commission === "number" || typeof swap === "number"
             ? (typeof commission === "number" ? commission : 0) +
               (typeof swap === "number" ? swap : 0)
+            : undefined;
+
+        const openOrderId =
+          typeof r?.openOrderId === "string" && r.openOrderId.trim()
+            ? r.openOrderId.trim()
+            : undefined;
+        const openTradeId =
+          typeof r?.openTradeId === "string" && r.openTradeId.trim()
+            ? r.openTradeId.trim()
+            : undefined;
+        const closeTradeId =
+          typeof r?.closeTradeId === "string" && r.closeTradeId.trim()
+            ? r.closeTradeId.trim()
+            : undefined;
+
+        const instrumentId =
+          typeof r?.instrumentId === "string" && r.instrumentId.trim()
+            ? r.instrumentId.trim()
+            : undefined;
+        const tradableInstrumentId =
+          typeof r?.tradableInstrumentId === "string" && r.tradableInstrumentId.trim()
+            ? r.tradableInstrumentId.trim()
+            : typeof r?.tradableInstrumentId === "number"
+              ? String(r.tradableInstrumentId)
+              : undefined;
+
+        const positionSide =
+          typeof r?.positionSide === "string" && r.positionSide.trim()
+            ? r.positionSide.trim()
+            : undefined;
+        const orderType =
+          typeof r?.orderType === "string" && r.orderType.trim()
+            ? r.orderType.trim()
             : undefined;
 
         const externalOrderId =
@@ -4376,6 +4419,18 @@ export const syncTradeLockerConnection = action({
           externalOrderId,
           externalPositionId: positionId,
           tradeIdeaGroupId: groupId ?? undefined,
+          openAtMs,
+          openPrice,
+          closePrice,
+          commission,
+          swap,
+          openOrderId,
+          openTradeId,
+          closeTradeId,
+          instrumentId,
+          tradableInstrumentId,
+          positionSide,
+          orderType,
           closedAt,
           realizedPnl,
           fees,
@@ -4453,6 +4508,18 @@ export const syncTradeLockerConnection = action({
         externalOrderId,
         externalPositionId: positionId,
         tradeIdeaGroupId: groupId ?? undefined,
+        openAtMs: undefined,
+        openPrice: undefined,
+        closePrice: undefined,
+        commission: undefined,
+        swap: undefined,
+        openOrderId: undefined,
+        openTradeId: undefined,
+        closeTradeId: undefined,
+        instrumentId: undefined,
+        tradableInstrumentId: undefined,
+        positionSide: undefined,
+        orderType: undefined,
         closedAt,
         realizedPnl,
         fees,

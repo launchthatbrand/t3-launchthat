@@ -12,15 +12,14 @@ import { useConvexAuth, useQuery } from "convex/react";
 import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
+import { Checkbox } from "@acme/ui/checkbox";
 import type { ColumnDefinition } from "@acme/ui/entity-list/types";
 import { Calendar as DayCalendar } from "@acme/ui/calendar";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
 import Link from "next/link";
 import React from "react";
-import {
-  TradingCalendarWithDrilldown,
-  type TradingCalendarWithDrilldownTradeRow,
-} from "~/components/dashboard/TradingCalendarWithDrilldown";
+import { TradingCalendarWithDrilldown } from "~/components/dashboard/TradingCalendarWithDrilldown";
+import type { TradingCalendarWithDrilldownTradeRow } from "~/components/dashboard/TradingCalendarWithDrilldown";
 import { TradingTimingInsights } from "~/components/dashboard/TradingTimingInsights";
 import { api } from "@convex-config/_generated/api";
 import { cn } from "@acme/ui";
@@ -308,6 +307,11 @@ export default function AdminJournalDashboardPage() {
   }, []);
 
   const [openTradeId, setOpenTradeId] = React.useState<string | null>(null);
+  const [tradeColumns, setTradeColumns] = React.useState<{
+    showSize: boolean;
+    showHold: boolean;
+    showFees: boolean;
+  }>({ showSize: false, showHold: false, showFees: false });
   const selectedTradeDate = useTradingCalendarStore((state) => state.selectedDate);
   const setSelectedTradeDate = useTradingCalendarStore((state) => state.setSelectedDate);
 
@@ -346,10 +350,20 @@ export default function AdminJournalDashboardPage() {
       externalEventId: string;
       tradeIdeaGroupId?: string;
       externalPositionId: string;
+      externalOrderId?: string;
       symbol: string | null;
       direction: "long" | "short" | null;
+      openAtMs?: number;
+      openPrice?: number;
+      closePrice?: number;
+      commission?: number;
+      swap?: number;
+      openOrderId?: string;
+      openTradeId?: string;
+      closeTradeId?: string;
       closedAt: number;
       realizedPnl: number;
+      fees?: number;
       qtyClosed?: number;
     }[]
     | undefined;
@@ -384,19 +398,11 @@ export default function AdminJournalDashboardPage() {
     setSelectedTradeDate(formatDate(d, "yyyy-MM-dd"));
   };
 
-  const getTradeHref = React.useCallback(
-    (tradeId: string) => {
-      if (dataMode.effectiveMode === "demo") return `/admin/trade/${tradeId}`;
-      return `/admin/tradeidea/${encodeURIComponent(tradeId)}`;
-    },
-    [dataMode.effectiveMode],
-  );
-
   const calendarTradeIdeaIdByEventId = React.useMemo(() => {
     const map = new Map<string, string>();
     const rows = Array.isArray(liveCalendarEvents) ? liveCalendarEvents : [];
     for (const r of rows) {
-      const eventId = String(r.externalEventId ?? "").trim();
+      const eventId = r.externalEventId.trim();
       const gid = typeof r.tradeIdeaGroupId === "string" ? r.tradeIdeaGroupId : "";
       if (eventId && gid) map.set(eventId, gid);
     }
@@ -434,13 +440,27 @@ export default function AdminJournalDashboardPage() {
           ? ` • ${Math.abs(e.qtyClosed)}`
           : "";
       return {
-        id: String(e.externalEventId ?? `${e.externalPositionId}:${e.closedAt}`),
+        id: e.externalEventId ? e.externalEventId : `${e.externalPositionId}:${e.closedAt}`,
         tradeDate,
         symbol: typeof e.symbol === "string" && e.symbol.trim() ? e.symbol.trim() : "—",
         type: e.direction === "short" ? "Short" : "Long",
         reviewed: false,
         reason: `Partial close${qtyLabel}`,
         pnl: typeof e.realizedPnl === "number" ? e.realizedPnl : 0,
+        qtyClosed: typeof e.qtyClosed === "number" ? e.qtyClosed : undefined,
+        fees: typeof e.fees === "number" ? e.fees : undefined,
+        commission: typeof e.commission === "number" ? e.commission : undefined,
+        swap: typeof e.swap === "number" ? e.swap : undefined,
+        openAtMs: typeof e.openAtMs === "number" ? e.openAtMs : undefined,
+        closedAtMs: typeof e.closedAt === "number" ? e.closedAt : undefined,
+        openPrice: typeof e.openPrice === "number" ? e.openPrice : undefined,
+        closePrice: typeof e.closePrice === "number" ? e.closePrice : undefined,
+        externalPositionId:
+          typeof e.externalPositionId === "string" ? e.externalPositionId : undefined,
+        openOrderId: typeof e.openOrderId === "string" ? e.openOrderId : undefined,
+        closeOrderId: typeof e.externalOrderId === "string" ? e.externalOrderId : undefined,
+        openTradeId: typeof e.openTradeId === "string" ? e.openTradeId : undefined,
+        closeTradeId: typeof e.closeTradeId === "string" ? e.closeTradeId : undefined,
       };
     });
   }, [dataMode.effectiveMode, demoLikeTrades, liveCalendarEvents]);
@@ -448,6 +468,56 @@ export default function AdminJournalDashboardPage() {
   const tradesForSelectedDate = selectedTradeDate
     ? demoLikeTrades.filter((trade) => trade.tradeDate === selectedTradeDate)
     : demoLikeTrades;
+
+  const formatHoldTime = React.useCallback((durationMs: number): string => {
+    const ms = Math.max(0, Math.floor(durationMs));
+    const totalMinutes = Math.floor(ms / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours <= 0) return `${minutes}m`;
+    if (minutes <= 0) return `${hours}h`;
+    return `${hours}h ${minutes}m`;
+  }, []);
+
+  const metaByTradeIdeaGroupIdForSelectedDate = React.useMemo(() => {
+    const map = new Map<
+      string,
+      { qtyClosed?: number; fees?: number; holdMsMax?: number }
+    >();
+    if (dataMode.effectiveMode !== "live") return map;
+    if (!selectedTradeDate) return map;
+
+    const rows = Array.isArray(liveCalendarEvents) ? liveCalendarEvents : [];
+
+    for (const e of rows) {
+      const gid = typeof e.tradeIdeaGroupId === "string" ? e.tradeIdeaGroupId : "";
+      if (!gid) continue;
+      const closedAt = typeof e.closedAt === "number" ? e.closedAt : 0;
+      if (!closedAt || !Number.isFinite(closedAt)) continue;
+      const dateKey = toDateKey(closedAt);
+      if (dateKey !== selectedTradeDate) continue;
+
+      const cur = map.get(gid) ?? { qtyClosed: 0, fees: 0, holdMsMax: 0 };
+
+      if (typeof e.qtyClosed === "number" && Number.isFinite(e.qtyClosed)) {
+        cur.qtyClosed = (cur.qtyClosed ?? 0) + e.qtyClosed;
+      }
+      if (typeof e.fees === "number" && Number.isFinite(e.fees)) {
+        cur.fees = (cur.fees ?? 0) + e.fees;
+      }
+      if (
+        typeof e.openAtMs === "number" &&
+        Number.isFinite(e.openAtMs) &&
+        closedAt > e.openAtMs
+      ) {
+        cur.holdMsMax = Math.max(cur.holdMsMax ?? 0, closedAt - e.openAtMs);
+      }
+
+      map.set(gid, cur);
+    }
+
+    return map;
+  }, [dataMode.effectiveMode, liveCalendarEvents, selectedTradeDate]);
 
   const router = useRouter();
 
@@ -554,7 +624,7 @@ export default function AdminJournalDashboardPage() {
             trades={calendarTrades}
             selectedDate={selectedTradeDate}
             onSelectDateAction={setSelectedTradeDate}
-            getTradeHref={getCalendarTradeHref}
+            getTradeHrefAction={getCalendarTradeHref}
           />
 
           <div className="relative">
@@ -702,12 +772,73 @@ export default function AdminJournalDashboardPage() {
                   <Clock className="h-4 w-4 text-orange-300" />
                   Trades
                 </CardTitle>
-                <Badge
-                  variant="secondary"
-                  className="bg-orange-500/10 text-orange-300 hover:bg-orange-500/20"
-                >
-                  {selectedTradeDate ? "Filtered" : "All"}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="hidden h-8 border-white/15 bg-transparent px-2 text-xs text-white hover:bg-white/10 hover:text-white md:inline-flex"
+                      >
+                        Columns
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-60 border-white/10 bg-black/80 p-3 text-white backdrop-blur">
+                      <div className="space-y-2">
+                        <div className="text-xs font-semibold text-white/80">
+                          Optional fields
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-sm">Size</div>
+                          <Checkbox
+                            checked={tradeColumns.showSize}
+                            onCheckedChange={(checked) =>
+                              setTradeColumns((s) => ({
+                                ...s,
+                                showSize: Boolean(checked),
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-sm">Hold time</div>
+                          <Checkbox
+                            checked={tradeColumns.showHold}
+                            onCheckedChange={(checked) =>
+                              setTradeColumns((s) => ({
+                                ...s,
+                                showHold: Boolean(checked),
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-sm">Fees</div>
+                          <Checkbox
+                            checked={tradeColumns.showFees}
+                            onCheckedChange={(checked) =>
+                              setTradeColumns((s) => ({
+                                ...s,
+                                showFees: Boolean(checked),
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="pt-1 text-[11px] text-white/55">
+                          (Desktop-only)
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  <Badge
+                    variant="secondary"
+                    className="bg-orange-500/10 text-orange-300 hover:bg-orange-500/20"
+                  >
+                    {selectedTradeDate ? "Filtered" : "All"}
+                  </Badge>
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <div className="text-xs text-white/60">
@@ -722,107 +853,178 @@ export default function AdminJournalDashboardPage() {
 
             <CardContent className="flex h-full flex-col gap-3">
               <div className="flex-1 space-y-2 overflow-y-auto pr-1">
-                {tradesForSelectedDate.map((trade) => (
-                  <Popover
-                    key={trade.id}
-                    open={openTradeId === trade.id}
-                    onOpenChange={(next) => setOpenTradeId(next ? trade.id : null)}
-                  >
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className="bg-card group flex w-full items-center justify-between rounded-md border p-3 text-left transition-colors hover:border-blue-500/50"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm font-medium">
-                            {trade.symbol}
-                            <span
-                              className={cn(
-                                "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
-                                trade.type === "Long"
-                                  ? "bg-emerald-500/10 text-emerald-500"
-                                  : "bg-red-500/10 text-red-500",
-                              )}
-                            >
-                              {trade.type}
-                            </span>
-                            <span
-                              className={cn(
-                                "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
-                                trade.reviewed
-                                  ? "bg-emerald-500/10 text-emerald-500"
-                                  : "bg-amber-500/10 text-amber-500",
-                              )}
-                            >
-                              {trade.reviewed ? "Reviewed" : "Needs Review"}
-                            </span>
-                          </div>
-                          <div className="text-xs text-white/60">
-                            {trade.date} • {trade.reason}
-                          </div>
-                        </div>
-                        <div
-                          className={cn(
-                            "text-sm font-semibold",
-                            trade.pnl >= 0 ? "text-emerald-500" : "text-red-500",
-                          )}
-                        >
-                          {trade.pnl >= 0 ? "+" : ""}
-                          {trade.pnl}
-                        </div>
-                      </button>
-                    </PopoverTrigger>
+                {tradesForSelectedDate.map((trade) => {
+                  const meta =
+                    dataMode.effectiveMode === "live" && selectedTradeDate
+                      ? metaByTradeIdeaGroupIdForSelectedDate.get(trade.id)
+                      : undefined;
+                  const showMeta =
+                    tradeColumns.showSize || tradeColumns.showHold || tradeColumns.showFees;
 
-                    <PopoverContent className="w-[320px] border-white/10 bg-black/80 p-3 text-white backdrop-blur">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold">
-                            {trade.symbol} • {trade.type}
+                  return (
+                    <Popover
+                      key={trade.id}
+                      open={openTradeId === trade.id}
+                      onOpenChange={(next) => setOpenTradeId(next ? trade.id : null)}
+                    >
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="bg-card group flex w-full items-center justify-between rounded-md border p-3 text-left transition-colors hover:border-blue-500/50"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-sm font-medium">
+                              {trade.symbol}
+                              <span
+                                className={cn(
+                                  "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
+                                  trade.type === "Long"
+                                    ? "bg-emerald-500/10 text-emerald-500"
+                                    : "bg-red-500/10 text-red-500",
+                                )}
+                              >
+                                {trade.type}
+                              </span>
+                              <span
+                                className={cn(
+                                  "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
+                                  trade.reviewed
+                                    ? "bg-emerald-500/10 text-emerald-500"
+                                    : "bg-amber-500/10 text-amber-500",
+                                )}
+                              >
+                                {trade.reviewed ? "Reviewed" : "Needs Review"}
+                              </span>
+                            </div>
+                            <div className="text-xs text-white/60">
+                              {trade.date} • {trade.reason}
+                              {showMeta && meta ? (
+                                <span className="hidden md:inline">
+                                  {tradeColumns.showSize &&
+                                  typeof meta.qtyClosed === "number" &&
+                                  Number.isFinite(meta.qtyClosed) ? (
+                                    <>
+                                      <span className="px-1.5 text-white/30">•</span>
+                                      Size {meta.qtyClosed.toFixed(2)}
+                                    </>
+                                  ) : null}
+                                  {tradeColumns.showHold &&
+                                  typeof meta.holdMsMax === "number" &&
+                                  Number.isFinite(meta.holdMsMax) &&
+                                  meta.holdMsMax > 0 ? (
+                                    <>
+                                      <span className="px-1.5 text-white/30">•</span>
+                                      Hold {formatHoldTime(meta.holdMsMax)}
+                                    </>
+                                  ) : null}
+                                  {tradeColumns.showFees &&
+                                  typeof meta.fees === "number" &&
+                                  Number.isFinite(meta.fees) ? (
+                                    <>
+                                      <span className="px-1.5 text-white/30">•</span>
+                                      Fees {meta.fees >= 0 ? "+" : ""}
+                                      {meta.fees.toFixed(2)}
+                                    </>
+                                  ) : null}
+                                </span>
+                              ) : null}
+                            </div>
                           </div>
-                          <div className="mt-0.5 text-xs text-white/60">
-                            {trade.tradeDate} • {trade.reason}
-                          </div>
-                        </div>
-                        <div
-                          className={cn(
-                            "shrink-0 text-sm font-semibold tabular-nums",
-                            trade.pnl >= 0 ? "text-emerald-300" : "text-rose-300",
-                          )}
-                        >
-                          {trade.pnl >= 0 ? "+" : ""}
-                          {trade.pnl}
-                        </div>
-                      </div>
-
-                      <div className="mt-3 flex items-center justify-between">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "border-white/15 text-[10px]",
-                            trade.reviewed ? "text-emerald-200" : "text-amber-200",
-                          )}
-                        >
-                          {trade.reviewed ? "Reviewed" : "Needs review"}
-                        </Badge>
-                        <Button
-                          size="sm"
-                          className="h-8 bg-orange-600 px-2 text-xs text-white hover:bg-orange-700"
-                          asChild
-                        >
-                          <Link
-                            href={
-                              dataMode.effectiveMode === "demo"
-                                ? `/admin/trade/${trade.id}`
-                                : `/admin/tradeidea/${encodeURIComponent(trade.id)}`
-                            }
+                          <div
+                            className={cn(
+                              "text-sm font-semibold",
+                              trade.pnl >= 0 ? "text-emerald-500" : "text-red-500",
+                            )}
                           >
-                            View Trade <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
-                          </Link>
-                        </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                ))}
+                            {trade.pnl >= 0 ? "+" : ""}
+                            {trade.pnl}
+                          </div>
+                        </button>
+                      </PopoverTrigger>
+
+                      <PopoverContent className="w-[320px] border-white/10 bg-black/80 p-3 text-white backdrop-blur">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold">
+                              {trade.symbol} • {trade.type}
+                            </div>
+                            <div className="mt-0.5 text-xs text-white/60">
+                              {trade.tradeDate} • {trade.reason}
+                            </div>
+                          </div>
+                          <div
+                            className={cn(
+                              "shrink-0 text-sm font-semibold tabular-nums",
+                              trade.pnl >= 0 ? "text-emerald-300" : "text-rose-300",
+                            )}
+                          >
+                            {trade.pnl >= 0 ? "+" : ""}
+                            {trade.pnl}
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "border-white/15 text-[10px]",
+                              trade.reviewed ? "text-emerald-200" : "text-amber-200",
+                            )}
+                          >
+                            {trade.reviewed ? "Reviewed" : "Needs review"}
+                          </Badge>
+                          <Button
+                            size="sm"
+                            className="h-8 bg-orange-600 px-2 text-xs text-white hover:bg-orange-700"
+                            asChild
+                          >
+                            <Link
+                              href={
+                                dataMode.effectiveMode === "demo"
+                                  ? `/admin/trade/${trade.id}`
+                                  : `/admin/tradeidea/${encodeURIComponent(trade.id)}`
+                              }
+                            >
+                              View Trade <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+                            </Link>
+                          </Button>
+                        </div>
+
+                        {showMeta ? (
+                          <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-white/70">
+                            <div className="rounded-md border border-white/10 bg-white/5 p-2">
+                              <div className="text-white/50">Size</div>
+                              <div className="mt-0.5 tabular-nums">
+                                {typeof meta?.qtyClosed === "number" &&
+                                Number.isFinite(meta.qtyClosed)
+                                  ? meta.qtyClosed.toFixed(2)
+                                  : "—"}
+                              </div>
+                            </div>
+                            <div className="rounded-md border border-white/10 bg-white/5 p-2">
+                              <div className="text-white/50">Hold</div>
+                              <div className="mt-0.5 tabular-nums">
+                                {typeof meta?.holdMsMax === "number" &&
+                                Number.isFinite(meta.holdMsMax) &&
+                                meta.holdMsMax > 0
+                                  ? formatHoldTime(meta.holdMsMax)
+                                  : "—"}
+                              </div>
+                            </div>
+                            <div className="rounded-md border border-white/10 bg-white/5 p-2">
+                              <div className="text-white/50">Fees</div>
+                              <div className="mt-0.5 tabular-nums">
+                                {typeof meta?.fees === "number" && Number.isFinite(meta.fees)
+                                  ? `${meta.fees >= 0 ? "+" : ""}${meta.fees.toFixed(2)}`
+                                  : "—"}
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
+                      </PopoverContent>
+                    </Popover>
+                  );
+                })}
               </div>
 
               <Button
