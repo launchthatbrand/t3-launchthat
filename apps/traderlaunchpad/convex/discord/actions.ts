@@ -13,8 +13,60 @@ const discordOauthHelperQueries =
 const discordGuildConnectionMutations =
   components.launchthat_discord.guildConnections.mutations as any;
 
+export const completeBotInstall = action({
+  args: {
+    state: v.string(),
+    guildId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await resolveViewerUserId(ctx);
+    const guildId = args.guildId.trim();
+    if (!guildId) throw new Error("Missing guildId");
+
+    const consumed = await ctx.runMutation(discordOauthMutations.consumeOauthState, {
+      state: args.state,
+    });
+    if (!consumed || consumed.kind !== "org_install") {
+      throw new Error("Invalid or expired Discord install state");
+    }
+
+    const organizationId =
+      typeof consumed.organizationId === "string" ? consumed.organizationId : "";
+    if (!organizationId) throw new Error("Missing organizationId in install state");
+
+    // Best-effort guild name fetch (only works if global bot token exists).
+    let guildName: string | undefined;
+    const botToken = process.env.DISCORD_GLOBAL_BOT_TOKEN ?? "";
+    if (botToken) {
+      try {
+        const res = await fetch(`https://discord.com/api/v10/guilds/${guildId}`, {
+          headers: { Authorization: `Bot ${botToken}` },
+        });
+        if (res.ok) {
+          const json = (await res.json()) as { name?: unknown };
+          guildName = typeof json?.name === "string" ? json.name : undefined;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    await ctx.runMutation(discordGuildConnectionMutations.upsertGuildConnection, {
+      organizationId,
+      guildId,
+      guildName,
+      botModeAtConnect: "global",
+      connectedAt: Date.now(),
+    });
+
+    return null;
+  },
+});
+
 export const startBotInstall = action({
   args: {
+    organizationId: v.optional(v.string()),
     returnTo: v.string(),
   },
   returns: v.object({
@@ -22,7 +74,10 @@ export const startBotInstall = action({
     state: v.string(),
   }),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
     await resolveViewerUserId(ctx);
 
     const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "";
@@ -69,10 +124,13 @@ export const startBotInstall = action({
 });
 
 export const disconnectGuild = action({
-  args: { guildId: v.string() },
+  args: { organizationId: v.optional(v.string()), guildId: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
     await resolveViewerUserId(ctx);
     await ctx.runMutation(discordGuildConnectionMutations.deleteGuildConnection, {
       organizationId,
@@ -84,6 +142,7 @@ export const disconnectGuild = action({
 
 export const startUserLink = action({
   args: {
+    organizationId: v.optional(v.string()),
     returnTo: v.string(),
   },
   returns: v.object({
@@ -91,7 +150,10 @@ export const startUserLink = action({
     state: v.string(),
   }),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
     const userId = await resolveViewerUserId(ctx);
 
     const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "";

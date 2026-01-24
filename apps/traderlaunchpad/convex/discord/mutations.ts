@@ -13,6 +13,7 @@ const discordUserLinksMutations = components.launchthat_discord.userLinks
 
 export const upsertGuildSettings = mutation({
   args: {
+    organizationId: v.optional(v.string()),
     guildId: v.string(),
     approvedMemberRoleId: v.optional(v.string()),
     supportAiEnabled: v.boolean(),
@@ -34,7 +35,10 @@ export const upsertGuildSettings = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
     await resolveViewerUserId(ctx);
     await ctx.runMutation(discordGuildSettingsMutations.upsertGuildSettings, {
       organizationId,
@@ -46,6 +50,7 @@ export const upsertGuildSettings = mutation({
 
 export const upsertTemplate = mutation({
   args: {
+    organizationId: v.optional(v.string()),
     guildId: v.optional(v.string()),
     kind: v.string(),
     name: v.optional(v.string()),
@@ -54,7 +59,10 @@ export const upsertTemplate = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
     await resolveViewerUserId(ctx);
     await ctx.runMutation(discordTemplatesMutations.upsertTemplate, {
       organizationId,
@@ -66,6 +74,7 @@ export const upsertTemplate = mutation({
 
 export const createTemplate = mutation({
   args: {
+    organizationId: v.optional(v.string()),
     guildId: v.optional(v.string()),
     kind: v.string(),
     name: v.string(),
@@ -74,7 +83,10 @@ export const createTemplate = mutation({
   },
   returns: v.string(),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
     await resolveViewerUserId(ctx);
     const templateId = await ctx.runMutation(
       discordTemplatesMutations.createTemplate,
@@ -89,6 +101,7 @@ export const createTemplate = mutation({
 
 export const updateTemplate = mutation({
   args: {
+    organizationId: v.optional(v.string()),
     templateId: v.string(),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
@@ -96,7 +109,10 @@ export const updateTemplate = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
     await resolveViewerUserId(ctx);
     await ctx.runMutation(discordTemplatesMutations.updateTemplate, {
       organizationId,
@@ -108,11 +124,15 @@ export const updateTemplate = mutation({
 
 export const deleteTemplate = mutation({
   args: {
+    organizationId: v.optional(v.string()),
     templateId: v.string(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
     await resolveViewerUserId(ctx);
     await ctx.runMutation(discordTemplatesMutations.deleteTemplate, {
       organizationId,
@@ -123,10 +143,13 @@ export const deleteTemplate = mutation({
 });
 
 export const unlinkMyDiscordLink = mutation({
-  args: {},
+  args: { organizationId: v.optional(v.string()) },
   returns: v.null(),
-  handler: async (ctx) => {
-    const organizationId = resolveOrganizationId();
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
     const userId = await resolveViewerUserId(ctx);
     await ctx.runMutation(discordUserLinksMutations.unlinkUser, {
       organizationId,

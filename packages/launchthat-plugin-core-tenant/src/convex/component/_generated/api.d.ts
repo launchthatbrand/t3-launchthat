@@ -289,6 +289,18 @@ export type Mounts = {
         role: string;
       }>
     >;
+    listOrganizationsPublic: FunctionReference<
+      "query",
+      "public",
+      { includePlatform?: boolean; limit?: number; search?: string },
+      Array<{
+        _id: string;
+        description?: string;
+        logoUrl: string | null;
+        name: string;
+        slug: string;
+      }>
+    >;
   };
 };
 // For now fullApiWithMounts is only fullApi which provides

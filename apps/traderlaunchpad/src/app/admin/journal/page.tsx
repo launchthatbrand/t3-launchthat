@@ -27,16 +27,16 @@ import { useRouter } from "next/navigation";
 import { useTenant } from "~/context/TenantContext";
 import { useTradingCalendarStore } from "~/stores/tradingCalendarStore";
 
-type LiveReviewRow = {
+interface LiveReviewRow {
   tradeIdeaGroupId: string;
   symbol: string;
   direction: "long" | "short";
   closedAt: number;
   realizedPnl?: number;
   reviewStatus: "todo" | "reviewed";
-};
+}
 
-type DemoLikeReviewTrade = {
+interface DemoLikeReviewTrade {
   id: string;
   symbol: string;
   type: "Long" | "Short";
@@ -45,7 +45,7 @@ type DemoLikeReviewTrade = {
   reviewed: boolean;
   pnl: number;
   tradeDate: string; // YYYY-MM-DD
-};
+}
 
 interface InstrumentRow extends Record<string, unknown> {
   symbol: string;
@@ -66,7 +66,7 @@ const toDateLabel = (tsMs: number): string => {
   return d.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
 };
 
-const computeStreakFromDailyStats = (dailyStats: Array<{ date: string }>): number => {
+const computeStreakFromDailyStats = (dailyStats: { date: string }[]): number => {
   const set = new Set(dailyStats.map((s) => s.date));
   const today = new Date();
   let streak = 0;
@@ -155,6 +155,14 @@ function TooltipIcon({
 export default function AdminJournalDashboardPage() {
   const tenant = useTenant();
   const isOrgMode = Boolean(tenant && tenant.slug !== "platform");
+  const [statsScope, setStatsScope] = React.useState<"me" | "org">(() =>
+    isOrgMode ? "org" : "me",
+  );
+  React.useEffect(() => {
+    setStatsScope(isOrgMode ? "org" : "me");
+  }, [isOrgMode, tenant?._id]);
+  const isOrgStats = isOrgMode && statsScope === "org";
+
   const dataMode = useDataMode();
   const activeAccount = useActiveAccount();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
@@ -174,13 +182,13 @@ export default function AdminJournalDashboardPage() {
 
     const rows = Array.isArray(liveRowsRaw) ? liveRowsRaw : [];
     return rows
-      .filter((r) => r && typeof r.tradeIdeaGroupId === "string" && r.tradeIdeaGroupId)
+      .filter((r) => r.tradeIdeaGroupId)
       .map((r) => {
         const tradeDate = toDateKey(r.closedAt);
         const pnl = typeof r.realizedPnl === "number" ? r.realizedPnl : 0;
         return {
           id: String(r.tradeIdeaGroupId),
-          symbol: String(r.symbol ?? "UNKNOWN"),
+          symbol: r.symbol || "UNKNOWN",
           type: r.direction === "short" ? "Short" : "Long",
           date: toDateLabel(r.closedAt),
           reason: r.reviewStatus === "reviewed" ? "Reviewed" : "Pending review",
@@ -193,14 +201,14 @@ export default function AdminJournalDashboardPage() {
 
   const liveMySymbolStats = useQuery(
     api.traderlaunchpad.queries.listMySymbolStats,
-    shouldQuery && dataMode.effectiveMode === "live" && !isOrgMode
+    shouldQuery && dataMode.effectiveMode === "live" && !isOrgStats
       ? { limit: 1500, accountId: activeAccount.selected?.accountId }
       : "skip",
   ) as InstrumentRow[] | undefined;
 
   const liveOrgSymbolStats = useQuery(
     api.traderlaunchpad.queries.listOrgSymbolStats,
-    shouldQuery && dataMode.effectiveMode === "live" && isOrgMode && tenant
+    shouldQuery && dataMode.effectiveMode === "live" && isOrgStats && tenant
       ? { organizationId: tenant._id, limitPerUser: 200, maxMembers: 100 }
       : "skip",
   ) as
@@ -211,7 +219,7 @@ export default function AdminJournalDashboardPage() {
   const demoSymbolStats = React.useMemo<InstrumentRow[]>(() => {
     const map: Record<string, InstrumentRow> = {};
     for (const t of demoLikeTrades) {
-      const symbol = String(t.symbol ?? "").trim().toUpperCase() || "UNKNOWN";
+      const symbol = t.symbol.trim().toUpperCase() || "UNKNOWN";
       const cur =
         map[symbol] ??
         (map[symbol] = { symbol, tradeCount: 0, totalPnl: 0, lastClosedAt: 0 });
@@ -230,7 +238,7 @@ export default function AdminJournalDashboardPage() {
     const base: InstrumentRow[] =
       dataMode.effectiveMode === "demo"
         ? demoSymbolStats
-        : isOrgMode
+        : isOrgStats
           ? Array.isArray(liveOrgSymbolStats?.rows)
             ? liveOrgSymbolStats.rows
             : []
@@ -247,7 +255,15 @@ export default function AdminJournalDashboardPage() {
     });
 
     return sorted;
-  }, [dataMode.effectiveMode, demoSymbolStats, instrumentSortBy, instrumentSortDir, isOrgMode, liveMySymbolStats, liveOrgSymbolStats]);
+  }, [
+    dataMode.effectiveMode,
+    demoSymbolStats,
+    instrumentSortBy,
+    instrumentSortDir,
+    isOrgStats,
+    liveMySymbolStats,
+    liveOrgSymbolStats,
+  ]);
 
   const instrumentColumns = React.useMemo<ColumnDefinition<InstrumentRow>[]>(() => {
     return [
@@ -375,7 +391,43 @@ export default function AdminJournalDashboardPage() {
       {/* Date filter (syncs with TradingCalendarPanel) */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
         <div className="flex flex-wrap items-center gap-2">
-          <ActiveAccountSelector />
+          {isOrgMode ? (
+            <div className="bg-muted text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-lg p-[3px]">
+              <button
+                type="button"
+                aria-current={!isOrgStats ? "page" : undefined}
+                onClick={() => setStatsScope("me")}
+                className={cn(
+                  "text-foreground dark:text-muted-foreground inline-flex h-[calc(100%-1px)] items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
+                  !isOrgStats && "bg-background dark:text-foreground dark:border-input dark:bg-input/30 shadow-sm",
+                )}
+              >
+                My stats
+              </button>
+              <button
+                type="button"
+                aria-current={isOrgStats ? "page" : undefined}
+                onClick={() => setStatsScope("org")}
+                className={cn(
+                  "text-foreground dark:text-muted-foreground inline-flex h-[calc(100%-1px)] items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50",
+                  isOrgStats && "bg-background dark:text-foreground dark:border-input dark:bg-input/30 shadow-sm",
+                )}
+              >
+                {tenant?.name ? `${tenant.name} stats` : "Organization stats"}
+              </button>
+            </div>
+          ) : null}
+
+          {!isOrgStats ? (
+            <ActiveAccountSelector />
+          ) : (
+            <Badge
+              variant="secondary"
+              className="h-9 border border-white/15 bg-white/5 text-white/80"
+            >
+              Viewing org totals
+            </Badge>
+          )}
           <Popover>
             <PopoverTrigger asChild>
               <Button
@@ -448,7 +500,7 @@ export default function AdminJournalDashboardPage() {
                 <div>
                   <CardTitle className="text-base">Trading Instruments</CardTitle>
                   <div className="mt-1 text-xs text-white/60">
-                    {isOrgMode
+                    {isOrgStats
                       ? "Org-wide (members) • Sort by Most Traded / Most Profitable"
                       : "Your trades • Sort by Most Traded / Most Profitable"}
                   </div>
@@ -487,7 +539,7 @@ export default function AdminJournalDashboardPage() {
                 columns={instrumentColumns}
                 isLoading={
                   dataMode.effectiveMode === "live"
-                    ? isOrgMode
+                    ? isOrgStats
                       ? liveOrgSymbolStats === undefined
                       : liveMySymbolStats === undefined
                     : false

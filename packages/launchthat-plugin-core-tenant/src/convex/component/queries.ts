@@ -397,3 +397,64 @@ export const listOrganizations = query({
   },
 });
 
+const orgPublicRow = v.object({
+  _id: v.id("organizations"),
+  name: v.string(),
+  slug: v.string(),
+  description: v.optional(v.string()),
+  logoUrl: v.union(v.string(), v.null()),
+});
+
+export const listOrganizationsPublic = query({
+  args: {
+    search: v.optional(v.string()),
+    limit: v.optional(v.number()),
+    includePlatform: v.optional(v.boolean()),
+  },
+  returns: v.array(orgPublicRow),
+  handler: async (ctx, args) => {
+    const search = String(args.search ?? "").trim().toLowerCase();
+    const limit = Math.max(1, Math.min(Number(args.limit ?? 200), 1000));
+    const includePlatform = args.includePlatform === true;
+
+    const rows = await ctx.db.query("organizations").take(1000);
+    const result: Array<{
+      _id: Id<"organizations">;
+      name: string;
+      slug: string;
+      description?: string;
+      logoUrl: string | null;
+    }> = [];
+
+    for (const org of rows) {
+      if (!includePlatform && org.slug === "platform") continue;
+      if (search) {
+        const haystack = `${org.name} ${org.slug}`.toLowerCase();
+        if (!haystack.includes(search)) continue;
+      }
+
+      let logoUrl: string | null = null;
+      if (org.logoMediaId) {
+        const media = await ctx.db.get(org.logoMediaId as Id<"organizationMedia">);
+        if (media) {
+          logoUrl = await ctx.storage.getUrl(media.storageId);
+        }
+      }
+      if (!logoUrl && typeof org.logo === "string" && org.logo.trim()) {
+        logoUrl = org.logo.trim();
+      }
+
+      result.push({
+        _id: org._id,
+        name: org.name,
+        slug: org.slug,
+        description: org.description,
+        logoUrl,
+      });
+      if (result.length >= limit) break;
+    }
+
+    return result;
+  },
+});
+

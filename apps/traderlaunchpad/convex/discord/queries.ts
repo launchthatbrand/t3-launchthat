@@ -24,6 +24,17 @@ const discordTemplatesQueries = components.launchthat_discord.templates
 const discordUserLinksQueries = components.launchthat_discord.userLinks
   .queries as any;
 
+export const peekOauthState = query({
+  args: { state: v.string() },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    return await ctx.runQuery(
+      components.launchthat_discord.oauth.queries.peekOauthState as any,
+      { state: args.state },
+    );
+  },
+});
+
 export const resolveTradeFeedChannel = query({
   args: {
     guildId: v.string(),
@@ -78,6 +89,7 @@ export const computeDiscordAuthRedirect = query({
   args: {
     returnTo: v.string(),
     callbackPath: v.string(),
+    organizationId: v.optional(v.string()),
   },
   returns: v.object({
     redirectUri: v.string(),
@@ -85,6 +97,10 @@ export const computeDiscordAuthRedirect = query({
     returnToHost: v.string(),
   }),
   handler: async (ctx, args) => {
+    // Ensure `organizationId` is at least resolved/validated for caller context.
+    // (Some callers pass it explicitly from platform org pages.)
+    if (!args.organizationId) resolveOrganizationId();
+
     const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "";
     return await ctx.runQuery(
       discordOauthHelperQueries.computeAuthRedirectUri,
@@ -99,10 +115,13 @@ export const computeDiscordAuthRedirect = query({
 });
 
 export const getOrgConfig = query({
-  args: {},
+  args: { organizationId: v.optional(v.string()) },
   returns: v.any(),
-  handler: async (ctx) => {
-    const organizationId = resolveOrganizationId();
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
     await resolveViewerUserId(ctx);
     return await ctx.runQuery(discordOrgConfigQueries.getOrgConfig, {
       organizationId,
@@ -111,10 +130,13 @@ export const getOrgConfig = query({
 });
 
 export const listGuildConnectionsForOrg = query({
-  args: {},
+  args: { organizationId: v.optional(v.string()) },
   returns: v.any(),
-  handler: async (ctx) => {
-    const organizationId = resolveOrganizationId();
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
     await resolveViewerUserId(ctx);
     return await ctx.runQuery(
       discordGuildConnectionsQueries.listGuildConnectionsForOrg,
@@ -124,10 +146,13 @@ export const listGuildConnectionsForOrg = query({
 });
 
 export const getGuildSettings = query({
-  args: { guildId: v.string() },
+  args: { guildId: v.string(), organizationId: v.optional(v.string()) },
   returns: v.any(),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
     await resolveViewerUserId(ctx);
     return await ctx.runQuery(discordGuildSettingsQueries.getGuildSettings, {
       organizationId,
@@ -140,10 +165,14 @@ export const getTemplate = query({
   args: {
     guildId: v.optional(v.string()),
     kind: v.string(),
+    organizationId: v.optional(v.string()),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
     await resolveViewerUserId(ctx);
     return await ctx.runQuery(discordTemplatesQueries.getTemplate, {
       organizationId,
@@ -157,10 +186,14 @@ export const listTemplates = query({
   args: {
     guildId: v.optional(v.string()),
     kind: v.string(),
+    organizationId: v.optional(v.string()),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
     await resolveViewerUserId(ctx);
     return await ctx.runQuery(discordTemplatesQueries.listTemplates, {
       organizationId,
@@ -173,10 +206,14 @@ export const listTemplates = query({
 export const getTemplateById = query({
   args: {
     templateId: v.string(),
+    organizationId: v.optional(v.string()),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
     await resolveViewerUserId(ctx);
     return await ctx.runQuery(discordTemplatesQueries.getTemplateById, {
       organizationId,
@@ -186,10 +223,13 @@ export const getTemplateById = query({
 });
 
 export const getMyDiscordLink = query({
-  args: {},
+  args: { organizationId: v.optional(v.string()) },
   returns: v.any(),
-  handler: async (ctx) => {
-    const organizationId = resolveOrganizationId();
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
     const userId = await resolveViewerUserId(ctx);
     return await ctx.runQuery(discordUserLinksQueries.getUserLink, {
       organizationId,

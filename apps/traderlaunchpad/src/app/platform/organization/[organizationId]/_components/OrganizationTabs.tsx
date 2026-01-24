@@ -20,6 +20,7 @@ export const OrganizationTabs = () => {
     { label: "General", href: base },
     { label: "Members", href: `${base}/members` },
     { label: "Domains", href: `${base}/domains` },
+    { label: "Connections", href: `${base}/connections` },
   ];
 
   return (

@@ -347,6 +347,18 @@ export declare const components: {
           role: string;
         }>
       >;
+      listOrganizationsPublic: FunctionReference<
+        "query",
+        "internal",
+        { includePlatform?: boolean; limit?: number; search?: string },
+        Array<{
+          _id: string;
+          description?: string;
+          logoUrl: string | null;
+          name: string;
+          slug: string;
+        }>
+      >;
     };
   };
   launchthat_notifications: {

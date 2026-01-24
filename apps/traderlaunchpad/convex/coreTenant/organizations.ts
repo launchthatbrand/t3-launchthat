@@ -218,6 +218,35 @@ export const listAllOrganizations = query({
   },
 });
 
+export const listOrganizationsPublic = query({
+  args: {
+    search: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.string(),
+      name: v.string(),
+      slug: v.string(),
+      description: v.optional(v.string()),
+      logoUrl: v.union(v.string(), v.null()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const rows = await ctx.runQuery(
+      components.launchthat_core_tenant.queries.listOrganizationsPublic,
+      { search: args.search, limit: args.limit, includePlatform: false },
+    );
+    return rows.map((r) => ({
+      _id: String(r._id),
+      name: r.name,
+      slug: r.slug,
+      description: r.description,
+      logoUrl: r.logoUrl ?? null,
+    }));
+  },
+});
+
 export const createOrganizationAsViewer = mutation({
   args: { name: v.string(), slug: v.optional(v.string()) },
   returns: v.string(),

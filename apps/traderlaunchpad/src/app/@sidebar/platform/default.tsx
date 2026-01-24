@@ -5,6 +5,7 @@ import * as React from "react";
 import {
   IconApi,
   IconBrandTabler,
+  IconBuilding,
   IconBulb,
   IconNotebook,
   IconSettings,
@@ -53,6 +54,16 @@ const navItems: NavItem[] = [
     href: "/platform/users",
     icon: (
       <IconUsers
+        stroke={1}
+        className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
+      />
+    ),
+  },
+  {
+    label: "Organizations",
+    href: "/platform/organizations",
+    icon: (
+      <IconBuilding
         stroke={1}
         className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
       />

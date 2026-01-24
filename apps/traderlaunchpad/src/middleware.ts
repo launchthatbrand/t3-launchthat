@@ -10,9 +10,7 @@ import {
 } from "~/lib/tenant-fetcher";
 import { isPlatformHost } from "~/lib/host-mode";
 
-const rootDomain =
-  (String(env.NEXT_PUBLIC_ROOT_DOMAIN ?? "traderlaunchpad.com").split(":")[0] ??
-    "traderlaunchpad.com");
+const rootDomain = env.NEXT_PUBLIC_ROOT_DOMAIN.split(":")[0];
 
 const isLocalHost = (hostname: string): boolean => {
   const host = (hostname.split(":")[0] ?? "").toLowerCase();
@@ -38,6 +36,40 @@ const getAuthHostForMiddleware = (host: string, rootDomainFormatted: string): st
   }
 
   return rootDomainFormatted ? `auth.${rootDomainFormatted}` : "auth.traderlaunchpad.com";
+};
+
+const shouldForceRootHostForMarketingRoute = (pathname: string): boolean => {
+  // Keep this list intentionally small/explicit for now.
+  // Goal: marketing routes should only be reachable on the root host.
+  const p = pathname.endsWith("/") && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
+  return (
+    p === "/brokers" ||
+    p.startsWith("/broker/") ||
+    p === "/firms" ||
+    p.startsWith("/firm/") ||
+    p === "/prop-firms" ||
+    p === "/orgs" ||
+    p === "/symbols" ||
+    p.startsWith("/s/")
+  );
+};
+
+const getRootHostForMiddleware = (
+  host: string,
+  rootDomainFormatted: string,
+): { host: string; proto: "http" | "https" } => {
+  const normalized = host.trim().toLowerCase();
+  const hostname = (normalized.split(":")[0] ?? "").toLowerCase();
+  const port = normalized.split(":")[1] ?? "";
+
+  // Dev: tenant.localhost:3000 → localhost:3000
+  if (isLocalHost(hostname)) {
+    const base =
+      hostname === "127.0.0.1" || hostname.endsWith(".127.0.0.1") ? "127.0.0.1" : "localhost";
+    return { host: `${base}${port ? `:${port}` : ""}`, proto: "http" };
+  }
+
+  return { host: rootDomainFormatted || "traderlaunchpad.com", proto: "https" };
 };
 
 // Tenant subdomain extraction (localhost, Vercel preview, and real root-domain subdomains).
@@ -133,6 +165,27 @@ const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
             !hostname.endsWith(`.${rootDomainFormatted}`)
           ? await fetchTenantByCustomDomain(hostname)
           : await fetchTenantBySlug(null);
+
+  // Marketing routes should never render in org context.
+  // Example: http://wsa.localhost:3000/brokers → http://localhost:3000/brokers
+  if (
+    !isAuthHost &&
+    tenant &&
+    tenant.slug !== "platform" &&
+    shouldForceRootHostForMarketingRoute(pathname)
+  ) {
+    const forwardedProto = (req.headers.get("x-forwarded-proto") ?? "")
+      .split(",")[0]
+      ?.trim()
+      .toLowerCase();
+    const defaultProto = getRootHostForMiddleware(host, rootDomainFormatted).proto;
+    const proto =
+      forwardedProto === "http" || isLocalHost(hostname) ? "http" : defaultProto;
+
+    const { host: rootHost } = getRootHostForMiddleware(host, rootDomainFormatted);
+    const url = new URL(`${proto}://${rootHost}${pathname}${req.nextUrl.search}`);
+    return NextResponse.redirect(url);
+  }
 
   // Subdomain exists but no tenant → redirect home
   if (subdomain && !tenant) {
@@ -280,6 +333,58 @@ async function buildTenantResponse(req: NextRequest): Promise<TenantContext> {
 }
 
 export default async function middleware(req: NextRequest, event: NextFetchEvent) {
+  // IMPORTANT: Avoid Clerk dev-browser redirect loops on org subdomains in local dev
+  // by handling root-only marketing redirects BEFORE invoking Clerk middleware.
+  const { pathname } = req.nextUrl;
+  const host = req.headers.get("host") ?? "unknown-host";
+  const hostname = (host.split(":")[0] ?? "").toLowerCase();
+  const rootDomainFormatted = rootDomain.toLowerCase();
+  const authHost = getAuthHostForMiddleware(host, rootDomainFormatted);
+  const authHostname = (authHost.split(":")[0] ?? "").toLowerCase();
+  const isAuthHost = hostname === authHostname;
+  const isRootHost =
+    (isLocalHost(hostname) && (hostname === "localhost" || hostname === "127.0.0.1")) ||
+    (!isLocalHost(hostname) &&
+      (hostname === rootDomainFormatted || hostname === `www.${rootDomainFormatted}`));
+
+  if (!isAuthHost && !isRootHost && shouldForceRootHostForMarketingRoute(pathname)) {
+    const forwardedProto = (req.headers.get("x-forwarded-proto") ?? "")
+      .split(",")[0]
+      ?.trim()
+      .toLowerCase();
+    const { host: rootHost, proto: defaultProto } = getRootHostForMiddleware(host, rootDomainFormatted);
+    const proto = forwardedProto === "http" || isLocalHost(hostname) ? "http" : defaultProto;
+    const url = new URL(`${proto}://${rootHost}${pathname}${req.nextUrl.search}`);
+
+    // In local dev, Next's dev proxy can rewrite cross-host Location headers
+    // (e.g. http://wsa.localhost -> http://localhost) into relative paths,
+    // causing ERR_TOO_MANY_REDIRECTS. Force a client-side top-level navigation instead.
+    if (isLocalHost(hostname) && (hostname.endsWith(".localhost") || hostname.endsWith(".127.0.0.1"))) {
+      const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="refresh" content="0; url=${url.toString()}" />
+    <title>Redirecting…</title>
+  </head>
+  <body>
+    <script>
+      window.location.replace(${JSON.stringify(url.toString())});
+    </script>
+    <noscript>
+      <a href="${url.toString()}">Continue</a>
+    </noscript>
+  </body>
+</html>`;
+      return new NextResponse(html, {
+        status: 200,
+        headers: { "content-type": "text/html; charset=utf-8" },
+      });
+    }
+
+    return NextResponse.redirect(url);
+  }
+
   if (shouldBypassClerkMiddleware(req)) {
     const { response } = await buildTenantResponse(req);
     return response;
