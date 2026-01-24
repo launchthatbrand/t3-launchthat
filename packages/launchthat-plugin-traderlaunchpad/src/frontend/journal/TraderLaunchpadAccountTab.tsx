@@ -63,6 +63,7 @@ export type TraderLaunchpadApiAdapter = {
     listMyTradeIdeasByStatus: any;
     getMyTradeIdeaById: any;
     listMyTradeIdeaEvents: any;
+    listMyTradeIdeaRealizationEvents: any;
     getMyTradeIdeaNoteForGroup: any;
     listMyNextTradeIdeasToReview: any;
     getMyJournalProfile: any;
