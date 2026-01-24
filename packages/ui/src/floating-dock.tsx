@@ -11,10 +11,10 @@ import { createContext, useContext, useMemo, useRef, useState } from "react";
 
 import { IconLayoutNavbarCollapse } from "@tabler/icons-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 /* eslint-disable prefer-const */
 import type { MotionValue } from "motion/react";
 import { cn } from "@acme/ui";
+import { useRouter } from "next/navigation";
 
 type DockItem = {
   href: string;
@@ -125,9 +125,7 @@ export const FloatingDockDesktop = ({
     if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
 
     const target = e.target as Element | null;
-    const startedOnItem =
-      !!target?.closest?.('a[data-dock-item="true"]') ??
-      false;
+    const startedOnItem = !!target?.closest?.('a[data-dock-item="true"]');
     if (!startedOnItem) return;
 
     gestureStartedOnItemRef.current = true;
@@ -161,19 +159,25 @@ export const FloatingDockDesktop = ({
     if (!anchors || anchors.length === 0) return;
 
     const x = e.clientX;
-    let best: { href: string; dist: number } | null = null;
+    // Use a synchronous loop (not `forEach`) so TypeScript can see `bestHref`
+    // is potentially assigned before the `if`.
+    let bestHref: string | null = null;
+    let bestDist = Number.POSITIVE_INFINITY;
 
-    anchors.forEach((a) => {
+    for (const a of Array.from(anchors)) {
       const rect = a.getBoundingClientRect();
       const center = rect.left + rect.width / 2;
       const dist = Math.abs(x - center);
-      const href = a.getAttribute("href") ?? "";
-      if (!href) return;
-      if (!best || dist < best.dist) best = { href, dist };
-    });
+      const href = a.getAttribute("href");
+      if (!href) continue;
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestHref = href;
+      }
+    }
 
-    if (best) {
-      router.push(best.href);
+    if (bestHref) {
+      router.push(bestHref);
     }
 
     // Reset the dock sizing back to default after releasing the gesture,
