@@ -14,9 +14,13 @@ type PushSubJson = {
   };
 };
 
+const normalizeHost = (hostname: string): string =>
+  hostname.trim().toLowerCase().replace(/^www\./, "");
+
 const isRootHost = (hostname: string): boolean => {
-  const h = hostname.toLowerCase();
-  return h === "localhost" || h === "127.0.0.1" || h === env.NEXT_PUBLIC_ROOT_DOMAIN.toLowerCase();
+  const h = normalizeHost(hostname);
+  const root = normalizeHost(String(env.NEXT_PUBLIC_ROOT_DOMAIN ?? ""));
+  return h === "localhost" || h === "127.0.0.1" || (root !== "" && h === root);
 };
 
 const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
