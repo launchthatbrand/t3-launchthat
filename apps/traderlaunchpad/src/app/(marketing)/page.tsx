@@ -2,6 +2,8 @@ import {
   ArrowRight,
   BarChart3,
   Globe,
+  MessageSquare,
+  Sparkles,
   User,
   Users,
   Webhook,
@@ -10,16 +12,25 @@ import {
   Avatar,
   AvatarFallback,
   AvatarImage,
+  ContainerScroll,
+  FlipWords,
+  OrbitingCircles,
   Safari,
+  TextGenerateEffect,
 } from "@acme/ui";
 import { demoBrokers, demoPropFirms, demoPublicProfiles } from "@acme/demo-data";
 
+import { BrokersPlatformsHoverAnimation } from "../../components/landing/BrokersPlatformsHoverAnimation";
 import { Button } from "@acme/ui/moving-border";
 import { GlassTitle } from "../../components/landing/GlassTitle";
+import { IphoneInteractiveHint } from "../../components/landing/IphoneInteractiveHint";
+import { IphoneNotificationDemo } from "../../components/landing/IphoneNotificationDemo";
+import { JournalAnalyticsAnimation } from "../../components/landing/JournalAnalyticsAnimation";
 import Link from "next/link";
 import { Marquee } from "@acme/ui/marquee";
 import { PricingSection } from "../../components/landing/PricingSection";
 import React from "react";
+import { StrategyBuilderAnimation } from "../../components/landing/StrategyBuilderAnimation";
 import { auth } from "@clerk/nextjs/server";
 
 const PlusIcon = ({ className }: { className?: string }) => (
@@ -66,56 +77,127 @@ export default async function HomePage() {
 
         {/* Hero Section */}
         <section className="relative container mx-auto max-w-7xl px-4 text-center">
-          {/* TEMP: Disable heavy hero animations (R3F + scrolling/text animations). */}
-          <div className="mx-auto w-fit rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-1.5 text-xs font-medium text-orange-200 backdrop-blur-sm">
-            Free Trading Journal and AI Powered Analytics
-          </div>
-          <h1 className="mx-auto max-w-5xl text-5xl font-bold tracking-tight md:text-7xl lg:text-8xl">
-            <span className="block leading-none">
-              <GlassTitle
-                text="Mission Control"
-                className="h-[2.05em] -mb-8 w-auto max-w-full align-middle"
-              />
-            </span>
-            <div className="mx-auto mt-2 mb-2 flex items-center justify-center gap-4 md:mt-4 md:mb-4">
-              <div className="h-px w-12 bg-linear-to-r from-transparent to-white/30 md:w-24" />
-              <span className="relative font-mono text-xs font-medium tracking-[0.5em] text-white/50 md:text-sm">
-                FOR
-              </span>
-              <div className="h-px w-12 bg-linear-to-l from-transparent to-white/30 md:w-24" />
+          {/* Mobile: simplified hero (no heavy animations) */}
+          <div className="md:hidden">
+            <div className="mx-auto w-fit rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-1.5 text-xs font-medium text-orange-200 backdrop-blur-sm">
+              Free Trading Journal and AI Powered Analytics
             </div>
-            <span className="block leading-none">Smart Traders</span>
-          </h1>
-
-          <p className="mx-auto mt-8 max-w-2xl text-lg font-medium text-center text-gray-400 md:text-xl">
-            Turn trades into a plan—AI insights, reminders, and broker-connected analytics
-            so you trade with confidence.
-          </p>
-
-          <div className="mt-20 mb-20 flex justify-center">
-            <Link href={primaryCtaHref} className="inline-block">
-              <Button
-                as="div"
-                borderRadius="1.75rem"
-                containerClassName="h-14 w-auto min-w-[200px]"
-                className="bg-white text-black text-lg font-bold border-neutral-200 dark:border-slate-800 transition-transform hover:scale-105 cursor-pointer"
-              >
-                <span className="flex w-full items-center justify-between gap-4 px-2">
-                  <span className="w-full">{primaryCtaLabel}</span>
-                  <span className="flex min-h-8 min-w-8 items-center justify-center rounded-full bg-black text-white">
-                    <ArrowRight className="h-4 w-4" />
-                  </span>
+            <h1 className="mx-auto max-w-5xl text-5xl font-bold tracking-tight">
+              <span className="block leading-none">
+                <GlassTitle
+                  text="Mission Control"
+                  className="h-[2.05em] -mb-8 w-auto max-w-full align-middle"
+                />
+              </span>
+              <div className="mx-auto mt-2 mb-2 flex items-center justify-center gap-4">
+                <div className="h-px w-12 bg-linear-to-r from-transparent to-white/30" />
+                <span className="relative font-mono text-xs font-medium tracking-[0.5em] text-white/50">
+                  FOR
                 </span>
-              </Button>
-            </Link>
-          </div>
+                <div className="h-px w-12 bg-linear-to-l from-transparent to-white/30" />
+              </div>
+              <span className="block leading-none">Smart Traders</span>
+            </h1>
 
-          <div>
+            <p className="mx-auto mt-8 max-w-2xl text-lg font-medium text-center text-gray-400">
+              Turn trades into a plan—AI insights, reminders, and broker-connected analytics
+              so you trade with confidence.
+            </p>
+
+            <div className="mt-16 mb-16 flex justify-center">
+              <Link href={primaryCtaHref} className="inline-block">
+                <Button
+                  as="div"
+                  borderRadius="1.75rem"
+                  containerClassName="h-14 w-auto min-w-[200px]"
+                  className="bg-white text-black text-lg font-bold border-neutral-200 dark:border-slate-800 transition-transform hover:scale-105 cursor-pointer"
+                >
+                  <span className="flex w-full items-center justify-between gap-4 px-2">
+                    <span className="w-full">{primaryCtaLabel}</span>
+                    <span className="flex min-h-8 min-w-8 items-center justify-center rounded-full bg-black text-white">
+                      <ArrowRight className="h-4 w-4" />
+                    </span>
+                  </span>
+                </Button>
+              </Link>
+            </div>
+
             <Safari
               url="traderlaunchpad.com/admin"
               imageSrc="/images/traderlaunchpad-backend.jpg"
               className=""
             />
+          </div>
+
+          {/* Desktop: restore animated hero (but keep R3F sphere disabled) */}
+          <div className="hidden md:block">
+            <ContainerScroll
+              titleComponent={
+                <>
+                  <div className="mx-auto w-fit rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-1.5 text-xs font-medium text-orange-200 backdrop-blur-sm">
+                    Free Trading Journal and AI Powered Analytics
+                  </div>
+                  <h1 className="mx-auto max-w-5xl text-5xl font-bold tracking-tight md:text-7xl lg:text-8xl">
+                    <span className="block leading-none">
+                      <GlassTitle
+                        text="Mission Control"
+                        className="h-[2.05em] -mb-8 w-auto max-w-full align-middle"
+                      />
+                    </span>
+                    <div className="mx-auto mt-2 mb-2 flex items-center justify-center gap-4 md:mt-4 md:mb-4">
+                      <div className="h-px w-12 bg-linear-to-r from-transparent to-white/30 md:w-24" />
+                      <span className="relative font-mono text-xs font-medium tracking-[0.5em] text-white/50 md:text-sm">
+                        FOR
+                      </span>
+                      <div className="h-px w-12 bg-linear-to-l from-transparent to-white/30 md:w-24" />
+                    </div>
+                    <span className="block leading-none">
+                      <FlipWords
+                        words={[
+                          "Smart Traders",
+                          "Disciplined Traders",
+                          "Data-Driven Traders",
+                        ]}
+                        duration={4000}
+                        className="block px-0 text-center leading-none"
+                        wordClassName="font-bold tracking-tight"
+                        letterClassName="text-white"
+                      />
+                    </span>
+                  </h1>
+
+                  <TextGenerateEffect
+                    words="Turn trades into a plan—AI insights, reminders, and broker-connected analytics so you trade with confidence."
+                    className="mx-auto mt-8 max-w-2xl"
+                    textClassName="mt-0 text-lg font-medium text-center text-gray-400 md:text-xl"
+                    wordClassName="text-gray-400"
+                    duration={0.6}
+                  />
+
+                  <div className="mt-20 mb-20 flex justify-center">
+                    <Link href={primaryCtaHref} className="inline-block">
+                      <Button
+                        as="div"
+                        borderRadius="1.75rem"
+                        containerClassName="h-14 w-auto min-w-[200px]"
+                        className="bg-white text-black text-lg font-bold border-neutral-200 dark:border-slate-800 transition-transform hover:scale-105 cursor-pointer"
+                      >
+                        <span className="flex w-full items-center justify-between gap-4 px-2">
+                          <span className="w-full">{primaryCtaLabel}</span>
+                          <span className="flex min-h-8 min-w-8 items-center justify-center rounded-full bg-black text-white">
+                            <ArrowRight className="h-4 w-4" />
+                          </span>
+                        </span>
+                      </Button>
+                    </Link>
+                  </div>
+                </>
+              }
+            >
+              <div>
+                <Safari url="traderlaunchpad.com/admin" imageSrc="/images/traderlaunchpad-backend.jpg" className="" />
+              </div>
+            </ContainerScroll>
           </div>
 
           {/* Horizontal Line with Plus Icons */}
@@ -135,8 +217,8 @@ export default async function HomePage() {
           <p className="mb-8 text-center text-sm font-medium text-gray-500">
             Members of the fleet
           </p>
-          {/* TEMP: Disable marquee animation for perf debugging. */}
-          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-3 opacity-90 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Mobile: static list */}
+          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-3 opacity-90 sm:grid-cols-2 md:hidden">
             {publicProfiles.slice(0, 6).map((p) => (
               <Link
                 key={p.id}
@@ -156,6 +238,32 @@ export default async function HomePage() {
               </Link>
             ))}
           </div>
+
+          {/* Desktop: marquee */}
+          <Marquee
+            pauseOnHover
+            className="mx-auto hidden max-w-5xl opacity-50 grayscale transition-all duration-500 hover:opacity-100 hover:grayscale-0 [--duration:48s] [--gap:4rem] md:block"
+            repeat={3}
+          >
+            {publicProfiles.map((p) => (
+              <Link
+                key={p.id}
+                href={`/u/${encodeURIComponent(p.username)}`}
+                className="flex items-center gap-3 rounded-full border border-white/10 bg-black/30 px-3 py-2 text-sm font-medium text-white/90 backdrop-blur-md"
+              >
+                <Avatar className="h-7 w-7 border border-white/10">
+                  <AvatarImage src={p.avatarUrl} alt={p.username} />
+                  <AvatarFallback className="bg-white/10 text-[11px] text-white/80">
+                    {p.username.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="font-semibold">{p.username}</span>
+                <span className="hidden text-[11px] text-white/55 md:inline">
+                  {p.headline ?? "Public journal"}
+                </span>
+              </Link>
+            ))}
+          </Marquee>
 
           {/* Horizontal Line below logos */}
           <div className="absolute right-0 -bottom-16 left-0 hidden w-full items-center justify-center md:flex">
@@ -301,9 +409,11 @@ export default async function HomePage() {
                 </p>
               </div>
 
-              {/* TEMP: Disable strategy builder animation for perf debugging. */}
-              <div className="mt-8 rounded-2xl border border-white/10 bg-black/30 p-6 text-sm text-white/70 backdrop-blur-sm">
-                Strategy builder preview temporarily disabled.
+              <div className="hidden md:block">
+                <StrategyBuilderAnimation />
+              </div>
+              <div className="mt-8 rounded-2xl border border-white/10 bg-black/30 p-6 text-sm text-white/70 backdrop-blur-sm md:hidden">
+                Strategy builder preview
               </div>
             </div>
 
@@ -317,9 +427,11 @@ export default async function HomePage() {
                 recommendations.
               </p>
 
-              {/* TEMP: Disable brokers hover animation for perf debugging. */}
-              <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4 text-xs text-white/60 backdrop-blur-sm">
-                Broker animation temporarily disabled.
+              <div className="hidden md:block">
+                <BrokersPlatformsHoverAnimation />
+              </div>
+              <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4 text-xs text-white/60 backdrop-blur-sm md:hidden">
+                Brokers preview
               </div>
               <div className="mt-4 text-xs text-white/50">
                 + Discord alerts, webhooks, and automation events.
@@ -383,11 +495,53 @@ export default async function HomePage() {
 
                 <div className="relative h-56 w-full">
                   {/* center core */}
-                  {/* TEMP: Disable orbiting animation for perf debugging. */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-orange-600 shadow-[0_0_30px_rgba(249,115,22,0.45)]">
-                      <span className="text-xs font-semibold text-white">TLP</span>
+                  {/* Mobile: static chips */}
+                  <div className="absolute inset-0 flex items-center justify-center md:hidden">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-[0_12px_24px_rgba(0,0,0,0.35)] ring-1 ring-black/10">
+                        <MessageSquare className="h-5 w-5 text-black/70" />
+                      </div>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-[0_12px_24px_rgba(0,0,0,0.35)] ring-1 ring-black/10">
+                        <Users className="h-5 w-5 text-black/70" />
+                      </div>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-[0_12px_24px_rgba(0,0,0,0.35)] ring-1 ring-black/10">
+                        <Webhook className="h-5 w-5 text-black/70" />
+                      </div>
                     </div>
+                  </div>
+
+                  {/* Desktop: orbiting animation */}
+                  <div className="absolute inset-0 hidden md:block">
+                    <OrbitingCircles radius={112} duration={24} iconSize={44} speed={1}>
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[0_14px_30px_rgba(0,0,0,0.35)] ring-1 ring-black/10">
+                        <MessageSquare className="h-5 w-5 text-black/70" />
+                      </div>
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[0_14px_30px_rgba(0,0,0,0.35)] ring-1 ring-black/10">
+                        <Users className="h-5 w-5 text-black/70" />
+                      </div>
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[0_14px_30px_rgba(0,0,0,0.35)] ring-1 ring-black/10">
+                        <BarChart3 className="h-5 w-5 text-black/70" />
+                      </div>
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[0_14px_30px_rgba(0,0,0,0.35)] ring-1 ring-black/10">
+                        <Globe className="h-5 w-5 text-black/70" />
+                      </div>
+                    </OrbitingCircles>
+
+                    <OrbitingCircles
+                      radius={64}
+                      duration={18}
+                      iconSize={40}
+                      speed={1}
+                      reverse
+                      path={true}
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-[0_12px_24px_rgba(0,0,0,0.35)] ring-1 ring-black/10">
+                        <Webhook className="h-5 w-5 text-black/70" />
+                      </div>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-[0_12px_24px_rgba(0,0,0,0.35)] ring-1 ring-black/10">
+                        <User className="h-5 w-5 text-black/70" />
+                      </div>
+                    </OrbitingCircles>
                   </div>
                 </div>
               </div>
@@ -407,9 +561,11 @@ export default async function HomePage() {
                 </div>
               </div>
 
-              {/* TEMP: Disable journal analytics animation for perf debugging. */}
-              <div className="mt-8 rounded-2xl border border-white/10 bg-black/30 p-6 text-sm text-white/70 backdrop-blur-sm">
-                Analytics preview temporarily disabled.
+              <div className="hidden md:block">
+                <JournalAnalyticsAnimation />
+              </div>
+              <div className="mt-8 rounded-2xl border border-white/10 bg-black/30 p-6 text-sm text-white/70 backdrop-blur-sm md:hidden">
+                Analytics preview
               </div>
             </div>
 
@@ -421,14 +577,13 @@ export default async function HomePage() {
         <section className="relative container mx-auto mt-16 mb-24 max-w-7xl px-4 md:mt-24">
           <div className="relative overflow-hidden rounded-[44px] border border-white/10 bg-white/3 p-8 backdrop-blur-md md:p-12">
             <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-orange-500/10 via-transparent to-white/6 opacity-70" />
-            {/* TEMP: Disable large blur blobs (can be expensive on iOS). */}
-            {/* <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-orange-600/15 blur-[120px]" />
-            <div className="pointer-events-none absolute -bottom-32 -right-24 h-96 w-96 rounded-full bg-orange-500/10 blur-[140px]" /> */}
+            <div className="pointer-events-none absolute -top-24 -left-24 h-48 w-48 rounded-full bg-orange-600/10 blur-[70px] md:h-72 md:w-72 md:bg-orange-600/15 md:blur-[120px]" />
+            <div className="pointer-events-none absolute -bottom-32 -right-24 h-64 w-64 rounded-full bg-orange-500/8 blur-[80px] md:h-96 md:w-96 md:bg-orange-500/10 md:blur-[140px]" />
 
             <div className="relative grid gap-10 lg:grid-cols-2 lg:items-center">
               <div className="text-left">
                 <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-200">
-                  <span className="inline-block h-2 w-2 rounded-full bg-orange-500/70" />
+                  <Sparkles className="h-3.5 w-3.5" />
                   AI insights & reminders
                 </div>
 
@@ -484,10 +639,20 @@ export default async function HomePage() {
                 </div>
               </div>
 
-              {/* TEMP: Disable iPhone mock notification demo for perf debugging. */}
               <div className="relative flex justify-center lg:justify-end">
-                <div className="rounded-3xl border border-white/10 bg-black/30 p-8 text-sm text-white/70 backdrop-blur-sm">
-                  iPhone notification demo temporarily disabled.
+                {/* Mobile: static */}
+                <div className="rounded-3xl border border-white/10 bg-black/30 p-8 text-sm text-white/70 backdrop-blur-sm md:hidden">
+                  Notifications preview
+                </div>
+
+                {/* Desktop: interactive demo */}
+                <div className="relative hidden md:block">
+                  <IphoneInteractiveHint className="top-14 right-full mr-3 hidden lg:block" />
+                  <div className="pointer-events-none absolute -top-2 left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/10 bg-black/50 px-3 py-1 text-[11px] font-medium text-white/70 backdrop-blur-md">
+                    <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-orange-500/80 shadow-[0_0_10px_rgba(249,115,22,0.45)]" />
+                    Tap a notification
+                  </div>
+                  <IphoneNotificationDemo />
                 </div>
               </div>
             </div>

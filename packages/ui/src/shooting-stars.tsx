@@ -56,8 +56,27 @@ export const ShootingStars: React.FC<ShootingStarsProps> = ({
 }) => {
     const [star, setStar] = useState<ShootingStar | null>(null);
     const svgRef = useRef<SVGSVGElement>(null);
+    const rectRef = useRef<SVGRectElement>(null);
+    const timeoutRef = useRef<number | null>(null);
+    const rafRef = useRef<number | null>(null);
+
+    const prefersReducedMotion =
+        typeof window !== "undefined" &&
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const isCoarsePointer =
+        typeof window !== "undefined" &&
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(pointer: coarse)").matches;
 
     useEffect(() => {
+        if (prefersReducedMotion) return;
+        // On coarse pointer devices (phones), keep this effect ultra light.
+        const effectiveMinDelay = isCoarsePointer ? Math.max(minDelay, 8000) : minDelay;
+        const effectiveMaxDelay = isCoarsePointer ? Math.max(maxDelay, 14000) : maxDelay;
+        const effectiveMinSpeed = isCoarsePointer ? Math.min(minSpeed, 14) : minSpeed;
+        const effectiveMaxSpeed = isCoarsePointer ? Math.min(maxSpeed, 22) : maxSpeed;
+
         const createStar = () => {
             const { x, y, angle } = getRandomStartPoint();
             const newStar: ShootingStar = {
@@ -66,55 +85,89 @@ export const ShootingStars: React.FC<ShootingStarsProps> = ({
                 y,
                 angle,
                 scale: 1,
-                speed: Math.random() * (maxSpeed - minSpeed) + minSpeed,
+                speed:
+                    Math.random() * (effectiveMaxSpeed - effectiveMinSpeed) +
+                    effectiveMinSpeed,
                 distance: 0,
             };
             setStar(newStar);
 
-            const randomDelay = Math.random() * (maxDelay - minDelay) + minDelay;
-            setTimeout(createStar, randomDelay);
+            const randomDelay =
+                Math.random() * (effectiveMaxDelay - effectiveMinDelay) + effectiveMinDelay;
+            timeoutRef.current = window.setTimeout(createStar, randomDelay);
         };
 
         createStar();
 
-        return () => { };
-    }, [minSpeed, maxSpeed, minDelay, maxDelay]);
-
-    useEffect(() => {
-        const moveStar = () => {
-            if (star) {
-                setStar((prevStar) => {
-                    if (!prevStar) return null;
-                    const newX =
-                        prevStar.x +
-                        prevStar.speed * Math.cos((prevStar.angle * Math.PI) / 180);
-                    const newY =
-                        prevStar.y +
-                        prevStar.speed * Math.sin((prevStar.angle * Math.PI) / 180);
-                    const newDistance = prevStar.distance + prevStar.speed;
-                    const newScale = 1 + newDistance / 100;
-                    if (
-                        newX < -20 ||
-                        newX > window.innerWidth + 20 ||
-                        newY < -20 ||
-                        newY > window.innerHeight + 20
-                    ) {
-                        return null;
-                    }
-                    return {
-                        ...prevStar,
-                        x: newX,
-                        y: newY,
-                        distance: newDistance,
-                        scale: newScale,
-                    };
-                });
+        return () => {
+            if (timeoutRef.current !== null) {
+                window.clearTimeout(timeoutRef.current);
+                timeoutRef.current = null;
             }
         };
+    }, [minSpeed, maxSpeed, minDelay, maxDelay, prefersReducedMotion, isCoarsePointer]);
 
-        const animationFrame = requestAnimationFrame(moveStar);
-        return () => cancelAnimationFrame(animationFrame);
-    }, [star]);
+    useEffect(() => {
+        if (prefersReducedMotion) return;
+        if (!star) return;
+
+        let last = performance.now();
+        const targetFps = isCoarsePointer ? 30 : 60;
+        const minFrameMs = 1000 / targetFps;
+
+        const tick = (now: number) => {
+            if (!star) return;
+            if (now - last < minFrameMs) {
+                rafRef.current = requestAnimationFrame(tick);
+                return;
+            }
+            last = now;
+
+            const angleRad = (star.angle * Math.PI) / 180;
+            const nextX = star.x + star.speed * Math.cos(angleRad);
+            const nextY = star.y + star.speed * Math.sin(angleRad);
+            const nextDistance = star.distance + star.speed;
+            const nextScale = 1 + nextDistance / 100;
+
+            const outOfBounds =
+                nextX < -20 ||
+                nextX > window.innerWidth + 20 ||
+                nextY < -20 ||
+                nextY > window.innerHeight + 20;
+
+            if (outOfBounds) {
+                setStar(null);
+                return;
+            }
+
+            // Mutate the current star object in-place to avoid re-rendering per frame.
+            star.x = nextX;
+            star.y = nextY;
+            star.distance = nextDistance;
+            star.scale = nextScale;
+
+            const rect = rectRef.current;
+            if (rect) {
+                rect.setAttribute("x", String(nextX));
+                rect.setAttribute("y", String(nextY));
+                rect.setAttribute("width", String(starWidth * nextScale));
+                rect.setAttribute(
+                    "transform",
+                    `rotate(${star.angle}, ${nextX + (starWidth * nextScale) / 2}, ${nextY + starHeight / 2})`,
+                );
+            }
+
+            rafRef.current = requestAnimationFrame(tick);
+        };
+
+        rafRef.current = requestAnimationFrame(tick);
+        return () => {
+            if (rafRef.current !== null) {
+                cancelAnimationFrame(rafRef.current);
+                rafRef.current = null;
+            }
+        };
+    }, [star, starHeight, starWidth, prefersReducedMotion, isCoarsePointer]);
 
     return (
         <svg
@@ -123,6 +176,7 @@ export const ShootingStars: React.FC<ShootingStarsProps> = ({
         >
             {star && (
                 <rect
+                    ref={rectRef}
                     key={star.id}
                     x={star.x}
                     y={star.y}

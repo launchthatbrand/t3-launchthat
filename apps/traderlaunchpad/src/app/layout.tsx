@@ -1,6 +1,6 @@
 import "~/app/styles.css";
 
-import { cn } from "@acme/ui";
+import { DottedGlowBackground, cn } from "@acme/ui";
 import { Geist, Geist_Mono } from "next/font/google";
 import type { Metadata, Viewport } from "next";
 
@@ -109,8 +109,19 @@ export default async function RootLayout(props: {
           <ThemeProvider>
             {/* Background */}
             <div className="pointer-events-none fixed inset-0 z-0">
-              {/* TEMP: Disable animated/expensive global backgrounds for mobile perf debugging. */}
-              {/* {isMobileUa ? null : (
+              {/* Optimized for mobile via lower DPR / density inside component. */}
+              {isMobileUa ? (
+                <DottedGlowBackground
+                  color="rgba(255, 100, 0, 0.10)"
+                  glowColor="rgba(255, 120, 0, 0.35)"
+                  gap={32}
+                  radius={1.2}
+                  opacity={0.35}
+                  speedMin={0.18}
+                  speedMax={0.55}
+                  speedScale={0.6}
+                />
+              ) : (
                 <DottedGlowBackground
                   color="rgba(255, 100, 0, 0.15)"
                   glowColor="rgba(255, 120, 0, 0.6)"
@@ -119,11 +130,11 @@ export default async function RootLayout(props: {
                   speedMin={0.2}
                   speedMax={0.8}
                 />
-              )} */}
+              )}
 
-              {/* TEMP: Disable large blur blobs (can be expensive on iOS). */}
-              {/* <div className="absolute top-1/4 left-1/4 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-600/20 blur-[140px]" />
-              <div className="absolute right-0 bottom-0 h-[720px] w-[720px] translate-x-1/3 translate-y-1/3 rounded-full bg-orange-500/10 blur-[160px]" /> */}
+              {/* Keep glow blobs but reduce cost on mobile via smaller size/blur. */}
+              <div className="absolute top-1/4 left-1/4 h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-600/16 blur-[80px] md:h-[520px] md:w-[520px] md:bg-orange-600/20 md:blur-[140px]" />
+              <div className="absolute right-0 bottom-0 h-[420px] w-[420px] translate-x-1/3 translate-y-1/3 rounded-full bg-orange-500/8 blur-[90px] md:h-[720px] md:w-[720px] md:bg-orange-500/10 md:blur-[160px]" />
 
               <svg
                 className="pointer-events-none absolute inset-0 h-full w-full opacity-20"

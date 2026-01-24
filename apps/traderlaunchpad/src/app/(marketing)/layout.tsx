@@ -1,5 +1,4 @@
-// TEMP: disable expensive marketing animations for mobile perf debugging.
-// import { DottedGlowBackground, ShootingStars } from "@acme/ui";
+import { ShootingStars } from "@acme/ui";
 
 import { GridLines } from "~/components/background/GridLines";
 
@@ -16,7 +15,17 @@ export default function MarketingLayout({
                 <div className="pointer-events-none absolute inset-0">
                     <GridLines />
                 </div>
-                {/* <ShootingStars minSpeed={10} maxSpeed={20} minDelay={5000} starColor="#9E00FF" trailColor="#2EB9DF" starWidth={10} starHeight={1} /> */}
+                {/* Keep this off on mobile/coarse pointer via CSS; component also respects reduced motion. */}
+                <ShootingStars
+                    className="hidden md:block"
+                    minSpeed={10}
+                    maxSpeed={20}
+                    minDelay={5000}
+                    starColor="#9E00FF"
+                    trailColor="#2EB9DF"
+                    starWidth={10}
+                    starHeight={1}
+                />
                 {/* <Header /> */}
                 {children}
             </div>
