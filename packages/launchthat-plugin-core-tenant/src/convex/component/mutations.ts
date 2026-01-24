@@ -33,6 +33,14 @@ const normalizeSlug = (raw: string): string => {
   return normalized;
 };
 
+const isReservedOrganizationSlug = (slug: string): boolean => {
+  const normalized = slug.trim().toLowerCase();
+  if (!normalized) return false;
+  if (normalized === "platform") return true;
+  if (normalized.startsWith("__")) return true;
+  return false;
+};
+
 export const createOrganization = mutation({
   args: {
     userId: v.string(),
@@ -50,6 +58,9 @@ export const createOrganization = mutation({
     const slug = normalizeSlug(slugBase);
     if (!slug) {
       throw new Error("Organization slug cannot be empty");
+    }
+    if (isReservedOrganizationSlug(slug)) {
+      throw new Error("Organization slug is reserved");
     }
 
     const existing = await ctx.db
@@ -127,6 +138,9 @@ export const updateOrganization = mutation({
     if (typeof args.slug === "string") {
       const nextSlug = normalizeSlug(args.slug.trim());
       if (!nextSlug) throw new Error("Organization slug cannot be empty");
+      if (isReservedOrganizationSlug(nextSlug)) {
+        throw new Error("Organization slug is reserved");
+      }
       if (nextSlug !== org.slug) {
         const existing = await ctx.db
           .query("organizations")

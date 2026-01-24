@@ -244,31 +244,20 @@ export default function SignInClient(props: {
     reValidateMode: "onChange",
   });
 
+  /**
+   * IMPORTANT: Always route sign-in completion through /api/auth/callback (auth host),
+   * which mints the tenant session + redirects to the tenant host /auth/callback.
+   *
+   * If we redirect straight to return_to on a tenant host, the tenant session cookie
+   * may never be established and token refresh can loop (/api/auth/refresh -> /sign-in).
+   */
   const afterSignInUrl = React.useMemo(() => {
-    const raw = props.returnTo?.trim();
-    return raw && raw.length > 0 ? raw : "/admin/dashboard";
-  }, [props.returnTo]);
-
-  const afterAuthCallbackUrl = React.useMemo(() => {
     const params = new URLSearchParams();
-    // Only include return_to when it's an absolute URL. If missing, let the callback
-    // compute an appropriate tenant origin + default redirect.
-    if (/^https?:\/\//i.test(afterSignInUrl)) {
-      params.set("return_to", afterSignInUrl);
-    }
-    const tenant = props.tenantSlug?.trim();
-    if (tenant) params.set("tenant", tenant);
-
-    const basePath = "/api/auth/callback";
-    const query = params.toString();
-    const relative = query ? `${basePath}?${query}` : basePath;
-
-    if (typeof window === "undefined") {
-      return relative;
-    }
-
-    return new URL(relative, window.location.origin).toString();
-  }, [afterSignInUrl, props.tenantSlug]);
+    if (props.returnTo) params.set("return_to", props.returnTo);
+    if (props.tenantSlug) params.set("tenant", props.tenantSlug);
+    // Must be safe during server pre-render (no `window`).
+    return `/api/auth/callback?${params.toString()}`;
+  }, [props.returnTo, props.tenantSlug]);
 
   const startPhoneOtp = React.useCallback(
     async (values: PhoneStartValues) => {
@@ -462,8 +451,9 @@ export default function SignInClient(props: {
   React.useEffect(() => {
     if (!isAuthLoaded) return;
     if (!isSignedIn) return;
-    window.location.assign(afterAuthCallbackUrl);
-  }, [afterAuthCallbackUrl, isAuthLoaded, isSignedIn]);
+    // Must be a full navigation; callback may redirect cross-origin to tenant host.
+    window.location.assign(afterSignInUrl);
+  }, [afterSignInUrl, isAuthLoaded, isSignedIn]);
 
   React.useEffect(() => {
     if (!isLoaded) return;
@@ -505,7 +495,7 @@ export default function SignInClient(props: {
       await signIn.authenticateWithRedirect({
         strategy,
         redirectUrl: `${window.location.origin}/sso-callback`,
-        redirectUrlComplete: afterAuthCallbackUrl,
+        redirectUrlComplete: afterSignInUrl,
       });
     } catch {
       setFormError("Unable to start sign-in. Please try again.");
@@ -544,7 +534,7 @@ export default function SignInClient(props: {
 
         if (typeof createdSessionId === "string" && createdSessionId.trim()) {
           await setActive({ session: createdSessionId });
-          window.location.assign(afterAuthCallbackUrl);
+          window.location.assign(afterSignInUrl);
           return;
         }
 
@@ -555,7 +545,7 @@ export default function SignInClient(props: {
         setIsSubmitting(false);
       }
     },
-    [afterAuthCallbackUrl, isLoaded, setActive, signIn],
+    [afterSignInUrl, isLoaded, setActive, signIn],
   );
 
   const phoneCodeValue = phoneCodeForm.watch("code");

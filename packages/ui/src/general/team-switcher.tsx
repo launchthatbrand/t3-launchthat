@@ -5,6 +5,7 @@ import * as React from "react";
 import {
   Building2,
   ChevronsUpDown,
+  Globe,
   Loader2,
   Plus,
   ShieldCheck,
@@ -75,6 +76,13 @@ export function TeamSwitcher({
 }: TeamSwitcherProps) {
   const { isMobile } = useSidebar();
 
+  const platformOrg = React.useMemo(() => {
+    return organizations.find((org) => org.id === "__platform") ?? null;
+  }, [organizations]);
+  const nonPlatformOrganizations = React.useMemo(() => {
+    return organizations.filter((org) => org.id !== "__platform");
+  }, [organizations]);
+
   const activeOrganization =
     organizations.find((org) => org.id === activeOrganizationId) ??
     organizations[0] ??
@@ -126,6 +134,44 @@ export function TeamSwitcher({
             side={isMobile ? "bottom" : "right"}
             sideOffset={4}
           >
+            {platformOrg ? (
+              <>
+                <DropdownMenuItem
+                  key={platformOrg.id}
+                  disabled={
+                    switchingOrganizationId === platformOrg.id || !onSelect || isLoading
+                  }
+                  onClick={() => onSelect?.(platformOrg)}
+                  className="gap-2 p-2"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md border bg-white/5">
+                    {platformOrg.logoUrl ? (
+                      <img
+                        src={platformOrg.logoUrl}
+                        alt={platformOrg.name}
+                        className="h-full w-full rounded-md object-cover"
+                      />
+                    ) : (
+                      <Globe className="size-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{platformOrg.name}</span>
+                    <span className="text-xs text-muted-foreground">Global view</span>
+                  </div>
+                  {activeOrganization?.id === platformOrg.id && (
+                    <span className="ml-auto rounded-full bg-emerald-400/20 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700">
+                      Active
+                    </span>
+                  )}
+                  {switchingOrganizationId === platformOrg.id && (
+                    <Loader2 className="ml-auto size-3 animate-spin text-muted-foreground" />
+                  )}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            ) : null}
+
             <DropdownMenuLabel className="text-xs text-muted-foreground">
               {menuLabel}
             </DropdownMenuLabel>
@@ -140,7 +186,7 @@ export function TeamSwitcher({
                 {emptyLabel}
               </DropdownMenuItem>
             )}
-            {organizations.map((org) => {
+            {nonPlatformOrganizations.map((org) => {
               const isActive = activeOrganization?.id === org.id;
               return (
                 <DropdownMenuItem
@@ -164,7 +210,7 @@ export function TeamSwitcher({
                   </div>
                   {org.name}
                   <DropdownMenuShortcut>
-                    ⌘{organizations.indexOf(org) + 1}
+                    ⌘{nonPlatformOrganizations.indexOf(org) + 1}
                   </DropdownMenuShortcut>
                   {org.role && (
                     <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">

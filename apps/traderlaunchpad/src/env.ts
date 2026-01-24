@@ -18,7 +18,8 @@ export const env = createEnv({
     TRADERLAUNCHPAD_DEFAULT_ORG_ID: z.string().min(1),
     // Default tenant slug used for local dev fallback when return_to is bare localhost.
     // Mirrors Portal’s PORTAL_TENANT_SLUG behavior.
-    TRADERLAUNCHPAD_DEFAULT_TENANT_SLUG: z.string().min(1).default("default"),
+    // TraderLaunchpad: "platform" represents the apex/global experience.
+    TRADERLAUNCHPAD_DEFAULT_TENANT_SLUG: z.string().min(1).default("platform"),
     TRADELOCKER_SECRETS_KEY: z.string().min(1),
     TRADELOCKER_TOKEN_STORAGE: z.enum(["raw", "enc"]).default("raw"),
     // Optional: TradeLocker developer program key (improves rate limits / access on some endpoints).

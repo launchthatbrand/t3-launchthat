@@ -32,6 +32,9 @@ export function AdminTeamSwitcher(props: {
 }) {
   const organizationsResult = useQuery(props.organizationsQuery, {});
   const [switchingOrganizationId, setSwitchingOrganizationId] = useState<string | null>(null);
+  const platformRootTenantSlug = String(props.rootTenantSlug ?? "platform")
+    .trim()
+    .toLowerCase();
 
   const organizations = useMemo<TeamSwitcherOrganization[]>(() => {
     if (!organizationsResult || !Array.isArray(organizationsResult)) return [];
@@ -71,6 +74,18 @@ export function AdminTeamSwitcher(props: {
     });
   }, [organizationsResult]);
 
+  const platformEntry = useMemo<TeamSwitcherOrganization>(() => {
+    return {
+      id: "__platform",
+      name: "TraderLaunchpad (Global)",
+      slug: platformRootTenantSlug,
+      role: "Platform",
+      // App brand mark (served from the app). If the consuming app doesn't have this asset
+      // it's harmless: TeamSwitcher falls back to icon/initials.
+      logoUrl: "/images/tl-logo-1.png",
+    };
+  }, [platformRootTenantSlug]);
+
   const tenantFallbackOrganization = useMemo<TeamSwitcherOrganization | null>(() => {
     const tenant = props.tenant;
     if (!tenant) return null;
@@ -85,9 +100,14 @@ export function AdminTeamSwitcher(props: {
   }, [props.tenant]);
 
   const effectiveOrganizations = useMemo(() => {
-    if (organizations.length > 0) return organizations;
+    if (organizations.length > 0) return [platformEntry, ...organizations];
+    // If we're on a tenant host and the query is still loading (or returns empty),
+    // keep a stable list that still allows navigating back to apex/global.
+    if (tenantFallbackOrganization?.slug) {
+      return [platformEntry, tenantFallbackOrganization];
+    }
     return tenantFallbackOrganization ? [tenantFallbackOrganization] : [];
-  }, [organizations, tenantFallbackOrganization]);
+  }, [organizations, platformEntry, tenantFallbackOrganization]);
 
   const orderedOrganizations = useMemo(() => {
     const pinned = String(props.pinnedTenantSlug ?? "").trim().toLowerCase();
@@ -112,8 +132,11 @@ export function AdminTeamSwitcher(props: {
       const match = orderedOrganizations.find((org) => org.slug === tenantSlug);
       if (match) return match.id;
     }
+    // If we have real orgs, default to the platform entry when on apex/global.
+    const hasRealOrgs = organizations.length > 0;
+    if (hasRealOrgs) return platformEntry.id;
     return orderedOrganizations[0]?.id ?? null;
-  }, [orderedOrganizations, props.tenant]);
+  }, [orderedOrganizations, organizations.length, platformEntry.id, props.tenant]);
 
   const handleOrganizationSelect = useCallback(
     (org: TeamSwitcherOrganization) => {

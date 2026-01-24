@@ -451,6 +451,18 @@ export const getOrganizationBySlug = query({
     }),
   ),
   handler: async (ctx, args) => {
+    const normalized = args.slug.trim().toLowerCase();
+    // "Platform/Global" is a synthetic tenant used for apex routing/auth.
+    // It is intentionally not backed by a user-editable org record.
+    if (normalized === "platform") {
+      return {
+        _id: "__platform",
+        name: "TraderLaunchpad (Global)",
+        slug: "platform",
+        ownerId: "__system",
+      };
+    }
+
     const org = await ctx.runQuery(
       components.launchthat_core_tenant.queries.getOrganizationBySlug,
       { slug: args.slug },

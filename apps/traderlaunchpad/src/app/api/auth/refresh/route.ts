@@ -29,7 +29,7 @@ export function GET(req: NextRequest) {
     .toLowerCase();
   const proto = getProtoForHostFromHeaders(host, req.headers);
 
-  const rootDomain = env.NEXT_PUBLIC_ROOT_DOMAIN ?? "traderlaunchpad.com";
+  const rootDomain = env.NEXT_PUBLIC_ROOT_DOMAIN;
   const authHost = getAuthHostForHost(host, rootDomain);
 
   // If already on the auth host, don't loop.
@@ -53,6 +53,60 @@ export function GET(req: NextRequest) {
   const signInUrl = new URL(`${proto}://${authHost}/sign-in`);
   signInUrl.searchParams.set("return_to", returnTo ?? req.nextUrl.origin);
   if (tenantSlug) signInUrl.searchParams.set("tenant", tenantSlug);
+
+  /**
+   * Localhost nuance:
+   * In some browsers, `auth.localhost` cookies may not be considered "same-site" when
+   * loaded inside an iframe on `tenant.localhost`, so Clerk can't see the existing session.
+   * That causes an infinite refresh loop when we try to refresh auth via a hidden iframe.
+   *
+   * Workaround: if this request came from an iframe in local dev, force a *top-level*
+   * navigation to the auth host so cookies are first-party for the auth host.
+   */
+  const secFetchDest = (req.headers.get("sec-fetch-dest") ?? "").toLowerCase();
+  const secFetchMode = (req.headers.get("sec-fetch-mode") ?? "").toLowerCase();
+  const accept = (req.headers.get("accept") ?? "").toLowerCase();
+  const isNavigationRequest =
+    secFetchMode === "navigate" || accept.includes("text/html");
+  const isLikelyEmbeddedNavigation =
+    secFetchDest === "iframe" || (isNavigationRequest && secFetchDest === "document");
+  const isLocal =
+    host.startsWith("localhost") ||
+    host.startsWith("127.0.0.1") ||
+    host.includes(".localhost") ||
+    host.includes(".127.0.0.1");
+
+  if (isLikelyEmbeddedNavigation && isLocal) {
+    const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Refreshing session…</title>
+  </head>
+  <body>
+    <script>
+      (function () {
+        try {
+          if (window.top) {
+            window.top.location.href = ${JSON.stringify(signInUrl.toString())};
+            return;
+          }
+        } catch (e) {}
+        window.location.href = ${JSON.stringify(signInUrl.toString())};
+      })();
+    </script>
+  </body>
+</html>`;
+
+    return new NextResponse(html, {
+      status: 200,
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-store",
+      },
+    });
+  }
 
   return NextResponse.redirect(signInUrl);
 }

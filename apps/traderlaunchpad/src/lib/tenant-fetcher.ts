@@ -11,9 +11,11 @@ export interface TenantSummary {
   customDomain?: string | null;
 }
 
+const PLATFORM_TENANT_SLUG = "platform";
+
 // In dev we want tenant branding changes (name/slug) to reflect immediately.
 // In production, a short edge cache helps reduce Convex lookups.
-const TENANT_CACHE_TTL_MS = process.env.NODE_ENV === "development" ? 0 : 60 * 1000;
+const TENANT_CACHE_TTL_MS = env.NODE_ENV === "development" ? 0 : 60 * 1000;
 const SHOULD_CACHE_TENANT = TENANT_CACHE_TTL_MS > 0;
 
 const tenantCache = new Map<string, { tenant: TenantSummary; expiresAt: number }>();
@@ -30,21 +32,25 @@ const getConvexClient = () => {
   return convexClient;
 };
 
-const getDefaultOrgIdOrNull = (): string | null => {
+// Legacy: previously used to resolve a “default” tenant when no slug is present.
+// TraderLaunchpad no longer resolves a default tenant for apex/global.
+const _getDefaultOrgIdOrNull = (): string | null => {
   const raw = env.TRADERLAUNCHPAD_DEFAULT_ORG_ID;
   const trimmed = typeof raw === "string" ? raw.trim() : "";
   if (!trimmed) return null;
   return /^[a-z0-9]{32}$/.test(trimmed) ? trimmed : null;
 };
 
-const getDefaultTenantSlug = (): string => {
+// Legacy: previously used to resolve a “default” tenant when no slug is present.
+// TraderLaunchpad no longer resolves a default tenant for apex/global.
+const _getDefaultTenantSlug = (): string => {
   const raw = env.TRADERLAUNCHPAD_DEFAULT_TENANT_SLUG;
   const trimmed = typeof raw === "string" ? raw.trim() : "";
   return trimmed || "default";
 };
 
 export async function fetchTenantBySlug(slug: string | null): Promise<TenantSummary | null> {
-  const normalizedSlug = (slug ?? "").trim().toLowerCase();
+  const normalizedSlug = (slug ?? "").trim().toLowerCase() || PLATFORM_TENANT_SLUG;
 
   const cacheKey = normalizedSlug ? `slug:${normalizedSlug}` : "default";
   if (SHOULD_CACHE_TENANT) {
@@ -54,46 +60,20 @@ export async function fetchTenantBySlug(slug: string | null): Promise<TenantSumm
     }
   }
 
-  const tenant =
-    normalizedSlug.length > 0
-      ? await getConvexClient()
-          .query(api.coreTenant.organizations.getOrganizationBySlug, {
-            slug: normalizedSlug,
-          })
-          .catch((error) => {
-            console.error("[tenant-fetcher] failed to load tenant by slug", {
-              slug: normalizedSlug,
-              error,
-            });
-            return null;
-          })
-      : await (async () => {
-          const id = getDefaultOrgIdOrNull();
-          if (id) {
-            return await getConvexClient()
-              .query(api.coreTenant.organizations.getOrganizationById, {
-                organizationId: id,
-              })
-              .catch((error) => {
-                console.error("[tenant-fetcher] failed to load default tenant by id", {
-                  organizationId: id,
-                  error,
-                });
-                return null;
-              });
-          }
-
-          const slug = getDefaultTenantSlug().toLowerCase();
-          return await getConvexClient()
-            .query(api.coreTenant.organizations.getOrganizationBySlug, { slug })
-            .catch((error) => {
-              console.error("[tenant-fetcher] failed to load default tenant by slug", {
-                slug,
-                error,
-              });
-              return null;
-            });
-        })();
+  const tenantRaw = await getConvexClient()
+    .query(api.coreTenant.organizations.getOrganizationBySlug, {
+      slug: normalizedSlug,
+    })
+    .catch((error) => {
+      console.error("[tenant-fetcher] failed to load tenant by slug", {
+        slug: normalizedSlug,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        error,
+      });
+      return null;
+    });
+  // Avoid TS "any" leakage from ConvexHttpClient generics at the edge.
+  const tenant = tenantRaw as unknown as { _id: string; slug: string; name: string } | null;
 
   if (!tenant) {
     tenantCache.delete(cacheKey);
@@ -137,6 +117,7 @@ export async function fetchTenantByCustomDomain(
     .catch((error) => {
       console.error("[tenant-fetcher] failed to load tenant by domain", {
         hostname: normalizedHost,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         error,
       });
       return null;

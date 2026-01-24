@@ -64,6 +64,9 @@ export interface OrganizationTeamSwitcherProps {
 export const OrganizationTeamSwitcher = (props: OrganizationTeamSwitcherProps) => {
   const preferLocalhostSubdomains = props.preferLocalhostSubdomains !== false;
   const preservePath = props.preservePath !== false;
+  const platformRootTenantSlug = String(props.rootTenantSlug ?? "platform")
+    .trim()
+    .toLowerCase();
 
   const memberships = useQuery(
     props.api.launchthat_core_tenant.queries.listOrganizationsByUserId,
@@ -74,17 +77,29 @@ export const OrganizationTeamSwitcher = (props: OrganizationTeamSwitcherProps) =
     props.api.launchthat_core_tenant.mutations.setActiveOrganizationForUser,
   );
 
+  const platformEntry = React.useMemo<TeamSwitcherOrganization>(() => {
+    return {
+      id: "__platform",
+      name: "TraderLaunchpad (Global)",
+      slug: platformRootTenantSlug,
+      role: "Platform",
+      logoUrl: "/images/tl-logo-1.png",
+    };
+  }, [platformRootTenantSlug]);
+
   const organizations = React.useMemo<TeamSwitcherOrganization[]>(() => {
     if (!Array.isArray(memberships)) return [];
-    return memberships.map((m) => ({
+    const orgs = memberships.map((m) => ({
       id: m.organizationId,
       name: m.org.name,
       slug: m.org.slug,
       customDomain: undefined,
       role: m.role,
-      logoUrl: m.org.logoUrl ?? null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+      logoUrl: (m as any).org?.logoUrl ?? null,
     }));
-  }, [memberships]);
+    return orgs.length > 0 ? [platformEntry, ...orgs] : orgs;
+  }, [memberships, platformEntry]);
 
   const activeOrganizationId = React.useMemo(() => {
     if (!Array.isArray(memberships) || memberships.length === 0) return null;
@@ -92,13 +107,14 @@ export const OrganizationTeamSwitcher = (props: OrganizationTeamSwitcherProps) =
     const activeTenantSlug = (props.activeTenantSlug ?? "").trim().toLowerCase();
     if (activeTenantSlug) {
       const bySlug = memberships.find(
-        (m) => m.org?.slug?.trim().toLowerCase() === activeTenantSlug,
+        (m) => m.org.slug.trim().toLowerCase() === activeTenantSlug,
       );
       if (bySlug?.organizationId) return bySlug.organizationId;
     }
 
-    return memberships.find((m) => m.isActive)?.organizationId ?? memberships[0]?.organizationId ?? null;
-  }, [memberships, props.activeTenantSlug]);
+    // On apex/global, default to platform entry when the user has orgs.
+    return platformEntry.id;
+  }, [memberships, platformEntry.id, props.activeTenantSlug]);
 
   const [switchingOrganizationId, setSwitchingOrganizationId] = React.useState<string | null>(
     null,
@@ -121,7 +137,7 @@ export const OrganizationTeamSwitcher = (props: OrganizationTeamSwitcherProps) =
       if (typeof window === "undefined") return;
 
       // Best-effort: persist selection for apps that use active-org.
-      if (props.userId) {
+      if (props.userId && org.id !== platformEntry.id) {
         void setActive({ userId: props.userId, organizationId: String(org.id) });
       }
 
@@ -146,6 +162,7 @@ export const OrganizationTeamSwitcher = (props: OrganizationTeamSwitcherProps) =
     [
       preferLocalhostSubdomains,
       preservePath,
+      platformEntry.id,
       props,
       setActive,
       switchingOrganizationId,

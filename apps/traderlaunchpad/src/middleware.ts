@@ -165,15 +165,6 @@ const clerk = clerkMiddleware(async (auth, req: NextRequest) => {
     if (!signInUrl.searchParams.get("tenant")) {
       if (tenant?.slug) {
         signInUrl.searchParams.set("tenant", tenant.slug);
-      } else if (isLocalHost(hostname)) {
-        // Portal parity: ensure a tenant slug is always present in local dev
-        // when the origin is bare localhost.
-        const fallbackSlug = String(
-          env.TRADERLAUNCHPAD_DEFAULT_TENANT_SLUG ?? "default",
-        )
-          .trim()
-          .toLowerCase();
-        if (fallbackSlug) signInUrl.searchParams.set("tenant", fallbackSlug);
       }
     }
 

@@ -162,9 +162,7 @@ export async function GET(req: NextRequest) {
   const derived = returnTo ? resolveTenantSlugFromReturnTo(returnTo, rootDomain) : null;
   const derivedSlug = derived?.slug ?? "";
   const derivedHostname = derived?.hostname ?? "";
-  const defaultTenantSlug = String(
-    env.TRADERLAUNCHPAD_DEFAULT_TENANT_SLUG ?? "default",
-  )
+  const defaultTenantSlug = String(env.TRADERLAUNCHPAD_DEFAULT_TENANT_SLUG ?? "platform")
     .trim()
     .toLowerCase();
 
