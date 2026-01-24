@@ -98,6 +98,7 @@
     "react-day-picker": "^9.11.2",
     "react-hook-form": "^7.54.2",
     "react-hotkeys-hook": "^5.2.3",
+    "react-image-crop": "10.1.8",
     "react-phone-number-input": "^3.4.14",
     "react-resizable-panels": "^2.1.8",
     "recharts": "2.15.4",
