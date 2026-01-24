@@ -2,6 +2,7 @@ import { v } from "convex/values";
 
 import { mutation } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
+import { DEFAULT_ORG_PUBLIC_PROFILE_CONFIG_V1, orgPublicProfileConfigV1Validator } from "./publicProfiles/types";
 
 const normalizeHostname = (input: string): string => {
   const raw = input.trim().toLowerCase();
@@ -79,6 +80,7 @@ export const createOrganization = mutation({
       description: typeof args.description === "string" ? args.description : undefined,
       logo: typeof args.logo === "string" ? args.logo : undefined,
       logoMediaId: args.logoMediaId,
+      publicProfileConfig: DEFAULT_ORG_PUBLIC_PROFILE_CONFIG_V1,
       createdAt: now,
       updatedAt: now,
     });
@@ -156,6 +158,24 @@ export const updateOrganization = mutation({
     if (Object.keys(patch).length === 0) return null;
     patch.updatedAt = now;
     await ctx.db.patch(org._id, patch);
+    return null;
+  },
+});
+
+export const updateOrganizationPublicProfileConfig = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    config: v.union(v.null(), orgPublicProfileConfigV1Validator),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const org = await ctx.db.get(args.organizationId);
+    if (!org) throw new Error("Organization not found");
+
+    await ctx.db.patch(org._id, {
+      publicProfileConfig: args.config === null ? undefined : args.config,
+      updatedAt: Date.now(),
+    });
     return null;
   },
 });

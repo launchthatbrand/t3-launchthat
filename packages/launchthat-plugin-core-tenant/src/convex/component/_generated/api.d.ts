@@ -10,6 +10,7 @@
 
 import type * as index from "../index.js";
 import type * as mutations from "../mutations.js";
+import type * as publicProfiles_types from "../publicProfiles/types.js";
 import type * as queries from "../queries.js";
 import type * as server from "../server.js";
 
@@ -30,6 +31,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   index: typeof index;
   mutations: typeof mutations;
+  "publicProfiles/types": typeof publicProfiles_types;
   queries: typeof queries;
   server: typeof server;
 }>;
@@ -128,6 +130,23 @@ export type Mounts = {
       },
       null
     >;
+    updateOrganizationPublicProfileConfig: FunctionReference<
+      "mutation",
+      "public",
+      {
+        config: null | {
+          links: Array<{ label: string; url: string }>;
+          sections: Array<{
+            enabled: boolean;
+            id: string;
+            kind: "hero" | "about" | "links" | "stats";
+          }>;
+          version: "v1";
+        };
+        organizationId: string;
+      },
+      null
+    >;
     upsertOrganizationDomain: FunctionReference<
       "mutation",
       "public",
@@ -155,6 +174,15 @@ export type Mounts = {
         logoMediaId?: string;
         name: string;
         ownerId: string;
+        publicProfileConfig?: {
+          links: Array<{ label: string; url: string }>;
+          sections: Array<{
+            enabled: boolean;
+            id: string;
+            kind: "hero" | "about" | "links" | "stats";
+          }>;
+          version: "v1";
+        };
         slug: string;
         updatedAt?: number;
       }
@@ -173,6 +201,15 @@ export type Mounts = {
         logoMediaId?: string;
         name: string;
         ownerId: string;
+        publicProfileConfig?: {
+          links: Array<{ label: string; url: string }>;
+          sections: Array<{
+            enabled: boolean;
+            id: string;
+            kind: "hero" | "about" | "links" | "stats";
+          }>;
+          version: "v1";
+        };
         slug: string;
         updatedAt?: number;
       }
@@ -191,6 +228,15 @@ export type Mounts = {
         logoMediaId?: string;
         name: string;
         ownerId: string;
+        publicProfileConfig?: {
+          links: Array<{ label: string; url: string }>;
+          sections: Array<{
+            enabled: boolean;
+            id: string;
+            kind: "hero" | "about" | "links" | "stats";
+          }>;
+          version: "v1";
+        };
         slug: string;
         updatedAt?: number;
       }
@@ -269,6 +315,15 @@ export type Mounts = {
         logoMediaId?: string;
         name: string;
         ownerId: string;
+        publicProfileConfig?: {
+          links: Array<{ label: string; url: string }>;
+          sections: Array<{
+            enabled: boolean;
+            id: string;
+            kind: "hero" | "about" | "links" | "stats";
+          }>;
+          version: "v1";
+        };
         slug: string;
         updatedAt?: number;
       }>

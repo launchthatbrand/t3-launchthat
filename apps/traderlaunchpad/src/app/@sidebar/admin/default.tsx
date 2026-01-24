@@ -4,6 +4,7 @@ import * as React from "react";
 
 import {
   IconBrandTabler,
+  IconBuilding,
   IconBulb,
   IconChartBar,
   IconMessageCircle,
@@ -82,6 +83,16 @@ const primaryNavItems: NavItem[] = [
     href: "/admin/tradingplan",
     icon: (
       <IconTargetArrow
+        stroke={1}
+        className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
+      />
+    ),
+  },
+  {
+    label: "Organizations",
+    href: "/admin/organizations",
+    icon: (
+      <IconBuilding
         stroke={1}
         className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
       />

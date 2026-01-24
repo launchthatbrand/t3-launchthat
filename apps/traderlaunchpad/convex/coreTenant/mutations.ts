@@ -3,6 +3,15 @@ import { mutation } from "../_generated/server";
 import { resolveOrganizationId } from "../traderlaunchpad/lib/resolve";
 import { v } from "convex/values";
 
+const slugifyUsername = (value: string): string => {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/(^-|-$)/g, "");
+};
+
 const parseAdminEmails = (raw: string | undefined | null): Set<string> => {
   const set = new Set<string>();
   const input = String(raw ?? "").trim();
@@ -48,6 +57,11 @@ export const createOrGetUser = mutation({
     const defaultOrgId = resolveOrganizationId();
     const nextIsAdmin = isAdminEmail(identity.email);
     const defaultDataMode = "live" as const;
+    const email =
+      typeof identity.email === "string" && identity.email.trim() ? identity.email.trim() : "";
+    const emailPrefix = email ? (email.split("@")[0] ?? "") : "";
+    const nextName = identity.name ?? identity.nickname;
+    const derivedUsername = slugifyUsername(String(nextName ?? emailPrefix ?? ""));
 
     if (existing) {
       const patch: Record<string, unknown> = { updatedAt: now };
@@ -68,7 +82,6 @@ export const createOrGetUser = mutation({
       ) {
         patch.email = identity.email.trim();
       }
-      const nextName = identity.name ?? identity.nickname;
       if (typeof nextName === "string" && nextName.trim() && existing.name !== nextName) {
         patch.name = nextName;
       }
@@ -78,6 +91,13 @@ export const createOrGetUser = mutation({
       }
       if (!existing.organizationId && typeof defaultOrgId === "string" && defaultOrgId.trim()) {
         patch.organizationId = defaultOrgId.trim();
+      }
+      if (
+        !existing.publicUsername &&
+        typeof derivedUsername === "string" &&
+        derivedUsername.trim()
+      ) {
+        patch.publicUsername = derivedUsername.trim();
       }
       if (typeof existing.isAdmin !== "boolean" || existing.isAdmin !== nextIsAdmin) {
         patch.isAdmin = nextIsAdmin;
@@ -95,8 +115,6 @@ export const createOrGetUser = mutation({
       return existing._id;
     }
 
-    const email =
-      typeof identity.email === "string" && identity.email.trim() ? identity.email.trim() : "";
     if (!email) {
       // We rely on email for admin allowlist checks; ensure it's present.
       // (Clerk/Convex identity usually provides this, but guard anyway.)
@@ -107,7 +125,8 @@ export const createOrGetUser = mutation({
       email,
       tokenIdentifier: identity.tokenIdentifier,
       clerkId: typeof identity.subject === "string" ? identity.subject : undefined,
-      name: identity.name ?? identity.nickname ?? undefined,
+      publicUsername: derivedUsername ? derivedUsername : undefined,
+      name: typeof nextName === "string" ? nextName : identity.name ?? identity.nickname ?? undefined,
       image: typeof identity.picture === "string" ? identity.picture : undefined,
       organizationId: defaultOrgId.trim(),
       isAdmin: nextIsAdmin,

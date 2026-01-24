@@ -2,6 +2,8 @@ import { defineSchema, defineTable } from "convex/server";
 
 import { v } from "convex/values";
 
+import { userPublicProfileConfigV1Validator } from "./publicProfiles/types";
+
 /**
  * TraderLaunchpad app-owned tables.
  *
@@ -47,6 +49,7 @@ export default defineSchema({
     email: v.string(),
     tokenIdentifier: v.optional(v.string()),
     clerkId: v.optional(v.string()),
+    publicUsername: v.optional(v.string()),
     name: v.optional(v.string()),
     image: v.optional(v.string()),
     bio: v.optional(v.string()),
@@ -54,6 +57,7 @@ export default defineSchema({
     // User-scoped media (stored in `userMedia`).
     avatarMediaId: v.optional(v.id("userMedia")),
     coverMediaId: v.optional(v.id("userMedia")),
+    publicProfileConfig: v.optional(userPublicProfileConfigV1Validator),
 
     /**
      * Per-user data source mode.
@@ -80,6 +84,7 @@ export default defineSchema({
     .index("by_email", ["email"])
     .index("by_token", ["tokenIdentifier"])
     .index("by_clerk_id", ["clerkId"])
+    .index("by_public_username", ["publicUsername"])
     .index("by_organization", ["organizationId"]),
 
   userMedia: defineTable({

@@ -1,6 +1,8 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+import { orgPublicProfileConfigV1Validator } from "./publicProfiles/types";
+
 /**
  * Minimal multi-tenant core schema, extracted from Portal.
  *
@@ -21,6 +23,9 @@ export default defineSchema({
     description: v.optional(v.string()),
     logo: v.optional(v.string()),
     logoMediaId: v.optional(v.id("organizationMedia")),
+
+    // Public page configuration (v1).
+    publicProfileConfig: v.optional(orgPublicProfileConfigV1Validator),
 
     // Optional mapping to external identity providers
     clerkOrganizationId: v.optional(v.string()),

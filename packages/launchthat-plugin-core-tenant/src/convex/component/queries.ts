@@ -2,6 +2,7 @@ import { v } from "convex/values";
 
 import { query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
+import { orgPublicProfileConfigV1Validator } from "./publicProfiles/types";
 
 interface OrganizationMembershipSummary {
   organizationId: Id<"organizations">;
@@ -53,6 +54,7 @@ const orgSummary = v.object({
   description: v.optional(v.string()),
   logo: v.optional(v.string()),
   logoMediaId: v.optional(v.id("organizationMedia")),
+  publicProfileConfig: v.optional(orgPublicProfileConfigV1Validator),
   clerkOrganizationId: v.optional(v.string()),
   createdAt: v.optional(v.number()),
   updatedAt: v.optional(v.number()),

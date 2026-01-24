@@ -27,6 +27,8 @@ import type * as notifications_queries from "../notifications/queries.js";
 import type * as notifications_test from "../notifications/test.js";
 import type * as onboarding_mutations from "../onboarding/mutations.js";
 import type * as onboarding_queries from "../onboarding/queries.js";
+import type * as publicProfiles_types from "../publicProfiles/types.js";
+import type * as publicProfiles from "../publicProfiles.js";
 import type * as traderlaunchpad_actions from "../traderlaunchpad/actions.js";
 import type * as traderlaunchpad_lib_resolve from "../traderlaunchpad/lib/resolve.js";
 import type * as traderlaunchpad_mutations from "../traderlaunchpad/mutations.js";
@@ -70,6 +72,8 @@ declare const fullApi: ApiFromModules<{
   "notifications/test": typeof notifications_test;
   "onboarding/mutations": typeof onboarding_mutations;
   "onboarding/queries": typeof onboarding_queries;
+  "publicProfiles/types": typeof publicProfiles_types;
+  publicProfiles: typeof publicProfiles;
   "traderlaunchpad/actions": typeof traderlaunchpad_actions;
   "traderlaunchpad/lib/resolve": typeof traderlaunchpad_lib_resolve;
   "traderlaunchpad/mutations": typeof traderlaunchpad_mutations;
@@ -186,6 +190,23 @@ export declare const components: {
         },
         null
       >;
+      updateOrganizationPublicProfileConfig: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          config: null | {
+            links: Array<{ label: string; url: string }>;
+            sections: Array<{
+              enabled: boolean;
+              id: string;
+              kind: "hero" | "about" | "links" | "stats";
+            }>;
+            version: "v1";
+          };
+          organizationId: string;
+        },
+        null
+      >;
       upsertOrganizationDomain: FunctionReference<
         "mutation",
         "internal",
@@ -213,6 +234,15 @@ export declare const components: {
           logoMediaId?: string;
           name: string;
           ownerId: string;
+          publicProfileConfig?: {
+            links: Array<{ label: string; url: string }>;
+            sections: Array<{
+              enabled: boolean;
+              id: string;
+              kind: "hero" | "about" | "links" | "stats";
+            }>;
+            version: "v1";
+          };
           slug: string;
           updatedAt?: number;
         }
@@ -231,6 +261,15 @@ export declare const components: {
           logoMediaId?: string;
           name: string;
           ownerId: string;
+          publicProfileConfig?: {
+            links: Array<{ label: string; url: string }>;
+            sections: Array<{
+              enabled: boolean;
+              id: string;
+              kind: "hero" | "about" | "links" | "stats";
+            }>;
+            version: "v1";
+          };
           slug: string;
           updatedAt?: number;
         }
@@ -249,6 +288,15 @@ export declare const components: {
           logoMediaId?: string;
           name: string;
           ownerId: string;
+          publicProfileConfig?: {
+            links: Array<{ label: string; url: string }>;
+            sections: Array<{
+              enabled: boolean;
+              id: string;
+              kind: "hero" | "about" | "links" | "stats";
+            }>;
+            version: "v1";
+          };
           slug: string;
           updatedAt?: number;
         }
@@ -327,6 +375,15 @@ export declare const components: {
           logoMediaId?: string;
           name: string;
           ownerId: string;
+          publicProfileConfig?: {
+            links: Array<{ label: string; url: string }>;
+            sections: Array<{
+              enabled: boolean;
+              id: string;
+              kind: "hero" | "about" | "links" | "stats";
+            }>;
+            version: "v1";
+          };
           slug: string;
           updatedAt?: number;
         }>

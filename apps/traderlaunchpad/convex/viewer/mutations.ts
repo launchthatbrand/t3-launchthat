@@ -2,8 +2,29 @@ import { ConvexError, v } from "convex/values";
 
 import { api } from "../_generated/api";
 import { mutation } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
+import { userPublicProfileConfigV1Validator } from "../publicProfiles/types";
 
 type DataMode = "demo" | "live";
+
+const normalizePublicUsername = (value: string): string => {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/(^-|-$)/g, "");
+};
+
+const isReservedPublicUsername = (username: string): boolean => {
+  const u = username.trim().toLowerCase();
+  if (!u) return false;
+  if (u === "platform") return true;
+  if (u.startsWith("__")) return true;
+  // Avoid obvious app routes.
+  if (u === "admin" || u === "org" || u === "orgs" || u === "u") return true;
+  return false;
+};
 
 export const setDataMode = mutation({
   args: {
@@ -39,8 +60,10 @@ export const updateViewerProfile = mutation({
   args: {
     name: v.optional(v.string()),
     bio: v.optional(v.string()),
+    publicUsername: v.optional(v.union(v.string(), v.null())),
     avatarMediaId: v.optional(v.union(v.id("userMedia"), v.null())),
     coverMediaId: v.optional(v.union(v.id("userMedia"), v.null())),
+    publicProfileConfig: v.optional(v.union(userPublicProfileConfigV1Validator, v.null())),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -49,11 +72,14 @@ export const updateViewerProfile = mutation({
       throw new ConvexError("Unauthorized");
     }
 
-    const userDocId = await ctx.runMutation(api.coreTenant.mutations.createOrGetUser, {});
+    const userDocId = (await ctx.runMutation(
+      api.coreTenant.mutations.createOrGetUser,
+      {},
+    )) as Id<"users"> | null;
     if (!userDocId) throw new ConvexError("Unauthorized");
 
     const now = Date.now();
-    const patch: Record<string, unknown> = { updatedAt: now };
+    const patch: Partial<Doc<"users">> = { updatedAt: now };
 
     if (typeof args.name === "string") {
       const next = args.name.trim();
@@ -64,13 +90,40 @@ export const updateViewerProfile = mutation({
       patch.bio = next || undefined;
     }
     if (args.avatarMediaId !== undefined) {
-      patch.avatarMediaId = args.avatarMediaId === null ? undefined : args.avatarMediaId;
+      patch.avatarMediaId = args.avatarMediaId ?? undefined;
     }
     if (args.coverMediaId !== undefined) {
-      patch.coverMediaId = args.coverMediaId === null ? undefined : args.coverMediaId;
+      patch.coverMediaId = args.coverMediaId ?? undefined;
     }
 
-    await ctx.db.patch(userDocId, patch as any);
+    if (args.publicProfileConfig !== undefined) {
+      patch.publicProfileConfig = args.publicProfileConfig ?? undefined;
+    }
+
+    if (args.publicUsername !== undefined) {
+      if (args.publicUsername === null) {
+        patch.publicUsername = undefined;
+      } else {
+        const normalized = normalizePublicUsername(args.publicUsername);
+        if (!normalized) {
+          patch.publicUsername = undefined;
+        } else {
+          if (isReservedPublicUsername(normalized)) {
+            throw new ConvexError("Username is reserved.");
+          }
+          const existing = await ctx.db
+            .query("users")
+            .withIndex("by_public_username", (q) => q.eq("publicUsername", normalized))
+            .first();
+          if (existing && existing._id !== userDocId) {
+            throw new ConvexError("Username is already taken.");
+          }
+          patch.publicUsername = normalized;
+        }
+      }
+    }
+
+    await ctx.db.patch(userDocId, patch);
     return null;
   },
 });

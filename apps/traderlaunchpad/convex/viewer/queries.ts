@@ -1,6 +1,8 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 
+import { userPublicProfileConfigV1Validator } from "../publicProfiles/types";
+
 type DataMode = "demo" | "live";
 
 const normalizeDataMode = (value: unknown): DataMode => {
@@ -54,12 +56,14 @@ export const getViewerProfile = query({
     v.object({
       userId: v.id("users"),
       email: v.string(),
+      publicUsername: v.optional(v.string()),
       name: v.optional(v.string()),
       bio: v.optional(v.string()),
       avatarMediaId: v.optional(v.id("userMedia")),
       coverMediaId: v.optional(v.id("userMedia")),
       avatarUrl: v.optional(v.string()),
       coverUrl: v.optional(v.string()),
+      publicProfileConfig: v.optional(userPublicProfileConfigV1Validator),
     }),
   ),
   handler: async (ctx) => {
@@ -95,6 +99,7 @@ export const getViewerProfile = query({
     return {
       userId: existing._id,
       email: String((existing as any).email ?? ""),
+      publicUsername: typeof (existing as any).publicUsername === "string" ? (existing as any).publicUsername : undefined,
       name: typeof (existing as any).name === "string" ? (existing as any).name : undefined,
       bio: typeof (existing as any).bio === "string" ? (existing as any).bio : undefined,
       avatarMediaId: (existing as any).avatarMediaId ?? undefined,
@@ -103,6 +108,7 @@ export const getViewerProfile = query({
         avatarUrlFromMedia ??
         (typeof (existing as any).image === "string" ? (existing as any).image : undefined),
       coverUrl: coverUrlFromMedia,
+      publicProfileConfig: (existing as any).publicProfileConfig ?? undefined,
     };
   },
 });

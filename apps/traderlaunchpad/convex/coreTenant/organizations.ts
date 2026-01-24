@@ -15,6 +15,7 @@ interface ComponentOrganization {
   description?: string;
   logo?: string;
   logoMediaId?: string;
+  publicProfileConfig?: unknown;
   createdAt?: number;
   updatedAt?: number;
 }
@@ -46,6 +47,23 @@ const domainStatusValidator = v.union(
   v.literal("verified"),
   v.literal("error"),
 );
+
+const orgPublicProfileConfigV1Validator = v.object({
+  version: v.literal("v1"),
+  links: v.array(v.object({ label: v.string(), url: v.string() })),
+  sections: v.array(
+    v.object({
+      id: v.string(),
+      kind: v.union(
+        v.literal("hero"),
+        v.literal("about"),
+        v.literal("links"),
+        v.literal("stats"),
+      ),
+      enabled: v.boolean(),
+    }),
+  ),
+});
 
 const resolveClerkUserIdFromIdentity = async (
   ctx: QueryCtx | MutationCtx,
@@ -321,6 +339,22 @@ export const updateOrganization = mutation({
       logoMediaId: args.logoMediaId ?? null,
     });
 
+    return null;
+  },
+});
+
+export const updateOrganizationPublicProfileConfig = mutation({
+  args: {
+    organizationId: v.string(),
+    config: v.union(v.null(), orgPublicProfileConfigV1Validator),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requireOrgAdminOrPlatformAdmin(ctx, args.organizationId);
+    await ctx.runMutation(
+      components.launchthat_core_tenant.mutations.updateOrganizationPublicProfileConfig,
+      { organizationId: args.organizationId, config: args.config },
+    );
     return null;
   },
 });
@@ -604,6 +638,7 @@ export const getOrganizationById = query({
       description: v.optional(v.string()),
       logoMediaId: v.optional(v.string()),
       logoUrl: v.union(v.string(), v.null()),
+      publicProfileConfig: v.optional(orgPublicProfileConfigV1Validator),
     }),
   ),
   handler: async (ctx, args) => {
@@ -628,6 +663,7 @@ export const getOrganizationById = query({
       description: org.description,
       logoMediaId,
       logoUrl,
+      publicProfileConfig: org.publicProfileConfig as any,
     };
   },
 });
