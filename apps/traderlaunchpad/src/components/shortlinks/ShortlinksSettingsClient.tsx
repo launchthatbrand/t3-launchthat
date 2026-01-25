@@ -7,6 +7,7 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 
 import { api } from "@convex-config/_generated/api";
 import { ShortlinksSettingsCard } from "launchthat-plugin-shortlinks/frontend/settings/ShortlinksSettingsCard";
+import { toast } from "sonner";
 
 type ShortlinkSettings = {
   domain: string;
@@ -30,6 +31,7 @@ export const ShortlinksSettingsClient = () => {
   ) as { domain: string; enabled: boolean; codeLength: number } | undefined;
 
   const upsert = useMutation(api.shortlinks.mutations.upsertShortlinkSettings);
+  const [saving, setSaving] = React.useState(false);
 
   const settings: ShortlinkSettings = React.useMemo(
     () => ({
@@ -68,12 +70,21 @@ export const ShortlinksSettingsClient = () => {
     <div className="space-y-4">
       <ShortlinksSettingsCard
         settings={settings}
+        disabled={saving}
         onSave={async (next: ShortlinkSettings) => {
-          await upsert({
-            domain: next.domain,
-            enabled: next.enabled,
-            codeLength: next.codeLength,
-          });
+          setSaving(true);
+          try {
+            await upsert({
+              domain: next.domain,
+              enabled: next.enabled,
+              codeLength: next.codeLength,
+            });
+            toast.success("Shortlink settings saved.");
+          } catch {
+            toast.error("Failed to save shortlink settings.");
+          } finally {
+            setSaving(false);
+          }
         }}
       />
 

@@ -52,7 +52,7 @@ export const createShortlink = mutation({
 
     return {
       code: out.code,
-      url: domain ? `https://${domain}/${out.code}` : undefined,
+      url: domain ? `https://${domain}/s/${out.code}` : undefined,
     };
   },
 });

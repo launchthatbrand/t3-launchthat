@@ -290,7 +290,7 @@ export default function AdminAnalyticsPage() {
 
         // Configured domain but wrapper didn't return url (should be rare): best-effort.
         if (enabled && domain && code) {
-          if (!cancelled) setShareUrl(`https://${domain}/${code}`);
+          if (!cancelled) setShareUrl(`https://${domain}/s/${code}`);
           return;
         }
 
