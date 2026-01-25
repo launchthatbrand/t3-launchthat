@@ -34,6 +34,7 @@
   },
   "devDependencies": {
     "@acme/prettier-config": "workspace:*",
+    "@block65/webcrypto-web-push": "^1.0.2",
     "@react-email/components": "^1.0.2",
     "@react-email/render": "^2.0.0",
     "@swc-node/register": "1.10.9",
@@ -58,8 +59,5 @@
       "@clerk/clerk-react>@clerk/shared": "3.9.5"
     }
   },
-  "prettier": "@acme/prettier-config",
-  "dependencies": {
-    "@block65/webcrypto-web-push": "^1.0.0"
-  }
+  "prettier": "@acme/prettier-config"
 }
