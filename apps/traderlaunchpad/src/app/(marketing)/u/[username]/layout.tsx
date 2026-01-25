@@ -26,11 +26,9 @@ export default async function PublicUserLayout({
 
   return (
     <div className="relative min-h-screen text-white selection:bg-orange-500/30">
-
       <UserPublicProfileShell username={canonical || decoded.toLowerCase().trim()}>
         {children}
       </UserPublicProfileShell>
-
     </div>
   );
 }

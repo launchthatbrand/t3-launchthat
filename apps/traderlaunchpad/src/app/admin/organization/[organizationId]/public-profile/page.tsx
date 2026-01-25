@@ -49,10 +49,11 @@ const DEFAULT_CONFIG: OrgPublicProfileConfigV1 = {
   version: "v1",
   heroCtas: [{ id: "join", label: "Join TraderLaunchpad", url: "/join", variant: "primary" }],
   logoCrop: { x: 50, y: 50 },
+  excerpt: "",
+  bio: "",
   links: [],
   sections: [
     { id: "hero", kind: "hero", enabled: true },
-    { id: "about", kind: "about", enabled: true },
     { id: "links", kind: "links", enabled: true },
     { id: "stats", kind: "stats", enabled: true },
   ],
@@ -76,8 +77,17 @@ const normalizeConfig = (raw: unknown): OrgPublicProfileConfigV1 => {
           y: Math.max(0, Math.min(100, Number((v.logoCrop as any).y))),
         }
         : DEFAULT_CONFIG.logoCrop,
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    excerpt: typeof v.excerpt === "string" ? v.excerpt : DEFAULT_CONFIG.excerpt,
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    bio: typeof v.bio === "string" ? v.bio : DEFAULT_CONFIG.bio,
     links: Array.isArray(v.links) ? (v.links as OrgPublicProfileConfigV1["links"]) : [],
-    sections: Array.isArray(v.sections) ? (v.sections as OrgPublicProfileConfigV1["sections"]) : DEFAULT_CONFIG.sections,
+    // Remove deprecated "about" section entirely.
+    sections: (
+      Array.isArray(v.sections)
+        ? (v.sections as OrgPublicProfileConfigV1["sections"])
+        : DEFAULT_CONFIG.sections
+    ).filter((s) => (s as any)?.kind !== "about"),
   };
 };
 
@@ -110,6 +120,9 @@ export default function AdminOrgPublicProfilePage() {
 
   const [draft, setDraft] = React.useState<OrgPublicProfileConfigV1>(DEFAULT_CONFIG);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isSavingName, setIsSavingName] = React.useState(false);
+  const [nameDialogOpen, setNameDialogOpen] = React.useState(false);
+  const [draftName, setDraftName] = React.useState("");
   const [logoPickerOpen, setLogoPickerOpen] = React.useState(false);
   const [logoUrlOverride, setLogoUrlOverride] = React.useState<string | null>(null);
   const [logoPreviewOpen, setLogoPreviewOpen] = React.useState(false);
@@ -157,19 +170,79 @@ export default function AdminOrgPublicProfilePage() {
     if (hasInitializedDraftRef.current && isEditing) return;
 
     setDraft(normalizeConfig(org.publicProfileConfig));
+    if (!nameDialogOpen) setDraftName(org.name);
     setLogoUrlOverride(null);
     setLogoCropFile(null);
     hasInitializedDraftRef.current = true;
-  }, [org, cropOpen, logoPickerOpen, isSaving]);
+  }, [org, cropOpen, logoPickerOpen, isSaving, nameDialogOpen]);
 
   if (!org) return null;
 
+  const publicBaseHref = `/org/${encodeURIComponent(org.slug)}`;
+  const tabs = [
+    { label: "Dashboard", href: publicBaseHref, isActive: false },
+    { label: "Trade Ideas", href: `${publicBaseHref}/tradeideas`, isActive: false },
+    { label: "Orders", href: `${publicBaseHref}/orders`, isActive: false },
+  ];
+
   return (
     <div className="p-4 md:p-8">
+      <Dialog open={nameDialogOpen} onOpenChange={setNameDialogOpen}>
+        <DialogContent className="border-white/10 bg-black/90 text-white">
+          <DialogHeader>
+            <DialogTitle>Edit organization name</DialogTitle>
+          </DialogHeader>
+          <label className="block text-sm text-white/70">
+            Name
+            <input
+              className="mt-2 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
+              value={draftName}
+              onChange={(e) => setDraftName(e.target.value)}
+              placeholder="Organization name"
+            />
+          </label>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                disabled={isSavingName}
+              >
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              className="h-10 rounded-full border-0 bg-orange-600 text-white hover:bg-orange-700"
+              disabled={isSavingName || !draftName.trim()}
+              onClick={async () => {
+                if (!canEdit || !organizationId) return;
+                setIsSavingName(true);
+                try {
+                  await updateOrg({ organizationId, name: draftName.trim() });
+                  setNameDialogOpen(false);
+                } finally {
+                  setIsSavingName(false);
+                }
+              }}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <OrgPublicProfile
         mode="admin"
         canEdit={canEdit}
         isSaving={isSaving}
+        tabs={tabs}
+        onEditOrgNameAction={() => {
+          if (!canEdit) return;
+          setDraftName(org.name);
+          setNameDialogOpen(true);
+        }}
         onEditLogoAction={() => {
           if (!canEdit) return;
           setLibraryFinalizeOnSelect(false);

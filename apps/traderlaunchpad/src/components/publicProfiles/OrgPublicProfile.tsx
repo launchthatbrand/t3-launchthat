@@ -9,10 +9,19 @@ import { Eye, EyeOff, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import { SortableContext, verticalListSortingStrategy } from "@acme/dnd"
 
 import { Button } from "@acme/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@acme/ui/dialog";
 import type { DragEndEvent } from "@acme/dnd";
 import Link from "next/link";
 import React from "react";
 import { cn } from "~/lib/utils";
+import { PublicProfileHeader } from "./PublicProfileHeader";
 
 type OrgProfileSectionKindV1 = "hero" | "about" | "links" | "stats";
 
@@ -27,6 +36,8 @@ export interface OrgPublicProfileConfigV1 {
   version: "v1";
   heroCtas?: OrgHeroCta[];
   logoCrop?: { x: number; y: number };
+  excerpt?: string;
+  bio?: string;
   links: { label: string; url: string }[];
   sections: { id: string; kind: OrgProfileSectionKindV1; enabled: boolean }[];
 }
@@ -44,10 +55,11 @@ const DEFAULT_CONFIG: OrgPublicProfileConfigV1 = {
   version: "v1",
   heroCtas: [{ id: "join", label: "Join TraderLaunchpad", url: "/join", variant: "primary" }],
   logoCrop: { x: 50, y: 50 },
+  excerpt: "",
+  bio: "",
   links: [],
   sections: [
     { id: "hero", kind: "hero", enabled: true },
-    { id: "about", kind: "about", enabled: true },
     { id: "links", kind: "links", enabled: true },
     { id: "stats", kind: "stats", enabled: true },
   ],
@@ -118,20 +130,322 @@ const normalizeConfig = (input: unknown): OrgPublicProfileConfigV1 => {
       }
       : DEFAULT_CONFIG.logoCrop;
 
+  const excerpt =
+    typeof input.excerpt === "string" ? input.excerpt : DEFAULT_CONFIG.excerpt;
+  const bio = typeof input.bio === "string" ? input.bio : DEFAULT_CONFIG.bio;
+
   return {
     version: "v1",
     heroCtas: heroCtas ?? DEFAULT_CONFIG.heroCtas,
     logoCrop,
+    excerpt,
+    bio,
     links,
-    sections,
+    // Remove deprecated "about" section entirely.
+    sections: sections.filter((s) => s.kind !== "about"),
   };
 };
+
+function OrgHeroSection(props: {
+  section: { id: string; kind: OrgProfileSectionKindV1; enabled: boolean };
+  org: OrgPublicProfileData;
+  config: OrgPublicProfileConfigV1;
+  mode: "public" | "admin";
+  canEditInline: boolean;
+  heroCtas: OrgHeroCta[];
+  canShowCtaEditor: boolean;
+  tabs?: { label: string; href: string; isActive: boolean }[];
+  onEditOrgNameAction?: () => void;
+  onAddHeroCta: () => void;
+  onUpdateHeroCta: (id: string, patch: Partial<OrgHeroCta>) => void;
+  onRemoveHeroCta: (id: string) => void;
+  onChangeConfigAction?: (next: OrgPublicProfileConfigV1) => void;
+  onEditLogoAction?: () => void;
+}) {
+  const title = props.org.name;
+  const logoUrl = props.org.logoUrl ?? null;
+  const tabs = Array.isArray(props.tabs) ? props.tabs : [];
+  const logoCrop = props.config.logoCrop ?? DEFAULT_CONFIG.logoCrop;
+
+  const rawExcerpt =
+    typeof props.config.excerpt === "string" ? props.config.excerpt : "";
+  const excerptFromConfig = rawExcerpt.trim();
+  const excerpt = excerptFromConfig || props.org.description?.trim() || "No description yet.";
+
+  const rawBio = typeof props.config.bio === "string" ? props.config.bio : "";
+  const fullBio = rawBio.trim();
+
+  const canEditBio = props.mode === "admin" && props.canEditInline;
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [viewBioOpen, setViewBioOpen] = React.useState(false);
+
+  const [draftExcerpt, setDraftExcerpt] = React.useState(excerptFromConfig);
+  const [draftBio, setDraftBio] = React.useState(rawBio);
+
+  React.useEffect(() => {
+    // Keep dialog drafts in sync with config unless the dialog is open.
+    if (editOpen) return;
+    setDraftExcerpt(excerptFromConfig);
+    setDraftBio(rawBio);
+  }, [excerptFromConfig, rawBio, editOpen]);
+
+  const handleSaveBioDraft = () => {
+    if (!props.onChangeConfigAction) return;
+    props.onChangeConfigAction({
+      ...props.config,
+      excerpt: draftExcerpt,
+      bio: draftBio,
+    });
+    setEditOpen(false);
+  };
+
+  return (
+    <div>
+      <PublicProfileHeader
+        coverUrl={null}
+        avatarUrl={logoUrl}
+        avatarAlt={title}
+        avatarFallback={(title || "O").slice(0, 1)}
+        avatarStyle={
+          logoCrop
+            ? ({ objectPosition: `${logoCrop.x}% ${logoCrop.y}%` } as React.CSSProperties)
+            : undefined
+        }
+        avatarInteractive={
+          props.mode === "admin" && props.onEditLogoAction
+            ? {
+                onClick: props.onEditLogoAction,
+                ariaLabel: "Edit organization avatar",
+                showPencil: true,
+              }
+            : undefined
+        }
+        badgeLabel="Organization"
+        title={title}
+        titleInteractive={
+          props.mode === "admin" && props.onEditOrgNameAction
+            ? { onClick: props.onEditOrgNameAction, ariaLabel: "Edit organization name" }
+            : undefined
+        }
+        handle={`@${props.org.slug}`}
+        bio={excerpt}
+        bioInteractive={
+          canEditBio
+            ? {
+                onClick: () => setEditOpen(true),
+                ariaLabel: "Edit organization bio",
+                showPencil: true,
+              }
+            : undefined
+        }
+        bioExtra={
+          fullBio ? (
+            <button
+              type="button"
+              className="text-xs font-medium text-white/70 underline decoration-white/20 underline-offset-4 hover:text-white"
+              onClick={() => setViewBioOpen(true)}
+            >
+              View full bio
+            </button>
+          ) : null
+        }
+        tabs={tabs}
+        actions={
+          <>
+            {(props.heroCtas.length > 0 ? props.heroCtas : []).map((cta) => {
+              const isPrimary = cta.variant !== "outline";
+              const buttonClassName = isPrimary
+                ? "h-10 rounded-full border-0 bg-orange-600 text-white hover:bg-orange-700"
+                : "h-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10";
+              return (
+                <Button
+                  key={cta.id}
+                  className={buttonClassName}
+                  variant={isPrimary ? "default" : "outline"}
+                  asChild
+                >
+                  <Link href={cta.url}>{cta.label}</Link>
+                </Button>
+              );
+            })}
+            {props.canShowCtaEditor ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                onClick={props.onAddHeroCta}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add button
+              </Button>
+            ) : null}
+          </>
+        }
+      />
+
+      {props.mode === "admin" && props.onEditLogoAction ? (
+        <div className="mt-3 flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+            onClick={(e) => {
+              e.preventDefault();
+              props.onEditLogoAction?.();
+            }}
+          >
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit logo
+          </Button>
+        </div>
+      ) : null}
+
+      {props.canShowCtaEditor ? (
+        <div className="mt-3 w-full max-w-md space-y-2 rounded-2xl border border-white/10 bg-black/40 p-4 text-white/80 backdrop-blur-md">
+          <div className="text-xs font-semibold text-white">Header buttons</div>
+          <div className="space-y-2">
+            {(props.heroCtas.length > 0 ? props.heroCtas : []).map((cta) => (
+              <div
+                key={cta.id}
+                className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/3 p-3"
+              >
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <label className="text-xs text-white/60">
+                    Label
+                    <input
+                      className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
+                      value={cta.label}
+                      onChange={(e) => props.onUpdateHeroCta(cta.id, { label: e.target.value })}
+                    />
+                  </label>
+                  <label className="text-xs text-white/60">
+                    URL
+                    <input
+                      className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
+                      value={cta.url}
+                      onChange={(e) => props.onUpdateHeroCta(cta.id, { url: e.target.value })}
+                    />
+                  </label>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-9 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                    onClick={() =>
+                      props.onUpdateHeroCta(cta.id, {
+                        variant: cta.variant === "outline" ? "primary" : "outline",
+                      })
+                    }
+                  >
+                    Style: {cta.variant === "outline" ? "Outline" : "Primary"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-9 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                    onClick={() => props.onRemoveHeroCta(cta.id)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {canEditBio ? (
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent className="border-white/10 bg-black/90 text-white">
+            <DialogHeader>
+              <DialogTitle>Edit organization bio</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <label className="block text-sm text-white/70">
+                Excerpt{" "}
+                <span className="text-xs text-white/40">(1–2 sentences shown in header)</span>
+                <textarea
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
+                  rows={3}
+                  value={draftExcerpt}
+                  onChange={(e) => setDraftExcerpt(e.target.value)}
+                  placeholder="Short summary shown on your org profile header…"
+                />
+              </label>
+
+              <label className="block text-sm text-white/70">
+                Bio{" "}
+                <span className="text-xs text-white/40">
+                  (longer bio shown via “View full bio”)
+                </span>
+                <textarea
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
+                  rows={8}
+                  value={draftBio}
+                  onChange={(e) => setDraftBio(e.target.value)}
+                  placeholder="Full bio…"
+                />
+              </label>
+            </div>
+
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                >
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button
+                type="button"
+                className="h-10 rounded-full border-0 bg-orange-600 text-white hover:bg-orange-700"
+                onClick={handleSaveBioDraft}
+              >
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
+
+      {fullBio ? (
+        <Dialog open={viewBioOpen} onOpenChange={setViewBioOpen}>
+          <DialogContent className="border-white/10 bg-black/90 text-white">
+            <DialogHeader>
+              <DialogTitle>{title}</DialogTitle>
+            </DialogHeader>
+            <div className="whitespace-pre-wrap text-sm leading-relaxed text-white/70">
+              {fullBio}
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button
+                  type="button"
+                  className="h-10 rounded-full border-0 bg-orange-600 text-white hover:bg-orange-700"
+                >
+                  Close
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
+    </div>
+  );
+}
 
 export function OrgPublicProfile(props: {
   mode: "public" | "admin";
   canEdit: boolean;
   org: OrgPublicProfileData;
   className?: string;
+  tabs?: { label: string; href: string; isActive: boolean }[];
+  onEditOrgNameAction?: () => void;
   onChangeConfigAction?: (next: OrgPublicProfileConfigV1) => void;
   onSaveAction?: () => void;
   isSaving?: boolean;
@@ -265,6 +579,8 @@ export function OrgPublicProfile(props: {
                     canEditInline,
                     heroCtas,
                     canShowCtaEditor,
+                    tabs: props.tabs,
+                  onEditOrgNameAction: props.onEditOrgNameAction,
                     onAddHeroCta: handleAddHeroCta,
                     onUpdateHeroCta: handleUpdateHeroCta,
                     onRemoveHeroCta: handleRemoveHeroCta,
@@ -286,6 +602,8 @@ export function OrgPublicProfile(props: {
             canEditInline,
             heroCtas,
             canShowCtaEditor,
+            tabs: props.tabs,
+            onEditOrgNameAction: props.onEditOrgNameAction,
             onAddHeroCta: handleAddHeroCta,
             onUpdateHeroCta: handleUpdateHeroCta,
             onRemoveHeroCta: handleRemoveHeroCta,
@@ -306,6 +624,8 @@ function renderSection(props: {
   canEditInline: boolean;
   heroCtas: OrgHeroCta[];
   canShowCtaEditor: boolean;
+  tabs?: { label: string; href: string; isActive: boolean }[];
+  onEditOrgNameAction?: () => void;
   onAddHeroCta: () => void;
   onUpdateHeroCta: (id: string, patch: Partial<OrgHeroCta>) => void;
   onRemoveHeroCta: (id: string) => void;
@@ -315,194 +635,12 @@ function renderSection(props: {
   const { section } = props;
   switch (section.kind) {
     case "hero": {
-      const title = props.org.name;
-      const description = props.org.description ?? null;
-      const logoUrl = props.org.logoUrl ?? null;
-      const canEditLogo = props.mode === "admin" && Boolean(props.onEditLogoAction);
-      const logoCrop = props.config.logoCrop ?? DEFAULT_CONFIG.logoCrop;
-      return (
-        <div
-          key={section.id}
-          className="overflow-hidden rounded-3xl border border-white/10 bg-black/30 backdrop-blur-md"
-        >
-          <div className="relative">
-            <div className="h-36 bg-linear-to-r from-orange-500/25 via-orange-500/10 to-transparent" />
-            <div className="pointer-events-none absolute -left-24 -top-20 h-56 w-56 rounded-full bg-orange-500/20 blur-3xl" />
-            <div className="pointer-events-none absolute right-0 -top-24 h-64 w-64 rounded-full bg-fuchsia-500/10 blur-3xl" />
-          </div>
-
-          <div className="px-6 pb-6">
-            <div className="-mt-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-              <div className="flex items-start gap-4">
-                <div className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/40 md:h-24 md:w-24">
-                  {logoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={logoUrl}
-                      alt={title}
-                      className="h-full w-full object-cover opacity-95"
-                      style={
-                        logoCrop
-                          ? { objectPosition: `${logoCrop.x}% ${logoCrop.y}%` }
-                          : undefined
-                      }
-                    />
-                  ) : (
-                    <div className="text-2xl font-semibold text-white/70">
-                      {(title || "O").slice(0, 2).toUpperCase()}
-                    </div>
-                  )}
-
-                  {canEditLogo ? (
-                    <button
-                      type="button"
-                      className="absolute inset-0 flex items-center justify-center bg-black/45 text-xs font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        props.onEditLogoAction?.();
-                      }}
-                      aria-label="Edit organization logo"
-                    >
-                      <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 py-2 backdrop-blur-md">
-                        <Pencil className="h-4 w-4" />
-                        Edit
-                      </span>
-                    </button>
-                  ) : null}
-                </div>
-
-                <div className="min-w-0">
-                  <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-4 py-1.5 text-xs font-medium text-orange-200">
-                    Organization
-                  </div>
-                  <h1 className="truncate text-2xl font-bold tracking-tight text-white md:text-4xl">
-                    {title}
-                  </h1>
-                  <div className="mt-1 text-sm text-white/55">@{props.org.slug}</div>
-                  {description ? (
-                    <div className="mt-3 max-w-2xl text-sm leading-relaxed text-white/65">
-                      {description}
-                    </div>
-                  ) : (
-                    <div className="mt-3 max-w-2xl text-sm leading-relaxed text-white/45">
-                      No description yet.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-col items-start gap-2 md:items-end">
-                <div className="flex flex-wrap items-center gap-2">
-                  {(props.heroCtas.length > 0 ? props.heroCtas : []).map((cta) => {
-                    const isPrimary = cta.variant !== "outline";
-                    const buttonClassName = isPrimary
-                      ? "h-10 rounded-full border-0 bg-orange-600 text-white hover:bg-orange-700"
-                      : "h-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10";
-                    return (
-                      <Button
-                        key={cta.id}
-                        className={buttonClassName}
-                        variant={isPrimary ? "default" : "outline"}
-                        asChild
-                      >
-                        <Link href={cta.url}>{cta.label}</Link>
-                      </Button>
-                    );
-                  })}
-                  {props.canShowCtaEditor ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
-                      onClick={props.onAddHeroCta}
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add button
-                    </Button>
-                  ) : null}
-                </div>
-
-                {props.canShowCtaEditor ? (
-                  <div className="mt-2 w-full max-w-md space-y-2 rounded-2xl border border-white/10 bg-black/40 p-4 text-white/80 backdrop-blur-md">
-                    <div className="text-xs font-semibold text-white">Header buttons</div>
-                    <div className="space-y-2">
-                      {(props.heroCtas.length > 0 ? props.heroCtas : []).map((cta) => (
-                        <div
-                          key={cta.id}
-                          className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/3 p-3"
-                        >
-                          <div className="grid gap-2 sm:grid-cols-2">
-                            <label className="text-xs text-white/60">
-                              Label
-                              <input
-                                className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
-                                value={cta.label}
-                                onChange={(e) =>
-                                  props.onUpdateHeroCta(cta.id, { label: e.target.value })
-                                }
-                              />
-                            </label>
-                            <label className="text-xs text-white/60">
-                              URL
-                              <input
-                                className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
-                                value={cta.url}
-                                onChange={(e) =>
-                                  props.onUpdateHeroCta(cta.id, { url: e.target.value })
-                                }
-                              />
-                            </label>
-                          </div>
-                          <div className="flex items-center justify-between gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="h-9 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
-                              onClick={() =>
-                                props.onUpdateHeroCta(cta.id, {
-                                  variant: cta.variant === "outline" ? "primary" : "outline",
-                                })
-                              }
-                            >
-                              Style: {cta.variant === "outline" ? "Outline" : "Primary"}
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="h-9 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
-                              onClick={() => props.onRemoveHeroCta(cta.id)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Remove
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </div>
-      );
+      return <OrgHeroSection key={section.id} {...props} />;
     }
 
     case "about": {
-      return (
-        <div
-          key={section.id}
-          className="mt-8 rounded-3xl border border-white/10 bg-black/30 p-6 text-white/70 backdrop-blur-md"
-        >
-          <div className="text-sm font-semibold text-white">About</div>
-          <div className="mt-2 text-sm">
-            {props.org.description?.trim()
-              ? props.org.description
-              : "This org hasn’t added an about section yet."}
-          </div>
-        </div>
-      );
+      // Removed: org bio is managed via the header excerpt + full bio dialog.
+      return null;
     }
 
     case "links": {
