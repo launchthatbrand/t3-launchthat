@@ -524,6 +524,25 @@ export declare const components: {
           userInAppOverride: boolean | null;
         }
       >;
+      getEventsAnalyticsSummary: FunctionReference<
+        "query",
+        "internal",
+        { daysBack?: number; maxRows?: number },
+        {
+          byChannelAndType: Array<{
+            channel: string;
+            count: number;
+            eventType: string;
+          }>;
+          byEventKey: Array<{ count: number; eventKey: string }>;
+          fromCreatedAt: number;
+          totals: {
+            events: number;
+            uniqueNotifications: number;
+            uniqueUsers: number;
+          };
+        }
+      >;
       getUnreadCountByUserIdAcrossOrgs: FunctionReference<
         "query",
         "internal",

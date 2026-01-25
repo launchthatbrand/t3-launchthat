@@ -26,6 +26,7 @@ import {
   type TraderLaunchpadNotificationEventDefinition,
   type TraderLaunchpadNotificationSinkId,
 } from "~/lib/notifications/notificationCatalog";
+import { useHostContext } from "~/context/HostContext";
 
 type HarnessResult = {
   inAppInserted: boolean;
@@ -41,6 +42,25 @@ const isRecord = (v: unknown): v is UnknownRecord =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
 export function NotificationsTestHarnessClient() {
+  const host = useHostContext();
+  // Tenant/custom hosts don't run Clerk; avoid calling Clerk hooks outside <ClerkProvider>.
+  if (!host.isAuthHost) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Send test notification</CardTitle>
+        </CardHeader>
+        <CardContent className="text-muted-foreground text-sm">
+          This page is only available on the main domain ({host.authHost}).
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return <NotificationsTestHarnessClientInner />;
+}
+
+function NotificationsTestHarnessClientInner() {
   const { session } = useSession();
   const clerkId = session?.user?.id ?? null;
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();

@@ -6,11 +6,16 @@ export const getMySubscriptionRowId = query({
   args: {},
   returns: v.union(v.string(), v.null()),
   handler: async (ctx) => {
-    const id = await ctx.runQuery(
-      components.launchthat_push.queries.getMySubscriptionRowId,
-      {},
-    );
-    return typeof id === "string" || id === null ? id : null;
+    try {
+      const id = await ctx.runQuery(
+        components.launchthat_push.queries.getMySubscriptionRowId,
+        {},
+      );
+      return typeof id === "string" || id === null ? id : null;
+    } catch {
+      // If auth isn't ready (or viewer isn't signed in), treat as "no subscription".
+      return null;
+    }
   },
 });
 
@@ -25,11 +30,15 @@ export const listMySubscriptions = query({
     }),
   ),
   handler: async (ctx) => {
-    const rows = await ctx.runQuery(
-      components.launchthat_push.queries.listMySubscriptions,
-      {},
-    );
-    return Array.isArray(rows) ? rows : [];
+    try {
+      const rows = await ctx.runQuery(
+        components.launchthat_push.queries.listMySubscriptions,
+        {},
+      );
+      return Array.isArray(rows) ? rows : [];
+    } catch {
+      return [];
+    }
   },
 });
 

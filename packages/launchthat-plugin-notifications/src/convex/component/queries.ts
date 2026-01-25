@@ -239,3 +239,106 @@ export const getUnreadCountByUserIdAndOrgId = query({
   },
 });
 
+/**
+ * Platform-style analytics summary for notification interactions.
+ *
+ * This is intentionally "best effort" and can be refined as volume grows.
+ * For now it aggregates counts over a recent window, grouped by:
+ * - eventKey
+ * - channel
+ * - eventType
+ */
+export const getEventsAnalyticsSummary = query({
+  args: {
+    daysBack: v.optional(v.number()),
+    maxRows: v.optional(v.number()),
+  },
+  returns: v.object({
+    fromCreatedAt: v.number(),
+    totals: v.object({
+      events: v.number(),
+      uniqueNotifications: v.number(),
+      uniqueUsers: v.number(),
+    }),
+    byEventKey: v.array(
+      v.object({
+        eventKey: v.string(),
+        count: v.number(),
+      }),
+    ),
+    byChannelAndType: v.array(
+      v.object({
+        channel: v.string(),
+        eventType: v.string(),
+        count: v.number(),
+      }),
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const daysBackRaw = typeof args.daysBack === "number" ? args.daysBack : 30;
+    const daysBack = Math.max(1, Math.min(180, Math.floor(daysBackRaw)));
+    const fromCreatedAt = Date.now() - daysBack * 24 * 60 * 60 * 1000;
+
+    const maxRowsRaw = typeof args.maxRows === "number" ? args.maxRows : 25000;
+    const maxRows = Math.max(100, Math.min(250000, Math.floor(maxRowsRaw)));
+
+    const byEventKeyCount = new Map<string, number>();
+    const byChannelTypeCount = new Map<string, number>();
+    const notificationIds = new Set<string>();
+    const userIds = new Set<string>();
+
+    let events = 0;
+
+    // Use the createdAt index to efficiently scan the recent window.
+    const q = ctx.db
+      .query("notificationEvents")
+      .withIndex("by_createdAt", (q: any) => q.gte("createdAt", fromCreatedAt))
+      .order("desc");
+
+    for await (const row of q) {
+      events += 1;
+      if (events > maxRows) break;
+
+      const eventKey = typeof (row as any).eventKey === "string" ? (row as any).eventKey : "";
+      const channel = typeof (row as any).channel === "string" ? (row as any).channel : "";
+      const eventType =
+        typeof (row as any).eventType === "string" ? (row as any).eventType : "";
+
+      const notificationId =
+        typeof (row as any).notificationId === "string" ? (row as any).notificationId : "";
+      const userId = typeof (row as any).userId === "string" ? (row as any).userId : "";
+
+      if (eventKey) byEventKeyCount.set(eventKey, (byEventKeyCount.get(eventKey) ?? 0) + 1);
+      if (channel || eventType) {
+        const key = `${channel}::${eventType}`;
+        byChannelTypeCount.set(key, (byChannelTypeCount.get(key) ?? 0) + 1);
+      }
+      if (notificationId) notificationIds.add(notificationId);
+      if (userId) userIds.add(userId);
+    }
+
+    const byEventKey = Array.from(byEventKeyCount.entries())
+      .map(([eventKey, count]) => ({ eventKey, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 50);
+
+    const byChannelAndType = Array.from(byChannelTypeCount.entries())
+      .map(([key, count]) => {
+        const [channel, eventType] = key.split("::");
+        return { channel: channel ?? "", eventType: eventType ?? "", count };
+      })
+      .sort((a, b) => b.count - a.count);
+
+    return {
+      fromCreatedAt,
+      totals: {
+        events,
+        uniqueNotifications: notificationIds.size,
+        uniqueUsers: userIds.size,
+      },
+      byEventKey,
+      byChannelAndType,
+    };
+  },
+});
+

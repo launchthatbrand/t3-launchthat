@@ -1,21 +1,9 @@
 import type { FunctionReference } from "convex/server";
 import { v } from "convex/values";
 
-import { components } from "../_generated/api";
-import { mutation, type MutationCtx } from "../_generated/server";
-
-/* eslint-disable
-  @typescript-eslint/no-require-imports,
-  @typescript-eslint/no-unsafe-assignment,
-  @typescript-eslint/no-unsafe-member-access
-*/
-// Convex codegen may lag newly added internal actions; keep this untyped to avoid blocking dev.
-const internalAny: any = require("../_generated/api").internal;
-/* eslint-enable
-  @typescript-eslint/no-require-imports,
-  @typescript-eslint/no-unsafe-assignment,
-  @typescript-eslint/no-unsafe-member-access
-*/
+import { components, internal } from "../_generated/api";
+import { mutation } from "../_generated/server";
+import type { MutationCtx } from "../_generated/server";
 
 interface NotificationsMutations {
   markNotificationAsRead: FunctionReference<
@@ -67,10 +55,6 @@ const notificationsMutations = (() => {
     {}) as NotificationsMutations;
 })();
 
-type UnknownRecord = Record<string, unknown>;
-const isRecord = (v: unknown): v is UnknownRecord =>
-  typeof v === "object" && v !== null && !Array.isArray(v);
-
 const resolveUserIdByClerkId = async (
   ctx: MutationCtx,
   clerkId: string,
@@ -83,6 +67,25 @@ const resolveUserIdByClerkId = async (
   return user ? String(user._id) : null;
 };
 
+const resolveViewerUserId = async (ctx: MutationCtx): Promise<string | null> => {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) return null;
+
+  // Prefer tokenIdentifier (works for both Clerk and tenant-session Convex auth).
+  if (identity.tokenIdentifier) {
+    const byToken = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .first();
+    if (byToken) return String(byToken._id);
+  }
+
+  // Fallback: subject as Clerk user id.
+  const clerkId = typeof identity.subject === "string" ? identity.subject : "";
+  if (!clerkId) return null;
+  return await resolveUserIdByClerkId(ctx, clerkId);
+};
+
 export const markNotificationAsRead = mutation({
   args: { notificationId: v.string() },
   returns: v.boolean(),
@@ -90,6 +93,25 @@ export const markNotificationAsRead = mutation({
     const ok = await ctx.runMutation(notificationsMutations.markNotificationAsRead, {
       notificationId: args.notificationId,
     });
+
+    // Track in-app opens/clicks by recording an event when the user opens a notification.
+    // This is intentionally tied to "mark as read" since that's the most reliable signal
+    // we have from the UI today (and avoids needing UI changes across apps).
+    if (ok) {
+      try {
+        const userId = await resolveViewerUserId(ctx);
+        if (userId) {
+          await ctx.runMutation(notificationsMutations.trackNotificationEvent, {
+            notificationId: args.notificationId,
+            userId,
+            channel: "inApp",
+            eventType: "opened",
+          });
+        }
+      } catch {
+        // ignore analytics failures
+      }
+    }
     return Boolean(ok);
   },
 });
@@ -151,7 +173,7 @@ export const createNotificationAndMaybePushByClerkId = mutation({
     if (pushAttempted) {
       await ctx.scheduler.runAfter(
         0,
-        internalAny.pushSubscriptions.internalActions.sendPushToUser,
+        internal.pushSubscriptions.internalActions.sendPushToUser,
         {
           userId: args.clerkId,
           payload: {
@@ -183,11 +205,7 @@ export const trackMyNotificationEvent = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    const clerkId = typeof identity?.subject === "string" ? identity.subject : "";
-    if (!clerkId) return null;
-
-    const userId = await resolveUserIdByClerkId(ctx, clerkId);
+    const userId = await resolveViewerUserId(ctx);
     if (!userId) return null;
 
     await ctx.runMutation(notificationsMutations.trackNotificationEvent, {

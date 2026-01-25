@@ -25,6 +25,13 @@ interface NotificationsQueries {
     { userId: string },
     unknown
   >;
+
+  getEventsAnalyticsSummary?: FunctionReference<
+    "query",
+    "public",
+    { daysBack?: number; maxRows?: number },
+    unknown
+  >;
 }
 
 const notificationsQueries = (() => {
@@ -46,6 +53,27 @@ const resolveUserIdByClerkId = async (ctx: any, clerkId: string): Promise<string
   if (!isRecord(user)) return null;
   const id = user._id;
   return typeof id === "string" ? id : null;
+};
+
+const requirePlatformAdmin = async (ctx: any) => {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new Error("Unauthorized");
+
+  let viewer =
+    (await ctx.db
+      .query("users")
+      .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .first()) ?? null;
+
+  if (!viewer && typeof identity.subject === "string" && identity.subject.trim()) {
+    viewer = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", identity.subject))
+      .first();
+  }
+
+  if (!viewer) throw new Error("Unauthorized");
+  if (!viewer.isAdmin) throw new Error("Forbidden");
 };
 
 export const paginateByClerkIdAcrossOrgs = query({
@@ -99,6 +127,22 @@ export const getUnreadCountByClerkIdAcrossOrgs = query({
       { userId },
     );
     return typeof count === "number" ? count : 0;
+  },
+});
+
+export const getPlatformNotificationsAnalyticsSummary = query({
+  args: {
+    daysBack: v.optional(v.number()),
+    maxRows: v.optional(v.number()),
+  },
+  returns: v.union(v.any(), v.null()),
+  handler: async (ctx, args) => {
+    await requirePlatformAdmin(ctx);
+    if (!notificationsQueries.getEventsAnalyticsSummary) return null;
+    return await ctx.runQuery(notificationsQueries.getEventsAnalyticsSummary, {
+      daysBack: args.daysBack,
+      maxRows: args.maxRows,
+    });
   },
 });
 

@@ -92,6 +92,25 @@ export type Mounts = {
         userInAppOverride: boolean | null;
       }
     >;
+    getEventsAnalyticsSummary: FunctionReference<
+      "query",
+      "public",
+      { daysBack?: number; maxRows?: number },
+      {
+        byChannelAndType: Array<{
+          channel: string;
+          count: number;
+          eventType: string;
+        }>;
+        byEventKey: Array<{ count: number; eventKey: string }>;
+        fromCreatedAt: number;
+        totals: {
+          events: number;
+          uniqueNotifications: number;
+          uniqueUsers: number;
+        };
+      }
+    >;
     getUnreadCountByUserIdAcrossOrgs: FunctionReference<
       "query",
       "public",
