@@ -138,14 +138,22 @@ export const upsertTradeIdeaDiscordMessage = internalAction({
         : "";
     if (!guildId) return { ok: true, mode: "skipped" as const };
 
-    const channelId = await ctx.runQuery(
-      discordRoutingQueries.resolveTradeFeedChannel,
+    const actorRole = typeof role === "string" ? role : String(role ?? "");
+    const channelIds = (await ctx.runQuery(
+      discordRoutingQueries.resolveChannelsForEvent,
       {
         organizationId: String(args.organizationId),
         guildId,
-        channelKind: kind,
+        kind: "trade_feed",
+        actorRole,
+        symbol: String(group.symbol ?? ""),
       },
-    );
+    )) as string[] | null;
+    const resolved = Array.isArray(channelIds)
+      ? channelIds.map((c) => (typeof c === "string" ? c.trim() : "")).filter(Boolean)
+      : [];
+    const channelId = resolved[0] ?? "";
+    const extraChannelIds = resolved.slice(1);
     if (!channelId) return { ok: true, mode: "skipped" as const };
 
     const guildSettings = await ctx.runQuery(
@@ -261,6 +269,20 @@ export const upsertTradeIdeaDiscordMessage = internalAction({
       throw new Error(
         `Discord POST message failed (${res.status}): ${res.text}`,
       );
+    }
+
+    // Best-effort multi-cast: post to any extra channels but do not track edits there.
+    for (const extraChannelId of extraChannelIds) {
+      try {
+        await discordJson({
+          botToken,
+          method: "POST",
+          url: `https://discord.com/api/v10/channels/${extraChannelId}/messages`,
+          body: payload,
+        });
+      } catch {
+        // ignore
+      }
     }
     const responseJson = res.json as { id?: string } | null;
     const messageId =

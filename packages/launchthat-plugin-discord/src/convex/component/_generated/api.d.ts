@@ -34,6 +34,7 @@ import type * as roleRules_index from "../roleRules/index.js";
 import type * as roleRules_mutations from "../roleRules/mutations.js";
 import type * as roleRules_queries from "../roleRules/queries.js";
 import type * as routing_index from "../routing/index.js";
+import type * as routing_mutations from "../routing/mutations.js";
 import type * as routing_queries from "../routing/queries.js";
 import type * as server from "../server.js";
 import type * as support_index from "../support/index.js";
@@ -93,6 +94,7 @@ declare const fullApi: ApiFromModules<{
   "roleRules/mutations": typeof roleRules_mutations;
   "roleRules/queries": typeof roleRules_queries;
   "routing/index": typeof routing_index;
+  "routing/mutations": typeof routing_mutations;
   "routing/queries": typeof routing_queries;
   server: typeof server;
   "support/index": typeof support_index;
@@ -483,7 +485,78 @@ export type Mounts = {
     };
   };
   routing: {
+    mutations: {
+      replaceRoutingRules: FunctionReference<
+        "mutation",
+        "public",
+        {
+          guildId: string;
+          kind: "trade_feed";
+          organizationId: string;
+          rules: Array<{
+            channelId: string;
+            channelKind?: "mentors" | "members";
+            conditions?: {
+              actorRoles?: Array<string>;
+              symbols?: Array<string>;
+            };
+            enabled: boolean;
+            order: number;
+            priority: number;
+          }>;
+        },
+        null
+      >;
+      upsertRoutingRuleSet: FunctionReference<
+        "mutation",
+        "public",
+        {
+          guildId: string;
+          kind: "trade_feed";
+          matchStrategy: "first_match" | "multi_cast" | "priority";
+          organizationId: string;
+        },
+        null
+      >;
+    };
     queries: {
+      getRoutingRuleSet: FunctionReference<
+        "query",
+        "public",
+        { guildId: string; kind: "trade_feed"; organizationId: string },
+        null | {
+          guildId: string;
+          kind: "trade_feed";
+          matchStrategy: "first_match" | "multi_cast" | "priority";
+          organizationId: string;
+          updatedAt: number;
+        }
+      >;
+      listRoutingRules: FunctionReference<
+        "query",
+        "public",
+        { guildId: string; kind: "trade_feed"; organizationId: string },
+        Array<{
+          channelId: string;
+          conditions?: { actorRoles?: Array<string>; symbols?: Array<string> };
+          enabled: boolean;
+          id: string;
+          order: number;
+          priority: number;
+        }>
+      >;
+      resolveChannelsForEvent: FunctionReference<
+        "query",
+        "public",
+        {
+          actorRole: string;
+          guildId: string;
+          kind: "trade_feed";
+          organizationId: string;
+          symbol: string;
+        },
+        Array<string>
+      >;
       resolveTradeFeedChannel: FunctionReference<
         "query",
         "public",

@@ -4171,7 +4171,81 @@ export declare const components: {
       };
     };
     routing: {
+      mutations: {
+        replaceRoutingRules: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            guildId: string;
+            kind: "trade_feed";
+            organizationId: string;
+            rules: Array<{
+              channelId: string;
+              channelKind?: "mentors" | "members";
+              conditions?: {
+                actorRoles?: Array<string>;
+                symbols?: Array<string>;
+              };
+              enabled: boolean;
+              order: number;
+              priority: number;
+            }>;
+          },
+          null
+        >;
+        upsertRoutingRuleSet: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            guildId: string;
+            kind: "trade_feed";
+            matchStrategy: "first_match" | "multi_cast" | "priority";
+            organizationId: string;
+          },
+          null
+        >;
+      };
       queries: {
+        getRoutingRuleSet: FunctionReference<
+          "query",
+          "internal",
+          { guildId: string; kind: "trade_feed"; organizationId: string },
+          null | {
+            guildId: string;
+            kind: "trade_feed";
+            matchStrategy: "first_match" | "multi_cast" | "priority";
+            organizationId: string;
+            updatedAt: number;
+          }
+        >;
+        listRoutingRules: FunctionReference<
+          "query",
+          "internal",
+          { guildId: string; kind: "trade_feed"; organizationId: string },
+          Array<{
+            channelId: string;
+            conditions?: {
+              actorRoles?: Array<string>;
+              symbols?: Array<string>;
+            };
+            enabled: boolean;
+            id: string;
+            order: number;
+            priority: number;
+          }>
+        >;
+        resolveChannelsForEvent: FunctionReference<
+          "query",
+          "internal",
+          {
+            actorRole: string;
+            guildId: string;
+            kind: "trade_feed";
+            organizationId: string;
+            symbol: string;
+          },
+          Array<string>
+        >;
         resolveTradeFeedChannel: FunctionReference<
           "query",
           "internal",

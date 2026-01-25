@@ -27,6 +27,12 @@ const discordUserLinksQueries = components.launchthat_discord.userLinks
 const discordUserStreamingQueries = components.launchthat_discord.userStreaming
   .queries as any;
 
+const pricedataSources = (components as any).launchthat_pricedata?.sources?.queries as
+  | any
+  | undefined;
+const pricedataInstruments = (components as any).launchthat_pricedata?.instruments
+  ?.queries as any | undefined;
+
 export const peekOauthState = query({
   args: { state: v.string() },
   returns: v.any(),
@@ -148,6 +154,33 @@ export const getMyDiscordStreamingOrgs = query({
   },
 });
 
+export const listSymbolOptions = query({
+  args: { organizationId: v.optional(v.string()), limit: v.optional(v.number()) },
+  returns: v.array(v.string()),
+  handler: async (ctx, args) => {
+    // Viewer-gated since it’s used in admin UIs.
+    await resolveViewerUserId(ctx);
+    if (!pricedataSources || !pricedataInstruments) return [];
+
+    const source = await ctx.runQuery(pricedataSources.getDefaultSource, {});
+    const sourceKey =
+      typeof source?.sourceKey === "string" ? String(source.sourceKey) : "";
+    if (!sourceKey) return [];
+
+    const limit = Math.max(1, Math.min(1000, Number(args.limit ?? 500)));
+    const rows = await ctx.runQuery(pricedataInstruments.listInstrumentsForSource, {
+      sourceKey,
+      limit,
+    });
+    const symbols = Array.isArray(rows)
+      ? rows
+          .map((r: any) => String(r?.symbol ?? "").trim().toUpperCase())
+          .filter(Boolean)
+      : [];
+    return Array.from(new Set(symbols));
+  },
+});
+
 export const resolveTradeFeedChannel = query({
   args: {
     guildId: v.string(),
@@ -161,6 +194,75 @@ export const resolveTradeFeedChannel = query({
       guildId: args.guildId,
       channelKind: args.channelKind,
     });
+  },
+});
+
+export const getRoutingRuleSet = query({
+  args: {
+    organizationId: v.optional(v.string()),
+    guildId: v.string(),
+    kind: v.union(v.literal("trade_feed")),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    return await ctx.runQuery(discordRoutingQueries.getRoutingRuleSet, {
+      organizationId,
+      guildId: args.guildId,
+      kind: args.kind,
+    });
+  },
+});
+
+export const listRoutingRules = query({
+  args: {
+    organizationId: v.optional(v.string()),
+    guildId: v.string(),
+    kind: v.union(v.literal("trade_feed")),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    return await ctx.runQuery(discordRoutingQueries.listRoutingRules, {
+      organizationId,
+      guildId: args.guildId,
+      kind: args.kind,
+    });
+  },
+});
+
+export const resolveChannelsForEvent = query({
+  args: {
+    organizationId: v.optional(v.string()),
+    guildId: v.string(),
+    kind: v.union(v.literal("trade_feed")),
+    actorRole: v.string(),
+    symbol: v.string(),
+  },
+  returns: v.array(v.string()),
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    // This is used by internal delivery and admin previews; keep it viewer-gated for now.
+    await resolveViewerUserId(ctx);
+    const result = await ctx.runQuery(discordRoutingQueries.resolveChannelsForEvent, {
+      organizationId,
+      guildId: args.guildId,
+      kind: args.kind,
+      actorRole: args.actorRole,
+      symbol: args.symbol,
+    });
+    return Array.isArray(result) ? result.map((s: any) => String(s)) : [];
   },
 });
 

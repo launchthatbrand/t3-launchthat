@@ -12,6 +12,7 @@ const discordUserLinksMutations = components.launchthat_discord.userLinks
   .mutations as any;
 const discordUserStreamingMutations = components.launchthat_discord.userStreaming
   .mutations as any;
+const discordRoutingMutations = components.launchthat_discord.routing.mutations as any;
 
 export const upsertGuildSettings = mutation({
   args: {
@@ -197,6 +198,71 @@ export const setMyDiscordStreamingEnabled = mutation({
       organizationId,
       userId,
       enabled: args.enabled,
+    });
+    return null;
+  },
+});
+
+export const upsertRoutingRuleSet = mutation({
+  args: {
+    organizationId: v.optional(v.string()),
+    guildId: v.string(),
+    kind: v.union(v.literal("trade_feed")),
+    matchStrategy: v.union(
+      v.literal("first_match"),
+      v.literal("multi_cast"),
+      v.literal("priority"),
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    await ctx.runMutation(discordRoutingMutations.upsertRoutingRuleSet, {
+      organizationId,
+      guildId: args.guildId,
+      kind: args.kind,
+      matchStrategy: args.matchStrategy,
+    });
+    return null;
+  },
+});
+
+export const replaceRoutingRules = mutation({
+  args: {
+    organizationId: v.optional(v.string()),
+    guildId: v.string(),
+    kind: v.union(v.literal("trade_feed")),
+    rules: v.array(
+      v.object({
+        enabled: v.boolean(),
+        channelId: v.string(),
+        order: v.number(),
+        priority: v.number(),
+        conditions: v.optional(
+          v.object({
+            actorRoles: v.optional(v.array(v.string())),
+            symbols: v.optional(v.array(v.string())),
+          }),
+        ),
+      }),
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    await ctx.runMutation(discordRoutingMutations.replaceRoutingRules, {
+      organizationId,
+      guildId: args.guildId,
+      kind: args.kind,
+      rules: args.rules,
     });
     return null;
   },

@@ -36,6 +36,10 @@
       "types": "./dist/runtime/credentials.d.ts",
       "default": "./src/runtime/credentials.ts"
     },
+    "./runtime/routing": {
+      "types": "./dist/runtime/routing.d.ts",
+      "default": "./src/runtime/routing.ts"
+    },
     "./frontend": {
       "types": "./dist/frontend/index.d.ts",
       "default": "./src/frontend/index.ts"

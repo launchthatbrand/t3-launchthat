@@ -7,6 +7,11 @@ export type DiscordUiApi = {
     listTemplates: any;
     getTemplateById: any;
     getMyDiscordLink: any;
+    // Optional: host app can provide symbol options for rule builder UI.
+    listSymbolOptions: any;
+    getRoutingRuleSet: any;
+    listRoutingRules: any;
+    resolveChannelsForEvent: any;
   };
   mutations: {
     upsertGuildSettings: any;
@@ -15,11 +20,15 @@ export type DiscordUiApi = {
     updateTemplate: any;
     deleteTemplate: any;
     unlinkMyDiscordLink: any;
+    upsertRoutingRuleSet: any;
+    replaceRoutingRules: any;
   };
   actions: {
     startBotInstall: any;
     disconnectGuild: any;
     startUserLink: any;
+    listGuildChannels: any;
+    sendTestDiscordMessage: any;
   };
 };
 

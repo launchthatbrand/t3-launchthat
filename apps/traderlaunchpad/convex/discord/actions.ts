@@ -54,6 +54,209 @@ const verifyGuildMembership = async (args: {
   );
 };
 
+export const listGuildChannels = action({
+  args: {
+    organizationId: v.optional(v.string()),
+    guildId: v.string(),
+  },
+  returns: v.array(
+    v.object({
+      id: v.string(),
+      name: v.string(),
+      type: v.number(),
+      parentId: v.union(v.string(), v.null()),
+      position: v.union(v.number(), v.null()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    await resolveViewerUserId(ctx);
+
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    const guildId = String(args.guildId ?? "").trim();
+    if (!guildId) return [];
+
+    const orgSecrets = (await ctx.runQuery(
+      discordOrgConfigInternalQueries.getOrgConfigSecrets,
+      { organizationId },
+    )) as
+      | {
+          enabled: boolean;
+          botMode: "global" | "custom";
+          customClientId?: string;
+          customClientSecretEncrypted?: string;
+          customBotTokenEncrypted?: string;
+          clientId?: string;
+          clientSecretEncrypted?: string;
+          botTokenEncrypted?: string;
+        }
+      | null;
+
+    if (!orgSecrets?.enabled) {
+      throw new Error("Discord is not enabled for this organization");
+    }
+
+    const secretsKey = process.env.DISCORD_SECRETS_KEY ?? "";
+    const globalClientId =
+      (process.env.DISCORD_GLOBAL_CLIENT_ID ??
+        process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID ??
+        "").trim();
+    const globalClientSecret = (process.env.DISCORD_GLOBAL_CLIENT_SECRET ?? "").trim();
+    const globalBotToken = (process.env.DISCORD_GLOBAL_BOT_TOKEN ?? "").trim();
+
+    const creds = await resolveDiscordCredentials({
+      botMode: orgSecrets.botMode === "custom" ? "custom" : "global",
+      secretsKey,
+      globalClientId,
+      globalClientSecret,
+      globalBotToken,
+      customClientId: orgSecrets.customClientId,
+      customClientSecretEncrypted: orgSecrets.customClientSecretEncrypted,
+      customBotTokenEncrypted: orgSecrets.customBotTokenEncrypted,
+      clientId: orgSecrets.clientId,
+      clientSecretEncrypted: orgSecrets.clientSecretEncrypted,
+      botTokenEncrypted: orgSecrets.botTokenEncrypted,
+    });
+
+    const botToken = String((creds as any)?.botToken ?? "").trim();
+    if (!botToken) throw new Error("Missing Discord bot token");
+
+    const res = await fetch(
+      `https://discord.com/api/v10/guilds/${encodeURIComponent(guildId)}/channels`,
+      { headers: { Authorization: `Bot ${botToken}` } },
+    );
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `Discord list channels failed (${res.status}): ${text || "request failed"}`.slice(
+          0,
+          400,
+        ),
+      );
+    }
+
+    const json = (await res.json()) as unknown;
+    const channels = Array.isArray(json) ? (json as any[]) : [];
+
+    return channels
+      .map((c) => ({
+        id: String(c?.id ?? ""),
+        name: String(c?.name ?? ""),
+        type: typeof c?.type === "number" ? c.type : -1,
+        parentId: typeof c?.parent_id === "string" ? c.parent_id : null,
+        position: typeof c?.position === "number" ? c.position : null,
+      }))
+      .filter((c) => c.id && c.name);
+  },
+});
+
+export const sendTestDiscordMessage = action({
+  args: {
+    organizationId: v.optional(v.string()),
+    guildId: v.string(),
+    channelId: v.string(),
+    content: v.string(),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    channelId: v.string(),
+    messageId: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, args) => {
+    await resolveViewerUserId(ctx);
+
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    const guildId = String(args.guildId ?? "").trim();
+    const channelId = String(args.channelId ?? "").trim();
+    const content = String(args.content ?? "").trim();
+    if (!guildId) throw new Error("Missing guildId");
+    if (!channelId) throw new Error("Missing channelId");
+    if (!content) throw new Error("Missing content");
+
+    const orgSecrets = (await ctx.runQuery(
+      discordOrgConfigInternalQueries.getOrgConfigSecrets,
+      { organizationId },
+    )) as
+      | {
+          enabled: boolean;
+          botMode: "global" | "custom";
+          customClientId?: string;
+          customClientSecretEncrypted?: string;
+          customBotTokenEncrypted?: string;
+          clientId?: string;
+          clientSecretEncrypted?: string;
+          botTokenEncrypted?: string;
+        }
+      | null;
+
+    if (!orgSecrets?.enabled) {
+      throw new Error("Discord is not enabled for this organization");
+    }
+
+    const secretsKey = process.env.DISCORD_SECRETS_KEY ?? "";
+    const globalClientId =
+      (process.env.DISCORD_GLOBAL_CLIENT_ID ??
+        process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID ??
+        "").trim();
+    const globalClientSecret = (process.env.DISCORD_GLOBAL_CLIENT_SECRET ?? "").trim();
+    const globalBotToken = (process.env.DISCORD_GLOBAL_BOT_TOKEN ?? "").trim();
+
+    const creds = await resolveDiscordCredentials({
+      botMode: orgSecrets.botMode === "custom" ? "custom" : "global",
+      secretsKey,
+      globalClientId,
+      globalClientSecret,
+      globalBotToken,
+      customClientId: orgSecrets.customClientId,
+      customClientSecretEncrypted: orgSecrets.customClientSecretEncrypted,
+      customBotTokenEncrypted: orgSecrets.customBotTokenEncrypted,
+      clientId: orgSecrets.clientId,
+      clientSecretEncrypted: orgSecrets.clientSecretEncrypted,
+      botTokenEncrypted: orgSecrets.botTokenEncrypted,
+    });
+
+    const botToken = String((creds as any)?.botToken ?? "").trim();
+    if (!botToken) throw new Error("Missing Discord bot token");
+
+    const res = await fetch(
+      `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ content }),
+      },
+    );
+
+    const text = await res.text().catch(() => "");
+    if (!res.ok) {
+      throw new Error(
+        `Discord send message failed (${res.status}): ${text || "request failed"}`.slice(
+          0,
+          400,
+        ),
+      );
+    }
+
+    let messageId: string | null = null;
+    try {
+      const json = JSON.parse(text) as { id?: unknown };
+      messageId = typeof json?.id === "string" ? json.id : null;
+    } catch {
+      // ignore
+    }
+
+    return { ok: true, channelId, messageId };
+  },
+});
+
 export const completeBotInstall = action({
   args: {
     state: v.string(),

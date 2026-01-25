@@ -85,13 +85,41 @@ export default defineSchema({
     .index("by_organizationId_and_guildId", ["organizationId", "guildId"])
     .index("by_guildId", ["guildId"]),
 
+  routingRuleSets: defineTable({
+    organizationId: v.string(),
+    guildId: v.string(),
+    kind: v.union(v.literal("trade_feed")),
+    matchStrategy: v.union(
+      v.literal("first_match"),
+      v.literal("multi_cast"),
+      v.literal("priority"),
+    ),
+    updatedAt: v.number(),
+  }).index("by_organizationId_and_guildId_and_kind", [
+    "organizationId",
+    "guildId",
+    "kind",
+  ]),
+
   routingRules: defineTable({
     organizationId: v.string(),
     guildId: v.optional(v.string()),
     kind: v.union(v.literal("trade_feed")),
-    channelKind: v.union(v.literal("mentors"), v.literal("members")),
+    // Legacy field (role-based routing). Kept optional for backwards compatibility.
+    channelKind: v.optional(
+      v.union(v.literal("mentors"), v.literal("members")),
+    ),
     channelId: v.string(),
     enabled: v.boolean(),
+    // New rule builder fields
+    order: v.optional(v.number()),
+    priority: v.optional(v.number()),
+    conditions: v.optional(
+      v.object({
+        actorRoles: v.optional(v.array(v.string())),
+        symbols: v.optional(v.array(v.string())),
+      }),
+    ),
     updatedAt: v.number(),
   })
     .index("by_organizationId", ["organizationId"])
@@ -107,6 +135,12 @@ export default defineSchema({
       "guildId",
       "kind",
       "channelKind",
+    ])
+    .index("by_organizationId_and_guildId_and_kind_and_order", [
+      "organizationId",
+      "guildId",
+      "kind",
+      "order",
     ])
     .index("by_organizationId_and_kind_and_channelKind", [
       "organizationId",
