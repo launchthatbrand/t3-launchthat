@@ -306,6 +306,22 @@ export type Mounts = {
           updatedAt: number;
         }
       >;
+      listSources: FunctionReference<
+        "query",
+        "public",
+        { limit?: number },
+        Array<{
+          baseUrlHost?: string;
+          createdAt: number;
+          environment: "demo" | "live";
+          isDefault?: boolean;
+          jwtHost?: string;
+          provider: "tradelocker";
+          server: string;
+          sourceKey: string;
+          updatedAt: number;
+        }>
+      >;
       upsertSource: FunctionReference<
         "mutation",
         "public",
@@ -377,6 +393,22 @@ export type Mounts = {
           sourceKey: string;
           updatedAt: number;
         }
+      >;
+      listSources: FunctionReference<
+        "query",
+        "public",
+        { limit?: number },
+        Array<{
+          baseUrlHost?: string;
+          createdAt: number;
+          environment: "demo" | "live";
+          isDefault?: boolean;
+          jwtHost?: string;
+          provider: "tradelocker";
+          server: string;
+          sourceKey: string;
+          updatedAt: number;
+        }>
       >;
     };
   };

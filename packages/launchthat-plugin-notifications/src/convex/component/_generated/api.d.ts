@@ -97,6 +97,12 @@ export type Mounts = {
       "public",
       { daysBack?: number; maxRows?: number },
       {
+        eventKeyMetrics: Array<{
+          ctrPct: number;
+          eventKey: string;
+          interactions: number;
+          sent: number;
+        }>;
         fromCreatedAt: number;
         interactions: {
           byChannelAndType: Array<{
@@ -109,10 +115,23 @@ export type Mounts = {
           uniqueNotifications: number;
           uniqueUsers: number;
         };
+        interactionsByChannelDaily: Array<{
+          date: string;
+          email: number;
+          inApp: number;
+          other: number;
+          push: number;
+        }>;
         sent: {
           byEventKey: Array<{ count: number; eventKey: string }>;
           notifications: number;
         };
+        timeSeriesDaily: Array<{
+          ctrPct: number;
+          date: string;
+          interactions: number;
+          sent: number;
+        }>;
       }
     >;
     getUnreadCountByUserIdAcrossOrgs: FunctionReference<

@@ -479,8 +479,16 @@ const tradeLockerInstrumentDetails = async (args: {
 };
 
 const extractInstrumentSymbol = (payload: any): string | undefined => {
-  const root =
-    payload?.d && typeof payload.d === "object" ? payload.d : payload;
+  const root = (() => {
+    // TradeLocker commonly wraps responses as { s: "ok", d: ... }.
+    // Sometimes `d` is an object, sometimes it's an array of rows.
+    const d = payload?.d;
+    if (Array.isArray(d)) return d[0];
+    if (d && typeof d === "object") return d;
+    const data = payload?.data;
+    if (Array.isArray(data)) return data[0];
+    return payload;
+  })();
   const candidates = [
     root?.symbol,
     root?.name,
@@ -490,6 +498,7 @@ const extractInstrumentSymbol = (payload: any): string | undefined => {
     root?.instrument,
     root?.tradableInstrument?.symbol,
     root?.tradableInstrument?.name,
+    root?.tradableInstrumentId, // last-resort: some payloads only include ID
   ];
   for (const candidate of candidates) {
     if (typeof candidate === "string" && candidate.trim()) {
@@ -555,8 +564,12 @@ const findInstrumentIdBySymbol = (
   payload: any,
   symbol: string,
 ): { instrumentId?: string; routeId?: number; raw?: any } => {
-  const root =
-    payload?.d && typeof payload.d === "object" ? payload.d : payload;
+  const root = (() => {
+    const d = payload?.d;
+    if (Array.isArray(d)) return d;
+    if (d && typeof d === "object") return d;
+    return payload;
+  })();
   const rows: any[] = Array.isArray(root)
     ? root
     : Array.isArray(root?.instruments)
@@ -615,8 +628,12 @@ const findRouteIdByInstrumentId = (
   payload: any,
   instrumentId: string,
 ): { routeId?: number; raw?: any } => {
-  const root =
-    payload?.d && typeof payload.d === "object" ? payload.d : payload;
+  const root = (() => {
+    const d = payload?.d;
+    if (Array.isArray(d)) return d;
+    if (d && typeof d === "object") return d;
+    return payload;
+  })();
   const rows: any[] = Array.isArray(root)
     ? root
     : Array.isArray(root?.instruments)
@@ -3330,6 +3347,22 @@ const normalizeExecutions = (payload: any): NormalizedExecution[] => {
       row?.createdDate;
     const executedAt = parseTimeLikeMs(executedAtRaw);
 
+    const symbolRaw = row?.symbol;
+    const symbolFromRow =
+      typeof symbolRaw === "string"
+        ? symbolRaw
+        : typeof symbolRaw === "number"
+          ? String(symbolRaw)
+          : typeof row?.instrumentSymbol === "string"
+            ? row.instrumentSymbol
+            : typeof row?.instrumentName === "string"
+              ? row.instrumentName
+              : typeof row?.instrument === "string"
+                ? row.instrument
+                : typeof row?.tradableInstrument?.symbol === "string"
+                  ? row.tradableInstrument.symbol
+                  : undefined;
+
     out.push({
       externalExecutionId,
       externalOrderId:
@@ -3350,7 +3383,10 @@ const normalizeExecutions = (payload: any): NormalizedExecution[] => {
               : row?.positionId || row?.posId || row?.tradeId
                 ? String(row.positionId ?? row.posId ?? row.tradeId)
                 : undefined,
-      symbol: typeof row?.symbol === "string" ? row.symbol : undefined,
+      symbol:
+        typeof symbolFromRow === "string" && symbolFromRow.trim()
+          ? symbolFromRow.trim()
+          : undefined,
       instrumentId:
         typeof row?.instrumentId === "string"
           ? row.instrumentId
@@ -3360,6 +3396,10 @@ const normalizeExecutions = (payload: any): NormalizedExecution[] => {
               ? row.tradableInstrumentId
               : typeof row?.tradableInstrumentId === "number"
                 ? String(row.tradableInstrumentId)
+                : typeof row?.tradableInstrument?.id === "string"
+                  ? row.tradableInstrument.id
+                  : typeof row?.tradableInstrument?.id === "number"
+                    ? String(row.tradableInstrument.id)
                 : undefined,
       side: normalizeSide(row?.side ?? row?.direction),
       executedAt,
@@ -4152,16 +4192,33 @@ export const syncTradeLockerConnection = action({
     }
 
     const positionIdsFromExecutions = new Set<string>();
+    const earliestExecutionAtByPositionId = new Map<string, number>();
     for (const e of executions) {
       const id = typeof e.externalPositionId === "string" ? e.externalPositionId.trim() : "";
       if (id) positionIdsFromExecutions.add(id);
+      if (id && typeof e.executedAt === "number") {
+        const prev = earliestExecutionAtByPositionId.get(id);
+        const next = Number(e.executedAt);
+        if (!Number.isFinite(next) || next <= 0) continue;
+        if (prev === undefined || next < prev) {
+          earliestExecutionAtByPositionId.set(id, next);
+        }
+      }
     }
 
     const allPositionIds = new Set<string>();
     for (const id of openPositionIds) allPositionIds.add(id);
     for (const id of positionIdsFromExecutions) allPositionIds.add(id);
 
-    for (const positionId of allPositionIds) {
+    const sortedPositionIds = Array.from(allPositionIds).sort((a, b) => {
+      const ta = earliestExecutionAtByPositionId.get(a) ?? Number.MAX_SAFE_INTEGER;
+      const tb = earliestExecutionAtByPositionId.get(b) ?? Number.MAX_SAFE_INTEGER;
+      const dt = ta - tb;
+      if (dt !== 0) return dt;
+      return a.localeCompare(b);
+    });
+
+    for (const positionId of sortedPositionIds) {
       try {
         const res = await ctx.runMutation(
           api.tradeIdeas.mutations.rebuildTradeIdeaForPosition as any,
@@ -4539,6 +4596,31 @@ export const syncTradeLockerConnection = action({
         status: "connected",
       },
     );
+
+    // Ensure thesis-level TradeIdeas exist and position groups are attached.
+    // Some UIs call this component action directly (not the app wrapper), so keep this idempotent
+    // backfill here as a safety net.
+    try {
+      const ideasBackfill = await ctx.runMutation(
+        api.tradeIdeas.ideas.backfillIdeasForUser as any,
+        {
+          organizationId: args.organizationId,
+          userId: args.userId,
+          scanCap: 2000,
+          limitAssigned: 2000,
+        },
+      );
+      console.log("[tradelocker.sync.ideas_backfill]", {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        ideasBackfill,
+      });
+    } catch (err) {
+      console.log(
+        "[tradelocker.sync.ideas_backfill_failed]",
+        String(err instanceof Error ? err.message : err),
+      );
+    }
 
     await log(ctx, {
       organizationId: args.organizationId,

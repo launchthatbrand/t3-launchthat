@@ -1,16 +1,10 @@
 "use client";
 
-import {
-  AlertCircle,
-  ArrowUpRight,
-  CheckCircle2,
-  Plus,
-} from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@acme/ui/card";
 import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
 import { useConvexAuth, useQuery } from "convex/react";
 
-import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
@@ -18,88 +12,24 @@ import Link from "next/link";
 import React from "react";
 import { api } from "@convex-config/_generated/api";
 import { cn } from "@acme/ui";
-import { useActiveAccount } from "~/components/accounts/ActiveAccountProvider";
 import { useDataMode } from "~/components/dataMode/DataModeProvider";
 import { useRouter } from "next/navigation";
-
-const MOCK_IDEAS = [
-  {
-    id: "mock-1",
-    symbol: "EURUSD",
-    type: "Long",
-    status: "Closed",
-    result: "win",
-    pnl: 450,
-    date: "Jan 15",
-    tags: ["Trend", "A+ Setup"],
-    reviewed: true,
-  },
-  {
-    id: "mock-2",
-    symbol: "NAS100",
-    type: "Short",
-    status: "Closed",
-    result: "loss",
-    pnl: -180,
-    date: "Jan 15",
-    tags: ["Scalp", "FOMC"],
-    reviewed: false,
-  },
-  {
-    id: "mock-3",
-    symbol: "BTCUSD",
-    type: "Long",
-    status: "Open",
-    result: "open",
-    pnl: 120,
-    date: "Jan 16",
-    tags: ["Breakout"],
-    reviewed: false,
-  },
-  {
-    id: "mock-4",
-    symbol: "XAUUSD",
-    type: "Short",
-    status: "Closed",
-    result: "loss",
-    pnl: -50,
-    date: "Jan 14",
-    tags: ["Reversal"],
-    reviewed: false,
-  },
-  {
-    id: "mock-5",
-    symbol: "US30",
-    type: "Long",
-    status: "Closed",
-    result: "win",
-    pnl: 890,
-    date: "Jan 12",
-    tags: ["Trend"],
-    reviewed: true,
-  },
-];
 
 interface TradeIdeaCardRow extends Record<string, unknown> {
   id: string;
   symbol: string;
-  type: "Long" | "Short";
-  status: "Open" | "Closed";
-  result: "win" | "loss" | "open";
+  bias: "long" | "short" | "neutral";
+  status: "active" | "closed";
+  positionsCount: number;
   pnl: number;
-  date: string;
-  tags: string[];
-  reviewed: boolean;
+  dateLabel: string;
 }
 
-interface LiveRecentClosedTradeIdeaRow {
-  tradeIdeaGroupId: string;
-  symbol: string;
-  direction: "long" | "short";
-  closedAt: number;
-  realizedPnl?: number;
-  reviewStatus: "todo" | "reviewed";
-}
+const MOCK_IDEAS: TradeIdeaCardRow[] = [
+  { id: "mock-1", symbol: "EURUSD", bias: "long", status: "closed", positionsCount: 2, pnl: 450, dateLabel: "Jan 15" },
+  { id: "mock-2", symbol: "NAS100", bias: "short", status: "closed", positionsCount: 3, pnl: -180, dateLabel: "Jan 15" },
+  { id: "mock-3", symbol: "BTCUSD", bias: "long", status: "active", positionsCount: 1, pnl: 120, dateLabel: "Jan 16" },
+];
 
 const toDateLabel = (tsMs: number): string => {
   const d = new Date(tsMs);
@@ -110,37 +40,38 @@ const toDateLabel = (tsMs: number): string => {
 export default function AdminTradeIdeasPage() {
   const router = useRouter();
   const dataMode = useDataMode();
-  const activeAccount = useActiveAccount();
   const isLive = dataMode.effectiveMode === "live";
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const shouldQuery = isAuthenticated && !authLoading;
 
-  const liveRecentClosed = useQuery(
-    api.traderlaunchpad.queries.listMyRecentClosedTradeIdeas,
-    shouldQuery && isLive
-      ? { limit: 200, accountId: activeAccount.selected?.accountId }
-      : "skip",
-  ) as LiveRecentClosedTradeIdeaRow[] | undefined;
+  const liveIdeas = useQuery(
+    api.traderlaunchpad.queries.listMyTradeIdeas,
+    shouldQuery && isLive ? { limit: 200 } : "skip",
+  ) as
+    | {
+        tradeIdeaId: string;
+        symbol: string;
+        bias: "long" | "short" | "neutral";
+        status: "active" | "closed";
+        lastActivityAt: number;
+        realizedPnl: number;
+        positionsCount: number;
+      }[]
+    | undefined;
 
   const ideas: TradeIdeaCardRow[] = React.useMemo(() => {
-    if (!isLive) return MOCK_IDEAS as TradeIdeaCardRow[];
-
-    const rows = Array.isArray(liveRecentClosed) ? liveRecentClosed : [];
-    return rows.map((r): TradeIdeaCardRow => {
-      const pnl = typeof r.realizedPnl === "number" ? r.realizedPnl : 0;
-      return {
-        id: r.tradeIdeaGroupId,
-        symbol: r.symbol,
-        type: r.direction === "short" ? "Short" : "Long",
-        status: "Closed",
-        result: pnl > 0 ? "win" : pnl < 0 ? "loss" : "open",
-        pnl,
-        date: toDateLabel(r.closedAt),
-        tags: [],
-        reviewed: r.reviewStatus === "reviewed",
-      };
-    });
-  }, [isLive, liveRecentClosed]);
+    if (!isLive) return MOCK_IDEAS;
+    const rows = Array.isArray(liveIdeas) ? liveIdeas : [];
+    return rows.map((r) => ({
+      id: r.tradeIdeaId,
+      symbol: r.symbol,
+      bias: r.bias,
+      status: r.status,
+      positionsCount: r.positionsCount,
+      pnl: r.realizedPnl,
+      dateLabel: toDateLabel(r.lastActivityAt),
+    }));
+  }, [isLive, liveIdeas]);
 
   const columns = React.useMemo<ColumnDefinition<TradeIdeaCardRow>[]>(
     () => [
@@ -151,36 +82,38 @@ export default function AdminTradeIdeasPage() {
         cell: (idea: TradeIdeaCardRow) => (
           <div className="space-y-1">
             <div className="text-sm font-semibold text-white">{idea.symbol}</div>
-            <div className="text-xs text-white/50">{idea.date}</div>
+            <div className="text-xs text-white/50">{idea.dateLabel}</div>
           </div>
         ),
         sortable: true,
       },
       {
-        id: "type",
-        header: "Type",
-        accessorKey: "type",
+        id: "bias",
+        header: "Bias",
+        accessorKey: "bias",
         cell: (idea: TradeIdeaCardRow) => (
           <Badge
             variant="outline"
             className={cn(
               "h-5 px-1.5 text-[10px]",
-              idea.type === "Long"
+              idea.bias === "long"
                 ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
-                : "border-red-500/20 bg-red-500/10 text-red-500",
+                : idea.bias === "short"
+                  ? "border-red-500/20 bg-red-500/10 text-red-500"
+                  : "border-white/10 bg-white/5 text-white/70",
             )}
           >
-            {idea.type}
+            {idea.bias === "long" ? "Long" : idea.bias === "short" ? "Short" : "Neutral"}
           </Badge>
         ),
         sortable: true,
       },
       {
-        id: "status",
-        header: "Status",
-        accessorKey: "status",
+        id: "positionsCount",
+        header: "Positions",
+        accessorKey: "positionsCount",
         cell: (idea: TradeIdeaCardRow) => (
-          <span className="text-sm text-white/80">{idea.status}</span>
+          <span className="text-sm text-white/80">{idea.positionsCount}</span>
         ),
         sortable: true,
       },
@@ -200,21 +133,18 @@ export default function AdminTradeIdeasPage() {
             )}
           >
             {idea.pnl > 0 ? "+" : ""}
-            {idea.pnl}
+            {idea.pnl.toFixed(2)}
           </span>
         ),
         sortable: true,
       },
       {
-        id: "reviewed",
-        header: "Review",
-        accessorKey: "reviewed",
-        cell: (idea: TradeIdeaCardRow) =>
-          idea.reviewed ? (
-            <span className="text-sm text-emerald-200">Reviewed</span>
-          ) : (
-            <span className="text-sm text-orange-200">Needs review</span>
-          ),
+        id: "status",
+        header: "Status",
+        accessorKey: "status",
+        cell: (idea: TradeIdeaCardRow) => (
+          <span className="text-sm text-white/80">{idea.status === "active" ? "Active" : "Closed"}</span>
+        ),
         sortable: true,
       },
     ],
@@ -227,8 +157,8 @@ export default function AdminTradeIdeasPage() {
         id: "open",
         label: "Open",
         variant: "outline",
-        onClick: (idea: TradeIdeaCardRow) => {
-          router.push(`/admin/tradeidea/${encodeURIComponent(idea.id)}`);
+        onClick: (idea) => {
+          router.push(`/admin/tradeideas/${encodeURIComponent(idea.id)}`);
         },
       },
     ],
@@ -237,12 +167,11 @@ export default function AdminTradeIdeasPage() {
 
   return (
     <div className="relative animate-in fade-in space-y-8 text-white selection:bg-orange-500/30 duration-500">
-      {/* Header */}
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Trade Ideas</h1>
           <p className="mt-1 text-white/60">
-            Manage your setups and review your execution.
+            Thesis ideas (shareable) that group multiple positions/trades.
           </p>
         </div>
       </div>
@@ -255,38 +184,27 @@ export default function AdminTradeIdeasPage() {
         gridColumns={{ sm: 1, md: 2, lg: 3, xl: 4 }}
         enableSearch={true}
         title="Ideas"
-        description={isLive ? "Live data (closed ideas)" : "Mock data"}
-        actions={
-          <div className="flex items-center gap-2">
-            <ActiveAccountSelector />
-          </div>
-        }
-        onRowClick={(idea) => {
-          router.push(`/admin/tradeidea/${encodeURIComponent(idea.id)}`);
+        description={isLive ? "Live data (thesis ideas)" : "Mock data"}
+        actions={<div />}
+        onRowClick={(idea: TradeIdeaCardRow) => {
+          router.push(`/admin/tradeideas/${encodeURIComponent(idea.id)}`);
         }}
         entityActions={entityActions}
-        getRowId={(idea) => idea.id}
+        getRowId={(idea: TradeIdeaCardRow) => idea.id}
         emptyState={
           <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-white/15 bg-white/3 p-8 text-white/60">
             <div className="text-lg font-medium text-white">No trade ideas</div>
             <div className="mt-1 text-sm text-white/60">
-              Create your first idea to start tracking setups.
+              Sync trades or create an idea to get started.
             </div>
           </div>
         }
-        itemRender={(idea) => (
-          <Card
-            className="group relative overflow-hidden transition-colors hover:border-white/20 hover:bg-white/5"
-          >
-            {/* Status Stripe */}
+        itemRender={(idea: TradeIdeaCardRow) => (
+          <Card className="group relative overflow-hidden transition-colors hover:border-white/20 hover:bg-white/5">
             <div
               className={cn(
                 "absolute top-0 left-0 h-full w-1",
-                idea.result === "win"
-                  ? "bg-emerald-500"
-                  : idea.result === "loss"
-                    ? "bg-red-500"
-                    : "bg-blue-500",
+                idea.pnl > 0 ? "bg-emerald-500" : idea.pnl < 0 ? "bg-red-500" : "bg-blue-500",
               )}
             />
 
@@ -299,17 +217,17 @@ export default function AdminTradeIdeasPage() {
                       variant="outline"
                       className={cn(
                         "h-5 px-1.5 text-[10px]",
-                        idea.type === "Long"
+                        idea.bias === "long"
                           ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
-                          : "border-red-500/20 bg-red-500/10 text-red-500",
+                          : idea.bias === "short"
+                            ? "border-red-500/20 bg-red-500/10 text-red-500"
+                            : "border-white/10 bg-white/5 text-white/70",
                       )}
                     >
-                      {idea.type}
+                      {idea.bias === "long" ? "Long" : idea.bias === "short" ? "Short" : "Neutral"}
                     </Badge>
                   </div>
-                  <div className="text-muted-foreground mt-1 text-xs">
-                    {idea.date}
-                  </div>
+                  <div className="mt-1 text-xs text-white/50">{idea.dateLabel}</div>
                 </div>
               </div>
             </CardHeader>
@@ -317,50 +235,37 @@ export default function AdminTradeIdeasPage() {
             <CardContent className="pb-3 pl-6">
               <div className="flex items-end justify-between">
                 <div className="flex flex-col">
-                  <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+                  <span className="text-xs font-semibold tracking-wider text-white/50 uppercase">
                     Net P&L
                   </span>
                   <span
                     className={cn(
                       "text-xl font-bold",
-                      idea.pnl > 0
-                        ? "text-emerald-500"
-                        : idea.pnl < 0
-                          ? "text-red-500"
-                          : "text-muted-foreground",
+                      idea.pnl > 0 ? "text-emerald-500" : idea.pnl < 0 ? "text-red-500" : "text-white/60",
                     )}
                   >
-                    {idea.pnl > 0 ? "+" : ""}${idea.pnl}
+                    {idea.pnl > 0 ? "+" : ""}
+                    {idea.pnl.toFixed(2)}
                   </span>
                 </div>
-                {idea.status === "Open" && (
-                  <Badge className="animate-pulse bg-orange-500/20 text-orange-200 hover:bg-orange-500/30 border border-orange-500/25">
-                    Live
+                {idea.status === "active" ? (
+                  <Badge className="animate-pulse border border-orange-500/25 bg-orange-500/20 text-orange-200 hover:bg-orange-500/30">
+                    Active
                   </Badge>
-                )}
+                ) : null}
+              </div>
+              <div className="mt-3 text-xs text-white/50">
+                {idea.positionsCount} position{idea.positionsCount === 1 ? "" : "s"}
               </div>
             </CardContent>
 
             <CardFooter className="flex items-center justify-between border-t border-white/10 bg-black/20 pt-3 pb-3 pl-6">
-              {idea.reviewed ? (
-                <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-200">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  Reviewed
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 text-xs font-medium text-orange-200">
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  Needs Review
-                </div>
-              )}
+              <div className="text-xs font-medium text-white/60">
+                {idea.status === "active" ? "Active thesis" : "Closed thesis"}
+              </div>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto h-7 text-xs hover:bg-white/10"
-                asChild
-              >
-                <Link href={`/admin/tradeidea/${idea.id}`}>
+              <Button variant="ghost" size="sm" className="ml-auto h-7 text-xs hover:bg-white/10" asChild>
+                <Link href={`/admin/tradeideas/${idea.id}`}>
                   Open <ArrowUpRight className="ml-1 h-3 w-3" />
                 </Link>
               </Button>

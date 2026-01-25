@@ -2,6 +2,29 @@ import { v } from "convex/values";
 
 import { mutation } from "../server";
 
+const randomToken = (): string => {
+  // Convex runtime: no Node crypto; use Math.random + time.
+  const a = Math.random().toString(36).slice(2);
+  const b = Math.random().toString(36).slice(2);
+  return `${Date.now().toString(36)}_${a}${b}`.slice(0, 40);
+};
+
+const getEffectiveTradeIdeasDefaultVisibility = async (
+  ctx: any,
+  organizationId: string,
+  userId: string,
+): Promise<"private" | "public"> => {
+  const row = await ctx.db
+    .query("visibilitySettings")
+    .withIndex("by_org_user", (q: any) => q.eq("organizationId", organizationId).eq("userId", userId))
+    .unique();
+
+  const globalPublic = typeof row?.globalPublic === "boolean" ? row.globalPublic : false;
+  const tradeIdeasPublic = typeof row?.tradeIdeasPublic === "boolean" ? row.tradeIdeasPublic : false;
+  const effectivePublic = globalPublic ? true : tradeIdeasPublic;
+  return effectivePublic ? "public" : "private";
+};
+
 export const upsertTradeIdeaGroup = mutation({
   args: {
     organizationId: v.string(),
@@ -392,13 +415,32 @@ export const rebuildTradeIdeaForPosition = mutation({
     const first = sorted[0]!;
     const firstSide = first.side as "buy" | "sell" | undefined;
     const direction: "long" | "short" = firstSide === "sell" ? "short" : "long";
-    const symbol = typeof first.symbol === "string" && first.symbol.trim()
-      ? first.symbol.trim()
-      : "UNKNOWN";
     const instrumentId =
       typeof first.instrumentId === "string" && first.instrumentId.trim()
         ? first.instrumentId.trim()
         : undefined;
+    const symbolFromFirstRaw =
+      typeof (first as any)?.raw?.symbol === "string"
+        ? String((first as any).raw.symbol)
+        : typeof (first as any)?.raw?.instrumentSymbol === "string"
+          ? String((first as any).raw.instrumentSymbol)
+          : typeof (first as any)?.raw?.instrumentName === "string"
+            ? String((first as any).raw.instrumentName)
+            : typeof (first as any)?.raw?.instrument === "string"
+              ? String((first as any).raw.instrument)
+              : typeof (first as any)?.raw?.tradableInstrument?.symbol === "string"
+                ? String((first as any).raw.tradableInstrument.symbol)
+                : undefined;
+
+    const symbolCandidate =
+      (typeof first.symbol === "string" ? first.symbol : "") ||
+      (typeof symbolFromFirstRaw === "string" ? symbolFromFirstRaw : "");
+    const symbolNormalized = symbolCandidate.trim().toUpperCase();
+    const symbol = symbolNormalized && symbolNormalized !== "UNKNOWN"
+      ? symbolNormalized
+      : instrumentId?.trim()
+        ? instrumentId.trim()
+        : "UNKNOWN";
 
     const signedQty = (e: any): number => {
       const qty = typeof e.qty === "number" ? e.qty : 0;
@@ -555,6 +597,147 @@ export const rebuildTradeIdeaForPosition = mutation({
         createdAt: Date.now(),
       });
       executionsLinked++;
+    }
+
+    // Auto-assign this position group to a thesis-level TradeIdea (shareable) using an auto-gap rule.
+    // This keeps the position-level grouping (tradeIdeaGroups) stable while providing a higher-level “idea”.
+    const now = Date.now();
+    try {
+      const group = await ctx.db.get(groupId);
+      if (group) {
+        const settings = await ctx.db
+          .query("tradeIdeaSettings")
+          .withIndex("by_org_user", (q: any) =>
+            q
+              .eq("organizationId", args.organizationId)
+              .eq("userId", args.userId),
+          )
+          .unique();
+
+        const groupingWindowMs =
+          typeof settings?.groupingWindowMs === "number" && settings.groupingWindowMs > 0
+            ? settings.groupingWindowMs
+            : 6 * 60 * 60 * 1000; // default: 6h
+        const splitOnDirectionFlip =
+          typeof settings?.splitOnDirectionFlip === "boolean"
+            ? settings.splitOnDirectionFlip
+            : true;
+        const defaultTimeframe =
+          typeof settings?.defaultTimeframe === "string" && settings.defaultTimeframe.trim()
+            ? settings.defaultTimeframe.trim()
+            : "custom";
+
+        const symbol = String((group as any).symbol ?? "").trim().toUpperCase();
+        const instrumentId =
+          typeof (group as any).instrumentId === "string" ? String((group as any).instrumentId) : undefined;
+        const direction = (group as any).direction === "short" ? ("short" as const) : ("long" as const);
+        const openedAtMs = typeof (group as any).openedAt === "number" ? Number((group as any).openedAt) : now;
+        const lastActivityAtMs =
+          typeof (group as any).closedAt === "number"
+            ? Number((group as any).closedAt)
+            : typeof (group as any).lastExecutionAt === "number"
+              ? Number((group as any).lastExecutionAt)
+              : openedAtMs;
+
+        if (symbol) {
+          const existingIdeaId =
+            typeof (group as any).tradeIdeaId === "string" ? String((group as any).tradeIdeaId) : "";
+
+          // If already assigned, keep it and just bump lastActivityAt.
+          if (existingIdeaId) {
+            const existingIdea = await ctx.db.get(existingIdeaId as any);
+            const existingLastStarted =
+              typeof (existingIdea as any)?.lastStartedAt === "number"
+                ? Number((existingIdea as any).lastStartedAt)
+                : typeof (existingIdea as any)?.openedAt === "number"
+                  ? Number((existingIdea as any).openedAt)
+                  : 0;
+            const existingLastActivity =
+              typeof (existingIdea as any)?.lastActivityAt === "number"
+                ? Number((existingIdea as any).lastActivityAt)
+                : 0;
+            await ctx.db.patch(existingIdeaId as any, {
+              lastStartedAt: Math.max(existingLastStarted, openedAtMs),
+              lastActivityAt: Math.max(existingLastActivity, lastActivityAtMs),
+              updatedAt: now,
+            });
+          } else {
+            const candidates = await ctx.db
+              .query("tradeIdeas")
+              .withIndex("by_org_user_symbol_status_lastActivityAt", (q: any) =>
+                q
+                  .eq("organizationId", args.organizationId)
+                  .eq("userId", args.userId)
+                  .eq("symbol", symbol)
+                  .eq("status", "active"),
+              )
+              .order("desc")
+              .take(20);
+
+            const match = candidates.find((idea: any) => {
+              const ideaLastStarted =
+                typeof idea?.lastStartedAt === "number"
+                  ? idea.lastStartedAt
+                  : typeof idea?.openedAt === "number"
+                    ? idea.openedAt
+                    : 0;
+              const gap = openedAtMs - ideaLastStarted;
+              if (gap > groupingWindowMs) return false;
+              if (!splitOnDirectionFlip) return true;
+              const bias = String(idea?.bias ?? "");
+              return bias === direction;
+            });
+
+            const tradeIdeaId = match
+              ? match._id
+              : await (async () => {
+                  const defaultVisibility = await getEffectiveTradeIdeasDefaultVisibility(
+                    ctx,
+                    args.organizationId,
+                    args.userId,
+                  );
+                  const shareToken =
+                    defaultVisibility !== "private" ? randomToken() : undefined;
+                  return await ctx.db.insert("tradeIdeas", {
+                    organizationId: args.organizationId,
+                    userId: args.userId,
+                    symbol,
+                    instrumentId,
+                    bias: direction,
+                    timeframe: defaultTimeframe,
+                    visibility: defaultVisibility,
+                    shareToken,
+                    shareEnabledAt: shareToken ? now : undefined,
+                    status: "active",
+                    openedAt: openedAtMs,
+                    lastStartedAt: openedAtMs,
+                    lastActivityAt: lastActivityAtMs,
+                    createdAt: now,
+                    updatedAt: now,
+                  });
+                })();
+
+            if (match) {
+              await ctx.db.patch(tradeIdeaId, {
+                lastStartedAt: Math.max(
+                  Number((match as any)?.lastStartedAt ?? (match as any)?.openedAt ?? 0),
+                  openedAtMs,
+                ),
+                lastActivityAt: Math.max(match.lastActivityAt ?? 0, lastActivityAtMs),
+                updatedAt: now,
+              });
+            }
+
+            await ctx.db.patch(groupId, {
+              tradeIdeaId,
+              ideaAssignedAt: now,
+              updatedAt: now,
+            });
+          }
+        }
+      }
+    } catch {
+      // Non-fatal: trade idea grouping should never break trade sync.
     }
 
     return { tradeIdeaGroupId: groupId, executionsLinked };

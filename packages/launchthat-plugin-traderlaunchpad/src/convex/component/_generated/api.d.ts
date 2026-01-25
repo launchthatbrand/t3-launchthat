@@ -21,18 +21,22 @@ import type * as index from "../index.js";
 import type * as journal_index from "../journal/index.js";
 import type * as journal_mutations from "../journal/mutations.js";
 import type * as journal_queries from "../journal/queries.js";
+import type * as publicOrders from "../publicOrders.js";
 import type * as raw_index from "../raw/index.js";
 import type * as raw_mutations from "../raw/mutations.js";
 import type * as raw_queries from "../raw/queries.js";
 import type * as server from "../server.js";
+import type * as sharing from "../sharing.js";
 import type * as sync from "../sync.js";
 import type * as tradeIdeas_analytics from "../tradeIdeas/analytics.js";
+import type * as tradeIdeas_ideas from "../tradeIdeas/ideas.js";
 import type * as tradeIdeas_index from "../tradeIdeas/index.js";
 import type * as tradeIdeas_internalQueries from "../tradeIdeas/internalQueries.js";
 import type * as tradeIdeas_mutations from "../tradeIdeas/mutations.js";
 import type * as tradeIdeas_notes from "../tradeIdeas/notes.js";
 import type * as tradeIdeas_queries from "../tradeIdeas/queries.js";
 import type * as tradingPlans_index from "../tradingPlans/index.js";
+import type * as visibility from "../visibility.js";
 
 import type {
   ApiFromModules,
@@ -62,18 +66,22 @@ declare const fullApi: ApiFromModules<{
   "journal/index": typeof journal_index;
   "journal/mutations": typeof journal_mutations;
   "journal/queries": typeof journal_queries;
+  publicOrders: typeof publicOrders;
   "raw/index": typeof raw_index;
   "raw/mutations": typeof raw_mutations;
   "raw/queries": typeof raw_queries;
   server: typeof server;
+  sharing: typeof sharing;
   sync: typeof sync;
   "tradeIdeas/analytics": typeof tradeIdeas_analytics;
+  "tradeIdeas/ideas": typeof tradeIdeas_ideas;
   "tradeIdeas/index": typeof tradeIdeas_index;
   "tradeIdeas/internalQueries": typeof tradeIdeas_internalQueries;
   "tradeIdeas/mutations": typeof tradeIdeas_mutations;
   "tradeIdeas/notes": typeof tradeIdeas_notes;
   "tradeIdeas/queries": typeof tradeIdeas_queries;
   "tradingPlans/index": typeof tradingPlans_index;
+  visibility: typeof visibility;
 }>;
 export type Mounts = {
   analytics: {
@@ -182,6 +190,17 @@ export type Mounts = {
           visibility: "private" | "link";
         } | null
       >;
+      getOnboardingSignalsForUserIds: FunctionReference<
+        "query",
+        "public",
+        { maxRows?: number; userIds: Array<string> },
+        {
+          connectedAtByUserId: Record<string, number>;
+          connectedIsTruncated: boolean;
+          syncedAtByUserId: Record<string, number>;
+          syncedIsTruncated: boolean;
+        }
+      >;
       getSharedAnalyticsReport: FunctionReference<
         "query",
         "public",
@@ -257,6 +276,15 @@ export type Mounts = {
             weekdays?: Array<number>;
           };
         } | null
+      >;
+      getUserOnboardingFunnelCounts: FunctionReference<
+        "query",
+        "public",
+        { maxScan?: number },
+        {
+          connected: { isTruncated: boolean; users: number };
+          synced: { isTruncated: boolean; users: number };
+        }
       >;
       listMyAnalyticsReports: FunctionReference<
         "query",
@@ -620,8 +648,38 @@ export type Mounts = {
       >;
     };
   };
+  publicOrders: {
+    listPublicOrdersForUser: FunctionReference<
+      "query",
+      "public",
+      { limit?: number; organizationId: string; userId: string },
+      Array<{
+        closedAt: number | null;
+        createdAt: number | null;
+        externalOrderId: string;
+        side: "buy" | "sell" | null;
+        status: string | null;
+        symbol: string;
+      }>
+    >;
+  };
   raw: {
     mutations: {
+      backfillSymbolsForUser: FunctionReference<
+        "mutation",
+        "public",
+        {
+          instrumentSymbols: Array<{ instrumentId: string; symbol: string }>;
+          organizationId: string;
+          perInstrumentCap?: number;
+          userId: string;
+        },
+        {
+          executionsPatched: number;
+          instrumentsReceived: number;
+          tradeIdeaGroupsPatched: number;
+        }
+      >;
       upsertTradeAccountState: FunctionReference<
         "mutation",
         "public",
@@ -925,6 +983,17 @@ export type Mounts = {
           userId: string;
         }>
       >;
+      listInstrumentIdsMissingExecutionSymbols: FunctionReference<
+        "query",
+        "public",
+        {
+          limit?: number;
+          organizationId: string;
+          scanCap?: number;
+          userId: string;
+        },
+        Array<string>
+      >;
       listOrdersForUser: FunctionReference<
         "query",
         "public",
@@ -1041,6 +1110,34 @@ export type Mounts = {
         }>
       >;
     };
+  };
+  sharing: {
+    getMyShareVisibilitySettings: FunctionReference<
+      "query",
+      "public",
+      { organizationId: string; userId: string },
+      {
+        globalEnabled: boolean;
+        ordersEnabled: boolean;
+        positionsEnabled: boolean;
+        profileEnabled: boolean;
+        tradeIdeasEnabled: boolean;
+      }
+    >;
+    upsertMyShareVisibilitySettings: FunctionReference<
+      "mutation",
+      "public",
+      {
+        globalEnabled: boolean;
+        ordersEnabled: boolean;
+        organizationId: string;
+        positionsEnabled: boolean;
+        profileEnabled: boolean;
+        tradeIdeasEnabled: boolean;
+        userId: string;
+      },
+      null
+    >;
   };
   sync: {
     getInstrumentDetails: FunctionReference<
@@ -1486,6 +1583,287 @@ export type Mounts = {
         }>
       >;
     };
+    ideas: {
+      backfillIdeasForUser: FunctionReference<
+        "mutation",
+        "public",
+        {
+          limitAssigned?: number;
+          organizationId: string;
+          scanCap?: number;
+          userId: string;
+        },
+        { assigned: number; createdIdeas: number; scanned: number }
+      >;
+      createTradeIdea: FunctionReference<
+        "mutation",
+        "public",
+        {
+          bias: "long" | "short" | "neutral";
+          instrumentId?: string;
+          organizationId: string;
+          symbol: string;
+          tags?: Array<string>;
+          thesis?: string;
+          timeframe?: string;
+          timeframeLabel?: string;
+          userId: string;
+        },
+        { tradeIdeaId: string }
+      >;
+      debugExplainTradeIdeaGroupingForUser: FunctionReference<
+        "query",
+        "public",
+        { organizationId: string; scanCap?: number; userId: string },
+        {
+          decisions: Array<{
+            derivedLastActivityAt: number;
+            direction: "long" | "short";
+            matchedIdeaId_byLastActivity?: string;
+            matchedIdeaId_byOpenedAt?: string;
+            note: string;
+            openedAt: number;
+            symbol: string;
+            tradeIdeaGroupId: string;
+          }>;
+          groups: Array<{
+            closedAt?: number;
+            direction: "long" | "short";
+            instrumentId?: string;
+            lastExecutionAt?: number;
+            openedAt: number;
+            positionId: string;
+            status: "open" | "closed";
+            symbol: string;
+            tradeIdeaGroupId: string;
+            tradeIdeaId?: string;
+          }>;
+          ideas: Array<{
+            bias: "long" | "short" | "neutral";
+            lastActivityAt: number;
+            openedAt: number;
+            status: "active" | "closed";
+            symbol: string;
+            tradeIdeaId: string;
+            updatedAt: number;
+          }>;
+          settings: {
+            defaultTimeframe: string;
+            groupingWindowMs: number;
+            splitOnDirectionFlip: boolean;
+          };
+        }
+      >;
+      debugListRecentTradeIdeaPairs: FunctionReference<
+        "query",
+        "public",
+        { limit?: number },
+        Array<{
+          groups: number;
+          ideas: number;
+          organizationId: string;
+          userId: string;
+        }>
+      >;
+      getMyTradeIdeaDetail: FunctionReference<
+        "query",
+        "public",
+        {
+          organizationId: string;
+          positionsLimit?: number;
+          tradeIdeaId: string;
+          userId: string;
+        },
+        null | {
+          bias: "long" | "short" | "neutral";
+          expiresAt?: number;
+          instrumentId?: string;
+          lastActivityAt: number;
+          openedAt: number;
+          positions: Array<{
+            closedAt?: number;
+            direction: "long" | "short";
+            fees?: number;
+            instrumentId?: string;
+            netQty: number;
+            openedAt: number;
+            realizedPnl?: number;
+            status: "open" | "closed";
+            symbol: string;
+            tradeIdeaGroupId: string;
+          }>;
+          shareEnabledAt?: number;
+          shareToken?: string;
+          status: "active" | "closed";
+          symbol: string;
+          tags?: Array<string>;
+          thesis?: string;
+          timeframe: string;
+          timeframeLabel?: string;
+          tradeIdeaId: string;
+          visibility: "private" | "link" | "public";
+        }
+      >;
+      getMyTradeIdeaSettings: FunctionReference<
+        "query",
+        "public",
+        { organizationId: string; userId: string },
+        {
+          defaultTimeframe: string;
+          groupingWindowMs: number;
+          splitOnDirectionFlip: boolean;
+        }
+      >;
+      getPublicTradeIdeaById: FunctionReference<
+        "query",
+        "public",
+        {
+          code?: string;
+          expectedUserId: string;
+          organizationId: string;
+          tradeIdeaId: string;
+        },
+        null | {
+          bias: "long" | "short" | "neutral";
+          expiresAt?: number;
+          instrumentId?: string;
+          lastActivityAt: number;
+          openedAt: number;
+          organizationId: string;
+          positions: Array<{
+            closedAt?: number;
+            direction: "long" | "short";
+            fees?: number;
+            instrumentId?: string;
+            netQty: number;
+            openedAt: number;
+            realizedPnl?: number;
+            status: "open" | "closed";
+            symbol: string;
+            tradeIdeaGroupId: string;
+          }>;
+          shareToken?: string;
+          status: "active" | "closed";
+          symbol: string;
+          tags?: Array<string>;
+          thesis?: string;
+          timeframe: string;
+          timeframeLabel?: string;
+          tradeIdeaId: string;
+          userId: string;
+          visibility: "private" | "link" | "public";
+        }
+      >;
+      getSharedTradeIdeaByToken: FunctionReference<
+        "query",
+        "public",
+        { shareToken: string },
+        null | {
+          bias: "long" | "short" | "neutral";
+          instrumentId?: string;
+          lastActivityAt: number;
+          openedAt: number;
+          organizationId: string;
+          positions: Array<{
+            closedAt?: number;
+            direction: "long" | "short";
+            fees?: number;
+            instrumentId?: string;
+            netQty: number;
+            openedAt: number;
+            realizedPnl?: number;
+            status: "open" | "closed";
+            symbol: string;
+            tradeIdeaGroupId: string;
+          }>;
+          status: "active" | "closed";
+          symbol: string;
+          tags?: Array<string>;
+          thesis?: string;
+          timeframe: string;
+          timeframeLabel?: string;
+          tradeIdeaId: string;
+          userId: string;
+          visibility: "private" | "link" | "public";
+        }
+      >;
+      listMyTradeIdeas: FunctionReference<
+        "query",
+        "public",
+        { limit?: number; organizationId: string; userId: string },
+        Array<{
+          bias: "long" | "short" | "neutral";
+          instrumentId?: string;
+          lastActivityAt: number;
+          openedAt: number;
+          positionsCount: number;
+          realizedPnl: number;
+          status: "active" | "closed";
+          symbol: string;
+          tags?: Array<string>;
+          thesis?: string;
+          timeframe: string;
+          timeframeLabel?: string;
+          tradeIdeaId: string;
+          updatedAt: number;
+          visibility: "private" | "link" | "public";
+        }>
+      >;
+      listPublicTradeIdeasForUser: FunctionReference<
+        "query",
+        "public",
+        { expectedUserId: string; limit?: number; organizationId: string },
+        Array<{
+          bias: "long" | "short" | "neutral";
+          lastActivityAt: number;
+          openedAt: number;
+          status: "active" | "closed";
+          symbol: string;
+          timeframe: string;
+          timeframeLabel?: string;
+          tradeIdeaId: string;
+        }>
+      >;
+      reconcileIdeasForUser: FunctionReference<
+        "mutation",
+        "public",
+        { organizationId: string; scanCap?: number; userId: string },
+        {
+          groupsReassigned: number;
+          ideasDeleted: number;
+          ideasPatched: number;
+          ideasScanned: number;
+        }
+      >;
+      setTradeIdeaSharing: FunctionReference<
+        "mutation",
+        "public",
+        {
+          expiresAt?: number;
+          organizationId: string;
+          tradeIdeaId: string;
+          userId: string;
+          visibility: "private" | "link" | "public";
+        },
+        {
+          ok: boolean;
+          shareToken?: string;
+          visibility: "private" | "link" | "public";
+        }
+      >;
+      upsertMyTradeIdeaSettings: FunctionReference<
+        "mutation",
+        "public",
+        {
+          defaultTimeframe?: string;
+          groupingWindowMs: number;
+          organizationId: string;
+          splitOnDirectionFlip: boolean;
+          userId: string;
+        },
+        null
+      >;
+    };
     internalQueries: {
       getGroupIdByPositionId: FunctionReference<
         "query",
@@ -1516,6 +1894,7 @@ export type Mounts = {
           discordLastSyncedAt?: number;
           discordMessageId?: string;
           fees?: number;
+          ideaAssignedAt?: number;
           instrumentId?: string;
           lastExecutionAt?: number;
           lastProcessedExecutionId?: string;
@@ -1526,6 +1905,7 @@ export type Mounts = {
           realizedPnl?: number;
           status: "open" | "closed";
           symbol: string;
+          tradeIdeaId?: string;
           updatedAt: number;
           userId: string;
         } | null
@@ -1548,6 +1928,7 @@ export type Mounts = {
           discordLastSyncedAt?: number;
           discordMessageId?: string;
           fees?: number;
+          ideaAssignedAt?: number;
           instrumentId?: string;
           lastExecutionAt?: number;
           lastProcessedExecutionId?: string;
@@ -1558,6 +1939,7 @@ export type Mounts = {
           realizedPnl?: number;
           status: "open" | "closed";
           symbol: string;
+          tradeIdeaId?: string;
           updatedAt: number;
           userId: string;
         } | null
@@ -1749,6 +2131,7 @@ export type Mounts = {
           discordLastSyncedAt?: number;
           discordMessageId?: string;
           fees?: number;
+          ideaAssignedAt?: number;
           instrumentId?: string;
           lastExecutionAt?: number;
           lastProcessedExecutionId?: string;
@@ -1761,6 +2144,7 @@ export type Mounts = {
           symbol: string;
           tags?: Array<string>;
           thesis?: string;
+          tradeIdeaId?: string;
           updatedAt: number;
           userId: string;
         } | null
@@ -1798,6 +2182,7 @@ export type Mounts = {
             discordLastSyncedAt?: number;
             discordMessageId?: string;
             fees?: number;
+            ideaAssignedAt?: number;
             instrumentId?: string;
             lastExecutionAt?: number;
             lastProcessedExecutionId?: string;
@@ -1810,6 +2195,7 @@ export type Mounts = {
             symbol: string;
             tags?: Array<string>;
             thesis?: string;
+            tradeIdeaId?: string;
             updatedAt: number;
             userId: string;
           }>;
@@ -1861,6 +2247,7 @@ export type Mounts = {
           discordLastSyncedAt?: number;
           discordMessageId?: string;
           fees?: number;
+          ideaAssignedAt?: number;
           instrumentId?: string;
           lastExecutionAt?: number;
           lastProcessedExecutionId?: string;
@@ -1873,6 +2260,7 @@ export type Mounts = {
           symbol: string;
           tags?: Array<string>;
           thesis?: string;
+          tradeIdeaId?: string;
           updatedAt: number;
           userId: string;
         }>
@@ -2153,6 +2541,36 @@ export type Mounts = {
         null
       >;
     };
+  };
+  visibility: {
+    getMyVisibilitySettings: FunctionReference<
+      "query",
+      "public",
+      { organizationId: string; userId: string },
+      {
+        analyticsReportsPublic: boolean;
+        globalPublic: boolean;
+        ordersPublic: boolean;
+        positionsPublic: boolean;
+        profilePublic: boolean;
+        tradeIdeasPublic: boolean;
+      }
+    >;
+    upsertMyVisibilitySettings: FunctionReference<
+      "mutation",
+      "public",
+      {
+        analyticsReportsPublic: boolean;
+        globalPublic: boolean;
+        ordersPublic: boolean;
+        organizationId: string;
+        positionsPublic: boolean;
+        profilePublic: boolean;
+        tradeIdeasPublic: boolean;
+        userId: string;
+      },
+      null
+    >;
   };
 };
 // For now fullApiWithMounts is only fullApi which provides

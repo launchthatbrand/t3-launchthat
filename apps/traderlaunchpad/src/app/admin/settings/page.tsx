@@ -1,6 +1,14 @@
 import { redirect } from "next/navigation";
 
-const allowedTabs = new Set(["account", "connections", "notifications", "billing", "organizations"]);
+const allowedTabs = new Set([
+  "account",
+  "connections",
+  "journal",
+  "visibility",
+  "notifications",
+  "billing",
+  "organizations",
+]);
 
 export default async function AdminSettingsPage(props: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;

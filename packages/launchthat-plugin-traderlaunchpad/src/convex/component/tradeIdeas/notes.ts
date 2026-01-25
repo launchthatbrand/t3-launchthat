@@ -218,12 +218,21 @@ export const listNextToReview = query({
         note?.reviewStatus === "reviewed" ? "reviewed" : "todo";
       if (reviewStatus === "reviewed") continue;
 
+      const symbolRaw = typeof (ti as any).symbol === "string" ? String((ti as any).symbol) : "";
+      const instrumentIdRaw =
+        typeof (ti as any).instrumentId === "string" ? String((ti as any).instrumentId) : "";
+      const symbolNormalized = symbolRaw.trim().toUpperCase();
+      const symbol =
+        (symbolNormalized && symbolNormalized !== "UNKNOWN" ? symbolNormalized : "") ||
+        instrumentIdRaw.trim() ||
+        "UNKNOWN";
+
       out.push({
         tradeIdeaGroupId: ti._id,
-        symbol: String((ti as any).symbol ?? "UNKNOWN"),
+        symbol,
         instrumentId:
-          typeof (ti as any).instrumentId === "string"
-            ? String((ti as any).instrumentId)
+          instrumentIdRaw.trim()
+            ? instrumentIdRaw.trim()
             : undefined,
         direction: (ti as any).direction === "short" ? "short" : "long",
         closedAt,
@@ -324,12 +333,21 @@ export const listRecentClosedWithReviewStatus = query({
       const reviewStatus: "todo" | "reviewed" =
         note?.reviewStatus === "reviewed" ? "reviewed" : "todo";
 
+      const symbolRaw = typeof (ti as any).symbol === "string" ? String((ti as any).symbol) : "";
+      const instrumentIdRaw =
+        typeof (ti as any).instrumentId === "string" ? String((ti as any).instrumentId) : "";
+      const symbolNormalized = symbolRaw.trim().toUpperCase();
+      const symbol =
+        (symbolNormalized && symbolNormalized !== "UNKNOWN" ? symbolNormalized : "") ||
+        instrumentIdRaw.trim() ||
+        "UNKNOWN";
+
       out.push({
         tradeIdeaGroupId: ti._id,
-        symbol: String((ti as any).symbol ?? "UNKNOWN"),
+        symbol,
         instrumentId:
-          typeof (ti as any).instrumentId === "string"
-            ? String((ti as any).instrumentId)
+          instrumentIdRaw.trim()
+            ? instrumentIdRaw.trim()
             : undefined,
         direction: (ti as any).direction === "short" ? "short" : "long",
         closedAt,

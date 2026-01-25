@@ -254,6 +254,28 @@ export default function AdminAnalyticsPage() {
   const createShortlink = useMutation(api.shortlinks.mutations.createShortlink);
   const [shareUrl, setShareUrl] = React.useState<string>("");
 
+  const visibilityDefaults = useQuery(
+    api.traderlaunchpad.queries.getMyVisibilitySettings,
+    shouldQuery ? {} : "skip",
+  ) as
+    | {
+        globalPublic: boolean;
+        analyticsReportsPublic: boolean;
+      }
+    | undefined;
+
+  React.useEffect(() => {
+    // If user prefers reports "public", default new saves to shareable-by-link.
+    // We only auto-upgrade private -> link; never force link -> private.
+    const effectiveReportsPublic = visibilityDefaults
+      ? visibilityDefaults.globalPublic
+        ? true
+        : Boolean(visibilityDefaults.analyticsReportsPublic)
+      : false;
+    if (!effectiveReportsPublic) return;
+    setSaveVisibility((v) => (v === "private" ? "link" : v));
+  }, [visibilityDefaults?.analyticsReportsPublic, visibilityDefaults?.globalPublic]);
+
   React.useEffect(() => {
     let cancelled = false;
 

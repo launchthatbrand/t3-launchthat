@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { usePathname } from "next/navigation";
 import { useHostContext } from "~/context/HostContext";
 import { useTenant } from "~/context/TenantContext";
 import { useClerk, useSession } from "@clerk/nextjs";
@@ -9,11 +10,11 @@ import { LogOut, Settings, User } from "lucide-react";
 import { isPlatformHost } from "~/lib/host-mode";
 
 import { Button } from "@acme/ui/button";
+import { Switch } from "@acme/ui/switch";
 import { useDataMode } from "~/components/dataMode/DataModeProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -42,6 +43,8 @@ function TraderLaunchpadNavUserClerk(props: { afterSignOutUrl?: string }) {
   const { session } = useSession();
   const { signOut } = useClerk();
   const dataMode = useDataMode();
+  const pathname = usePathname();
+  const isPlatformMode = pathname.startsWith("/platform");
 
   if (!session) {
     return (
@@ -51,7 +54,10 @@ function TraderLaunchpadNavUserClerk(props: { afterSignOutUrl?: string }) {
         className="text-gray-200 hover:bg-white/10 hover:text-white"
         onClick={() => {
           if (typeof window === "undefined") return;
-          const returnTo = window.location.href;
+          const returnTo =
+            window.location.pathname === "/"
+              ? `${window.location.origin}/admin/dashboard`
+              : window.location.href;
           const params = new URLSearchParams({ return_to: returnTo });
           window.location.assign(
             `${window.location.protocol}//${authHost}/sign-in?${params.toString()}`,
@@ -122,14 +128,32 @@ function TraderLaunchpadNavUserClerk(props: { afterSignOutUrl?: string }) {
         {dataMode.isSignedIn && dataMode.isAdmin ? (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuCheckboxItem
-              checked={dataMode.dataMode === "demo"}
-              onCheckedChange={(checked) => {
-                void dataMode.setDataMode(checked ? "demo" : "live");
-              }}
-            >
-              Use demo/mock data
-            </DropdownMenuCheckboxItem>
+            <div className="flex items-center justify-between gap-3 px-2 py-1.5">
+              <div className="text-sm">Use demo/mock data</div>
+              <Switch
+                checked={dataMode.dataMode === "demo"}
+                onCheckedChange={(checked) => {
+                  void dataMode.setDataMode(checked ? "demo" : "live");
+                }}
+                aria-label="Toggle demo/mock data"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 px-2 py-1.5">
+              <div className="text-sm">Mode</div>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground text-xs">Admin</span>
+                <Switch
+                  checked={isPlatformMode}
+                  onCheckedChange={(checked) => {
+                    if (typeof window === "undefined") return;
+                    window.location.assign(checked ? "/platform" : "/admin");
+                  }}
+                  aria-label="Toggle admin vs platform mode"
+                />
+                <span className="text-muted-foreground text-xs">Platform</span>
+              </div>
+            </div>
           </>
         ) : null}
         <DropdownMenuSeparator />
@@ -165,6 +189,8 @@ function TraderLaunchpadNavUserTenant() {
   const { authHost } = useHostContext();
   const tenant = useTenant();
   const dataMode = useDataMode();
+  const pathname = usePathname();
+  const isPlatformMode = pathname.startsWith("/platform");
 
   const [me, setMe] = React.useState<TenantMeResponse | null>(null);
   const [isMeLoading, setIsMeLoading] = React.useState(true);
@@ -254,7 +280,10 @@ function TraderLaunchpadNavUserTenant() {
       typeof (tenant as { slug?: unknown } | null)?.slug === "string"
         ? (tenant as { slug: string }).slug
         : "";
-    const returnTo = window.location.href;
+    const returnTo =
+      window.location.pathname === "/"
+        ? `${window.location.origin}/admin/dashboard`
+        : window.location.href;
     const params = new URLSearchParams({
       return_to: returnTo,
       ...(tenantSlug ? { tenant: tenantSlug } : {}),
@@ -379,14 +408,32 @@ function TraderLaunchpadNavUserTenant() {
         {dataMode.isSignedIn && dataMode.isAdmin ? (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuCheckboxItem
-              checked={dataMode.dataMode === "demo"}
-              onCheckedChange={(checked) => {
-                void dataMode.setDataMode(checked ? "demo" : "live");
-              }}
-            >
-              Use demo/mock data
-            </DropdownMenuCheckboxItem>
+            <div className="flex items-center justify-between gap-3 px-2 py-1.5">
+              <div className="text-sm">Use demo/mock data</div>
+              <Switch
+                checked={dataMode.dataMode === "demo"}
+                onCheckedChange={(checked) => {
+                  void dataMode.setDataMode(checked ? "demo" : "live");
+                }}
+                aria-label="Toggle demo/mock data"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 px-2 py-1.5">
+              <div className="text-sm">Mode</div>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground text-xs">Admin</span>
+                <Switch
+                  checked={isPlatformMode}
+                  onCheckedChange={(checked) => {
+                    if (typeof window === "undefined") return;
+                    window.location.assign(checked ? "/platform" : "/admin");
+                  }}
+                  aria-label="Toggle admin vs platform mode"
+                />
+                <span className="text-muted-foreground text-xs">Platform</span>
+              </div>
+            </div>
           </>
         ) : null}
 

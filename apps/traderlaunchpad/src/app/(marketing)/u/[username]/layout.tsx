@@ -26,13 +26,11 @@ export default async function PublicUserLayout({
 
   return (
     <div className="relative min-h-screen text-white selection:bg-orange-500/30">
-      <main className="relative z-10">
-        <section className="container mx-auto max-w-7xl px-4">
-          <UserPublicProfileShell username={canonical || decoded.toLowerCase().trim()}>
-            {children}
-          </UserPublicProfileShell>
-        </section>
-      </main>
+
+      <UserPublicProfileShell username={canonical || decoded.toLowerCase().trim()}>
+        {children}
+      </UserPublicProfileShell>
+
     </div>
   );
 }

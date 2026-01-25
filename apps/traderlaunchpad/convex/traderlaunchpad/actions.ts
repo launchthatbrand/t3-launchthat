@@ -501,7 +501,163 @@ export const syncMyTradeLockerNow = action({
       },
     );
 
-    return { ok: true, result };
+    // Post-sync: ensure thesis-level TradeIdeas exist by (re)backfilling assignment.
+    // This is idempotent and guarantees `/admin/tradeideas` has rows even if inline assignment
+    // inside the rebuild mutation fails for any reason.
+    let ideasBackfill: any = null;
+    try {
+      ideasBackfill = await ctx.runMutation(
+        componentsUntyped.launchthat_traderlaunchpad.tradeIdeas.ideas.backfillIdeasForUser as any,
+        { organizationId, userId, scanCap: 2000, limitAssigned: 2000 },
+      );
+    } catch (err) {
+      console.log("[syncMyTradeLockerNow] ideas backfill skipped/failed", String(err));
+    }
+
+    // Post-sync: backfill symbols using pricedata mapping (tradableInstrumentId -> symbol).
+    // TradeLocker executions often omit `symbol`, but we already have a full mapping in `priceInstruments`.
+    try {
+      // Prefer sourceKey derived from the user's active TradeLocker connection (matches the data we just synced).
+      // Fall back to pricedata's default source if needed.
+      const connection = await ctx.runQuery(traderlaunchpadConnectionsQueries.getMyConnection, {
+        organizationId,
+        userId,
+      });
+      const environment =
+        connection?.environment === "live" ? ("live" as const) : ("demo" as const);
+      const jwtHost =
+        typeof connection?.jwtHost === "string" && connection.jwtHost.trim()
+          ? connection.jwtHost.trim()
+          : undefined;
+      const baseUrlHost = jwtHost ?? `${environment}.tradelocker.com`;
+      const server =
+        typeof connection?.server === "string" && connection.server.trim()
+          ? connection.server.trim()
+          : "unknown";
+      const connectionSourceKey = `tradelocker:${environment}:${baseUrlHost}:${server}`
+        .toLowerCase()
+        .trim();
+
+      const defaultSource = await ctx.runQuery(
+        componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
+        {},
+      );
+      const defaultSourceKey =
+        typeof defaultSource?.sourceKey === "string" ? String(defaultSource.sourceKey) : "";
+
+      const sourceKey = connectionSourceKey || defaultSourceKey;
+      if (sourceKey) {
+        const missingInstrumentIds = await ctx.runQuery(
+          componentsUntyped.launchthat_traderlaunchpad.raw.queries
+            .listInstrumentIdsMissingExecutionSymbols,
+          { organizationId, userId, limit: 200, scanCap: 2000 },
+        );
+        const ids = Array.isArray(missingInstrumentIds) ? missingInstrumentIds : [];
+        if (ids.length > 0) {
+          // First attempt: map using the derived sourceKey.
+          const mappedPrimary = await ctx.runQuery(
+            componentsUntyped.launchthat_pricedata.instruments.queries
+              .listInstrumentsByTradableInstrumentIds,
+            { sourceKey, tradableInstrumentIds: ids },
+          );
+
+          let instrumentSymbols = Array.isArray(mappedPrimary)
+            ? mappedPrimary
+                .map((r: any) => ({
+                  instrumentId:
+                    typeof r?.tradableInstrumentId === "string"
+                      ? String(r.tradableInstrumentId)
+                      : "",
+                  symbol: typeof r?.symbol === "string" ? String(r.symbol) : "",
+                }))
+                .filter((r) => r.instrumentId && r.symbol)
+            : [];
+
+          // Fallback: if the derived key isn't populated, try the pricedata default key too.
+          if (instrumentSymbols.length === 0 && defaultSourceKey && defaultSourceKey !== sourceKey) {
+            const mappedFallback = await ctx.runQuery(
+              componentsUntyped.launchthat_pricedata.instruments.queries
+                .listInstrumentsByTradableInstrumentIds,
+              { sourceKey: defaultSourceKey, tradableInstrumentIds: ids },
+            );
+            instrumentSymbols = Array.isArray(mappedFallback)
+              ? mappedFallback
+                  .map((r: any) => ({
+                    instrumentId:
+                      typeof r?.tradableInstrumentId === "string"
+                        ? String(r.tradableInstrumentId)
+                        : "",
+                    symbol: typeof r?.symbol === "string" ? String(r.symbol) : "",
+                  }))
+                  .filter((r) => r.instrumentId && r.symbol)
+              : [];
+          }
+
+          // Final fallback: if we still have no mappings, try other known sources (any env/server).
+          if (instrumentSymbols.length === 0) {
+            const sources = await ctx.runQuery(
+              componentsUntyped.launchthat_pricedata.sources.queries.listSources,
+              { limit: 25 },
+            );
+            const sourceKeys = Array.isArray(sources)
+              ? sources
+                  .map((s: any) => (typeof s?.sourceKey === "string" ? String(s.sourceKey) : ""))
+                  .filter(Boolean)
+              : [];
+            for (const k of sourceKeys) {
+              if (k === sourceKey || k === defaultSourceKey) continue;
+              const mappedAny = await ctx.runQuery(
+                componentsUntyped.launchthat_pricedata.instruments.queries
+                  .listInstrumentsByTradableInstrumentIds,
+                { sourceKey: k, tradableInstrumentIds: ids },
+              );
+              const next = Array.isArray(mappedAny)
+                ? mappedAny
+                    .map((r: any) => ({
+                      instrumentId:
+                        typeof r?.tradableInstrumentId === "string"
+                          ? String(r.tradableInstrumentId)
+                          : "",
+                      symbol: typeof r?.symbol === "string" ? String(r.symbol) : "",
+                    }))
+                    .filter((r) => r.instrumentId && r.symbol)
+                : [];
+              if (next.length > 0) {
+                instrumentSymbols = next;
+                break;
+              }
+            }
+          }
+
+          const backfill = await ctx.runMutation(
+            componentsUntyped.launchthat_traderlaunchpad.raw.mutations
+              .backfillSymbolsForUser,
+            { organizationId, userId, instrumentSymbols, perInstrumentCap: 500 },
+          );
+
+          return {
+            ok: true,
+            result: {
+              ...result,
+              ideasBackfill,
+              symbolBackfill: {
+                connectionSourceKey,
+                defaultSourceKey,
+                chosenSourceKey: sourceKey,
+                ids: ids.length,
+                mapped: instrumentSymbols.length,
+                backfill,
+              },
+            },
+          };
+        }
+      }
+    } catch (err) {
+      // Non-fatal: sync result should still return even if backfill fails.
+      console.log("[syncMyTradeLockerNow] symbol backfill skipped/failed", String(err));
+    }
+
+    return { ok: true, result: { ...result, ideasBackfill } };
   },
 });
 

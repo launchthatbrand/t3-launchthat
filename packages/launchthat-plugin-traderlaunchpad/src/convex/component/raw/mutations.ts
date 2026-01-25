@@ -137,6 +137,91 @@ export const upsertTradeExecution = mutation({
   },
 });
 
+export const backfillSymbolsForUser = mutation({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    instrumentSymbols: v.array(
+      v.object({
+        instrumentId: v.string(),
+        symbol: v.string(),
+      }),
+    ),
+    perInstrumentCap: v.optional(v.number()),
+  },
+  returns: v.object({
+    instrumentsReceived: v.number(),
+    executionsPatched: v.number(),
+    tradeIdeaGroupsPatched: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const perInstrumentCap = Math.max(1, Math.min(2000, args.perInstrumentCap ?? 500));
+
+    const map = new Map<string, string>();
+    for (const row of args.instrumentSymbols) {
+      const instrumentId = row.instrumentId.trim();
+      const symbol = row.symbol.trim().toUpperCase();
+      if (!instrumentId || !symbol) continue;
+      map.set(instrumentId, symbol);
+    }
+
+    let executionsPatched = 0;
+    let tradeIdeaGroupsPatched = 0;
+
+    for (const [instrumentId, symbol] of map) {
+      // Patch executions missing a symbol.
+      const execs = await ctx.db
+        .query("tradeExecutions")
+        .withIndex("by_org_user_instrumentId_executedAt", (q: any) =>
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("userId", args.userId)
+            .eq("instrumentId", instrumentId),
+        )
+        .order("desc")
+        .take(perInstrumentCap);
+
+      for (const e of execs) {
+        const existing =
+          typeof (e as any).symbol === "string" ? String((e as any).symbol).trim() : "";
+        if (existing) continue;
+        await ctx.db.patch(e._id, { symbol });
+        executionsPatched += 1;
+      }
+
+      // Patch trade idea groups that were created with UNKNOWN/missing symbol.
+      const groups = await ctx.db
+        .query("tradeIdeaGroups")
+        .withIndex("by_org_user_instrumentId_openedAt", (q: any) =>
+          q
+            .eq("organizationId", args.organizationId)
+            .eq("userId", args.userId)
+            .eq("instrumentId", instrumentId),
+        )
+        .order("desc")
+        .take(perInstrumentCap);
+
+      for (const g of groups) {
+        const existing =
+          typeof (g as any).symbol === "string" ? String((g as any).symbol).trim() : "";
+        const existingUpper = existing.toUpperCase();
+        const isUnknown = !existingUpper || existingUpper === "UNKNOWN";
+        const isJustInstrumentId = existing === instrumentId;
+        const isNumericOnly = /^\d+$/.test(existing);
+        if (!isUnknown && !isJustInstrumentId && !isNumericOnly) continue;
+        await ctx.db.patch(g._id, { symbol });
+        tradeIdeaGroupsPatched += 1;
+      }
+    }
+
+    return {
+      instrumentsReceived: map.size,
+      executionsPatched,
+      tradeIdeaGroupsPatched,
+    };
+  },
+});
+
 export const upsertTradeOrderHistory = mutation({
   args: {
     organizationId: v.string(),

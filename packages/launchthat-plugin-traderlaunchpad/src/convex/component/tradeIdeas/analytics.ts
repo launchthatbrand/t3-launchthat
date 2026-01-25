@@ -28,6 +28,8 @@ const tradeIdeaView = v.object({
   fees: v.optional(v.number()),
   lastExecutionAt: v.optional(v.number()),
   lastProcessedExecutionId: v.optional(v.string()),
+  tradeIdeaId: v.optional(v.id("tradeIdeas")),
+  ideaAssignedAt: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
 });

@@ -27,6 +27,7 @@ import type * as notifications_queries from "../notifications/queries.js";
 import type * as notifications_test from "../notifications/test.js";
 import type * as onboarding_mutations from "../onboarding/mutations.js";
 import type * as onboarding_queries from "../onboarding/queries.js";
+import type * as platform_queries from "../platform/queries.js";
 import type * as publicProfiles_types from "../publicProfiles/types.js";
 import type * as publicProfiles from "../publicProfiles.js";
 import type * as pushSubscriptions_actions from "../pushSubscriptions/actions.js";
@@ -36,8 +37,10 @@ import type * as pushSubscriptions_queries from "../pushSubscriptions/queries.js
 import type * as shortlinks_mutations from "../shortlinks/mutations.js";
 import type * as shortlinks_queries from "../shortlinks/queries.js";
 import type * as traderlaunchpad_actions from "../traderlaunchpad/actions.js";
+import type * as traderlaunchpad_debug from "../traderlaunchpad/debug.js";
 import type * as traderlaunchpad_lib_resolve from "../traderlaunchpad/lib/resolve.js";
 import type * as traderlaunchpad_mutations from "../traderlaunchpad/mutations.js";
+import type * as traderlaunchpad_public from "../traderlaunchpad/public.js";
 import type * as traderlaunchpad_queries from "../traderlaunchpad/queries.js";
 import type * as traderlaunchpad_types from "../traderlaunchpad/types.js";
 import type * as userMedia from "../userMedia.js";
@@ -78,6 +81,7 @@ declare const fullApi: ApiFromModules<{
   "notifications/test": typeof notifications_test;
   "onboarding/mutations": typeof onboarding_mutations;
   "onboarding/queries": typeof onboarding_queries;
+  "platform/queries": typeof platform_queries;
   "publicProfiles/types": typeof publicProfiles_types;
   publicProfiles: typeof publicProfiles;
   "pushSubscriptions/actions": typeof pushSubscriptions_actions;
@@ -87,8 +91,10 @@ declare const fullApi: ApiFromModules<{
   "shortlinks/mutations": typeof shortlinks_mutations;
   "shortlinks/queries": typeof shortlinks_queries;
   "traderlaunchpad/actions": typeof traderlaunchpad_actions;
+  "traderlaunchpad/debug": typeof traderlaunchpad_debug;
   "traderlaunchpad/lib/resolve": typeof traderlaunchpad_lib_resolve;
   "traderlaunchpad/mutations": typeof traderlaunchpad_mutations;
+  "traderlaunchpad/public": typeof traderlaunchpad_public;
   "traderlaunchpad/queries": typeof traderlaunchpad_queries;
   "traderlaunchpad/types": typeof traderlaunchpad_types;
   userMedia: typeof userMedia;
@@ -529,6 +535,12 @@ export declare const components: {
         "internal",
         { daysBack?: number; maxRows?: number },
         {
+          eventKeyMetrics: Array<{
+            ctrPct: number;
+            eventKey: string;
+            interactions: number;
+            sent: number;
+          }>;
           fromCreatedAt: number;
           interactions: {
             byChannelAndType: Array<{
@@ -541,10 +553,23 @@ export declare const components: {
             uniqueNotifications: number;
             uniqueUsers: number;
           };
+          interactionsByChannelDaily: Array<{
+            date: string;
+            email: number;
+            inApp: number;
+            other: number;
+            push: number;
+          }>;
           sent: {
             byEventKey: Array<{ count: number; eventKey: string }>;
             notifications: number;
           };
+          timeSeriesDaily: Array<{
+            ctrPct: number;
+            date: string;
+            interactions: number;
+            sent: number;
+          }>;
         }
       >;
       getUnreadCountByUserIdAcrossOrgs: FunctionReference<
@@ -917,6 +942,17 @@ export declare const components: {
             visibility: "private" | "link";
           } | null
         >;
+        getOnboardingSignalsForUserIds: FunctionReference<
+          "query",
+          "internal",
+          { maxRows?: number; userIds: Array<string> },
+          {
+            connectedAtByUserId: Record<string, number>;
+            connectedIsTruncated: boolean;
+            syncedAtByUserId: Record<string, number>;
+            syncedIsTruncated: boolean;
+          }
+        >;
         getSharedAnalyticsReport: FunctionReference<
           "query",
           "internal",
@@ -992,6 +1028,15 @@ export declare const components: {
               weekdays?: Array<number>;
             };
           } | null
+        >;
+        getUserOnboardingFunnelCounts: FunctionReference<
+          "query",
+          "internal",
+          { maxScan?: number },
+          {
+            connected: { isTruncated: boolean; users: number };
+            synced: { isTruncated: boolean; users: number };
+          }
         >;
         listMyAnalyticsReports: FunctionReference<
           "query",
@@ -1363,8 +1408,38 @@ export declare const components: {
         >;
       };
     };
+    publicOrders: {
+      listPublicOrdersForUser: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; organizationId: string; userId: string },
+        Array<{
+          closedAt: number | null;
+          createdAt: number | null;
+          externalOrderId: string;
+          side: "buy" | "sell" | null;
+          status: string | null;
+          symbol: string;
+        }>
+      >;
+    };
     raw: {
       mutations: {
+        backfillSymbolsForUser: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            instrumentSymbols: Array<{ instrumentId: string; symbol: string }>;
+            organizationId: string;
+            perInstrumentCap?: number;
+            userId: string;
+          },
+          {
+            executionsPatched: number;
+            instrumentsReceived: number;
+            tradeIdeaGroupsPatched: number;
+          }
+        >;
         upsertTradeAccountState: FunctionReference<
           "mutation",
           "internal",
@@ -1668,6 +1743,17 @@ export declare const components: {
             userId: string;
           }>
         >;
+        listInstrumentIdsMissingExecutionSymbols: FunctionReference<
+          "query",
+          "internal",
+          {
+            limit?: number;
+            organizationId: string;
+            scanCap?: number;
+            userId: string;
+          },
+          Array<string>
+        >;
         listOrdersForUser: FunctionReference<
           "query",
           "internal",
@@ -1784,6 +1870,34 @@ export declare const components: {
           }>
         >;
       };
+    };
+    sharing: {
+      getMyShareVisibilitySettings: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string; userId: string },
+        {
+          globalEnabled: boolean;
+          ordersEnabled: boolean;
+          positionsEnabled: boolean;
+          profileEnabled: boolean;
+          tradeIdeasEnabled: boolean;
+        }
+      >;
+      upsertMyShareVisibilitySettings: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          globalEnabled: boolean;
+          ordersEnabled: boolean;
+          organizationId: string;
+          positionsEnabled: boolean;
+          profileEnabled: boolean;
+          tradeIdeasEnabled: boolean;
+          userId: string;
+        },
+        null
+      >;
     };
     sync: {
       getInstrumentDetails: FunctionReference<
@@ -2229,6 +2343,287 @@ export declare const components: {
           }>
         >;
       };
+      ideas: {
+        backfillIdeasForUser: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            limitAssigned?: number;
+            organizationId: string;
+            scanCap?: number;
+            userId: string;
+          },
+          { assigned: number; createdIdeas: number; scanned: number }
+        >;
+        createTradeIdea: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            bias: "long" | "short" | "neutral";
+            instrumentId?: string;
+            organizationId: string;
+            symbol: string;
+            tags?: Array<string>;
+            thesis?: string;
+            timeframe?: string;
+            timeframeLabel?: string;
+            userId: string;
+          },
+          { tradeIdeaId: string }
+        >;
+        debugExplainTradeIdeaGroupingForUser: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; scanCap?: number; userId: string },
+          {
+            decisions: Array<{
+              derivedLastActivityAt: number;
+              direction: "long" | "short";
+              matchedIdeaId_byLastActivity?: string;
+              matchedIdeaId_byOpenedAt?: string;
+              note: string;
+              openedAt: number;
+              symbol: string;
+              tradeIdeaGroupId: string;
+            }>;
+            groups: Array<{
+              closedAt?: number;
+              direction: "long" | "short";
+              instrumentId?: string;
+              lastExecutionAt?: number;
+              openedAt: number;
+              positionId: string;
+              status: "open" | "closed";
+              symbol: string;
+              tradeIdeaGroupId: string;
+              tradeIdeaId?: string;
+            }>;
+            ideas: Array<{
+              bias: "long" | "short" | "neutral";
+              lastActivityAt: number;
+              openedAt: number;
+              status: "active" | "closed";
+              symbol: string;
+              tradeIdeaId: string;
+              updatedAt: number;
+            }>;
+            settings: {
+              defaultTimeframe: string;
+              groupingWindowMs: number;
+              splitOnDirectionFlip: boolean;
+            };
+          }
+        >;
+        debugListRecentTradeIdeaPairs: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number },
+          Array<{
+            groups: number;
+            ideas: number;
+            organizationId: string;
+            userId: string;
+          }>
+        >;
+        getMyTradeIdeaDetail: FunctionReference<
+          "query",
+          "internal",
+          {
+            organizationId: string;
+            positionsLimit?: number;
+            tradeIdeaId: string;
+            userId: string;
+          },
+          null | {
+            bias: "long" | "short" | "neutral";
+            expiresAt?: number;
+            instrumentId?: string;
+            lastActivityAt: number;
+            openedAt: number;
+            positions: Array<{
+              closedAt?: number;
+              direction: "long" | "short";
+              fees?: number;
+              instrumentId?: string;
+              netQty: number;
+              openedAt: number;
+              realizedPnl?: number;
+              status: "open" | "closed";
+              symbol: string;
+              tradeIdeaGroupId: string;
+            }>;
+            shareEnabledAt?: number;
+            shareToken?: string;
+            status: "active" | "closed";
+            symbol: string;
+            tags?: Array<string>;
+            thesis?: string;
+            timeframe: string;
+            timeframeLabel?: string;
+            tradeIdeaId: string;
+            visibility: "private" | "link" | "public";
+          }
+        >;
+        getMyTradeIdeaSettings: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; userId: string },
+          {
+            defaultTimeframe: string;
+            groupingWindowMs: number;
+            splitOnDirectionFlip: boolean;
+          }
+        >;
+        getPublicTradeIdeaById: FunctionReference<
+          "query",
+          "internal",
+          {
+            code?: string;
+            expectedUserId: string;
+            organizationId: string;
+            tradeIdeaId: string;
+          },
+          null | {
+            bias: "long" | "short" | "neutral";
+            expiresAt?: number;
+            instrumentId?: string;
+            lastActivityAt: number;
+            openedAt: number;
+            organizationId: string;
+            positions: Array<{
+              closedAt?: number;
+              direction: "long" | "short";
+              fees?: number;
+              instrumentId?: string;
+              netQty: number;
+              openedAt: number;
+              realizedPnl?: number;
+              status: "open" | "closed";
+              symbol: string;
+              tradeIdeaGroupId: string;
+            }>;
+            shareToken?: string;
+            status: "active" | "closed";
+            symbol: string;
+            tags?: Array<string>;
+            thesis?: string;
+            timeframe: string;
+            timeframeLabel?: string;
+            tradeIdeaId: string;
+            userId: string;
+            visibility: "private" | "link" | "public";
+          }
+        >;
+        getSharedTradeIdeaByToken: FunctionReference<
+          "query",
+          "internal",
+          { shareToken: string },
+          null | {
+            bias: "long" | "short" | "neutral";
+            instrumentId?: string;
+            lastActivityAt: number;
+            openedAt: number;
+            organizationId: string;
+            positions: Array<{
+              closedAt?: number;
+              direction: "long" | "short";
+              fees?: number;
+              instrumentId?: string;
+              netQty: number;
+              openedAt: number;
+              realizedPnl?: number;
+              status: "open" | "closed";
+              symbol: string;
+              tradeIdeaGroupId: string;
+            }>;
+            status: "active" | "closed";
+            symbol: string;
+            tags?: Array<string>;
+            thesis?: string;
+            timeframe: string;
+            timeframeLabel?: string;
+            tradeIdeaId: string;
+            userId: string;
+            visibility: "private" | "link" | "public";
+          }
+        >;
+        listMyTradeIdeas: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; organizationId: string; userId: string },
+          Array<{
+            bias: "long" | "short" | "neutral";
+            instrumentId?: string;
+            lastActivityAt: number;
+            openedAt: number;
+            positionsCount: number;
+            realizedPnl: number;
+            status: "active" | "closed";
+            symbol: string;
+            tags?: Array<string>;
+            thesis?: string;
+            timeframe: string;
+            timeframeLabel?: string;
+            tradeIdeaId: string;
+            updatedAt: number;
+            visibility: "private" | "link" | "public";
+          }>
+        >;
+        listPublicTradeIdeasForUser: FunctionReference<
+          "query",
+          "internal",
+          { expectedUserId: string; limit?: number; organizationId: string },
+          Array<{
+            bias: "long" | "short" | "neutral";
+            lastActivityAt: number;
+            openedAt: number;
+            status: "active" | "closed";
+            symbol: string;
+            timeframe: string;
+            timeframeLabel?: string;
+            tradeIdeaId: string;
+          }>
+        >;
+        reconcileIdeasForUser: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; scanCap?: number; userId: string },
+          {
+            groupsReassigned: number;
+            ideasDeleted: number;
+            ideasPatched: number;
+            ideasScanned: number;
+          }
+        >;
+        setTradeIdeaSharing: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            expiresAt?: number;
+            organizationId: string;
+            tradeIdeaId: string;
+            userId: string;
+            visibility: "private" | "link" | "public";
+          },
+          {
+            ok: boolean;
+            shareToken?: string;
+            visibility: "private" | "link" | "public";
+          }
+        >;
+        upsertMyTradeIdeaSettings: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            defaultTimeframe?: string;
+            groupingWindowMs: number;
+            organizationId: string;
+            splitOnDirectionFlip: boolean;
+            userId: string;
+          },
+          null
+        >;
+      };
       internalQueries: {
         getGroupIdByPositionId: FunctionReference<
           "query",
@@ -2259,6 +2654,7 @@ export declare const components: {
             discordLastSyncedAt?: number;
             discordMessageId?: string;
             fees?: number;
+            ideaAssignedAt?: number;
             instrumentId?: string;
             lastExecutionAt?: number;
             lastProcessedExecutionId?: string;
@@ -2269,6 +2665,7 @@ export declare const components: {
             realizedPnl?: number;
             status: "open" | "closed";
             symbol: string;
+            tradeIdeaId?: string;
             updatedAt: number;
             userId: string;
           } | null
@@ -2291,6 +2688,7 @@ export declare const components: {
             discordLastSyncedAt?: number;
             discordMessageId?: string;
             fees?: number;
+            ideaAssignedAt?: number;
             instrumentId?: string;
             lastExecutionAt?: number;
             lastProcessedExecutionId?: string;
@@ -2301,6 +2699,7 @@ export declare const components: {
             realizedPnl?: number;
             status: "open" | "closed";
             symbol: string;
+            tradeIdeaId?: string;
             updatedAt: number;
             userId: string;
           } | null
@@ -2492,6 +2891,7 @@ export declare const components: {
             discordLastSyncedAt?: number;
             discordMessageId?: string;
             fees?: number;
+            ideaAssignedAt?: number;
             instrumentId?: string;
             lastExecutionAt?: number;
             lastProcessedExecutionId?: string;
@@ -2504,6 +2904,7 @@ export declare const components: {
             symbol: string;
             tags?: Array<string>;
             thesis?: string;
+            tradeIdeaId?: string;
             updatedAt: number;
             userId: string;
           } | null
@@ -2541,6 +2942,7 @@ export declare const components: {
               discordLastSyncedAt?: number;
               discordMessageId?: string;
               fees?: number;
+              ideaAssignedAt?: number;
               instrumentId?: string;
               lastExecutionAt?: number;
               lastProcessedExecutionId?: string;
@@ -2553,6 +2955,7 @@ export declare const components: {
               symbol: string;
               tags?: Array<string>;
               thesis?: string;
+              tradeIdeaId?: string;
               updatedAt: number;
               userId: string;
             }>;
@@ -2604,6 +3007,7 @@ export declare const components: {
             discordLastSyncedAt?: number;
             discordMessageId?: string;
             fees?: number;
+            ideaAssignedAt?: number;
             instrumentId?: string;
             lastExecutionAt?: number;
             lastProcessedExecutionId?: string;
@@ -2616,6 +3020,7 @@ export declare const components: {
             symbol: string;
             tags?: Array<string>;
             thesis?: string;
+            tradeIdeaId?: string;
             updatedAt: number;
             userId: string;
           }>
@@ -2897,6 +3302,36 @@ export declare const components: {
         >;
       };
     };
+    visibility: {
+      getMyVisibilitySettings: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string; userId: string },
+        {
+          analyticsReportsPublic: boolean;
+          globalPublic: boolean;
+          ordersPublic: boolean;
+          positionsPublic: boolean;
+          profilePublic: boolean;
+          tradeIdeasPublic: boolean;
+        }
+      >;
+      upsertMyVisibilitySettings: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          analyticsReportsPublic: boolean;
+          globalPublic: boolean;
+          ordersPublic: boolean;
+          organizationId: string;
+          positionsPublic: boolean;
+          profilePublic: boolean;
+          tradeIdeasPublic: boolean;
+          userId: string;
+        },
+        null
+      >;
+    };
   };
   launchthat_pricedata: {
     bars: {
@@ -3155,6 +3590,22 @@ export declare const components: {
             updatedAt: number;
           }
         >;
+        listSources: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number },
+          Array<{
+            baseUrlHost?: string;
+            createdAt: number;
+            environment: "demo" | "live";
+            isDefault?: boolean;
+            jwtHost?: string;
+            provider: "tradelocker";
+            server: string;
+            sourceKey: string;
+            updatedAt: number;
+          }>
+        >;
         upsertSource: FunctionReference<
           "mutation",
           "internal",
@@ -3226,6 +3677,22 @@ export declare const components: {
             sourceKey: string;
             updatedAt: number;
           }
+        >;
+        listSources: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number },
+          Array<{
+            baseUrlHost?: string;
+            createdAt: number;
+            environment: "demo" | "live";
+            isDefault?: boolean;
+            jwtHost?: string;
+            provider: "tradelocker";
+            server: string;
+            sourceKey: string;
+            updatedAt: number;
+          }>
         >;
       };
     };

@@ -255,6 +255,23 @@ export const getEventsAnalyticsSummary = query({
   },
   returns: v.object({
     fromCreatedAt: v.number(),
+    timeSeriesDaily: v.array(
+      v.object({
+        date: v.string(), // YYYY-MM-DD (UTC)
+        sent: v.number(),
+        interactions: v.number(),
+        ctrPct: v.number(),
+      }),
+    ),
+    interactionsByChannelDaily: v.array(
+      v.object({
+        date: v.string(), // YYYY-MM-DD (UTC)
+        push: v.number(),
+        inApp: v.number(),
+        email: v.number(),
+        other: v.number(),
+      }),
+    ),
     sent: v.object({
       notifications: v.number(),
       byEventKey: v.array(v.object({ eventKey: v.string(), count: v.number() })),
@@ -272,6 +289,14 @@ export const getEventsAnalyticsSummary = query({
         }),
       ),
     }),
+    eventKeyMetrics: v.array(
+      v.object({
+        eventKey: v.string(),
+        sent: v.number(),
+        interactions: v.number(),
+        ctrPct: v.number(),
+      }),
+    ),
   }),
   handler: async (ctx, args) => {
     const daysBackRaw = typeof args.daysBack === "number" ? args.daysBack : 30;
@@ -283,10 +308,27 @@ export const getEventsAnalyticsSummary = query({
 
     const byEventKeyCount = new Map<string, number>();
     const byChannelTypeCount = new Map<string, number>();
+    const interactionsByDay = new Map<string, number>();
+    const interactionsByDayChannel = new Map<
+      string,
+      { push: number; inApp: number; email: number; other: number }
+    >();
     const notificationIds = new Set<string>();
     const userIds = new Set<string>();
 
     let events = 0;
+
+    const toDateKeyUtc = (ms: number): string => {
+      try {
+        const d = new Date(ms);
+        const y = d.getUTCFullYear();
+        const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+        const day = String(d.getUTCDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      } catch {
+        return "";
+      }
+    };
 
     // Use the createdAt index to efficiently scan the recent window.
     const q = ctx.db
@@ -306,6 +348,7 @@ export const getEventsAnalyticsSummary = query({
       const notificationId =
         typeof (row as any).notificationId === "string" ? (row as any).notificationId : "";
       const userId = typeof (row as any).userId === "string" ? (row as any).userId : "";
+      const createdAt = typeof (row as any).createdAt === "number" ? (row as any).createdAt : 0;
 
       if (eventKey) byEventKeyCount.set(eventKey, (byEventKeyCount.get(eventKey) ?? 0) + 1);
       if (channel || eventType) {
@@ -314,6 +357,29 @@ export const getEventsAnalyticsSummary = query({
       }
       if (notificationId) notificationIds.add(notificationId);
       if (userId) userIds.add(userId);
+
+      // Daily buckets (UTC)
+      if (createdAt > 0) {
+        const dateKey = toDateKeyUtc(createdAt);
+        if (dateKey) interactionsByDay.set(dateKey, (interactionsByDay.get(dateKey) ?? 0) + 1);
+
+        const bucket =
+          channel === "push"
+            ? "push"
+            : channel === "inApp"
+              ? "inApp"
+              : channel === "email"
+                ? "email"
+                : "other";
+        const existing = interactionsByDayChannel.get(dateKey) ?? {
+          push: 0,
+          inApp: 0,
+          email: 0,
+          other: 0,
+        };
+        existing[bucket] += 1;
+        interactionsByDayChannel.set(dateKey, existing);
+      }
     }
 
     const byEventKey = Array.from(byEventKeyCount.entries())
@@ -330,6 +396,7 @@ export const getEventsAnalyticsSummary = query({
 
     // "Sent" = notifications created (canonical delivery). This is distinct from interactions.
     const sentByEventKeyCount = new Map<string, number>();
+    const sentByDay = new Map<string, number>();
     let notifications = 0;
 
     const nq = ctx.db
@@ -341,8 +408,13 @@ export const getEventsAnalyticsSummary = query({
       notifications += 1;
       if (notifications > maxRows) break;
       const eventKey = typeof (row as any).eventKey === "string" ? (row as any).eventKey : "";
+      const createdAt = typeof (row as any).createdAt === "number" ? (row as any).createdAt : 0;
       if (eventKey) {
         sentByEventKeyCount.set(eventKey, (sentByEventKeyCount.get(eventKey) ?? 0) + 1);
+      }
+      if (createdAt > 0) {
+        const dateKey = toDateKeyUtc(createdAt);
+        if (dateKey) sentByDay.set(dateKey, (sentByDay.get(dateKey) ?? 0) + 1);
       }
     }
 
@@ -351,8 +423,62 @@ export const getEventsAnalyticsSummary = query({
       .sort((a, b) => b.count - a.count)
       .slice(0, 50);
 
+    const eventKeyMetrics = (() => {
+      const keys = new Set<string>([
+        ...Array.from(sentByEventKeyCount.keys()),
+        ...Array.from(byEventKeyCount.keys()),
+      ]);
+      const rows = Array.from(keys)
+        .map((eventKey) => {
+          const sent = sentByEventKeyCount.get(eventKey) ?? 0;
+          const interactions = byEventKeyCount.get(eventKey) ?? 0;
+          const ctrPct = sent > 0 ? (interactions / sent) * 100 : 0;
+          return { eventKey, sent, interactions, ctrPct };
+        })
+        .sort((a, b) => b.sent - a.sent)
+        .slice(0, 50);
+      return rows;
+    })();
+
+    const timeSeriesDaily = (() => {
+      const out: Array<{ date: string; sent: number; interactions: number; ctrPct: number }> = [];
+      for (let i = daysBack - 1; i >= 0; i--) {
+        const dayMs = Date.now() - i * 24 * 60 * 60 * 1000;
+        const date = toDateKeyUtc(dayMs);
+        const sent = sentByDay.get(date) ?? 0;
+        const interactions = interactionsByDay.get(date) ?? 0;
+        const ctrPct = sent > 0 ? (interactions / sent) * 100 : 0;
+        out.push({ date, sent, interactions, ctrPct });
+      }
+      return out;
+    })();
+
+    const interactionsByChannelDaily = (() => {
+      const out: Array<{
+        date: string;
+        push: number;
+        inApp: number;
+        email: number;
+        other: number;
+      }> = [];
+      for (let i = daysBack - 1; i >= 0; i--) {
+        const dayMs = Date.now() - i * 24 * 60 * 60 * 1000;
+        const date = toDateKeyUtc(dayMs);
+        const row = interactionsByDayChannel.get(date) ?? {
+          push: 0,
+          inApp: 0,
+          email: 0,
+          other: 0,
+        };
+        out.push({ date, ...row });
+      }
+      return out;
+    })();
+
     return {
       fromCreatedAt,
+      timeSeriesDaily,
+      interactionsByChannelDaily,
       sent: {
         notifications,
         byEventKey: sentByEventKey,
@@ -364,6 +490,7 @@ export const getEventsAnalyticsSummary = query({
         byEventKey,
         byChannelAndType,
       },
+      eventKeyMetrics,
     };
   },
 });

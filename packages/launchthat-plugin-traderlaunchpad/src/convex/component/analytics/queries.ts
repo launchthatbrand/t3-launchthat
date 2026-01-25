@@ -487,3 +487,154 @@ export const getSharedAnalyticsReport = query({
   },
 });
 
+/**
+ * Platform analytics helper: compute earliest "connected" and earliest "synced" timestamps
+ * for a set of userIds.
+ *
+ * Definitions:
+ * - connectedAt: earliest `tradelockerConnections.createdAt` for the user (any status)
+ * - syncedAt: earliest `tradeOrders.updatedAt` for the user (proxy for first broker sync)
+ */
+export const getOnboardingSignalsForUserIds = query({
+  args: {
+    userIds: v.array(v.string()),
+    maxRows: v.optional(v.number()),
+  },
+  returns: v.object({
+    connectedAtByUserId: v.record(v.string(), v.number()),
+    syncedAtByUserId: v.record(v.string(), v.number()),
+    connectedIsTruncated: v.boolean(),
+    syncedIsTruncated: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const userIds = Array.isArray(args.userIds)
+      ? args.userIds.map((s) => String(s).trim()).filter(Boolean)
+      : [];
+    const wanted = new Set<string>(userIds);
+
+    const maxRowsRaw = typeof args.maxRows === "number" ? args.maxRows : 250_000;
+    const maxRows = Math.max(1_000, Math.min(500_000, Math.floor(maxRowsRaw)));
+
+    const connectedAtByUserId: Record<string, number> = {};
+    const syncedAtByUserId: Record<string, number> = {};
+
+    // Earliest connections by createdAt.
+    let scannedConnections = 0;
+    const cq = ctx.db.query("tradelockerConnections").withIndex("by_createdAt").order("asc");
+    for await (const row of cq) {
+      scannedConnections += 1;
+      if (scannedConnections > maxRows) break;
+
+      const userId = typeof (row as any).userId === "string" ? (row as any).userId : "";
+      if (!userId || !wanted.has(userId)) continue;
+      if (typeof connectedAtByUserId[userId] === "number") continue;
+
+      const createdAt = typeof (row as any).createdAt === "number" ? (row as any).createdAt : 0;
+      if (createdAt > 0) connectedAtByUserId[userId] = createdAt;
+
+      if (Object.keys(connectedAtByUserId).length >= wanted.size) break;
+    }
+    const connectedIsTruncated = scannedConnections > maxRows;
+
+    // Earliest synced broker data by updatedAt (proxy for first sync ingestion).
+    // Some deployments may not populate `tradeOrders` but will populate executions or realization events.
+    const tryMin = (userId: string, candidateMs: number) => {
+      if (!userId || candidateMs <= 0) return;
+      const prev = syncedAtByUserId[userId];
+      if (typeof prev !== "number" || candidateMs < prev) syncedAtByUserId[userId] = candidateMs;
+    };
+
+    let scanned = 0;
+    const scanTable = async (tableName: "tradeOrders" | "tradeExecutions" | "tradeRealizationEvents") => {
+      const q = ctx.db.query(tableName).withIndex("by_updatedAt").order("asc");
+      for await (const row of q) {
+        scanned += 1;
+        if (scanned > maxRows) break;
+        const userId = typeof (row as any).userId === "string" ? (row as any).userId : "";
+        if (!userId || !wanted.has(userId)) continue;
+        const updatedAt = typeof (row as any).updatedAt === "number" ? (row as any).updatedAt : 0;
+        tryMin(userId, updatedAt);
+        if (Object.keys(syncedAtByUserId).length >= wanted.size) return;
+      }
+    };
+
+    await scanTable("tradeOrders");
+    if (Object.keys(syncedAtByUserId).length < wanted.size) await scanTable("tradeExecutions");
+    if (Object.keys(syncedAtByUserId).length < wanted.size)
+      await scanTable("tradeRealizationEvents");
+
+    const syncedIsTruncated = scanned > maxRows;
+
+    return {
+      connectedAtByUserId,
+      syncedAtByUserId,
+      connectedIsTruncated,
+      syncedIsTruncated,
+    };
+  },
+});
+
+/**
+ * Platform analytics: user onboarding funnel.
+ *
+ * Definitions:
+ * - connected broker: user has a TradeLocker connection with status="connected"
+ * - synced >= 1 trade/order: user has at least 1 `tradeOrders` row (best-effort proxy for "synced")
+ *
+ * Notes:
+ * - Returns counts only (not user lists) to avoid large payloads.
+ * - Uses caps + truncation booleans to keep runtime bounded.
+ */
+export const getUserOnboardingFunnelCounts = query({
+  args: {
+    maxScan: v.optional(v.number()),
+  },
+  returns: v.object({
+    connected: v.object({ users: v.number(), isTruncated: v.boolean() }),
+    synced: v.object({ users: v.number(), isTruncated: v.boolean() }),
+  }),
+  handler: async (ctx, args) => {
+    const maxScanRaw = typeof args.maxScan === "number" ? args.maxScan : 50_000;
+    const maxScan = Math.max(1_000, Math.min(250_000, Math.floor(maxScanRaw)));
+
+    // Connected users (use an index that starts with status).
+    const connectedUserIds = new Set<string>();
+    const connections = await ctx.db
+      .query("tradelockerConnections")
+      .withIndex("by_status_and_lastSyncAt", (q: any) =>
+        q.eq("status", "connected").gte("lastSyncAt", 0),
+      )
+      .order("desc")
+      .take(maxScan + 1);
+
+    const connectionsSlice = (connections as any[]).slice(0, maxScan);
+    for (const row of connectionsSlice) {
+      const userId = typeof row.userId === "string" ? row.userId : "";
+      if (userId) connectedUserIds.add(userId);
+    }
+    const connectedIsTruncated = (connections as any[]).length > maxScan;
+
+    // Synced users: best-effort proxy via presence of at least one trade order.
+    // (This table may not be populated in all deployments; fallback to executions/realization events.)
+    const syncedUserIds = new Set<string>();
+    const scanSyncedTable = async (tableName: "tradeOrders" | "tradeExecutions" | "tradeRealizationEvents") => {
+      const rows = await ctx.db.query(tableName).take(maxScan + 1);
+      const slice = (rows as any[]).slice(0, maxScan);
+      for (const row of slice) {
+        const userId = typeof row.userId === "string" ? row.userId : "";
+        if (userId) syncedUserIds.add(userId);
+      }
+      return (rows as any[]).length > maxScan;
+    };
+
+    const ordersIsTruncated = await scanSyncedTable("tradeOrders");
+    if (syncedUserIds.size === 0) await scanSyncedTable("tradeExecutions");
+    if (syncedUserIds.size === 0) await scanSyncedTable("tradeRealizationEvents");
+
+    return {
+      connected: { users: connectedUserIds.size, isTruncated: connectedIsTruncated },
+      synced: { users: syncedUserIds.size, isTruncated: ordersIsTruncated },
+    };
+  },
+});
+

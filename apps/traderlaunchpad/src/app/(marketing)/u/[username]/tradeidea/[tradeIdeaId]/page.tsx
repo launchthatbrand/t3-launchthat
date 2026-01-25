@@ -1,121 +1,109 @@
+"use client";
+
+import * as React from "react";
+
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import {
-  demoAdminOrders,
-  demoPublicProfiles,
-  demoPublicUsers,
-  demoReviewTrades,
-} from "@acme/demo-data";
+import type { TradingChartMarker, TradingTimeframe } from "~/components/charts/TradingChartMock";
+import { useParams, useSearchParams } from "next/navigation";
 
 import { AffiliatePageShell } from "~/components/affiliates/AffiliatePageShell";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import Link from "next/link";
-import { NotesSection } from "~/components/admin/NotesSection";
-import React from "react";
 import { TradingChartCard } from "~/components/charts/TradingChartCard";
+import { api } from "@convex-config/_generated/api";
 import { cn } from "@acme/ui";
-import { notFound } from "next/navigation";
+import { useQuery } from "convex/react";
 
-interface PublicUser {
-  username: string;
-  displayName: string;
-  avatarUrl?: string;
-  bio: string;
-  isPublic: boolean;
-  primaryBroker: string;
-}
+const toDateLabel = (tsMs: number): string => {
+  const d = new Date(tsMs);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+};
 
-interface PublicProfileOnly {
-  username: string;
-  avatarUrl?: string;
-}
+const toChartTimeframe = (tf: string): TradingTimeframe => {
+  const v = String(tf ?? "").toLowerCase();
+  if (v === "m5" || v === "5m") return "5m";
+  if (v === "m15" || v === "15m") return "15m";
+  if (v === "h1" || v === "1h") return "1h";
+  if (v === "h4" || v === "4h") return "4h";
+  if (v === "d1" || v === "1d") return "1d";
+  return "15m";
+};
 
-interface DemoAdminOrderLite {
-  id: string;
-  symbol: string;
-  type: "Buy" | "Sell";
-  qty: number;
-  price: number;
-  status: "Filled" | "Pending" | "Cancelled" | "Rejected";
-  time: string;
-  date: string;
-  pnl: number | null;
-  tradeId?: string;
-  role?: "Entry" | "Exit" | "Stop" | "TP";
-}
+export default function PublicTradeIdeaDetailPage() {
+  const params = useParams<{ username?: string; tradeIdeaId?: string }>();
+  const search = useSearchParams();
 
-export default async function PublicTradeIdeaDetailPage({
-  params,
-}: {
-  params: Promise<{ username: string; tradeIdeaId: string }>;
-}) {
-  const { username, tradeIdeaId } = await params;
-  const decoded = decodeURIComponent(username);
+  const username = decodeURIComponent(String(params.username ?? ""));
+  const tradeIdeaId = decodeURIComponent(String(params.tradeIdeaId ?? ""));
+  const code = search.get("code") ?? undefined;
 
-  const users = demoPublicUsers as unknown as PublicUser[];
-  const user = users.find((u) => u.username.toLowerCase() === decoded.toLowerCase());
-  const profiles = demoPublicProfiles as unknown as PublicProfileOnly[];
-  const profileOnly = profiles.find((p) => p.username.toLowerCase() === decoded.toLowerCase());
-  if (!user && !profileOnly) return notFound();
-  if (user && !user.isPublic) return notFound();
+  const shared = useQuery(api.traderlaunchpad.public.getPublicTradeIdea, {
+    username,
+    tradeIdeaId,
+    code,
+  }) as
+    | {
+      tradeIdeaId: string;
+      symbol: string;
+      bias: "long" | "short" | "neutral";
+      timeframe: string;
+      timeframeLabel?: string;
+      thesis?: string;
+      tags?: string[];
+      visibility: "private" | "link" | "public";
+      status: "active" | "closed";
+      openedAt: number;
+      positions: Array<{
+        tradeIdeaGroupId: string;
+        symbol: string;
+        direction: "long" | "short";
+        status: "open" | "closed";
+        openedAt: number;
+        closedAt?: number;
+        realizedPnl?: number;
+      }>;
+    }
+    | null
+    | undefined;
 
-  const trade = demoReviewTrades.find((t) => t.id === tradeIdeaId);
-  if (!trade) return notFound();
-
-  const orders = (demoAdminOrders as unknown as DemoAdminOrderLite[]).filter(
-    (o) => o.tradeId === tradeIdeaId,
-  );
-  const relatedEntities = orders.map((o) => ({
-    id: o.id,
-    label: `Order ${o.id.replace(/^mock-ord-/, "#")}`,
-  }));
-
-  const nowSec = Math.floor(Date.now() / 1000);
-  const entryMarkerTime = nowSec - 60 * 15 * 55;
-  const exitMarkerTime = nowSec - 60 * 15 * 18;
-  const displayName = user?.displayName ?? profileOnly?.username ?? decoded;
-
-  const tradeMarkers =
-    orders.length > 0
-      ? orders.slice(0, 2).map((o, idx) => {
-        const isBuy = o.type === "Buy";
-        return {
-          time: idx === 0 ? entryMarkerTime : exitMarkerTime,
-          position: isBuy ? ("belowBar" as const) : ("aboveBar" as const),
-          color: isBuy ? "#10B981" : "#F43F5E",
-          shape: isBuy ? ("arrowUp" as const) : ("arrowDown" as const),
-          text: isBuy ? "Buy" : "Sell",
-        };
-      })
-      : [
-        {
-          time: entryMarkerTime,
-          position: "belowBar" as const,
-          color: "#10B981",
-          shape: "arrowUp" as const,
-          text: "Buy",
-        },
-        {
-          time: exitMarkerTime,
-          position: "aboveBar" as const,
-          color: "#F43F5E",
-          shape: "arrowDown" as const,
-          text: "Sell",
-        },
-      ];
-
-
+  const markers: TradingChartMarker[] = React.useMemo(() => {
+    const positions = shared && Array.isArray(shared.positions) ? shared.positions : [];
+    return positions.flatMap((p, idx) => {
+      const isLong = p.direction === "long";
+      const openMarker: TradingChartMarker = {
+        time: p.openedAt,
+        position: isLong ? "belowBar" : "aboveBar",
+        color: isLong ? "#10B981" : "#F43F5E",
+        shape: isLong ? "arrowUp" : "arrowDown",
+        text: `Open ${idx + 1}`,
+      };
+      const closeMarker: TradingChartMarker | null =
+        typeof p.closedAt === "number"
+          ? {
+            time: p.closedAt,
+            position: "inBar",
+            color: "rgba(255,255,255,0.6)",
+            shape: "circle",
+            text: "Close",
+          }
+          : null;
+      return closeMarker ? [openMarker, closeMarker] : [openMarker];
+    });
+  }, [shared]);
 
   return (
-    <AffiliatePageShell
-      title={`${displayName} — Trades`}
-      subtitle={`@${decoded} • Public trades`}
-    >
-      <div className="relative min-h-screen pt-28 text-white">
-        <div className="container mx-auto max-w-7xl px-4">
+
+    <div className="relative min-h-screen text-white">
+      <div className="container">
+        {shared === undefined ? (
+          <div className="p-6 text-sm text-white/60">Loading…</div>
+        ) : !shared ? (
+          <div className="p-6 text-sm text-white/60">Unauthorized or not found.</div>
+        ) : (
           <div className="animate-in fade-in space-y-6 duration-500 pb-10">
-            {/* Header (same layout as admin trade) */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
@@ -125,176 +113,134 @@ export default async function PublicTradeIdeaDetailPage({
                     className="h-9 w-9 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
                     asChild
                   >
-                    <Link href={`/u/${encodeURIComponent(decoded)}`}>
+                    <Link href={`/u/${encodeURIComponent(username)}`}>
                       <ArrowLeft className="h-4 w-4" />
                     </Link>
                   </Button>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "border-white/15",
-                      trade.reviewed ? "text-emerald-200" : "text-amber-200",
-                    )}
-                  >
-                    {trade.reviewed ? "Reviewed" : "Needs review"}
+                  <Badge variant="outline" className="border-white/15 text-white/70">
+                    {shared.visibility === "public" ? "Public" : "Shared"}
                   </Badge>
                 </div>
 
                 <h1 className="mt-3 text-3xl font-bold tracking-tight text-white">
-                  {trade.symbol} • {trade.type}
+                  {shared.symbol} •{" "}
+                  {shared.bias === "long"
+                    ? "Long"
+                    : shared.bias === "short"
+                      ? "Short"
+                      : "Neutral"}
                 </h1>
                 <p className="mt-1 text-sm text-white/60">
-                  {decoded} • {trade.tradeDate} • {trade.date} • {trade.reason}
+                  @{username} • {toDateLabel(shared.openedAt)} •{" "}
+                  {shared.timeframeLabel ?? shared.timeframe}
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
                 <Button className="border-0 bg-orange-600 text-white hover:bg-orange-700" asChild>
-                  <Link href={`/u/${encodeURIComponent(decoded)}/tradeideas`}>
-                    All TradeIdeas <ArrowUpRight className="ml-2 h-4 w-4" />
+                  <Link href={`/u/${encodeURIComponent(username)}/tradeideas`}>
+                    All Trade ideas <ArrowUpRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
               </div>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-3">
-              {/* Left Column */}
               <div className="space-y-6 lg:col-span-2">
-                {/* Chart Analysis */}
                 <TradingChartCard
-                  title="Chart Analysis"
-                  symbol={trade.symbol}
+                  title="Price Action"
+                  symbol={shared.symbol}
                   height={400}
-                  markers={tradeMarkers}
+                  defaultTimeframe={toChartTimeframe(shared.timeframe)}
                   timeframes={["15m", "1h", "4h"]}
+                  markers={markers}
                 />
 
-                {/* Key Stats */}
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                  <Card className="border-white/10 bg-white/3 backdrop-blur-md">
-                    <CardContent className="p-4">
-                      <div className="text-muted-foreground text-xs font-medium">Outcome</div>
-                      <div
-                        className={cn(
-                          "mt-1 text-lg font-bold tabular-nums",
-                          trade.pnl >= 0 ? "text-emerald-300" : "text-rose-300",
-                        )}
-                      >
-                        {trade.pnl >= 0 ? "+" : ""}
-                        {trade.pnl.toFixed(0)}
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-white/10 bg-white/3 backdrop-blur-md">
-                    <CardContent className="p-4">
-                      <div className="text-muted-foreground text-xs font-medium">Orders</div>
-                      <div className="mt-1 text-lg font-bold tabular-nums">{orders.length}</div>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-white/10 bg-white/3 backdrop-blur-md">
-                    <CardContent className="p-4">
-                      <div className="text-muted-foreground text-xs font-medium">Trade ID</div>
-                      <div className="mt-1 text-lg font-bold">{trade.id}</div>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-white/10 bg-white/3 backdrop-blur-md">
-                    <CardContent className="p-4">
-                      <div className="text-muted-foreground text-xs font-medium">Status</div>
-                      <div className="mt-1 text-lg font-bold">
-                        {trade.reviewed ? "Reviewed" : "Needs review"}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Related Orders */}
                 <Card className="border-white/10 bg-white/3 backdrop-blur-md">
-                  <CardHeader>
-                    <CardTitle className="text-base">Related Orders</CardTitle>
+                  <CardHeader className="border-b border-white/10 p-4">
+                    <CardTitle className="text-base">Thesis</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    {orders.length === 0 ? (
-                      <div className="text-sm text-white/60">No linked orders for this trade yet.</div>
+                  <CardContent className="p-4 text-sm text-white/80">
+                    {shared.thesis ?? <span className="text-white/50">No thesis text.</span>}
+                    {Array.isArray(shared.tags) && shared.tags.length > 0 ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {shared.tags.map((t) => (
+                          <Badge key={t} variant="secondary" className="bg-white/5 text-white/60">
+                            {t}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="space-y-6">
+                <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+                  <CardHeader className="border-b border-white/10 p-4">
+                    <CardTitle className="text-base">Trades</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    {(shared.positions ?? []).length === 0 ? (
+                      <div className="p-6 text-sm text-white/60">No positions.</div>
                     ) : (
-                      orders.map((o) => (
-                        <div
-                          key={o.id}
-                          className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-3"
-                        >
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 text-sm font-medium">
-                              <span>{o.symbol}</span>
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "border-white/15 text-[10px]",
-                                  o.type === "Buy" ? "text-emerald-200" : "text-rose-200",
-                                )}
-                              >
-                                {o.type}
-                              </Badge>
-                              {o.role ? (
+                      <div className="divide-y divide-white/5">
+                        {shared.positions.map((p) => (
+                          <div
+                            key={p.tradeIdeaGroupId}
+                            className="flex items-center justify-between gap-3 px-5 py-4"
+                          >
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <div className="font-semibold text-white">{p.symbol}</div>
                                 <Badge
                                   variant="outline"
-                                  className="border-white/15 text-[10px] text-white/70"
+                                  className={cn(
+                                    "h-5 px-1.5 text-[10px] border-white/15",
+                                    p.direction === "long"
+                                      ? "text-emerald-200"
+                                      : "text-rose-200",
+                                  )}
                                 >
-                                  {o.role}
+                                  {p.direction === "long" ? "Long" : "Short"}
                                 </Badge>
-                              ) : null}
+                                <Badge variant="secondary" className="bg-white/5 text-white/60">
+                                  {p.status === "open" ? "Open" : "Closed"}
+                                </Badge>
+                              </div>
+                              <div className="mt-1 text-xs text-white/50">
+                                Opened {toDateLabel(p.openedAt)}
+                                {typeof p.closedAt === "number"
+                                  ? ` • Closed ${toDateLabel(p.closedAt)}`
+                                  : ""}
+                              </div>
                             </div>
-                            <div className="mt-1 text-xs text-white/60">
-                              {o.date} • {o.time} • {o.status} • Qty {o.qty} @ {o.price}
+                            <div
+                              className={cn(
+                                "text-sm tabular-nums",
+                                (p.realizedPnl ?? 0) >= 0
+                                  ? "text-emerald-200"
+                                  : "text-rose-200",
+                              )}
+                            >
+                              {(p.realizedPnl ?? 0) >= 0 ? "+" : "-"}$
+                              {Math.abs(p.realizedPnl ?? 0).toFixed(2)}
                             </div>
                           </div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     )}
                   </CardContent>
                 </Card>
               </div>
-
-              {/* Right Column */}
-              <div className="space-y-6">
-                <NotesSection
-                  entityId={`public-${decoded}-trade-${trade.id}`}
-                  entityLabel="Public Trade"
-                  className="border-white/10 bg-white/3 backdrop-blur-md"
-                  relatedEntities={relatedEntities}
-                  initialNotes={[
-                    {
-                      id: `public-trade-note-${decoded}-${trade.id}-1`,
-                      content: "Public notes (local). Add your review and observations.",
-                      timestamp: Date.now() - 1000 * 60 * 60,
-                      entityId: `public-${decoded}-trade-${trade.id}`,
-                      entityLabel: "Public Trade",
-                    },
-                  ]}
-                />
-
-                <Card className="border-white/10 bg-white/3 backdrop-blur-md">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Tags</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {["Breakout", "A+ Setup", "Discipline"].map((tag) => (
-                        <Badge
-                          key={tag}
-                          variant="secondary"
-                          className="border-white/10 bg-white/5 hover:bg-white/10"
-                        >
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
             </div>
+
+            <div className="h-24" />
           </div>
-        </div>
+        )}
       </div>
-    </AffiliatePageShell>
+    </div>
+
   );
 }
 

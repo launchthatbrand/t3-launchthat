@@ -9,7 +9,7 @@ import { resolveOrganizationId, resolveViewerUserId } from "./lib/resolve";
 
 import { components } from "../_generated/api";
 import { paginationOptsValidator } from "convex/server";
-import { query } from "../_generated/server";
+import { internalQuery, query } from "../_generated/server";
 import { v } from "convex/values";
 
 const coreTenantQueries = components.launchthat_core_tenant.queries as any;
@@ -21,12 +21,16 @@ const journalQueries = components.launchthat_traderlaunchpad.journal
   .queries as any;
 const tradeIdeasQueries = components.launchthat_traderlaunchpad.tradeIdeas
   .queries as any;
+const tradeIdeasIdeas = (components.launchthat_traderlaunchpad.tradeIdeas as any)
+  .ideas as any;
 const tradeIdeasAnalytics = components.launchthat_traderlaunchpad.tradeIdeas
   .analytics as any;
 const analyticsQueries = components.launchthat_traderlaunchpad.analytics.queries as any;
 const tradeIdeasNotes = components.launchthat_traderlaunchpad.tradeIdeas.notes as any;
 const tradeIdeasInternal = components.launchthat_traderlaunchpad.tradeIdeas.internalQueries as any;
 const tradingPlans = components.launchthat_traderlaunchpad.tradingPlans.index as any;
+const sharingModule = components.launchthat_traderlaunchpad.sharing as any;
+const visibilityModule = components.launchthat_traderlaunchpad.visibility as any;
 const pricedataSources = (components as any).launchthat_pricedata?.sources?.queries as
   | any
   | undefined;
@@ -1923,6 +1927,333 @@ export const listMyRecentClosedTradeIdeas = query({
       reviewedAt: typeof r.reviewedAt === "number" ? r.reviewedAt : undefined,
       noteUpdatedAt: typeof r.noteUpdatedAt === "number" ? r.noteUpdatedAt : undefined,
     }));
+  },
+});
+
+export const listMyTradeIdeas = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      tradeIdeaId: v.string(),
+      symbol: v.string(),
+      instrumentId: v.optional(v.string()),
+      bias: v.union(v.literal("long"), v.literal("short"), v.literal("neutral")),
+      timeframe: v.string(),
+      timeframeLabel: v.optional(v.string()),
+      thesis: v.optional(v.string()),
+      tags: v.optional(v.array(v.string())),
+      visibility: v.union(v.literal("private"), v.literal("link"), v.literal("public")),
+      status: v.union(v.literal("active"), v.literal("closed")),
+      openedAt: v.number(),
+      lastActivityAt: v.number(),
+      positionsCount: v.number(),
+      realizedPnl: v.number(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const rows = await ctx.runQuery(tradeIdeasIdeas.listMyTradeIdeas, {
+      organizationId,
+      userId,
+      limit: args.limit,
+    });
+    return (rows ?? []).map((r: any) => ({
+      tradeIdeaId: String(r.tradeIdeaId),
+      symbol: String(r.symbol ?? ""),
+      instrumentId: typeof r.instrumentId === "string" ? r.instrumentId : undefined,
+      bias: r.bias === "neutral" ? "neutral" : r.bias === "short" ? "short" : "long",
+      timeframe: String(r.timeframe ?? "custom"),
+      timeframeLabel: typeof r.timeframeLabel === "string" ? r.timeframeLabel : undefined,
+      thesis: typeof r.thesis === "string" ? r.thesis : undefined,
+      tags: Array.isArray(r.tags) ? r.tags : undefined,
+      visibility: r.visibility === "public" ? "public" : r.visibility === "link" ? "link" : "private",
+      status: r.status === "closed" ? "closed" : "active",
+      openedAt: Number(r.openedAt ?? 0),
+      lastActivityAt: Number(r.lastActivityAt ?? 0),
+      positionsCount: Number(r.positionsCount ?? 0),
+      realizedPnl: Number(r.realizedPnl ?? 0),
+      updatedAt: Number(r.updatedAt ?? 0),
+    }));
+  },
+});
+
+export const getMyTradeIdeaSettings = query({
+  args: {},
+  returns: v.object({
+    groupingWindowMs: v.number(),
+    splitOnDirectionFlip: v.boolean(),
+    defaultTimeframe: v.string(),
+  }),
+  handler: async (ctx) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    return await ctx.runQuery(tradeIdeasIdeas.getMyTradeIdeaSettings, {
+      organizationId,
+      userId,
+    });
+  },
+});
+
+export const getMyShareVisibilitySettings = query({
+  args: {},
+  returns: v.object({
+    globalEnabled: v.boolean(),
+    tradeIdeasEnabled: v.boolean(),
+    ordersEnabled: v.boolean(),
+    positionsEnabled: v.boolean(),
+    profileEnabled: v.boolean(),
+  }),
+  handler: async (ctx) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    return await ctx.runQuery(sharingModule.getMyShareVisibilitySettings, {
+      organizationId,
+      userId,
+    });
+  },
+});
+
+export const getMyVisibilitySettings = query({
+  args: {},
+  returns: v.object({
+    globalPublic: v.boolean(),
+    tradeIdeasPublic: v.boolean(),
+    ordersPublic: v.boolean(),
+    positionsPublic: v.boolean(),
+    profilePublic: v.boolean(),
+    analyticsReportsPublic: v.boolean(),
+  }),
+  handler: async (ctx) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    return await ctx.runQuery(visibilityModule.getMyVisibilitySettings, {
+      organizationId,
+      userId,
+    });
+  },
+});
+
+// DEBUG: callable via `convex run` (internal only)
+export const debugListRecentTradeIdeaPairs = internalQuery({
+  args: { limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      organizationId: v.string(),
+      userId: v.string(),
+      ideas: v.number(),
+      groups: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    return await ctx.runQuery(tradeIdeasIdeas.debugListRecentTradeIdeaPairs, {
+      limit: args.limit,
+    });
+  },
+});
+
+// DEBUG: callable via `convex run` (internal only)
+export const debugExplainTradeIdeaGroupingForUser = internalQuery({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    scanCap: v.optional(v.number()),
+  },
+  returns: v.object({
+    settings: v.object({
+      groupingWindowMs: v.number(),
+      splitOnDirectionFlip: v.boolean(),
+      defaultTimeframe: v.string(),
+    }),
+    ideas: v.array(
+      v.object({
+        tradeIdeaId: v.string(),
+        symbol: v.string(),
+        bias: v.union(v.literal("long"), v.literal("short"), v.literal("neutral")),
+        status: v.union(v.literal("active"), v.literal("closed")),
+        openedAt: v.number(),
+        lastActivityAt: v.number(),
+        updatedAt: v.number(),
+      }),
+    ),
+    groups: v.array(
+      v.object({
+        tradeIdeaGroupId: v.string(),
+        positionId: v.string(),
+        symbol: v.string(),
+        instrumentId: v.optional(v.string()),
+        direction: v.union(v.literal("long"), v.literal("short")),
+        status: v.union(v.literal("open"), v.literal("closed")),
+        openedAt: v.number(),
+        lastExecutionAt: v.optional(v.number()),
+        closedAt: v.optional(v.number()),
+        tradeIdeaId: v.optional(v.string()),
+      }),
+    ),
+    decisions: v.array(
+      v.object({
+        tradeIdeaGroupId: v.string(),
+        symbol: v.string(),
+        direction: v.union(v.literal("long"), v.literal("short")),
+        openedAt: v.number(),
+        derivedLastActivityAt: v.number(),
+        matchedIdeaId_byLastActivity: v.optional(v.string()),
+        matchedIdeaId_byOpenedAt: v.optional(v.string()),
+        note: v.string(),
+      }),
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const res = await ctx.runQuery(
+      tradeIdeasIdeas.debugExplainTradeIdeaGroupingForUser,
+      {
+        organizationId: args.organizationId,
+        userId: args.userId,
+        scanCap: args.scanCap,
+      },
+    );
+    return {
+      settings: res.settings,
+      ideas: (res.ideas ?? []).map((i: any) => ({
+        tradeIdeaId: String(i.tradeIdeaId),
+        symbol: String(i.symbol ?? ""),
+        bias: i.bias === "neutral" ? "neutral" : i.bias === "short" ? "short" : "long",
+        status: i.status === "closed" ? "closed" : "active",
+        openedAt: Number(i.openedAt ?? 0),
+        lastActivityAt: Number(i.lastActivityAt ?? 0),
+        updatedAt: Number(i.updatedAt ?? 0),
+      })),
+      groups: (res.groups ?? []).map((g: any) => ({
+        tradeIdeaGroupId: String(g.tradeIdeaGroupId),
+        positionId: String(g.positionId ?? ""),
+        symbol: String(g.symbol ?? ""),
+        instrumentId: typeof g.instrumentId === "string" ? g.instrumentId : undefined,
+        direction: g.direction === "short" ? "short" : "long",
+        status: g.status === "closed" ? "closed" : "open",
+        openedAt: Number(g.openedAt ?? 0),
+        lastExecutionAt: typeof g.lastExecutionAt === "number" ? g.lastExecutionAt : undefined,
+        closedAt: typeof g.closedAt === "number" ? g.closedAt : undefined,
+        tradeIdeaId: typeof g.tradeIdeaId === "string" ? g.tradeIdeaId : undefined,
+      })),
+      decisions: (res.decisions ?? []).map((d: any) => ({
+        tradeIdeaGroupId: String(d.tradeIdeaGroupId),
+        symbol: String(d.symbol ?? ""),
+        direction: d.direction === "short" ? "short" : "long",
+        openedAt: Number(d.openedAt ?? 0),
+        derivedLastActivityAt: Number(d.derivedLastActivityAt ?? 0),
+        matchedIdeaId_byLastActivity:
+          typeof d.matchedIdeaId_byLastActivity === "string"
+            ? d.matchedIdeaId_byLastActivity
+            : undefined,
+        matchedIdeaId_byOpenedAt:
+          typeof d.matchedIdeaId_byOpenedAt === "string"
+            ? d.matchedIdeaId_byOpenedAt
+            : undefined,
+        note: String(d.note ?? ""),
+      })),
+    };
+  },
+});
+
+export const getMyTradeIdeaDetail = query({
+  args: {
+    tradeIdeaId: v.string(),
+    positionsLimit: v.optional(v.number()),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      tradeIdeaId: v.string(),
+      symbol: v.string(),
+      instrumentId: v.optional(v.string()),
+      bias: v.union(v.literal("long"), v.literal("short"), v.literal("neutral")),
+      timeframe: v.string(),
+      timeframeLabel: v.optional(v.string()),
+      thesis: v.optional(v.string()),
+      tags: v.optional(v.array(v.string())),
+      visibility: v.union(v.literal("private"), v.literal("link"), v.literal("public")),
+      shareToken: v.optional(v.string()),
+      shareEnabledAt: v.optional(v.number()),
+      expiresAt: v.optional(v.number()),
+      status: v.union(v.literal("active"), v.literal("closed")),
+      openedAt: v.number(),
+      lastActivityAt: v.number(),
+      positions: v.array(
+        v.object({
+          tradeIdeaGroupId: v.string(),
+          symbol: v.string(),
+          instrumentId: v.optional(v.string()),
+          direction: v.union(v.literal("long"), v.literal("short")),
+          status: v.union(v.literal("open"), v.literal("closed")),
+          openedAt: v.number(),
+          closedAt: v.optional(v.number()),
+          realizedPnl: v.optional(v.number()),
+          fees: v.optional(v.number()),
+          netQty: v.number(),
+        }),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const detail = await ctx.runQuery(tradeIdeasIdeas.getMyTradeIdeaDetail, {
+      organizationId,
+      userId,
+      tradeIdeaId: args.tradeIdeaId as any,
+      positionsLimit: args.positionsLimit,
+    });
+    if (!detail) return null;
+
+    const bias: "long" | "short" | "neutral" =
+      detail.bias === "neutral"
+        ? "neutral"
+        : detail.bias === "short"
+          ? "short"
+          : "long";
+    const visibility: "private" | "link" | "public" =
+      detail.visibility === "public"
+        ? "public"
+        : detail.visibility === "link"
+          ? "link"
+          : "private";
+    const status: "active" | "closed" =
+      detail.status === "closed" ? "closed" : "active";
+
+    return {
+      tradeIdeaId: String(detail.tradeIdeaId),
+      symbol: String(detail.symbol ?? ""),
+      instrumentId: typeof detail.instrumentId === "string" ? detail.instrumentId : undefined,
+      bias,
+      timeframe: String(detail.timeframe ?? "custom"),
+      timeframeLabel: typeof detail.timeframeLabel === "string" ? detail.timeframeLabel : undefined,
+      thesis: typeof detail.thesis === "string" ? detail.thesis : undefined,
+      tags: Array.isArray(detail.tags) ? detail.tags : undefined,
+      visibility,
+      shareToken: typeof detail.shareToken === "string" ? detail.shareToken : undefined,
+      shareEnabledAt: typeof detail.shareEnabledAt === "number" ? detail.shareEnabledAt : undefined,
+      expiresAt: typeof detail.expiresAt === "number" ? detail.expiresAt : undefined,
+      status,
+      openedAt: Number(detail.openedAt ?? 0),
+      lastActivityAt: Number(detail.lastActivityAt ?? 0),
+      positions: Array.isArray(detail.positions)
+        ? detail.positions.map((p: any) => ({
+            tradeIdeaGroupId: String(p.tradeIdeaGroupId),
+            symbol: String(p.symbol ?? ""),
+            instrumentId: typeof p.instrumentId === "string" ? p.instrumentId : undefined,
+            direction: (p.direction === "short" ? "short" : "long") as "long" | "short",
+            status: (p.status === "closed" ? "closed" : "open") as "open" | "closed",
+            openedAt: Number(p.openedAt ?? 0),
+            closedAt: typeof p.closedAt === "number" ? p.closedAt : undefined,
+            realizedPnl: typeof p.realizedPnl === "number" ? p.realizedPnl : undefined,
+            fees: typeof p.fees === "number" ? p.fees : undefined,
+            netQty: Number(p.netQty ?? 0),
+          }))
+        : [],
+    };
   },
 });
 

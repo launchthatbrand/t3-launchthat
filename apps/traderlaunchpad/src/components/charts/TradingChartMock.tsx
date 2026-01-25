@@ -260,7 +260,14 @@ export const TradingChartMock = (props: Props) => {
           .filter((m) => Boolean(m.time))
       : [];
 
-    series.setMarkers([...defaultMarkers, ...userMarkers]);
+    // lightweight-charts requires markers to be in ascending time order.
+    // Keep it stable for identical timestamps.
+    const allMarkers = [...defaultMarkers, ...userMarkers]
+      .map((m, idx) => ({ ...m, __idx: idx }))
+      .sort((a, b) => Number(a.time) - Number(b.time) || a.__idx - b.__idx)
+      .map(({ __idx, ...m }) => m);
+
+    series.setMarkers(allMarkers);
     chart.timeScale().fitContent();
   }, [intervalSec, props.markers, props.showDefaultMarkers, symbol]);
 

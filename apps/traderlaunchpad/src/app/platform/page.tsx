@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useConvexAuth, useQuery } from "convex/react";
 import {
   Activity,
   AlertCircle,
@@ -24,6 +25,8 @@ import {
   CardTitle,
 } from "@acme/ui/card";
 import { Progress } from "@acme/ui/progress";
+import { api } from "@convex-config/_generated/api";
+import { useDataMode } from "~/components/dataMode/DataModeProvider";
 
 type StatCard = {
   title: string;
@@ -72,6 +75,61 @@ const accentClass: Record<StatCard["accent"], string> = {
 };
 
 export default function PlatformDashboardPage() {
+  const dataMode = useDataMode();
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const shouldQuery = isAuthenticated && !authLoading;
+
+  const summary = useQuery(
+    api.platform.queries.getPlatformDashboardSummary,
+    shouldQuery && dataMode.effectiveMode === "live" ? { daysBack: 30 } : "skip",
+  ) as
+    | {
+        users: { total: number; isTruncated: boolean };
+        orgs: { total: number; isTruncated: boolean };
+        notifications: {
+          daysBack: number;
+          sent: number;
+          interactions: number;
+          uniqueUsers: number;
+          uniqueNotifications: number;
+        };
+      }
+    | undefined;
+
+  const liveStats: StatCard[] | null =
+    dataMode.effectiveMode === "live" && summary
+      ? [
+          {
+            title: "Total users",
+            value: summary.users.total.toLocaleString(),
+            hint: summary.users.isTruncated ? "Truncated (>= 5,000)" : "All users",
+            icon: Users,
+            accent: "blue",
+          },
+          {
+            title: "Organizations",
+            value: summary.orgs.total.toLocaleString(),
+            hint: summary.orgs.isTruncated ? "Truncated (>= 2,000)" : "All orgs",
+            icon: Activity,
+            accent: "emerald",
+          },
+          {
+            title: `Sent (last ${summary.notifications.daysBack}d)`,
+            value: summary.notifications.sent.toLocaleString(),
+            hint: "Notifications created",
+            icon: Gauge,
+            accent: "amber",
+          },
+          {
+            title: `Interactions (last ${summary.notifications.daysBack}d)`,
+            value: summary.notifications.interactions.toLocaleString(),
+            hint: `${summary.notifications.uniqueUsers.toLocaleString()} users`,
+            icon: CreditCard,
+            accent: "purple",
+          },
+        ]
+      : null;
+
   return (
     <div className="animate-in fade-in space-y-8 duration-500">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -80,7 +138,9 @@ export default function PlatformDashboardPage() {
             Platform Dashboard
           </h1>
           <p className="text-muted-foreground mt-1">
-            Internal metrics and operational health (mock data).
+            {dataMode.effectiveMode === "demo"
+              ? "Internal metrics and operational health (demo/mock mode)."
+              : "Internal metrics and operational health (live)."}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -96,7 +156,7 @@ export default function PlatformDashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {STATS.map((s) => (
+        {(dataMode.effectiveMode === "live" ? liveStats ?? [] : STATS).map((s) => (
           <Card
             key={s.title}
             className={`relative overflow-hidden border-l-4 ${accentClass[s.accent]}`}
@@ -202,6 +262,12 @@ export default function PlatformDashboardPage() {
               </Button>
               <Button variant="outline" size="sm" asChild>
                 <Link href="/platform/settings">Settings</Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/platform/organizations">Organizations</Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/platform/analytics/notifications">Notifications analytics</Link>
               </Button>
             </div>
           </CardContent>

@@ -13,6 +13,10 @@ import { v } from "convex/values";
 
 const tradeIdeasNotesMutations = components.launchthat_traderlaunchpad.tradeIdeas
   .notes as any;
+const tradeIdeasIdeasMutations = (components.launchthat_traderlaunchpad.tradeIdeas as any)
+  .ideas as any;
+const sharingModule = components.launchthat_traderlaunchpad.sharing as any;
+const visibilityModule = components.launchthat_traderlaunchpad.visibility as any;
 const tradingPlansMutations = components.launchthat_traderlaunchpad.tradingPlans.index as any;
 const connectionsQueries = components.launchthat_traderlaunchpad.connections.queries as any;
 const connectionsMutations = components.launchthat_traderlaunchpad.connections.mutations as any;
@@ -77,6 +81,184 @@ export const upsertMyTradeIdeaNoteForGroup = mutation({
     });
 
     return { noteId: String(noteId) };
+  },
+});
+
+export const upsertMyTradeIdeaSettings = mutation({
+  args: {
+    groupingWindowMs: v.number(),
+    splitOnDirectionFlip: v.boolean(),
+    defaultTimeframe: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    await ctx.runMutation(tradeIdeasIdeasMutations.upsertMyTradeIdeaSettings, {
+      organizationId,
+      userId,
+      groupingWindowMs: args.groupingWindowMs,
+      splitOnDirectionFlip: args.splitOnDirectionFlip,
+      defaultTimeframe: args.defaultTimeframe,
+    });
+    return null;
+  },
+});
+
+export const upsertMyShareVisibilitySettings = mutation({
+  args: {
+    globalEnabled: v.boolean(),
+    tradeIdeasEnabled: v.boolean(),
+    ordersEnabled: v.boolean(),
+    positionsEnabled: v.boolean(),
+    profileEnabled: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    await ctx.runMutation(sharingModule.upsertMyShareVisibilitySettings, {
+      organizationId,
+      userId,
+      globalEnabled: args.globalEnabled,
+      tradeIdeasEnabled: args.tradeIdeasEnabled,
+      ordersEnabled: args.ordersEnabled,
+      positionsEnabled: args.positionsEnabled,
+      profileEnabled: args.profileEnabled,
+    });
+    return null;
+  },
+});
+
+export const upsertMyVisibilitySettings = mutation({
+  args: {
+    globalPublic: v.boolean(),
+    tradeIdeasPublic: v.boolean(),
+    ordersPublic: v.boolean(),
+    positionsPublic: v.boolean(),
+    profilePublic: v.boolean(),
+    analyticsReportsPublic: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    await ctx.runMutation(visibilityModule.upsertMyVisibilitySettings, {
+      organizationId,
+      userId,
+      globalPublic: args.globalPublic,
+      tradeIdeasPublic: args.tradeIdeasPublic,
+      ordersPublic: args.ordersPublic,
+      positionsPublic: args.positionsPublic,
+      profilePublic: args.profilePublic,
+      analyticsReportsPublic: args.analyticsReportsPublic,
+    });
+    return null;
+  },
+});
+
+export const setMyTradeIdeaSharing = mutation({
+  args: {
+    tradeIdeaId: v.string(),
+    visibility: v.union(v.literal("private"), v.literal("link"), v.literal("public")),
+    expiresAt: v.optional(v.number()),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    shareToken: v.optional(v.string()),
+    visibility: v.union(v.literal("private"), v.literal("link"), v.literal("public")),
+  }),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const res = await ctx.runMutation(tradeIdeasIdeasMutations.setTradeIdeaSharing, {
+      organizationId,
+      userId,
+      tradeIdeaId: args.tradeIdeaId as any,
+      visibility: args.visibility,
+      expiresAt: args.expiresAt,
+    });
+    return res as any;
+  },
+});
+
+export const createMyTradeIdea = mutation({
+  args: {
+    symbol: v.string(),
+    instrumentId: v.optional(v.string()),
+    bias: v.union(v.literal("long"), v.literal("short"), v.literal("neutral")),
+    timeframe: v.optional(v.string()),
+    timeframeLabel: v.optional(v.string()),
+    thesis: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+  },
+  returns: v.object({ tradeIdeaId: v.string() }),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const res = await ctx.runMutation(tradeIdeasIdeasMutations.createTradeIdea, {
+      organizationId,
+      userId,
+      symbol: args.symbol,
+      instrumentId: args.instrumentId,
+      bias: args.bias,
+      timeframe: args.timeframe,
+      timeframeLabel: args.timeframeLabel,
+      thesis: args.thesis,
+      tags: args.tags,
+    });
+    return { tradeIdeaId: String((res as any).tradeIdeaId) };
+  },
+});
+
+export const backfillMyTradeIdeas = mutation({
+  args: {
+    scanCap: v.optional(v.number()),
+    limitAssigned: v.optional(v.number()),
+  },
+  returns: v.object({
+    scanned: v.number(),
+    assigned: v.number(),
+    createdIdeas: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const res = await ctx.runMutation(tradeIdeasIdeasMutations.backfillIdeasForUser, {
+      organizationId,
+      userId,
+      scanCap: args.scanCap,
+      limitAssigned: args.limitAssigned,
+    });
+    return res as any;
+  },
+});
+
+// Admin/debug utility: reconcile idea symbols + merge duplicates (uses your current settings)
+export const reconcileMyTradeIdeas = mutation({
+  args: {
+    scanCap: v.optional(v.number()),
+  },
+  returns: v.object({
+    ideasScanned: v.number(),
+    ideasPatched: v.number(),
+    groupsReassigned: v.number(),
+    ideasDeleted: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const res = await ctx.runMutation(tradeIdeasIdeasMutations.reconcileIdeasForUser, {
+      organizationId,
+      userId,
+      scanCap: args.scanCap,
+    });
+    return {
+      ideasScanned: Number((res as any)?.ideasScanned ?? 0),
+      ideasPatched: Number((res as any)?.ideasPatched ?? 0),
+      groupsReassigned: Number((res as any)?.groupsReassigned ?? 0),
+      ideasDeleted: Number((res as any)?.ideasDeleted ?? 0),
+    };
   },
 });
 

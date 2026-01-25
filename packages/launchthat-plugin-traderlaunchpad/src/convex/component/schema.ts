@@ -208,6 +208,10 @@ export default defineSchema({
   })
     .index("by_organizationId_and_userId", ["organizationId", "userId"])
     .index("by_organizationId_and_status", ["organizationId", "status"])
+    // Platform analytics helpers
+    .index("by_createdAt", ["createdAt"])
+    .index("by_userId_and_createdAt", ["userId", "createdAt"])
+    .index("by_status_and_createdAt", ["status", "createdAt"])
     .index("by_status_and_lastSyncAt", ["status", "lastSyncAt"])
     .index("by_status_and_lastBrokerActivityAt", [
       "status",
@@ -274,6 +278,9 @@ export default defineSchema({
       "externalOrderId",
     ])
     .index("by_org_user_createdAt", ["organizationId", "userId", "createdAt"])
+    // Platform analytics helpers
+    .index("by_updatedAt", ["updatedAt"])
+    .index("by_userId_and_updatedAt", ["userId", "updatedAt"])
     .index("by_org_user_instrumentId_updatedAt", [
       "organizationId",
       "userId",
@@ -303,6 +310,9 @@ export default defineSchema({
       "userId",
       "externalExecutionId",
     ])
+    // Platform analytics helpers
+    .index("by_updatedAt", ["updatedAt"])
+    .index("by_userId_and_updatedAt", ["userId", "updatedAt"])
     .index("by_org_user_executedAt", ["organizationId", "userId", "executedAt"])
     .index("by_org_user_externalOrderId", [
       "organizationId",
@@ -417,6 +427,9 @@ export default defineSchema({
       "externalEventId",
     ])
     .index("by_org_user_closedAt", ["organizationId", "userId", "closedAt"])
+    // Platform analytics helpers (proxy for first sync ingestion)
+    .index("by_updatedAt", ["updatedAt"])
+    .index("by_userId_and_updatedAt", ["userId", "updatedAt"])
     .index("by_org_user_accountId_closedAt", [
       "organizationId",
       "userId",
@@ -461,6 +474,95 @@ export default defineSchema({
     .index("by_org_user_updatedAt", ["organizationId", "userId", "updatedAt"])
     .index("by_shareToken", ["shareToken"]),
 
+  tradeIdeaSettings: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+    // Auto-grouping configuration (varies by trader style/timeframe).
+    groupingWindowMs: v.number(),
+    splitOnDirectionFlip: v.boolean(),
+    defaultTimeframe: v.optional(v.string()), // e.g. "m1" | "h1" | "h4" | "custom"
+    updatedAt: v.number(),
+  }).index("by_org_user", ["organizationId", "userId"]),
+
+  shareVisibilitySettings: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+
+    // Master toggle: if true, all child types are effectively enabled.
+    globalEnabled: v.boolean(),
+
+    // Child toggles (effective only when globalEnabled === false).
+    tradeIdeasEnabled: v.boolean(),
+    ordersEnabled: v.boolean(),
+    positionsEnabled: v.boolean(),
+    profileEnabled: v.boolean(),
+
+    updatedAt: v.number(),
+  }).index("by_org_user", ["organizationId", "userId"]),
+
+  visibilitySettings: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+
+    // If true: defaults to public everywhere (children are forced on in UI).
+    globalPublic: v.boolean(),
+
+    // Per-entity default public flags (used when globalPublic === false).
+    tradeIdeasPublic: v.boolean(),
+    ordersPublic: v.boolean(),
+    positionsPublic: v.boolean(),
+    profilePublic: v.boolean(),
+    analyticsReportsPublic: v.boolean(),
+
+    updatedAt: v.number(),
+  }).index("by_org_user", ["organizationId", "userId"]),
+
+  tradeIdeas: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+
+    symbol: v.string(), // canonical symbol (e.g. BTCUSD)
+    instrumentId: v.optional(v.string()),
+
+    // Thesis-level metadata
+    bias: v.union(v.literal("long"), v.literal("short"), v.literal("neutral")),
+    timeframe: v.string(), // e.g. "m1" | "h1" | "h4" | "custom" (string for forward compatibility)
+    timeframeLabel: v.optional(v.string()),
+    thesis: v.optional(v.string()),
+    tags: v.optional(v.array(v.string())),
+
+    // Sharing
+    visibility: v.union(v.literal("private"), v.literal("link"), v.literal("public")),
+    shareToken: v.optional(v.string()),
+    shareEnabledAt: v.optional(v.number()),
+    expiresAt: v.optional(v.number()),
+
+    // Lifecycle
+    status: v.union(v.literal("active"), v.literal("closed")),
+    openedAt: v.number(),
+    // Used for start-gap thesis grouping (avoid overlap issues when lastActivityAt > another group's openedAt).
+    lastStartedAt: v.optional(v.number()),
+    lastActivityAt: v.number(),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org_user_updatedAt", ["organizationId", "userId", "updatedAt"])
+    .index("by_org_user_visibility_updatedAt", [
+      "organizationId",
+      "userId",
+      "visibility",
+      "updatedAt",
+    ])
+    .index("by_org_user_symbol_status_lastActivityAt", [
+      "organizationId",
+      "userId",
+      "symbol",
+      "status",
+      "lastActivityAt",
+    ])
+    .index("by_shareToken", ["shareToken"]),
+
   tradeIdeaGroups: defineTable({
     organizationId: v.string(),
     userId: v.string(),
@@ -490,6 +592,10 @@ export default defineSchema({
     discordMessageId: v.optional(v.string()),
     discordLastSyncedAt: v.optional(v.number()),
 
+    // Link to shareable thesis-level TradeIdea (optional for backward compatibility).
+    tradeIdeaId: v.optional(v.id("tradeIdeas")),
+    ideaAssignedAt: v.optional(v.number()),
+
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -515,6 +621,12 @@ export default defineSchema({
       "organizationId",
       "userId",
       "instrumentId",
+      "openedAt",
+    ])
+    .index("by_org_user_tradeIdeaId_openedAt", [
+      "organizationId",
+      "userId",
+      "tradeIdeaId",
       "openedAt",
     ]),
 

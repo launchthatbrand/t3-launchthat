@@ -55,6 +55,49 @@ export const listExecutionsForUser = query({
   },
 });
 
+export const listInstrumentIdsMissingExecutionSymbols = query({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    limit: v.optional(v.number()),
+    scanCap: v.optional(v.number()),
+  },
+  returns: v.array(v.string()),
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(200, args.limit ?? 200));
+    const scanCap = Math.max(50, Math.min(5000, args.scanCap ?? 2000));
+
+    // Scan recent executions and collect distinct instrumentIds where symbol is missing.
+    // (Convex can't query for "symbol is undefined" via an index.)
+    const rows = await ctx.db
+      .query("tradeExecutions")
+      .withIndex("by_org_user_executedAt", (q: any) =>
+        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
+      )
+      .order("desc")
+      .take(scanCap);
+
+    const out: string[] = [];
+    const seen = new Set<string>();
+    for (const r of rows) {
+      if (out.length >= limit) break;
+      const instrumentId =
+        typeof (r as any).instrumentId === "string"
+          ? String((r as any).instrumentId).trim()
+          : "";
+      if (!instrumentId) continue;
+      const symbol =
+        typeof (r as any).symbol === "string" ? String((r as any).symbol).trim() : "";
+      if (symbol) continue;
+      if (seen.has(instrumentId)) continue;
+      seen.add(instrumentId);
+      out.push(instrumentId);
+    }
+
+    return out;
+  },
+});
+
 export const listExecutionsForPosition = query({
   args: {
     organizationId: v.string(),

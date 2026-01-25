@@ -176,18 +176,33 @@ export async function GET(req: NextRequest) {
   const defaultTenantSlug = String(env.TRADERLAUNCHPAD_DEFAULT_TENANT_SLUG ?? "platform")
     .trim()
     .toLowerCase();
+  const rootHost = normalizeRootHost(rootDomain);
 
   // If tenant isn't provided, derive from return_to:
   // - subdomain under rootDomain => slug
   // - custom domain => resolve by hostname
   // - bare localhost => defaultTenantSlug
-  const resolvedSlug = tenantSlugParam
-    ? tenantSlugParam
-    : derivedSlug
-      ? derivedSlug
-      : derivedHostname && isLocalHostHeader(derivedHostname)
-        ? defaultTenantSlug
-        : "";
+  const resolvedSlug = (() => {
+    if (tenantSlugParam) return tenantSlugParam;
+
+    // Treat apex and www hosts as the default tenant (platform/root tenant).
+    if (derivedHostname && rootHost) {
+      const isApex = derivedHostname === rootHost || derivedHostname === `www.${rootHost}`;
+      if (isApex) return defaultTenantSlug;
+    }
+
+    // For normal subdomains, derivedSlug is the tenant slug.
+    // Note: return_to can be "www.<root>" which would produce slug "www"; treat as default tenant.
+    if (derivedSlug) {
+      if (derivedSlug === "www") return defaultTenantSlug;
+      return derivedSlug;
+    }
+
+    // Localhost convenience.
+    if (derivedHostname && isLocalHostHeader(derivedHostname)) return defaultTenantSlug;
+
+    return "";
+  })();
 
   if (!resolvedSlug) {
     return NextResponse.json(
