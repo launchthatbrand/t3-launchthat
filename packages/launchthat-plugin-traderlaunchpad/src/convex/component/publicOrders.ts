@@ -1,6 +1,15 @@
 import { v } from "convex/values";
 import { query } from "./server";
 
+type PublicOrderRow = {
+  externalOrderId: string;
+  symbol: string;
+  side: "buy" | "sell" | null;
+  status: string | null;
+  createdAt: number | null;
+  closedAt: number | null;
+};
+
 export const listPublicOrdersForUser = query({
   args: {
     organizationId: v.string(),
@@ -41,14 +50,22 @@ export const listPublicOrdersForUser = query({
       .order("desc")
       .take(limit);
 
-    return rows.map((r: any) => ({
-      externalOrderId: String(r.externalOrderId ?? ""),
-      symbol: typeof r.symbol === "string" ? r.symbol : "",
-      side: r.side === "sell" ? "sell" : r.side === "buy" ? "buy" : null,
-      status: typeof r.status === "string" ? r.status : null,
-      createdAt: typeof r.createdAt === "number" ? r.createdAt : null,
-      closedAt: typeof r.closedAt === "number" ? r.closedAt : null,
-    }));
+    const result: PublicOrderRow[] = rows.map((r: any) => {
+      const sideRaw = typeof r.side === "string" ? r.side.toLowerCase() : "";
+      const side: PublicOrderRow["side"] =
+        sideRaw === "buy" ? "buy" : sideRaw === "sell" ? "sell" : null;
+
+      return {
+        externalOrderId: String(r.externalOrderId ?? ""),
+        symbol: String(r.symbol ?? ""),
+        side,
+        status: r.status == null ? null : String(r.status),
+        createdAt: typeof r.createdAt === "number" ? r.createdAt : null,
+        closedAt: typeof r.closedAt === "number" ? r.closedAt : null,
+      };
+    });
+
+    return result;
   },
 });
 
