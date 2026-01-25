@@ -5,16 +5,16 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 
-import { api } from "@convex-config/_generated/api";
 import { ShortlinksSettingsCard } from "launchthat-plugin-shortlinks/frontend/settings/ShortlinksSettingsCard";
-import { toast } from "sonner";
+import { api } from "@convex-config/_generated/api";
+import { toast } from "@acme/ui";
 
-type ShortlinkSettings = {
+interface ShortlinkSettings {
   domain: string;
   enabled: boolean;
   codeLength: number;
   alphabet?: string;
-};
+}
 
 export const ShortlinksSettingsClient = () => {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();

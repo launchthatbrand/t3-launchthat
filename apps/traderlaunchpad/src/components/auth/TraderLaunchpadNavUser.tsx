@@ -38,8 +38,9 @@ export function TraderLaunchpadNavUser(props: { afterSignOutUrl?: string }) {
 }
 
 function TraderLaunchpadNavUserClerk(props: { afterSignOutUrl?: string }) {
+  const { authHost } = useHostContext();
   const { session } = useSession();
-  const { openSignIn, signOut } = useClerk();
+  const { signOut } = useClerk();
   const dataMode = useDataMode();
 
   if (!session) {
@@ -48,7 +49,14 @@ function TraderLaunchpadNavUserClerk(props: { afterSignOutUrl?: string }) {
         type="button"
         variant="ghost"
         className="text-gray-200 hover:bg-white/10 hover:text-white"
-        onClick={() => void openSignIn({})}
+        onClick={() => {
+          if (typeof window === "undefined") return;
+          const returnTo = window.location.href;
+          const params = new URLSearchParams({ return_to: returnTo });
+          window.location.assign(
+            `${window.location.protocol}//${authHost}/sign-in?${params.toString()}`,
+          );
+        }}
       >
         Sign in
       </Button>
