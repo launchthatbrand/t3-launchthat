@@ -247,7 +247,7 @@ export const NotificationsAnalytics = (props: {
                     axisLine={false}
                     interval={0}
                     height={60}
-                    tickFormatter={(v) => String(v).split(".").slice(-1)[0]}
+                    tickFormatter={(v) => String(v).split(".").slice(-1)[0] ?? ""}
                   />
                   <YAxis tickLine={false} axisLine={false} width={44} />
                   <ChartTooltip content={<ChartTooltipContent />} />
@@ -277,7 +277,7 @@ export const NotificationsAnalytics = (props: {
                     axisLine={false}
                     interval={0}
                     height={60}
-                    tickFormatter={(v) => String(v).split(".").slice(-1)[0]}
+                    tickFormatter={(v) => String(v).split(".").slice(-1)[0] ?? ""}
                   />
                   <YAxis
                     tickLine={false}
