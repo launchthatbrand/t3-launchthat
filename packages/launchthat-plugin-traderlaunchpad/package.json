@@ -23,6 +23,14 @@
     "./frontend/journal": {
       "types": "./dist/frontend/journal/index.d.ts",
       "default": "./src/frontend/journal/index.ts"
+    },
+    "./runtime": {
+      "types": "./dist/runtime/index.d.ts",
+      "default": "./src/runtime/index.ts"
+    },
+    "./runtime/discordSnapshot": {
+      "types": "./dist/runtime/discordSnapshot/index.d.ts",
+      "default": "./src/runtime/discordSnapshot/index.ts"
     }
   },
   "license": "MIT",

@@ -2758,6 +2758,21 @@ export declare const components: {
           },
           null
         >;
+        upsertDiscordSymbolSnapshotFeed: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            channelId: string;
+            guildId: string;
+            lastEditedAt?: number;
+            lastError?: string;
+            lastPostedAt?: number;
+            messageId: string;
+            organizationId: string;
+            symbol: string;
+          },
+          null
+        >;
         upsertTradeIdeaGroup: FunctionReference<
           "mutation",
           "internal",
@@ -2909,6 +2924,25 @@ export declare const components: {
             userId: string;
           } | null
         >;
+        getDiscordSymbolSnapshotFeed: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; symbol: string },
+          {
+            _creationTime: number;
+            _id: string;
+            channelId: string;
+            createdAt: number;
+            guildId: string;
+            lastEditedAt?: number;
+            lastError?: string;
+            lastPostedAt?: number;
+            messageId: string;
+            organizationId: string;
+            symbol: string;
+            updatedAt: number;
+          } | null
+        >;
         listByStatus: FunctionReference<
           "query",
           "internal",
@@ -3022,6 +3056,19 @@ export declare const components: {
             thesis?: string;
             tradeIdeaId?: string;
             updatedAt: number;
+            userId: string;
+          }>
+        >;
+        listOpenGroupsForOrgSymbol: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; organizationId: string; symbol: string },
+          Array<{
+            avgEntryPrice?: number;
+            direction: "long" | "short";
+            netQty: number;
+            openedAt: number;
+            tradeIdeaGroupId: string;
             userId: string;
           }>
         >;

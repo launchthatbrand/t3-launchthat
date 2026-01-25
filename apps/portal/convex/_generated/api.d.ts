@@ -206,6 +206,7 @@ import type * as plugins_support_queries from "../plugins/support/queries.js";
 import type * as plugins_support_rag from "../plugins/support/rag.js";
 import type * as plugins_traderlaunchpad_actions from "../plugins/traderlaunchpad/actions.js";
 import type * as plugins_traderlaunchpad_discord from "../plugins/traderlaunchpad/discord.js";
+import type * as plugins_traderlaunchpad_discordSnapshots from "../plugins/traderlaunchpad/discordSnapshots.js";
 import type * as plugins_traderlaunchpad_permissions from "../plugins/traderlaunchpad/permissions.js";
 import type * as plugins_traderlaunchpad_polling from "../plugins/traderlaunchpad/polling.js";
 import type * as plugins_traderlaunchpad_queries from "../plugins/traderlaunchpad/queries.js";
@@ -451,6 +452,7 @@ declare const fullApi: ApiFromModules<{
   "plugins/support/rag": typeof plugins_support_rag;
   "plugins/traderlaunchpad/actions": typeof plugins_traderlaunchpad_actions;
   "plugins/traderlaunchpad/discord": typeof plugins_traderlaunchpad_discord;
+  "plugins/traderlaunchpad/discordSnapshots": typeof plugins_traderlaunchpad_discordSnapshots;
   "plugins/traderlaunchpad/permissions": typeof plugins_traderlaunchpad_permissions;
   "plugins/traderlaunchpad/polling": typeof plugins_traderlaunchpad_polling;
   "plugins/traderlaunchpad/queries": typeof plugins_traderlaunchpad_queries;
@@ -10259,6 +10261,21 @@ export declare const components: {
           },
           null
         >;
+        upsertDiscordSymbolSnapshotFeed: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            channelId: string;
+            guildId: string;
+            lastEditedAt?: number;
+            lastError?: string;
+            lastPostedAt?: number;
+            messageId: string;
+            organizationId: string;
+            symbol: string;
+          },
+          null
+        >;
         upsertTradeIdeaGroup: FunctionReference<
           "mutation",
           "internal",
@@ -10410,6 +10427,25 @@ export declare const components: {
             userId: string;
           } | null
         >;
+        getDiscordSymbolSnapshotFeed: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; symbol: string },
+          {
+            _creationTime: number;
+            _id: string;
+            channelId: string;
+            createdAt: number;
+            guildId: string;
+            lastEditedAt?: number;
+            lastError?: string;
+            lastPostedAt?: number;
+            messageId: string;
+            organizationId: string;
+            symbol: string;
+            updatedAt: number;
+          } | null
+        >;
         listByStatus: FunctionReference<
           "query",
           "internal",
@@ -10523,6 +10559,19 @@ export declare const components: {
             thesis?: string;
             tradeIdeaId?: string;
             updatedAt: number;
+            userId: string;
+          }>
+        >;
+        listOpenGroupsForOrgSymbol: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; organizationId: string; symbol: string },
+          Array<{
+            avgEntryPrice?: number;
+            direction: "long" | "short";
+            netQty: number;
+            openedAt: number;
+            tradeIdeaGroupId: string;
             userId: string;
           }>
         >;

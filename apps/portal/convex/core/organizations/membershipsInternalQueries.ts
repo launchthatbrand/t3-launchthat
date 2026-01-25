@@ -35,4 +35,14 @@ export const getOrganizationHostInfo = internalQuery({
   },
 });
 
+export const listOrganizationIds = internalQuery({
+  args: { limit: v.optional(v.number()) },
+  returns: v.array(v.id("organizations")),
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(500, Number(args.limit ?? 200)));
+    const rows = await ctx.db.query("organizations").take(limit);
+    return rows.map((o) => o._id);
+  },
+});
+
 

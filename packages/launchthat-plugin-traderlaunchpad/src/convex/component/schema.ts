@@ -605,6 +605,12 @@ export default defineSchema({
       "status",
       "openedAt",
     ])
+    .index("by_org_symbol_status_openedAt", [
+      "organizationId",
+      "symbol",
+      "status",
+      "openedAt",
+    ])
     .index("by_org_user_accountId_positionId", [
       "organizationId",
       "userId",
@@ -629,6 +635,22 @@ export default defineSchema({
       "tradeIdeaId",
       "openedAt",
     ]),
+
+  discordSymbolSnapshotFeeds: defineTable({
+    organizationId: v.string(),
+    symbol: v.string(),
+
+    guildId: v.string(),
+    channelId: v.string(),
+    messageId: v.string(),
+
+    lastPostedAt: v.optional(v.number()),
+    lastEditedAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_org_symbol", ["organizationId", "symbol"]),
 
   tradeIdeaEvents: defineTable({
     organizationId: v.string(),

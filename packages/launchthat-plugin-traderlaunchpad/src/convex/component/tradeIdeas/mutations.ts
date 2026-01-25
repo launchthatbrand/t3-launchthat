@@ -777,3 +777,58 @@ export const markDiscordSynced = mutation({
     return null;
   },
 });
+
+export const upsertDiscordSymbolSnapshotFeed = mutation({
+  args: {
+    organizationId: v.string(),
+    symbol: v.string(),
+    guildId: v.string(),
+    channelId: v.string(),
+    messageId: v.string(),
+    lastPostedAt: v.optional(v.number()),
+    lastEditedAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId = args.organizationId.trim();
+    const symbol = args.symbol.trim().toUpperCase();
+    const guildId = args.guildId.trim();
+    const channelId = args.channelId.trim();
+    const messageId = args.messageId.trim();
+    if (!organizationId || !symbol || !guildId || !channelId || !messageId) {
+      throw new Error("Missing required feed fields");
+    }
+
+    const existing = await ctx.db
+      .query("discordSymbolSnapshotFeeds")
+      .withIndex("by_org_symbol", (q: any) =>
+        q.eq("organizationId", organizationId).eq("symbol", symbol),
+      )
+      .unique();
+
+    const now = Date.now();
+    const patch = {
+      organizationId,
+      symbol,
+      guildId,
+      channelId,
+      messageId,
+      lastPostedAt: args.lastPostedAt,
+      lastEditedAt: args.lastEditedAt,
+      lastError: args.lastError,
+      updatedAt: now,
+    };
+
+    if (existing) {
+      await ctx.db.patch(existing._id, patch);
+      return null;
+    }
+
+    await ctx.db.insert("discordSymbolSnapshotFeeds", {
+      ...patch,
+      createdAt: now,
+    });
+    return null;
+  },
+});

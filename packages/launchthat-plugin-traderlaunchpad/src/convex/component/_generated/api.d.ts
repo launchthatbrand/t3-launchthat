@@ -1998,6 +1998,21 @@ export type Mounts = {
         },
         null
       >;
+      upsertDiscordSymbolSnapshotFeed: FunctionReference<
+        "mutation",
+        "public",
+        {
+          channelId: string;
+          guildId: string;
+          lastEditedAt?: number;
+          lastError?: string;
+          lastPostedAt?: number;
+          messageId: string;
+          organizationId: string;
+          symbol: string;
+        },
+        null
+      >;
       upsertTradeIdeaGroup: FunctionReference<
         "mutation",
         "public",
@@ -2149,6 +2164,25 @@ export type Mounts = {
           userId: string;
         } | null
       >;
+      getDiscordSymbolSnapshotFeed: FunctionReference<
+        "query",
+        "public",
+        { organizationId: string; symbol: string },
+        {
+          _creationTime: number;
+          _id: string;
+          channelId: string;
+          createdAt: number;
+          guildId: string;
+          lastEditedAt?: number;
+          lastError?: string;
+          lastPostedAt?: number;
+          messageId: string;
+          organizationId: string;
+          symbol: string;
+          updatedAt: number;
+        } | null
+      >;
       listByStatus: FunctionReference<
         "query",
         "public",
@@ -2262,6 +2296,19 @@ export type Mounts = {
           thesis?: string;
           tradeIdeaId?: string;
           updatedAt: number;
+          userId: string;
+        }>
+      >;
+      listOpenGroupsForOrgSymbol: FunctionReference<
+        "query",
+        "public",
+        { limit?: number; organizationId: string; symbol: string },
+        Array<{
+          avgEntryPrice?: number;
+          direction: "long" | "short";
+          netQty: number;
+          openedAt: number;
+          tradeIdeaGroupId: string;
           userId: string;
         }>
       >;

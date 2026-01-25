@@ -250,6 +250,90 @@ export const listLatestForSymbol = query({
   },
 });
 
+export const listOpenGroupsForOrgSymbol = query({
+  args: {
+    organizationId: v.string(),
+    symbol: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      tradeIdeaGroupId: v.id("tradeIdeaGroups"),
+      userId: v.string(),
+      direction: v.union(v.literal("long"), v.literal("short")),
+      netQty: v.number(),
+      avgEntryPrice: v.optional(v.number()),
+      openedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const organizationId = args.organizationId.trim();
+    const symbol = args.symbol.trim().toUpperCase();
+    if (!organizationId || !symbol) return [];
+
+    const limit = Math.max(1, Math.min(1000, Number(args.limit ?? 500)));
+
+    const rows = await ctx.db
+      .query("tradeIdeaGroups")
+      .withIndex("by_org_symbol_status_openedAt", (q: any) =>
+        q
+          .eq("organizationId", organizationId)
+          .eq("symbol", symbol)
+          .eq("status", "open"),
+      )
+      .order("desc")
+      .take(limit);
+
+    return rows.map((r) => ({
+      tradeIdeaGroupId: r._id,
+      userId: String((r as any).userId ?? ""),
+      direction:
+        (r as any).direction === "short" ? ("short" as const) : ("long" as const),
+      netQty: typeof (r as any).netQty === "number" ? (r as any).netQty : 0,
+      avgEntryPrice:
+        typeof (r as any).avgEntryPrice === "number" ? (r as any).avgEntryPrice : undefined,
+      openedAt: typeof (r as any).openedAt === "number" ? (r as any).openedAt : 0,
+    }));
+  },
+});
+
+export const getDiscordSymbolSnapshotFeed = query({
+  args: {
+    organizationId: v.string(),
+    symbol: v.string(),
+  },
+  returns: v.union(
+    v.object({
+      _id: v.id("discordSymbolSnapshotFeeds"),
+      _creationTime: v.number(),
+      organizationId: v.string(),
+      symbol: v.string(),
+      guildId: v.string(),
+      channelId: v.string(),
+      messageId: v.string(),
+      lastPostedAt: v.optional(v.number()),
+      lastEditedAt: v.optional(v.number()),
+      lastError: v.optional(v.string()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const organizationId = args.organizationId.trim();
+    const symbol = args.symbol.trim().toUpperCase();
+    if (!organizationId || !symbol) return null;
+
+    const doc = await ctx.db
+      .query("discordSymbolSnapshotFeeds")
+      .withIndex("by_org_symbol", (q: any) =>
+        q.eq("organizationId", organizationId).eq("symbol", symbol),
+      )
+      .unique();
+    return doc ?? null;
+  },
+});
+
 export const listEventsForGroup = query({
   args: {
     organizationId: v.string(),

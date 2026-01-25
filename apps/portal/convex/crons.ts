@@ -28,6 +28,13 @@ crons.interval(
   { maxConnections: 100 },
 );
 
+crons.interval(
+  "traderlaunchpad Discord snapshots",
+  { minutes: 30 },
+  internal.plugins.traderlaunchpad.discordSnapshots.run,
+  {},
+);
+
 export default crons;
 
 
