@@ -6,6 +6,7 @@ export const upsertGuildSettings = mutation({
   args: {
     organizationId: v.string(),
     guildId: v.string(),
+    inviteUrl: v.optional(v.string()),
     approvedMemberRoleId: v.optional(v.string()),
     supportAiEnabled: v.boolean(),
     supportForumChannelId: v.optional(v.string()),
@@ -37,6 +38,7 @@ export const upsertGuildSettings = mutation({
     const patch = {
       organizationId: args.organizationId,
       guildId: args.guildId,
+      inviteUrl: args.inviteUrl,
       approvedMemberRoleId: args.approvedMemberRoleId,
       supportAiEnabled: args.supportAiEnabled,
       supportForumChannelId: args.supportForumChannelId,

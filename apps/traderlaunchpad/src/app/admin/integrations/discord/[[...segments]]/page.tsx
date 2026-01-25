@@ -1,7 +1,7 @@
 import React from "react";
 
-import { DiscordAdminClient } from "./DiscordAdminClient";
+import { DiscordUserSettingsClient } from "../DiscordUserSettingsClient";
 
 export default function DiscordIntegrationsPage() {
-  return <DiscordAdminClient />;
+  return <DiscordUserSettingsClient />;
 }

@@ -29,7 +29,7 @@ const resolveOrgBotTokenForOrg = async (ctx: any, organizationId: string) => {
     throw new Error("Discord is not enabled for this organization");
   }
 
-  return resolveOrgBotToken({
+  return await resolveOrgBotToken({
     botMode: config.botMode === "custom" ? "custom" : "global",
     globalBotToken: process.env.DISCORD_GLOBAL_BOT_TOKEN,
     secretsKey: process.env.DISCORD_SECRETS_KEY,

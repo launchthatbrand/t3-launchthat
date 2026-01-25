@@ -10,6 +10,7 @@ export const getGuildSettings = query({
     v.object({
       organizationId: v.string(),
       guildId: v.string(),
+      inviteUrl: v.optional(v.string()),
       approvedMemberRoleId: v.optional(v.string()),
       supportAiEnabled: v.boolean(),
       supportForumChannelId: v.optional(v.string()),
@@ -41,6 +42,10 @@ export const getGuildSettings = query({
     return {
       organizationId: String((row as any).organizationId ?? ""),
       guildId: String((row as any).guildId ?? ""),
+      inviteUrl:
+        typeof (row as any).inviteUrl === "string"
+          ? ((row as any).inviteUrl as string)
+          : undefined,
       approvedMemberRoleId:
         typeof (row as any).approvedMemberRoleId === "string"
           ? ((row as any).approvedMemberRoleId as string)

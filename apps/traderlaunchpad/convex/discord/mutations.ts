@@ -10,6 +10,8 @@ const discordTemplatesMutations = components.launchthat_discord.templates
   .mutations as any;
 const discordUserLinksMutations = components.launchthat_discord.userLinks
   .mutations as any;
+const discordUserStreamingMutations = components.launchthat_discord.userStreaming
+  .mutations as any;
 
 export const upsertGuildSettings = mutation({
   args: {
@@ -154,6 +156,47 @@ export const unlinkMyDiscordLink = mutation({
     await ctx.runMutation(discordUserLinksMutations.unlinkUser, {
       organizationId,
       userId,
+    });
+    return null;
+  },
+});
+
+export const disconnectMyDiscordStreaming = mutation({
+  args: { organizationId: v.optional(v.string()) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+
+    await ctx.runMutation(discordUserLinksMutations.unlinkUser, {
+      organizationId,
+      userId,
+    });
+    await ctx.runMutation(discordUserStreamingMutations.setUserStreamingEnabled, {
+      organizationId,
+      userId,
+      enabled: false,
+    });
+    return null;
+  },
+});
+
+export const setMyDiscordStreamingEnabled = mutation({
+  args: { organizationId: v.optional(v.string()), enabled: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    await ctx.runMutation(discordUserStreamingMutations.setUserStreamingEnabled, {
+      organizationId,
+      userId,
+      enabled: args.enabled,
     });
     return null;
   },

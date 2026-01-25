@@ -4,3 +4,4 @@ export { DiscordGuildSettingsPage } from "./DiscordGuildSettingsPage";
 export { DiscordTemplatesPage } from "./DiscordTemplatesPage";
 export { DiscordAuditPage } from "./DiscordAuditPage";
 export { DiscordUserLinkPage } from "./DiscordUserLinkPage";
+export { DiscordChannelsPage } from "./DiscordChannelsPage";

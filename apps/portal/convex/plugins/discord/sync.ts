@@ -207,7 +207,7 @@ export const processPendingJobs = internalAction({
           const guildId = String(conn.guildId ?? "").trim();
           if (!guildId) continue;
 
-          const botToken = resolveOrgBotToken({
+          const botToken = await resolveOrgBotToken({
             botMode: conn.botModeAtConnect === "custom" ? "custom" : "global",
             globalBotToken: globalBotToken ?? undefined,
             secretsKey: keyMaterial ?? undefined,

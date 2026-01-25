@@ -47,6 +47,9 @@ export default defineSchema({
     organizationId: v.string(),
     guildId: v.string(),
 
+    // Optional: invite URL for “Join Discord” buttons in host apps.
+    inviteUrl: v.optional(v.string()),
+
     // Member approvals (optional): choose a role that represents "approved".
     // The admin UI can use this to show "pending" members (missing the role) and to approve by assigning it.
     approvedMemberRoleId: v.optional(v.string()),
@@ -257,12 +260,44 @@ export default defineSchema({
       "discordUserId",
     ]),
 
+  userStreamingPrefs: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+    enabled: v.boolean(),
+    enabledAt: v.optional(v.number()),
+    disabledAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index("by_organizationId_and_userId", ["organizationId", "userId"])
+    .index("by_organizationId_and_updatedAt", ["organizationId", "updatedAt"]),
+
+  userDeliveryStats: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+    kind: v.string(), // e.g. "trade_stream"
+    day: v.string(), // YYYY-MM-DD (UTC)
+    messagesSent: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organizationId_and_userId_and_day", [
+      "organizationId",
+      "userId",
+      "day",
+    ])
+    .index("by_organizationId_and_userId_and_kind_and_day", [
+      "organizationId",
+      "userId",
+      "kind",
+      "day",
+    ]),
+
   oauthStates: defineTable({
     organizationId: v.string(),
     userId: v.optional(v.string()),
     state: v.string(),
     codeVerifier: v.string(),
     returnTo: v.string(),
+    callbackPath: v.optional(v.string()),
     kind: v.union(v.literal("org_install"), v.literal("user_link")),
     createdAt: v.number(),
   })

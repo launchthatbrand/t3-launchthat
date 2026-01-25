@@ -8,6 +8,9 @@
  * @module
  */
 
+import type * as delivery_index from "../delivery/index.js";
+import type * as delivery_mutations from "../delivery/mutations.js";
+import type * as delivery_queries from "../delivery/queries.js";
 import type * as guildConnections_index from "../guildConnections/index.js";
 import type * as guildConnections_mutations from "../guildConnections/mutations.js";
 import type * as guildConnections_queries from "../guildConnections/queries.js";
@@ -15,6 +18,7 @@ import type * as guildSettings_index from "../guildSettings/index.js";
 import type * as guildSettings_mutations from "../guildSettings/mutations.js";
 import type * as guildSettings_queries from "../guildSettings/queries.js";
 import type * as index from "../index.js";
+import type * as oauth_actions from "../oauth/actions.js";
 import type * as oauth_helpers_index from "../oauth/helpers/index.js";
 import type * as oauth_helpers_queries from "../oauth/helpers/queries.js";
 import type * as oauth_index from "../oauth/index.js";
@@ -44,6 +48,9 @@ import type * as templates_queries from "../templates/queries.js";
 import type * as userLinks_index from "../userLinks/index.js";
 import type * as userLinks_mutations from "../userLinks/mutations.js";
 import type * as userLinks_queries from "../userLinks/queries.js";
+import type * as userStreaming_index from "../userStreaming/index.js";
+import type * as userStreaming_mutations from "../userStreaming/mutations.js";
+import type * as userStreaming_queries from "../userStreaming/queries.js";
 
 import type {
   ApiFromModules,
@@ -60,6 +67,9 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "delivery/index": typeof delivery_index;
+  "delivery/mutations": typeof delivery_mutations;
+  "delivery/queries": typeof delivery_queries;
   "guildConnections/index": typeof guildConnections_index;
   "guildConnections/mutations": typeof guildConnections_mutations;
   "guildConnections/queries": typeof guildConnections_queries;
@@ -67,6 +77,7 @@ declare const fullApi: ApiFromModules<{
   "guildSettings/mutations": typeof guildSettings_mutations;
   "guildSettings/queries": typeof guildSettings_queries;
   index: typeof index;
+  "oauth/actions": typeof oauth_actions;
   "oauth/helpers/index": typeof oauth_helpers_index;
   "oauth/helpers/queries": typeof oauth_helpers_queries;
   "oauth/index": typeof oauth_index;
@@ -96,8 +107,43 @@ declare const fullApi: ApiFromModules<{
   "userLinks/index": typeof userLinks_index;
   "userLinks/mutations": typeof userLinks_mutations;
   "userLinks/queries": typeof userLinks_queries;
+  "userStreaming/index": typeof userStreaming_index;
+  "userStreaming/mutations": typeof userStreaming_mutations;
+  "userStreaming/queries": typeof userStreaming_queries;
 }>;
 export type Mounts = {
+  delivery: {
+    mutations: {
+      incrementUserDeliveryStat: FunctionReference<
+        "mutation",
+        "public",
+        {
+          kind: string;
+          messagesSent?: number;
+          organizationId: string;
+          userId: string;
+        },
+        null
+      >;
+    };
+    queries: {
+      getUserDeliveryStats: FunctionReference<
+        "query",
+        "public",
+        {
+          daysBack?: number;
+          kind?: string;
+          organizationId: string;
+          userId: string;
+        },
+        {
+          byDay: Array<{ day: string; messagesSent: number }>;
+          daysBack: number;
+          totalMessagesSent: number;
+        }
+      >;
+    };
+  };
   guildConnections: {
     mutations: {
       deleteGuildConnection: FunctionReference<
@@ -158,6 +204,7 @@ export type Mounts = {
           escalationConfidenceThreshold?: number;
           escalationKeywords?: Array<string>;
           guildId: string;
+          inviteUrl?: string;
           memberTradesChannelId?: string;
           memberTradesTemplateId?: string;
           mentorTradesChannelId?: string;
@@ -187,6 +234,7 @@ export type Mounts = {
           escalationConfidenceThreshold?: number;
           escalationKeywords?: Array<string>;
           guildId: string;
+          inviteUrl?: string;
           memberTradesChannelId?: string;
           memberTradesTemplateId?: string;
           mentorTradesChannelId?: string;
@@ -205,6 +253,30 @@ export type Mounts = {
     };
   };
   oauth: {
+    actions: {
+      completeUserLink: FunctionReference<
+        "action",
+        "public",
+        { code: string; state: string },
+        {
+          discordUserId: string;
+          guildId: string;
+          organizationId: string;
+          userId: string;
+        }
+      >;
+      startUserLink: FunctionReference<
+        "action",
+        "public",
+        {
+          callbackPath: string;
+          organizationId: string;
+          returnTo: string;
+          userId: string;
+        },
+        { state: string; url: string }
+      >;
+    };
     helpers: {
       queries: {
         computeAuthRedirectUri: FunctionReference<
@@ -226,6 +298,7 @@ export type Mounts = {
         "public",
         { state: string },
         {
+          callbackPath?: string;
           codeVerifier: string;
           kind: "org_install" | "user_link";
           organizationId: string;
@@ -237,6 +310,7 @@ export type Mounts = {
         "mutation",
         "public",
         {
+          callbackPath?: string;
           codeVerifier: string;
           kind: "org_install" | "user_link";
           organizationId: string;
@@ -253,6 +327,7 @@ export type Mounts = {
         "public",
         { state: string },
         {
+          callbackPath?: string;
           codeVerifier: string;
           createdAt: number;
           kind: "org_install" | "user_link";
@@ -686,6 +761,29 @@ export type Mounts = {
         "public",
         { organizationId: string; userId: string },
         { discordUserId: string; linkedAt: number } | null
+      >;
+    };
+  };
+  userStreaming: {
+    mutations: {
+      setUserStreamingEnabled: FunctionReference<
+        "mutation",
+        "public",
+        { enabled: boolean; organizationId: string; userId: string },
+        null
+      >;
+    };
+    queries: {
+      getUserStreamingPrefs: FunctionReference<
+        "query",
+        "public",
+        { organizationId: string; userId: string },
+        null | {
+          disabledAt?: number;
+          enabled: boolean;
+          enabledAt?: number;
+          updatedAt: number;
+        }
       >;
     };
   };

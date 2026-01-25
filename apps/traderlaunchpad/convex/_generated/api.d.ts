@@ -3792,6 +3792,38 @@ export declare const components: {
     };
   };
   launchthat_discord: {
+    delivery: {
+      mutations: {
+        incrementUserDeliveryStat: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            kind: string;
+            messagesSent?: number;
+            organizationId: string;
+            userId: string;
+          },
+          null
+        >;
+      };
+      queries: {
+        getUserDeliveryStats: FunctionReference<
+          "query",
+          "internal",
+          {
+            daysBack?: number;
+            kind?: string;
+            organizationId: string;
+            userId: string;
+          },
+          {
+            byDay: Array<{ day: string; messagesSent: number }>;
+            daysBack: number;
+            totalMessagesSent: number;
+          }
+        >;
+      };
+    };
     guildConnections: {
       mutations: {
         deleteGuildConnection: FunctionReference<
@@ -3852,6 +3884,7 @@ export declare const components: {
             escalationConfidenceThreshold?: number;
             escalationKeywords?: Array<string>;
             guildId: string;
+            inviteUrl?: string;
             memberTradesChannelId?: string;
             memberTradesTemplateId?: string;
             mentorTradesChannelId?: string;
@@ -3881,6 +3914,7 @@ export declare const components: {
             escalationConfidenceThreshold?: number;
             escalationKeywords?: Array<string>;
             guildId: string;
+            inviteUrl?: string;
             memberTradesChannelId?: string;
             memberTradesTemplateId?: string;
             mentorTradesChannelId?: string;
@@ -3899,6 +3933,30 @@ export declare const components: {
       };
     };
     oauth: {
+      actions: {
+        completeUserLink: FunctionReference<
+          "action",
+          "internal",
+          { code: string; state: string },
+          {
+            discordUserId: string;
+            guildId: string;
+            organizationId: string;
+            userId: string;
+          }
+        >;
+        startUserLink: FunctionReference<
+          "action",
+          "internal",
+          {
+            callbackPath: string;
+            organizationId: string;
+            returnTo: string;
+            userId: string;
+          },
+          { state: string; url: string }
+        >;
+      };
       helpers: {
         queries: {
           computeAuthRedirectUri: FunctionReference<
@@ -3920,6 +3978,7 @@ export declare const components: {
           "internal",
           { state: string },
           {
+            callbackPath?: string;
             codeVerifier: string;
             kind: "org_install" | "user_link";
             organizationId: string;
@@ -3931,6 +3990,7 @@ export declare const components: {
           "mutation",
           "internal",
           {
+            callbackPath?: string;
             codeVerifier: string;
             kind: "org_install" | "user_link";
             organizationId: string;
@@ -3947,6 +4007,7 @@ export declare const components: {
           "internal",
           { state: string },
           {
+            callbackPath?: string;
             codeVerifier: string;
             createdAt: number;
             kind: "org_install" | "user_link";
@@ -4388,6 +4449,29 @@ export declare const components: {
           "internal",
           { organizationId: string; userId: string },
           { discordUserId: string; linkedAt: number } | null
+        >;
+      };
+    };
+    userStreaming: {
+      mutations: {
+        setUserStreamingEnabled: FunctionReference<
+          "mutation",
+          "internal",
+          { enabled: boolean; organizationId: string; userId: string },
+          null
+        >;
+      };
+      queries: {
+        getUserStreamingPrefs: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; userId: string },
+          null | {
+            disabledAt?: number;
+            enabled: boolean;
+            enabledAt?: number;
+            updatedAt: number;
+          }
         >;
       };
     };

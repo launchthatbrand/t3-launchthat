@@ -1,11 +1,12 @@
-import { v } from "convex/values";
-
-import { components } from "../_generated/api";
-import { query } from "../_generated/server";
+/* eslint-disable */
 import {
   resolveOrganizationId,
   resolveViewerUserId,
 } from "../traderlaunchpad/lib/resolve";
+
+import { components } from "../_generated/api";
+import { query } from "../_generated/server";
+import { v } from "convex/values";
 
 const discordRoutingQueries = components.launchthat_discord.routing
   .queries as any;
@@ -23,6 +24,8 @@ const discordTemplatesQueries = components.launchthat_discord.templates
   .queries as any;
 const discordUserLinksQueries = components.launchthat_discord.userLinks
   .queries as any;
+const discordUserStreamingQueries = components.launchthat_discord.userStreaming
+  .queries as any;
 
 export const peekOauthState = query({
   args: { state: v.string() },
@@ -32,6 +35,116 @@ export const peekOauthState = query({
       components.launchthat_discord.oauth.queries.peekOauthState as any,
       { state: args.state },
     );
+  },
+});
+
+export const getMyDiscordStreamingOrgs = query({
+  args: { organizationIds: v.array(v.string()) },
+  returns: v.array(
+    v.object({
+      organizationId: v.string(),
+      discordEnabled: v.boolean(),
+      hasGuild: v.boolean(),
+      guildId: v.union(v.string(), v.null()),
+      guildName: v.union(v.string(), v.null()),
+      inviteUrl: v.union(v.string(), v.null()),
+      linkedDiscordUserId: v.union(v.string(), v.null()),
+      linkedAt: v.union(v.number(), v.null()),
+      streamingEnabled: v.boolean(),
+      streamingUpdatedAt: v.union(v.number(), v.null()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const userId = await resolveViewerUserId(ctx);
+    const orgIds = Array.isArray(args.organizationIds)
+      ? args.organizationIds.map((id) => String(id)).filter(Boolean)
+      : [];
+
+    const result: {
+      organizationId: string;
+      discordEnabled: boolean;
+      hasGuild: boolean;
+      guildId: string | null;
+      guildName: string | null;
+      inviteUrl: string | null;
+      linkedDiscordUserId: string | null;
+      linkedAt: number | null;
+      streamingEnabled: boolean;
+      streamingUpdatedAt: number | null;
+    }[] = [];
+
+    for (const organizationId of orgIds) {
+      const orgConfig = await ctx.runQuery(discordOrgConfigQueries.getOrgConfig, {
+        organizationId,
+      });
+
+      const guildConnections = await ctx.runQuery(
+        discordGuildConnectionsQueries.listGuildConnectionsForOrg,
+        { organizationId },
+      );
+      const guilds = Array.isArray(guildConnections) ? guildConnections : [];
+      const primaryGuild = guilds
+        .slice()
+        .sort((a: any, b: any) => Number(b?.connectedAt ?? 0) - Number(a?.connectedAt ?? 0))[0];
+      const guildId =
+        typeof primaryGuild?.guildId === "string" && primaryGuild.guildId.trim()
+          ? primaryGuild.guildId.trim()
+          : null;
+      const guildName =
+        typeof primaryGuild?.guildName === "string" && primaryGuild.guildName.trim()
+          ? primaryGuild.guildName.trim()
+          : null;
+
+      // Treat “guild connected” as enabled even if org config isn’t set yet.
+      const discordEnabled = Boolean(orgConfig?.enabled) || Boolean(guildId);
+
+      const guildSettings =
+        guildId && discordEnabled
+          ? await ctx.runQuery(discordGuildSettingsQueries.getGuildSettings, {
+            organizationId,
+            guildId,
+          })
+          : null;
+      const inviteUrl =
+        typeof guildSettings?.inviteUrl === "string" && guildSettings.inviteUrl.trim()
+          ? guildSettings.inviteUrl.trim()
+          : null;
+
+      const link = await ctx.runQuery(discordUserLinksQueries.getUserLink, {
+        organizationId,
+        userId,
+      });
+      const linkedDiscordUserId =
+        typeof link?.discordUserId === "string" && link.discordUserId.trim()
+          ? link.discordUserId.trim()
+          : null;
+      const linkedAt = typeof link?.linkedAt === "number" ? link.linkedAt : null;
+
+      const prefs = await ctx.runQuery(discordUserStreamingQueries.getUserStreamingPrefs, {
+        organizationId,
+        userId,
+      });
+      const streamingEnabled = Boolean(prefs?.enabled);
+      const streamingUpdatedAt =
+        typeof prefs?.updatedAt === "number" && Number.isFinite(prefs.updatedAt)
+          ? prefs.updatedAt
+          : null;
+
+      result.push({
+        organizationId,
+        discordEnabled,
+        hasGuild: Boolean(guildId),
+        guildId,
+        guildName,
+        inviteUrl,
+        linkedDiscordUserId,
+        linkedAt,
+        streamingEnabled,
+        streamingUpdatedAt,
+      });
+    }
+
+    return result;
   },
 });
 

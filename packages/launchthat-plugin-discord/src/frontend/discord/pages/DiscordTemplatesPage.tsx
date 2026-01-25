@@ -228,24 +228,7 @@ export function DiscordTemplatesPage({
 
   return (
     <div className={cx(className, ui?.pageClassName)}>
-      <div className={cx("mb-6", ui?.headerClassName)}>
-        <h2
-          className={cx(
-            "text-foreground text-2xl font-semibold",
-            ui?.titleClassName,
-          )}
-        >
-          Message templates
-        </h2>
-        <p
-          className={cx(
-            "text-muted-foreground text-sm",
-            ui?.descriptionClassName,
-          )}
-        >
-          Build reusable message templates and assign them to Discord routes.
-        </p>
-      </div>
+
 
       <div className="space-y-6">
         <EntityList

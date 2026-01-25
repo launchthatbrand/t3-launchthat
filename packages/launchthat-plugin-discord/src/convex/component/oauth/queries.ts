@@ -17,6 +17,7 @@ export const peekOauthState = query({
       userId: v.optional(v.string()),
       codeVerifier: v.string(),
       returnTo: v.string(),
+      callbackPath: v.optional(v.string()),
       createdAt: v.number(),
     }),
     v.null(),
@@ -33,6 +34,7 @@ export const peekOauthState = query({
       userId: row.userId,
       codeVerifier: row.codeVerifier,
       returnTo: row.returnTo,
+      callbackPath: row.callbackPath,
       createdAt: row.createdAt,
     };
   },

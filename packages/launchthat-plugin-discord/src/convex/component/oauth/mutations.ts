@@ -9,6 +9,7 @@ export const createOauthState = mutation({
     state: v.string(),
     codeVerifier: v.string(),
     returnTo: v.string(),
+    callbackPath: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -19,6 +20,7 @@ export const createOauthState = mutation({
       state: args.state,
       codeVerifier: args.codeVerifier,
       returnTo: args.returnTo,
+      callbackPath: args.callbackPath,
       createdAt: Date.now(),
     });
     return null;
@@ -34,6 +36,7 @@ export const consumeOauthState = mutation({
       userId: v.optional(v.string()),
       codeVerifier: v.string(),
       returnTo: v.string(),
+      callbackPath: v.optional(v.string()),
     }),
     v.null(),
   ),
@@ -50,6 +53,7 @@ export const consumeOauthState = mutation({
       userId: row.userId,
       codeVerifier: row.codeVerifier,
       returnTo: row.returnTo,
+      callbackPath: row.callbackPath,
     };
   },
 });

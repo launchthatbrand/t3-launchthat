@@ -8,7 +8,7 @@ export type ResolveBotTokenArgs = {
   botTokenEncrypted?: string;
 };
 
-export const resolveOrgBotToken = (args: ResolveBotTokenArgs): string => {
+export const resolveOrgBotToken = async (args: ResolveBotTokenArgs): Promise<string> => {
   if (args.botMode === "global") {
     if (!args.globalBotToken) {
       throw new Error("Missing DISCORD_GLOBAL_BOT_TOKEN");
@@ -35,7 +35,7 @@ export const resolveOrgBotToken = (args: ResolveBotTokenArgs): string => {
     throw new Error("Discord custom bot token not configured");
   }
 
-  return decryptSecret(encrypted, args.secretsKey);
+  return await decryptSecret(encrypted, args.secretsKey);
 };
 
 export type ResolveDiscordCredentialsArgs = {
@@ -52,14 +52,14 @@ export type ResolveDiscordCredentialsArgs = {
   botTokenEncrypted?: string;
 };
 
-export const resolveDiscordCredentials = (
+export const resolveDiscordCredentials = async (
   args: ResolveDiscordCredentialsArgs,
-): {
+): Promise<{
   botMode: "global" | "custom";
   clientId: string;
   clientSecret: string;
   botToken: string;
-} => {
+}> => {
   if (args.botMode === "global") {
     if (
       !args.globalClientId ||
@@ -107,7 +107,7 @@ export const resolveDiscordCredentials = (
   return {
     botMode: "custom",
     clientId,
-    clientSecret: decryptSecret(clientSecretEncrypted, args.secretsKey),
-    botToken: decryptSecret(botTokenEncrypted, args.secretsKey),
+    clientSecret: await decryptSecret(clientSecretEncrypted, args.secretsKey),
+    botToken: await decryptSecret(botTokenEncrypted, args.secretsKey),
   };
 };

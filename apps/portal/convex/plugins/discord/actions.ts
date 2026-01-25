@@ -91,7 +91,7 @@ const resolveOrgDiscordCredentials = async (
   const botMode =
     config.botMode === "global" ? ("global" as const) : ("custom" as const);
 
-  return resolveDiscordCredentials({
+  return await resolveDiscordCredentials({
     botMode,
     globalClientId: process.env.DISCORD_GLOBAL_CLIENT_ID,
     globalClientSecret: process.env.DISCORD_GLOBAL_CLIENT_SECRET,
@@ -1029,8 +1029,8 @@ export const upsertOrgConfig = action({
       organizationId: args.organizationId,
       enabled: args.enabled,
       clientId: args.clientId,
-      clientSecretEncrypted: encryptSecret(args.clientSecret, keyMaterial),
-      botTokenEncrypted: encryptSecret(args.botToken, keyMaterial),
+      clientSecretEncrypted: await encryptSecret(args.clientSecret, keyMaterial),
+      botTokenEncrypted: await encryptSecret(args.botToken, keyMaterial),
       guildId: args.guildId,
     });
     return null;
@@ -1091,7 +1091,10 @@ export const upsertOrgConfigV2 = action({
 
     if (clientSecretRaw) {
       const keyMaterial = requireDiscordSecretsKey();
-      customClientSecretEncrypted = encryptSecret(clientSecretRaw, keyMaterial);
+      customClientSecretEncrypted = await encryptSecret(
+        clientSecretRaw,
+        keyMaterial,
+      );
     } else if (typeof existing?.customClientSecretEncrypted === "string") {
       customClientSecretEncrypted = existing.customClientSecretEncrypted;
     } else if (typeof existing?.clientSecretEncrypted === "string") {
@@ -1100,7 +1103,7 @@ export const upsertOrgConfigV2 = action({
 
     if (botTokenRaw) {
       const keyMaterial = requireDiscordSecretsKey();
-      customBotTokenEncrypted = encryptSecret(botTokenRaw, keyMaterial);
+      customBotTokenEncrypted = await encryptSecret(botTokenRaw, keyMaterial);
     } else if (typeof existing?.customBotTokenEncrypted === "string") {
       customBotTokenEncrypted = existing.customBotTokenEncrypted;
     } else if (typeof existing?.botTokenEncrypted === "string") {
