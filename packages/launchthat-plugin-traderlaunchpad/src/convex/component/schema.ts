@@ -259,7 +259,6 @@ export default defineSchema({
     .index("by_org_user_and_accNum", ["organizationId", "userId", "accNum"]),
 
   tradeOrders: defineTable({
-    organizationId: v.string(),
     userId: v.string(),
     connectionId: v.id("tradelockerConnections"),
     externalOrderId: v.string(),
@@ -272,24 +271,14 @@ export default defineSchema({
     raw: v.any(),
     updatedAt: v.number(),
   })
-    .index("by_org_user_externalOrderId", [
-      "organizationId",
-      "userId",
-      "externalOrderId",
-    ])
-    .index("by_org_user_createdAt", ["organizationId", "userId", "createdAt"])
+    .index("by_user_externalOrderId", ["userId", "externalOrderId"])
+    .index("by_user_createdAt", ["userId", "createdAt"])
     // Platform analytics helpers
     .index("by_updatedAt", ["updatedAt"])
     .index("by_userId_and_updatedAt", ["userId", "updatedAt"])
-    .index("by_org_user_instrumentId_updatedAt", [
-      "organizationId",
-      "userId",
-      "instrumentId",
-      "updatedAt",
-    ]),
+    .index("by_user_instrumentId_updatedAt", ["userId", "instrumentId", "updatedAt"]),
 
   tradeExecutions: defineTable({
-    organizationId: v.string(),
     userId: v.string(),
     connectionId: v.id("tradelockerConnections"),
     externalExecutionId: v.string(),
@@ -305,34 +294,16 @@ export default defineSchema({
     raw: v.any(),
     updatedAt: v.number(),
   })
-    .index("by_org_user_externalExecutionId", [
-      "organizationId",
-      "userId",
-      "externalExecutionId",
-    ])
+    .index("by_user_externalExecutionId", ["userId", "externalExecutionId"])
     // Platform analytics helpers
     .index("by_updatedAt", ["updatedAt"])
     .index("by_userId_and_updatedAt", ["userId", "updatedAt"])
-    .index("by_org_user_executedAt", ["organizationId", "userId", "executedAt"])
-    .index("by_org_user_externalOrderId", [
-      "organizationId",
-      "userId",
-      "externalOrderId",
-    ])
-    .index("by_org_user_externalPositionId", [
-      "organizationId",
-      "userId",
-      "externalPositionId",
-    ])
-    .index("by_org_user_instrumentId_executedAt", [
-      "organizationId",
-      "userId",
-      "instrumentId",
-      "executedAt",
-    ]),
+    .index("by_user_executedAt", ["userId", "executedAt"])
+    .index("by_user_externalOrderId", ["userId", "externalOrderId"])
+    .index("by_user_externalPositionId", ["userId", "externalPositionId"])
+    .index("by_user_instrumentId_executedAt", ["userId", "instrumentId", "executedAt"]),
 
   tradeOrdersHistory: defineTable({
-    organizationId: v.string(),
     userId: v.string(),
     connectionId: v.id("tradelockerConnections"),
     externalOrderId: v.string(),
@@ -345,21 +316,11 @@ export default defineSchema({
     raw: v.any(),
     updatedAt: v.number(),
   })
-    .index("by_org_user_externalOrderId", [
-      "organizationId",
-      "userId",
-      "externalOrderId",
-    ])
-    .index("by_org_user_createdAt", ["organizationId", "userId", "createdAt"])
-    .index("by_org_user_instrumentId_updatedAt", [
-      "organizationId",
-      "userId",
-      "instrumentId",
-      "updatedAt",
-    ]),
+    .index("by_user_externalOrderId", ["userId", "externalOrderId"])
+    .index("by_user_createdAt", ["userId", "createdAt"])
+    .index("by_user_instrumentId_updatedAt", ["userId", "instrumentId", "updatedAt"]),
 
   tradePositions: defineTable({
-    organizationId: v.string(),
     userId: v.string(),
     connectionId: v.id("tradelockerConnections"),
     externalPositionId: v.string(),
@@ -374,12 +335,8 @@ export default defineSchema({
     raw: v.any(),
     updatedAt: v.number(),
   })
-    .index("by_org_user_externalPositionId", [
-      "organizationId",
-      "userId",
-      "externalPositionId",
-    ])
-    .index("by_org_user_openedAt", ["organizationId", "userId", "openedAt"]),
+    .index("by_user_externalPositionId", ["userId", "externalPositionId"])
+    .index("by_user_openedAt", ["userId", "openedAt"]),
 
   tradeRealizationEvents: defineTable({
     organizationId: v.string(),
@@ -484,41 +441,28 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_org_user", ["organizationId", "userId"]),
 
-  shareVisibilitySettings: defineTable({
-    organizationId: v.string(),
+  /**
+   * Unified permissions model (replaces visibility/share visibility settings).
+   *
+   * - scopeType="global": public/platform scope (applies across the app)
+   * - scopeType="org": per-org consent (org can include user data in aggregates)
+   */
+  permissions: defineTable({
     userId: v.string(),
+    scopeType: v.union(v.literal("global"), v.literal("org")),
+    scopeId: v.union(v.string(), v.null()),
 
-    // Master toggle: if true, all child types are effectively enabled.
+    // Master toggle: if true, all child types are effectively enabled for this scope.
     globalEnabled: v.boolean(),
 
-    // Child toggles (effective only when globalEnabled === false).
     tradeIdeasEnabled: v.boolean(),
+    openPositionsEnabled: v.boolean(),
     ordersEnabled: v.boolean(),
-    positionsEnabled: v.boolean(),
-    profileEnabled: v.boolean(),
 
     updatedAt: v.number(),
-  }).index("by_org_user", ["organizationId", "userId"]),
-
-  visibilitySettings: defineTable({
-    organizationId: v.string(),
-    userId: v.string(),
-
-    // If true: defaults to public everywhere (children are forced on in UI).
-    globalPublic: v.boolean(),
-
-    // Per-entity default public flags (used when globalPublic === false).
-    tradeIdeasPublic: v.boolean(),
-    ordersPublic: v.boolean(),
-    positionsPublic: v.boolean(),
-    profilePublic: v.boolean(),
-    analyticsReportsPublic: v.boolean(),
-
-    updatedAt: v.number(),
-  }).index("by_org_user", ["organizationId", "userId"]),
+  }).index("by_user_scope", ["userId", "scopeType", "scopeId"]),
 
   tradeIdeas: defineTable({
-    organizationId: v.string(),
     userId: v.string(),
 
     symbol: v.string(), // canonical symbol (e.g. BTCUSD)
@@ -531,12 +475,6 @@ export default defineSchema({
     thesis: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
 
-    // Sharing
-    visibility: v.union(v.literal("private"), v.literal("link"), v.literal("public")),
-    shareToken: v.optional(v.string()),
-    shareEnabledAt: v.optional(v.number()),
-    expiresAt: v.optional(v.number()),
-
     // Lifecycle
     status: v.union(v.literal("active"), v.literal("closed")),
     openedAt: v.number(),
@@ -547,24 +485,15 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_org_user_updatedAt", ["organizationId", "userId", "updatedAt"])
-    .index("by_org_user_visibility_updatedAt", [
-      "organizationId",
-      "userId",
-      "visibility",
-      "updatedAt",
-    ])
-    .index("by_org_user_symbol_status_lastActivityAt", [
-      "organizationId",
+    .index("by_user_updatedAt", ["userId", "updatedAt"])
+    .index("by_user_symbol_status_lastActivityAt", [
       "userId",
       "symbol",
       "status",
       "lastActivityAt",
-    ])
-    .index("by_shareToken", ["shareToken"]),
+    ]),
 
   tradeIdeaGroups: defineTable({
-    organizationId: v.string(),
     userId: v.string(),
     connectionId: v.id("tradelockerConnections"),
     accountId: v.string(),
@@ -599,42 +528,11 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_org_user_status_openedAt", [
-      "organizationId",
-      "userId",
-      "status",
-      "openedAt",
-    ])
-    .index("by_org_symbol_status_openedAt", [
-      "organizationId",
-      "symbol",
-      "status",
-      "openedAt",
-    ])
-    .index("by_org_user_accountId_positionId", [
-      "organizationId",
-      "userId",
-      "accountId",
-      "positionId",
-    ])
-    .index("by_org_user_symbol_openedAt", [
-      "organizationId",
-      "userId",
-      "symbol",
-      "openedAt",
-    ])
-    .index("by_org_user_instrumentId_openedAt", [
-      "organizationId",
-      "userId",
-      "instrumentId",
-      "openedAt",
-    ])
-    .index("by_org_user_tradeIdeaId_openedAt", [
-      "organizationId",
-      "userId",
-      "tradeIdeaId",
-      "openedAt",
-    ]),
+    .index("by_user_status_openedAt", ["userId", "status", "openedAt"])
+    .index("by_user_symbol_status_openedAt", ["userId", "symbol", "status", "openedAt"])
+    .index("by_user_accountId_positionId", ["userId", "accountId", "positionId"])
+    .index("by_user_tradeIdeaId_openedAt", ["userId", "tradeIdeaId", "openedAt"])
+    .index("by_user_instrumentId_openedAt", ["userId", "instrumentId", "openedAt"]),
 
   discordSymbolSnapshotFeeds: defineTable({
     organizationId: v.string(),
@@ -653,7 +551,6 @@ export default defineSchema({
   }).index("by_org_symbol", ["organizationId", "symbol"]),
 
   tradeIdeaEvents: defineTable({
-    organizationId: v.string(),
     userId: v.string(),
     connectionId: v.id("tradelockerConnections"),
     tradeIdeaGroupId: v.id("tradeIdeaGroups"),
@@ -663,29 +560,12 @@ export default defineSchema({
     executedAt: v.number(),
     createdAt: v.number(),
   })
-    .index("by_org_user_tradeIdeaGroupId", [
-      "organizationId",
-      "userId",
-      "tradeIdeaGroupId",
-    ])
-    .index("by_org_user_externalExecutionId", [
-      "organizationId",
-      "userId",
-      "externalExecutionId",
-    ])
-    .index("by_org_user_externalOrderId", [
-      "organizationId",
-      "userId",
-      "externalOrderId",
-    ])
-    .index("by_org_user_externalPositionId", [
-      "organizationId",
-      "userId",
-      "externalPositionId",
-    ]),
+    .index("by_user_tradeIdeaGroupId", ["userId", "tradeIdeaGroupId"])
+    .index("by_user_externalExecutionId", ["userId", "externalExecutionId"])
+    .index("by_user_externalOrderId", ["userId", "externalOrderId"])
+    .index("by_user_externalPositionId", ["userId", "externalPositionId"]),
 
   tradeIdeaNotes: defineTable({
-    organizationId: v.string(),
     userId: v.string(),
     tradeIdeaGroupId: v.id("tradeIdeaGroups"),
     reviewStatus: v.union(v.literal("todo"), v.literal("reviewed")),
@@ -698,15 +578,6 @@ export default defineSchema({
     tags: v.optional(v.array(v.string())),
     updatedAt: v.number(),
   })
-    .index("by_org_user_tradeIdeaGroupId", [
-      "organizationId",
-      "userId",
-      "tradeIdeaGroupId",
-    ])
-    .index("by_org_user_reviewStatus_updatedAt", [
-      "organizationId",
-      "userId",
-      "reviewStatus",
-      "updatedAt",
-    ]),
+    .index("by_user_tradeIdeaGroupId", ["userId", "tradeIdeaGroupId"])
+    .index("by_user_reviewStatus_updatedAt", ["userId", "reviewStatus", "updatedAt"]),
 });

@@ -113,6 +113,11 @@ const secondaryNavItems: NavItem[] = [
     ),
   },
   {
+    label: "Broker Connections",
+    href: "/admin/connections",
+    icon: <IconPlug stroke={1} className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`} />,
+  },
+  {
     label: "Integrations",
     href: "/admin/integrations",
     icon: (

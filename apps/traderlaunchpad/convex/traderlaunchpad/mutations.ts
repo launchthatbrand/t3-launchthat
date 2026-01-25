@@ -17,6 +17,7 @@ const tradeIdeasIdeasMutations = (components.launchthat_traderlaunchpad.tradeIde
   .ideas as any;
 const sharingModule = components.launchthat_traderlaunchpad.sharing as any;
 const visibilityModule = components.launchthat_traderlaunchpad.visibility as any;
+const permissionsModule = components.launchthat_traderlaunchpad.permissions as any;
 const tradingPlansMutations = components.launchthat_traderlaunchpad.tradingPlans.index as any;
 const connectionsQueries = components.launchthat_traderlaunchpad.connections.queries as any;
 const connectionsMutations = components.launchthat_traderlaunchpad.connections.mutations as any;
@@ -152,6 +153,58 @@ export const upsertMyVisibilitySettings = mutation({
       positionsPublic: args.positionsPublic,
       profilePublic: args.profilePublic,
       analyticsReportsPublic: args.analyticsReportsPublic,
+    });
+    return null;
+  },
+});
+
+export const upsertMyGlobalPermissions = mutation({
+  args: {
+    globalEnabled: v.boolean(),
+    tradeIdeasEnabled: v.boolean(),
+    openPositionsEnabled: v.boolean(),
+    ordersEnabled: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await resolveViewerUserId(ctx);
+    await ctx.runMutation(permissionsModule.upsertPermissions, {
+      userId,
+      scopeType: "global",
+      globalEnabled: args.globalEnabled,
+      tradeIdeasEnabled: args.tradeIdeasEnabled,
+      openPositionsEnabled: args.openPositionsEnabled,
+      ordersEnabled: args.ordersEnabled,
+    });
+    return null;
+  },
+});
+
+export const upsertMyOrgPermissions = mutation({
+  args: {
+    organizationId: v.string(),
+    globalEnabled: v.boolean(),
+    tradeIdeasEnabled: v.boolean(),
+    openPositionsEnabled: v.boolean(),
+    ordersEnabled: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId = String(args.organizationId ?? "").trim();
+    if (!organizationId) throw new Error("Missing organizationId");
+
+    const userId = await resolveViewerUserId(ctx);
+    const membership = await resolveMembershipForOrg(ctx, organizationId, userId);
+    if (!membership) throw new Error("Not a member of this organization");
+
+    await ctx.runMutation(permissionsModule.upsertPermissions, {
+      userId,
+      scopeType: "org",
+      scopeId: organizationId,
+      globalEnabled: args.globalEnabled,
+      tradeIdeasEnabled: args.tradeIdeasEnabled,
+      openPositionsEnabled: args.openPositionsEnabled,
+      ordersEnabled: args.ordersEnabled,
     });
     return null;
   },

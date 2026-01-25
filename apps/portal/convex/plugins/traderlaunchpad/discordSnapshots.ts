@@ -494,19 +494,49 @@ export const run = internalAction({
         );
         const bars = flattenBars(Array.isArray(chunks) ? chunks : [], fromMs, toMs);
 
-        // Community open positions (org+symbol, open only)
-        const openGroups = (await ctx.runQuery(
-          components.launchthat_traderlaunchpad.tradeIdeas.queries.listOpenGroupsForOrgSymbol as any,
-          { organizationId, symbol, limit: 1000 },
+        // Community open positions:
+        // memberships ∩ per-org permissions ∩ user-owned open groups.
+        const members = (await ctx.runQuery(
+          components.launchthat_core_tenant.queries.listMembersByOrganizationId as any,
+          { organizationId },
         )) as any[] | null;
-        const positions = (Array.isArray(openGroups) ? openGroups : []).map((g) => ({
-          userId: String(g?.userId ?? ""),
-          direction: g?.direction === "short" ? ("short" as const) : ("long" as const),
-          netQty: Number(g?.netQty ?? 0),
-          avgEntryPrice:
-            typeof g?.avgEntryPrice === "number" ? (g.avgEntryPrice as number) : undefined,
-          openedAt: Number(g?.openedAt ?? 0),
-        }));
+        const memberUserIds = (Array.isArray(members) ? members : [])
+          .map((m) => String(m?.userId ?? m?.member?.userId ?? ""))
+          .filter(Boolean);
+
+        const perms = (await ctx.runQuery(
+          components.launchthat_traderlaunchpad.permissions.listOrgPermissionsForUsers as any,
+          { organizationId, userIds: memberUserIds },
+        )) as any[] | null;
+        const allowedUserIds = (Array.isArray(perms) ? perms : [])
+          .filter((p) => Boolean(p?.globalEnabled) || Boolean(p?.openPositionsEnabled))
+          .map((p) => String(p?.userId ?? ""))
+          .filter(Boolean);
+
+        const positions: Array<{
+          userId: string;
+          direction: "long" | "short";
+          netQty: number;
+          avgEntryPrice?: number;
+          openedAt: number;
+        }> = [];
+        for (const userId of allowedUserIds) {
+          const groups = (await ctx.runQuery(
+            components.launchthat_traderlaunchpad.tradeIdeas.queries.listLatestForSymbol as any,
+            { userId, symbol, status: "open", limit: 200 },
+          )) as any[] | null;
+          for (const g of Array.isArray(groups) ? groups : []) {
+            if (String(g?.status ?? "") !== "open") continue;
+            positions.push({
+              userId,
+              direction: g?.direction === "short" ? ("short" as const) : ("long" as const),
+              netQty: Number(g?.netQty ?? 0),
+              avgEntryPrice:
+                typeof g?.avgEntryPrice === "number" ? (g.avgEntryPrice as number) : undefined,
+              openedAt: Number(g?.openedAt ?? 0),
+            });
+          }
+        }
         const clusters = clusterCommunityPositions({
           positions,
           maxClusters: 10,

@@ -1,6 +1,10 @@
 import { v } from "convex/values";
 import { mutation, query } from "./server";
 
+/**
+ * DEPRECATED: replaced by `permissions` module.
+ * Kept as a thin compatibility layer to avoid breaking older call sites.
+ */
 const defaultSettings = () => ({
   // Default to "global off" so users can control per-type, but keep all types enabled initially.
   globalEnabled: false,
@@ -23,14 +27,17 @@ export const getMyShareVisibilitySettings = query({
     profileEnabled: v.boolean(),
   }),
   handler: async (ctx, args) => {
+    const defaults = defaultSettings();
     const row = await ctx.db
-      .query("shareVisibilitySettings")
-      .withIndex("by_org_user", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
+      .query("permissions")
+      .withIndex("by_user_scope", (q: any) =>
+        q
+          .eq("userId", args.userId)
+          .eq("scopeType", "org")
+          .eq("scopeId", args.organizationId.trim()),
       )
       .unique();
 
-    const defaults = defaultSettings();
     return {
       globalEnabled:
         typeof row?.globalEnabled === "boolean" ? row.globalEnabled : defaults.globalEnabled,
@@ -41,11 +48,10 @@ export const getMyShareVisibilitySettings = query({
       ordersEnabled:
         typeof row?.ordersEnabled === "boolean" ? row.ordersEnabled : defaults.ordersEnabled,
       positionsEnabled:
-        typeof row?.positionsEnabled === "boolean"
-          ? row.positionsEnabled
+        typeof row?.openPositionsEnabled === "boolean"
+          ? row.openPositionsEnabled
           : defaults.positionsEnabled,
-      profileEnabled:
-        typeof row?.profileEnabled === "boolean" ? row.profileEnabled : defaults.profileEnabled,
+      profileEnabled: defaults.profileEnabled,
     };
   },
 });
@@ -63,19 +69,21 @@ export const upsertMyShareVisibilitySettings = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const now = Date.now();
+    const organizationId = args.organizationId.trim();
+    if (!organizationId) return null;
+
     const existing = await ctx.db
-      .query("shareVisibilitySettings")
-      .withIndex("by_org_user", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
+      .query("permissions")
+      .withIndex("by_user_scope", (q: any) =>
+        q.eq("userId", args.userId).eq("scopeType", "org").eq("scopeId", organizationId),
       )
       .unique();
 
     const next = {
       globalEnabled: Boolean(args.globalEnabled),
       tradeIdeasEnabled: Boolean(args.tradeIdeasEnabled),
+      openPositionsEnabled: Boolean(args.positionsEnabled),
       ordersEnabled: Boolean(args.ordersEnabled),
-      positionsEnabled: Boolean(args.positionsEnabled),
-      profileEnabled: Boolean(args.profileEnabled),
       updatedAt: now,
     };
 
@@ -84,9 +92,10 @@ export const upsertMyShareVisibilitySettings = mutation({
       return null;
     }
 
-    await ctx.db.insert("shareVisibilitySettings", {
-      organizationId: args.organizationId,
+    await ctx.db.insert("permissions", {
       userId: args.userId,
+      scopeType: "org",
+      scopeId: organizationId,
       ...next,
     });
     return null;

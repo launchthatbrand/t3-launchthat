@@ -9,25 +9,8 @@ const randomToken = (): string => {
   return `${Date.now().toString(36)}_${a}${b}`.slice(0, 40);
 };
 
-const getEffectiveTradeIdeasDefaultVisibility = async (
-  ctx: any,
-  organizationId: string,
-  userId: string,
-): Promise<"private" | "public"> => {
-  const row = await ctx.db
-    .query("visibilitySettings")
-    .withIndex("by_org_user", (q: any) => q.eq("organizationId", organizationId).eq("userId", userId))
-    .unique();
-
-  const globalPublic = typeof row?.globalPublic === "boolean" ? row.globalPublic : false;
-  const tradeIdeasPublic = typeof row?.tradeIdeasPublic === "boolean" ? row.tradeIdeasPublic : false;
-  const effectivePublic = globalPublic ? true : tradeIdeasPublic;
-  return effectivePublic ? "public" : "private";
-};
-
 export const upsertTradeIdeaGroup = mutation({
   args: {
-    organizationId: v.string(),
     userId: v.string(),
     connectionId: v.id("tradelockerConnections"),
     accountId: v.string(),
@@ -49,12 +32,8 @@ export const upsertTradeIdeaGroup = mutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("tradeIdeaGroups")
-      .withIndex("by_org_user_accountId_positionId", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("accountId", args.accountId)
-          .eq("positionId", args.positionId),
+      .withIndex("by_user_accountId_positionId", (q: any) =>
+        q.eq("userId", args.userId).eq("accountId", args.accountId).eq("positionId", args.positionId),
       )
       .unique();
 
@@ -81,7 +60,6 @@ export const upsertTradeIdeaGroup = mutation({
     }
 
     return await ctx.db.insert("tradeIdeaGroups", {
-      organizationId: args.organizationId,
       userId: args.userId,
       connectionId: args.connectionId,
       accountId: args.accountId,
@@ -126,7 +104,6 @@ const notional = (e: any): number => {
  */
 export const rebuildTradeIdeasForInstrument = mutation({
   args: {
-    organizationId: v.string(),
     userId: v.string(),
     connectionId: v.id("tradelockerConnections"),
     accountId: v.string(),
@@ -145,11 +122,8 @@ export const rebuildTradeIdeasForInstrument = mutation({
 
     const executions = await ctx.db
       .query("tradeExecutions")
-      .withIndex("by_org_user_instrumentId_executedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("instrumentId", instrumentId),
+      .withIndex("by_user_instrumentId_executedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("instrumentId", instrumentId),
       )
       .order("asc")
       .collect();
@@ -272,12 +246,8 @@ export const rebuildTradeIdeasForInstrument = mutation({
 
       const groupId = await ctx.db
         .query("tradeIdeaGroups")
-        .withIndex("by_org_user_accountId_positionId", (q: any) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("userId", args.userId)
-            .eq("accountId", args.accountId)
-            .eq("positionId", positionId),
+        .withIndex("by_user_accountId_positionId", (q: any) =>
+          q.eq("userId", args.userId).eq("accountId", args.accountId).eq("positionId", positionId),
         )
         .unique()
         .then(async (existing) => {
@@ -303,7 +273,6 @@ export const rebuildTradeIdeasForInstrument = mutation({
             return existing._id;
           }
           return await ctx.db.insert("tradeIdeaGroups", {
-            organizationId: args.organizationId,
             userId: args.userId,
             connectionId: args.connectionId,
             accountId: args.accountId,
@@ -330,11 +299,8 @@ export const rebuildTradeIdeasForInstrument = mutation({
       for (const e of ep.executions) {
         const existingEvent = await ctx.db
           .query("tradeIdeaEvents")
-          .withIndex("by_org_user_externalExecutionId", (q: any) =>
-            q
-              .eq("organizationId", args.organizationId)
-              .eq("userId", args.userId)
-              .eq("externalExecutionId", e.externalExecutionId),
+          .withIndex("by_user_externalExecutionId", (q: any) =>
+            q.eq("userId", args.userId).eq("externalExecutionId", e.externalExecutionId),
           )
           .first();
 
@@ -357,7 +323,6 @@ export const rebuildTradeIdeasForInstrument = mutation({
         }
 
         await ctx.db.insert("tradeIdeaEvents", {
-          organizationId: args.organizationId,
           userId: args.userId,
           connectionId: args.connectionId,
           tradeIdeaGroupId: groupId,
@@ -391,11 +356,8 @@ export const rebuildTradeIdeaForPosition = mutation({
   handler: async (ctx, args) => {
     const executions = await ctx.db
       .query("tradeExecutions")
-      .withIndex("by_org_user_externalPositionId", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("externalPositionId", args.positionId),
+      .withIndex("by_user_externalPositionId", (q: any) =>
+        q.eq("userId", args.userId).eq("externalPositionId", args.positionId),
       )
       .collect();
 
@@ -508,12 +470,8 @@ export const rebuildTradeIdeaForPosition = mutation({
     // Avoid calling ctx.runMutation recursively; call local mutation handler logic directly.
     const groupId = await ctx.db
       .query("tradeIdeaGroups")
-      .withIndex("by_org_user_accountId_positionId", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("accountId", args.accountId)
-          .eq("positionId", args.positionId),
+      .withIndex("by_user_accountId_positionId", (q: any) =>
+        q.eq("userId", args.userId).eq("accountId", args.accountId).eq("positionId", args.positionId),
       )
       .unique()
       .then(async (existing) => {
@@ -538,7 +496,6 @@ export const rebuildTradeIdeaForPosition = mutation({
           return existing._id;
         }
         return await ctx.db.insert("tradeIdeaGroups", {
-          organizationId: args.organizationId,
           userId: args.userId,
           connectionId: args.connectionId,
           accountId: args.accountId,
@@ -564,11 +521,8 @@ export const rebuildTradeIdeaForPosition = mutation({
     for (const e of sorted) {
       const existingEvent = await ctx.db
         .query("tradeIdeaEvents")
-        .withIndex("by_org_user_externalExecutionId", (q: any) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("userId", args.userId)
-            .eq("externalExecutionId", e.externalExecutionId),
+        .withIndex("by_user_externalExecutionId", (q: any) =>
+          q.eq("userId", args.userId).eq("externalExecutionId", e.externalExecutionId),
         )
         .first();
 
@@ -586,7 +540,6 @@ export const rebuildTradeIdeaForPosition = mutation({
       }
 
       await ctx.db.insert("tradeIdeaEvents", {
-        organizationId: args.organizationId,
         userId: args.userId,
         connectionId: args.connectionId,
         tradeIdeaGroupId: groupId,
@@ -664,12 +617,8 @@ export const rebuildTradeIdeaForPosition = mutation({
           } else {
             const candidates = await ctx.db
               .query("tradeIdeas")
-              .withIndex("by_org_user_symbol_status_lastActivityAt", (q: any) =>
-                q
-                  .eq("organizationId", args.organizationId)
-                  .eq("userId", args.userId)
-                  .eq("symbol", symbol)
-                  .eq("status", "active"),
+              .withIndex("by_user_symbol_status_lastActivityAt", (q: any) =>
+                q.eq("userId", args.userId).eq("symbol", symbol).eq("status", "active"),
               )
               .order("desc")
               .take(20);
@@ -691,23 +640,12 @@ export const rebuildTradeIdeaForPosition = mutation({
             const tradeIdeaId = match
               ? match._id
               : await (async () => {
-                  const defaultVisibility = await getEffectiveTradeIdeasDefaultVisibility(
-                    ctx,
-                    args.organizationId,
-                    args.userId,
-                  );
-                  const shareToken =
-                    defaultVisibility !== "private" ? randomToken() : undefined;
                   return await ctx.db.insert("tradeIdeas", {
-                    organizationId: args.organizationId,
                     userId: args.userId,
                     symbol,
                     instrumentId,
                     bias: direction,
                     timeframe: defaultTimeframe,
-                    visibility: defaultVisibility,
-                    shareToken,
-                    shareEnabledAt: shareToken ? now : undefined,
                     status: "active",
                     openedAt: openedAtMs,
                     lastStartedAt: openedAtMs,

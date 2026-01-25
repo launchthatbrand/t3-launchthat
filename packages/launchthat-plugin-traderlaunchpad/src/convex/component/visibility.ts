@@ -1,6 +1,10 @@
 import { v } from "convex/values";
 import { mutation, query } from "./server";
 
+/**
+ * DEPRECATED: replaced by `permissions` module.
+ * Kept as a thin compatibility layer to avoid breaking older call sites.
+ */
 const defaults = () => ({
   globalPublic: false,
   tradeIdeasPublic: false,
@@ -21,26 +25,28 @@ export const getMyVisibilitySettings = query({
     analyticsReportsPublic: v.boolean(),
   }),
   handler: async (ctx, args) => {
+    const d = defaults();
     const row = await ctx.db
-      .query("visibilitySettings")
-      .withIndex("by_org_user", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
+      .query("permissions")
+      .withIndex("by_user_scope", (q: any) =>
+        q.eq("userId", args.userId).eq("scopeType", "global").eq("scopeId", null),
       )
       .unique();
 
-    const d = defaults();
     return {
-      globalPublic: typeof row?.globalPublic === "boolean" ? row.globalPublic : d.globalPublic,
+      globalPublic: typeof row?.globalEnabled === "boolean" ? row.globalEnabled : d.globalPublic,
       tradeIdeasPublic:
-        typeof row?.tradeIdeasPublic === "boolean" ? row.tradeIdeasPublic : d.tradeIdeasPublic,
-      ordersPublic: typeof row?.ordersPublic === "boolean" ? row.ordersPublic : d.ordersPublic,
+        typeof row?.tradeIdeasEnabled === "boolean"
+          ? row.tradeIdeasEnabled
+          : d.tradeIdeasPublic,
+      ordersPublic:
+        typeof row?.ordersEnabled === "boolean" ? row.ordersEnabled : d.ordersPublic,
       positionsPublic:
-        typeof row?.positionsPublic === "boolean" ? row.positionsPublic : d.positionsPublic,
-      profilePublic: typeof row?.profilePublic === "boolean" ? row.profilePublic : d.profilePublic,
-      analyticsReportsPublic:
-        typeof row?.analyticsReportsPublic === "boolean"
-          ? row.analyticsReportsPublic
-          : d.analyticsReportsPublic,
+        typeof row?.openPositionsEnabled === "boolean"
+          ? row.openPositionsEnabled
+          : d.positionsPublic,
+      profilePublic: d.profilePublic,
+      analyticsReportsPublic: d.analyticsReportsPublic,
     };
   },
 });
@@ -60,56 +66,31 @@ export const upsertMyVisibilitySettings = mutation({
   handler: async (ctx, args) => {
     const now = Date.now();
     const existing = await ctx.db
-      .query("visibilitySettings")
-      .withIndex("by_org_user", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
+      .query("permissions")
+      .withIndex("by_user_scope", (q: any) =>
+        q.eq("userId", args.userId).eq("scopeType", "global").eq("scopeId", null),
       )
       .unique();
 
     const next = {
-      globalPublic: Boolean(args.globalPublic),
-      tradeIdeasPublic: Boolean(args.tradeIdeasPublic),
-      ordersPublic: Boolean(args.ordersPublic),
-      positionsPublic: Boolean(args.positionsPublic),
-      profilePublic: Boolean(args.profilePublic),
-      analyticsReportsPublic: Boolean(args.analyticsReportsPublic),
+      globalEnabled: Boolean(args.globalPublic),
+      tradeIdeasEnabled: Boolean(args.tradeIdeasPublic),
+      openPositionsEnabled: Boolean(args.positionsPublic),
+      ordersEnabled: Boolean(args.ordersPublic),
       updatedAt: now,
     };
 
     if (existing) {
       await ctx.db.patch(existing._id, next);
-    } else {
-      await ctx.db.insert("visibilitySettings", {
-        organizationId: args.organizationId,
-        userId: args.userId,
-        ...next,
-      });
+      return null;
     }
 
-    // Best-effort: if user turns on public defaults, make existing trade ideas public too
-    // (matches the expectation that "global public" immediately reflects across their data).
-    const effectiveTradeIdeasPublic = next.globalPublic ? true : next.tradeIdeasPublic;
-    if (effectiveTradeIdeasPublic) {
-      const ideas = await ctx.db
-        .query("tradeIdeas")
-        .withIndex("by_org_user_updatedAt", (q: any) =>
-          q.eq("organizationId", args.organizationId).eq("userId", args.userId),
-        )
-        .order("desc")
-        .take(2000);
-      for (const idea of ideas) {
-        if (idea.visibility === "public") continue;
-        await ctx.db.patch(idea._id, {
-          visibility: "public",
-          shareToken:
-            typeof idea.shareToken === "string" && idea.shareToken.trim()
-              ? idea.shareToken
-              : `${now.toString(36)}_${Math.random().toString(36).slice(2)}`.slice(0, 40),
-          shareEnabledAt: typeof idea.shareEnabledAt === "number" ? idea.shareEnabledAt : now,
-          updatedAt: now,
-        });
-      }
-    }
+    await ctx.db.insert("permissions", {
+      userId: args.userId,
+      scopeType: "global",
+      scopeId: null,
+      ...next,
+    });
 
     return null;
   },

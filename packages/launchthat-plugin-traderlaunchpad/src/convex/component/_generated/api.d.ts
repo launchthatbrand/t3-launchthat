@@ -21,6 +21,7 @@ import type * as index from "../index.js";
 import type * as journal_index from "../journal/index.js";
 import type * as journal_mutations from "../journal/mutations.js";
 import type * as journal_queries from "../journal/queries.js";
+import type * as permissions from "../permissions.js";
 import type * as publicOrders from "../publicOrders.js";
 import type * as raw_index from "../raw/index.js";
 import type * as raw_mutations from "../raw/mutations.js";
@@ -66,6 +67,7 @@ declare const fullApi: ApiFromModules<{
   "journal/index": typeof journal_index;
   "journal/mutations": typeof journal_mutations;
   "journal/queries": typeof journal_queries;
+  permissions: typeof permissions;
   publicOrders: typeof publicOrders;
   "raw/index": typeof raw_index;
   "raw/mutations": typeof raw_mutations;
@@ -648,11 +650,57 @@ export type Mounts = {
       >;
     };
   };
+  permissions: {
+    getPermissions: FunctionReference<
+      "query",
+      "public",
+      { scopeId?: string; scopeType: "global" | "org"; userId: string },
+      {
+        globalEnabled: boolean;
+        openPositionsEnabled: boolean;
+        ordersEnabled: boolean;
+        scopeId: string | null;
+        scopeType: "global" | "org";
+        tradeIdeasEnabled: boolean;
+        updatedAt: number;
+        userId: string;
+      }
+    >;
+    listOrgPermissionsForUsers: FunctionReference<
+      "query",
+      "public",
+      { organizationId: string; userIds: Array<string> },
+      Array<{
+        globalEnabled: boolean;
+        openPositionsEnabled: boolean;
+        ordersEnabled: boolean;
+        scopeId: string;
+        scopeType: "org";
+        tradeIdeasEnabled: boolean;
+        updatedAt: number;
+        userId: string;
+      }>
+    >;
+    upsertPermissions: FunctionReference<
+      "mutation",
+      "public",
+      {
+        globalEnabled: boolean;
+        openPositionsEnabled: boolean;
+        ordersEnabled: boolean;
+        scopeId?: string;
+        scopeType: "global" | "org";
+        tradeIdeasEnabled: boolean;
+        userId: string;
+      },
+      null
+    >;
+  };
   publicOrders: {
     listPublicOrdersForUser: FunctionReference<
       "query",
       "public",
-      { limit?: number; organizationId: string; userId: string },
+      { limit?: number; organizationId?: string; userId: string },
       Array<{
         closedAt: number | null;
         createdAt: number | null;
@@ -677,6 +725,9 @@ export type Mounts = {
         {
           executionsPatched: number;
           instrumentsReceived: number;
+          ordersHistoryPatched: number;
+          ordersPatched: number;
+          positionsPatched: number;
           tradeIdeaGroupsPatched: number;
         }
       >;
@@ -1432,7 +1483,7 @@ export type Mounts = {
         {
           accountId?: string;
           limit?: number;
-          organizationId: string;
+          organizationId?: string;
           userId: string;
         },
         {
@@ -1453,7 +1504,7 @@ export type Mounts = {
         {
           accountId?: string;
           limit?: number;
-          organizationId: string;
+          organizationId?: string;
           userId: string;
         },
         Array<{
@@ -1589,7 +1640,7 @@ export type Mounts = {
         "public",
         {
           limitAssigned?: number;
-          organizationId: string;
+          organizationId?: string;
           scanCap?: number;
           userId: string;
         },
@@ -1601,7 +1652,7 @@ export type Mounts = {
         {
           bias: "long" | "short" | "neutral";
           instrumentId?: string;
-          organizationId: string;
+          organizationId?: string;
           symbol: string;
           tags?: Array<string>;
           thesis?: string;
@@ -1669,14 +1720,13 @@ export type Mounts = {
         "query",
         "public",
         {
-          organizationId: string;
+          organizationId?: string;
           positionsLimit?: number;
           tradeIdeaId: string;
           userId: string;
         },
         null | {
           bias: "long" | "short" | "neutral";
-          expiresAt?: number;
           instrumentId?: string;
           lastActivityAt: number;
           openedAt: number;
@@ -1692,8 +1742,6 @@ export type Mounts = {
             symbol: string;
             tradeIdeaGroupId: string;
           }>;
-          shareEnabledAt?: number;
-          shareToken?: string;
           status: "active" | "closed";
           symbol: string;
           tags?: Array<string>;
@@ -1790,7 +1838,7 @@ export type Mounts = {
       listMyTradeIdeas: FunctionReference<
         "query",
         "public",
-        { limit?: number; organizationId: string; userId: string },
+        { limit?: number; organizationId?: string; userId: string },
         Array<{
           bias: "long" | "short" | "neutral";
           instrumentId?: string;
@@ -1812,7 +1860,7 @@ export type Mounts = {
       listPublicTradeIdeasForUser: FunctionReference<
         "query",
         "public",
-        { expectedUserId: string; limit?: number; organizationId: string },
+        { expectedUserId: string; limit?: number; organizationId?: string },
         Array<{
           bias: "long" | "short" | "neutral";
           lastActivityAt: number;
@@ -1827,7 +1875,7 @@ export type Mounts = {
       reconcileIdeasForUser: FunctionReference<
         "mutation",
         "public",
-        { organizationId: string; scanCap?: number; userId: string },
+        { organizationId?: string; scanCap?: number; userId: string },
         {
           groupsReassigned: number;
           ideasDeleted: number;
@@ -1840,7 +1888,7 @@ export type Mounts = {
         "public",
         {
           expiresAt?: number;
-          organizationId: string;
+          organizationId?: string;
           tradeIdeaId: string;
           userId: string;
           visibility: "private" | "link" | "public";
@@ -1870,7 +1918,7 @@ export type Mounts = {
         "public",
         {
           accountId: string;
-          organizationId: string;
+          organizationId?: string;
           positionId: string;
           userId: string;
         },
@@ -1879,7 +1927,7 @@ export type Mounts = {
       getLatestGroupForSymbol: FunctionReference<
         "query",
         "public",
-        { organizationId: string; symbol: string; userId: string },
+        { organizationId?: string; symbol: string; userId: string },
         {
           _creationTime: number;
           _id: string;
@@ -1900,7 +1948,6 @@ export type Mounts = {
           lastProcessedExecutionId?: string;
           netQty: number;
           openedAt: number;
-          organizationId: string;
           positionId?: string;
           realizedPnl?: number;
           status: "open" | "closed";
@@ -1913,7 +1960,7 @@ export type Mounts = {
       getOpenGroupForSymbol: FunctionReference<
         "query",
         "public",
-        { organizationId: string; symbol: string; userId: string },
+        { organizationId?: string; symbol: string; userId: string },
         {
           _creationTime: number;
           _id: string;
@@ -1934,7 +1981,6 @@ export type Mounts = {
           lastProcessedExecutionId?: string;
           netQty: number;
           openedAt: number;
-          organizationId: string;
           positionId?: string;
           realizedPnl?: number;
           status: "open" | "closed";
@@ -1947,7 +1993,7 @@ export type Mounts = {
       hasAnyOpenGroup: FunctionReference<
         "query",
         "public",
-        { organizationId: string; userId: string },
+        { organizationId?: string; userId: string },
         boolean
       >;
     };
@@ -1978,7 +2024,6 @@ export type Mounts = {
           accountId: string;
           connectionId: string;
           instrumentId: string;
-          organizationId: string;
           userId: string;
         },
         {
@@ -2028,7 +2073,6 @@ export type Mounts = {
           lastProcessedExecutionId?: string;
           netQty: number;
           openedAt: number;
-          organizationId: string;
           positionId: string;
           realizedPnl?: number;
           status: "open" | "closed";
@@ -2042,13 +2086,12 @@ export type Mounts = {
       getNoteForGroup: FunctionReference<
         "query",
         "public",
-        { organizationId: string; tradeIdeaGroupId: string; userId: string },
+        { organizationId?: string; tradeIdeaGroupId: string; userId: string },
         {
           _creationTime: number;
           _id: string;
           mistakes?: string;
           nextTime?: string;
-          organizationId: string;
           outcome?: string;
           reviewStatus: "todo" | "reviewed";
           reviewedAt?: number;
@@ -2066,7 +2109,7 @@ export type Mounts = {
         {
           accountId?: string;
           limit?: number;
-          organizationId: string;
+          organizationId?: string;
           userId: string;
         },
         Array<{
@@ -2107,7 +2150,7 @@ export type Mounts = {
       markReviewed: FunctionReference<
         "mutation",
         "public",
-        { organizationId: string; tradeIdeaGroupId: string; userId: string },
+        { organizationId?: string; tradeIdeaGroupId: string; userId: string },
         string
       >;
       upsertNoteForGroup: FunctionReference<
@@ -2116,7 +2159,7 @@ export type Mounts = {
         {
           mistakes?: string;
           nextTime?: string;
-          organizationId: string;
+          organizationId?: string;
           outcome?: string;
           setup?: string;
           tags?: Array<string>;
@@ -2152,7 +2195,6 @@ export type Mounts = {
           lastProcessedExecutionId?: string;
           netQty: number;
           openedAt: number;
-          organizationId: string;
           positionId?: string;
           realizedPnl?: number;
           status: "open" | "closed";
@@ -2187,7 +2229,6 @@ export type Mounts = {
         "query",
         "public",
         {
-          organizationId: string;
           paginationOpts: {
             cursor: string | null;
             endCursor?: string | null;
@@ -2222,7 +2263,6 @@ export type Mounts = {
             lastProcessedExecutionId?: string;
             netQty: number;
             openedAt: number;
-            organizationId: string;
             positionId?: string;
             realizedPnl?: number;
             status: "open" | "closed";
@@ -2238,12 +2278,7 @@ export type Mounts = {
       listEventsForGroup: FunctionReference<
         "query",
         "public",
-        {
-          limit?: number;
-          organizationId: string;
-          tradeIdeaGroupId: string;
-          userId: string;
-        },
+        { limit?: number; tradeIdeaGroupId: string; userId: string },
         Array<{
           _creationTime: number;
           _id: string;
@@ -2253,7 +2288,6 @@ export type Mounts = {
           externalExecutionId: string;
           externalOrderId?: string;
           externalPositionId?: string;
-          organizationId: string;
           tradeIdeaGroupId: string;
           userId: string;
         }>
@@ -2263,7 +2297,7 @@ export type Mounts = {
         "public",
         {
           limit?: number;
-          organizationId: string;
+          status?: "open" | "closed";
           symbol: string;
           userId: string;
         },
@@ -2287,7 +2321,6 @@ export type Mounts = {
           lastProcessedExecutionId?: string;
           netQty: number;
           openedAt: number;
-          organizationId: string;
           positionId?: string;
           realizedPnl?: number;
           status: "open" | "closed";
@@ -2296,19 +2329,6 @@ export type Mounts = {
           thesis?: string;
           tradeIdeaId?: string;
           updatedAt: number;
-          userId: string;
-        }>
-      >;
-      listOpenGroupsForOrgSymbol: FunctionReference<
-        "query",
-        "public",
-        { limit?: number; organizationId: string; symbol: string },
-        Array<{
-          avgEntryPrice?: number;
-          direction: "long" | "short";
-          netQty: number;
-          openedAt: number;
-          tradeIdeaGroupId: string;
           userId: string;
         }>
       >;

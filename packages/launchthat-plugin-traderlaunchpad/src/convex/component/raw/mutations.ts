@@ -23,11 +23,8 @@ export const upsertTradeOrder = mutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("tradeOrders")
-      .withIndex("by_org_user_externalOrderId", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("externalOrderId", args.externalOrderId),
+      .withIndex("by_user_externalOrderId", (q: any) =>
+        q.eq("userId", args.userId).eq("externalOrderId", args.externalOrderId),
       )
       .first();
 
@@ -48,7 +45,6 @@ export const upsertTradeOrder = mutation({
     }
 
     const id = await ctx.db.insert("tradeOrders", {
-      organizationId: args.organizationId,
       userId: args.userId,
       connectionId: args.connectionId,
       externalOrderId: args.externalOrderId,
@@ -89,11 +85,8 @@ export const upsertTradeExecution = mutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("tradeExecutions")
-      .withIndex("by_org_user_externalExecutionId", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("externalExecutionId", args.externalExecutionId),
+      .withIndex("by_user_externalExecutionId", (q: any) =>
+        q.eq("userId", args.userId).eq("externalExecutionId", args.externalExecutionId),
       )
       .first();
 
@@ -117,7 +110,6 @@ export const upsertTradeExecution = mutation({
     }
 
     const id = await ctx.db.insert("tradeExecutions", {
-      organizationId: args.organizationId,
       userId: args.userId,
       connectionId: args.connectionId,
       externalExecutionId: args.externalExecutionId,
@@ -152,6 +144,9 @@ export const backfillSymbolsForUser = mutation({
   returns: v.object({
     instrumentsReceived: v.number(),
     executionsPatched: v.number(),
+    ordersPatched: v.number(),
+    ordersHistoryPatched: v.number(),
+    positionsPatched: v.number(),
     tradeIdeaGroupsPatched: v.number(),
   }),
   handler: async (ctx, args) => {
@@ -166,17 +161,26 @@ export const backfillSymbolsForUser = mutation({
     }
 
     let executionsPatched = 0;
+    let ordersPatched = 0;
+    let ordersHistoryPatched = 0;
+    let positionsPatched = 0;
     let tradeIdeaGroupsPatched = 0;
+
+    const shouldPatchSymbol = (existing: string, instrumentId: string): boolean => {
+      const s = existing.trim();
+      const upper = s.toUpperCase();
+      const isUnknown = !upper || upper === "UNKNOWN";
+      const isJustInstrumentId = s === instrumentId;
+      const isNumericOnly = /^\d+$/.test(s);
+      return isUnknown || isJustInstrumentId || isNumericOnly;
+    };
 
     for (const [instrumentId, symbol] of map) {
       // Patch executions missing a symbol.
       const execs = await ctx.db
         .query("tradeExecutions")
-        .withIndex("by_org_user_instrumentId_executedAt", (q: any) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("userId", args.userId)
-            .eq("instrumentId", instrumentId),
+        .withIndex("by_user_instrumentId_executedAt", (q: any) =>
+          q.eq("userId", args.userId).eq("instrumentId", instrumentId),
         )
         .order("desc")
         .take(perInstrumentCap);
@@ -184,19 +188,64 @@ export const backfillSymbolsForUser = mutation({
       for (const e of execs) {
         const existing =
           typeof (e as any).symbol === "string" ? String((e as any).symbol).trim() : "";
-        if (existing) continue;
+        if (!shouldPatchSymbol(existing, instrumentId)) continue;
         await ctx.db.patch(e._id, { symbol });
         executionsPatched += 1;
+      }
+
+      // Patch orders / orders history symbol fields (often numeric IDs from table payloads).
+      const orders = await ctx.db
+        .query("tradeOrders")
+        .withIndex("by_user_instrumentId_updatedAt", (q: any) =>
+          q.eq("userId", args.userId).eq("instrumentId", instrumentId),
+        )
+        .order("desc")
+        .take(perInstrumentCap);
+      for (const o of orders) {
+        const existing =
+          typeof (o as any).symbol === "string" ? String((o as any).symbol).trim() : "";
+        if (!shouldPatchSymbol(existing, instrumentId)) continue;
+        await ctx.db.patch(o._id, { symbol });
+        ordersPatched += 1;
+      }
+
+      const ordersHistory = await ctx.db
+        .query("tradeOrdersHistory")
+        .withIndex("by_user_instrumentId_updatedAt", (q: any) =>
+          q.eq("userId", args.userId).eq("instrumentId", instrumentId),
+        )
+        .order("desc")
+        .take(perInstrumentCap);
+      for (const o of ordersHistory) {
+        const existing =
+          typeof (o as any).symbol === "string" ? String((o as any).symbol).trim() : "";
+        if (!shouldPatchSymbol(existing, instrumentId)) continue;
+        await ctx.db.patch(o._id, { symbol });
+        ordersHistoryPatched += 1;
+      }
+
+      // Patch positions (no instrumentId index in all cases; scan recent positions and filter).
+      const positions = await ctx.db
+        .query("tradePositions")
+        .withIndex("by_user_openedAt", (q: any) => q.eq("userId", args.userId))
+        .order("desc")
+        .take(perInstrumentCap);
+      for (const p of positions) {
+        const pInstrumentId =
+          typeof (p as any).instrumentId === "string" ? String((p as any).instrumentId).trim() : "";
+        if (pInstrumentId !== instrumentId) continue;
+        const existing =
+          typeof (p as any).symbol === "string" ? String((p as any).symbol).trim() : "";
+        if (!shouldPatchSymbol(existing, instrumentId)) continue;
+        await ctx.db.patch(p._id, { symbol });
+        positionsPatched += 1;
       }
 
       // Patch trade idea groups that were created with UNKNOWN/missing symbol.
       const groups = await ctx.db
         .query("tradeIdeaGroups")
-        .withIndex("by_org_user_instrumentId_openedAt", (q: any) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("userId", args.userId)
-            .eq("instrumentId", instrumentId),
+        .withIndex("by_user_instrumentId_openedAt", (q: any) =>
+          q.eq("userId", args.userId).eq("instrumentId", instrumentId),
         )
         .order("desc")
         .take(perInstrumentCap);
@@ -204,11 +253,7 @@ export const backfillSymbolsForUser = mutation({
       for (const g of groups) {
         const existing =
           typeof (g as any).symbol === "string" ? String((g as any).symbol).trim() : "";
-        const existingUpper = existing.toUpperCase();
-        const isUnknown = !existingUpper || existingUpper === "UNKNOWN";
-        const isJustInstrumentId = existing === instrumentId;
-        const isNumericOnly = /^\d+$/.test(existing);
-        if (!isUnknown && !isJustInstrumentId && !isNumericOnly) continue;
+        if (!shouldPatchSymbol(existing, instrumentId)) continue;
         await ctx.db.patch(g._id, { symbol });
         tradeIdeaGroupsPatched += 1;
       }
@@ -217,6 +262,9 @@ export const backfillSymbolsForUser = mutation({
     return {
       instrumentsReceived: map.size,
       executionsPatched,
+      ordersPatched,
+      ordersHistoryPatched,
+      positionsPatched,
       tradeIdeaGroupsPatched,
     };
   },
@@ -243,11 +291,8 @@ export const upsertTradeOrderHistory = mutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("tradeOrdersHistory")
-      .withIndex("by_org_user_externalOrderId", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("externalOrderId", args.externalOrderId),
+      .withIndex("by_user_externalOrderId", (q: any) =>
+        q.eq("userId", args.userId).eq("externalOrderId", args.externalOrderId),
       )
       .first();
 
@@ -268,7 +313,6 @@ export const upsertTradeOrderHistory = mutation({
     }
 
     const id = await ctx.db.insert("tradeOrdersHistory", {
-      organizationId: args.organizationId,
       userId: args.userId,
       connectionId: args.connectionId,
       externalOrderId: args.externalOrderId,
@@ -307,11 +351,8 @@ export const upsertTradePosition = mutation({
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("tradePositions")
-      .withIndex("by_org_user_externalPositionId", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("externalPositionId", args.externalPositionId),
+      .withIndex("by_user_externalPositionId", (q: any) =>
+        q.eq("userId", args.userId).eq("externalPositionId", args.externalPositionId),
       )
       .first();
 
@@ -333,7 +374,6 @@ export const upsertTradePosition = mutation({
     }
 
     const id = await ctx.db.insert("tradePositions", {
-      organizationId: args.organizationId,
       userId: args.userId,
       connectionId: args.connectionId,
       externalPositionId: args.externalPositionId,

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 
 import { mutation, query } from "../server";
+import { isEnabledForType } from "../permissions";
 
 const defaultGroupingWindowMs = 6 * 60 * 60 * 1000; // 6h
 
@@ -31,46 +32,29 @@ const randomToken = (): string => {
   return `${Date.now().toString(36)}_${a}${b}`.slice(0, 40);
 };
 
-const getEffectiveShareSettings = async (
+const getGlobalPermissions = async (
   ctx: any,
-  organizationId: string,
   userId: string,
 ): Promise<{
   globalEnabled: boolean;
   tradeIdeasEnabled: boolean;
+  openPositionsEnabled: boolean;
+  ordersEnabled: boolean;
 }> => {
   const row = await ctx.db
-    .query("shareVisibilitySettings")
-    .withIndex("by_org_user", (q: any) =>
-      q.eq("organizationId", organizationId).eq("userId", userId),
+    .query("permissions")
+    .withIndex("by_user_scope", (q: any) =>
+      q.eq("userId", userId).eq("scopeType", "global").eq("scopeId", null),
     )
     .unique();
 
-  const globalEnabled = typeof row?.globalEnabled === "boolean" ? row.globalEnabled : false;
-  const tradeIdeasEnabled =
-    typeof row?.tradeIdeasEnabled === "boolean" ? row.tradeIdeasEnabled : true;
-
-  return { globalEnabled, tradeIdeasEnabled };
-};
-
-const getEffectiveTradeIdeasDefaultVisibility = async (
-  ctx: any,
-  organizationId: string,
-  userId: string,
-): Promise<"private" | "public"> => {
-  const row = await ctx.db
-    .query("visibilitySettings")
-    .withIndex("by_org_user", (q: any) =>
-      q.eq("organizationId", organizationId).eq("userId", userId),
-    )
-    .unique();
-
-  const globalPublic = typeof row?.globalPublic === "boolean" ? row.globalPublic : false;
-  const tradeIdeasPublic =
-    typeof row?.tradeIdeasPublic === "boolean" ? row.tradeIdeasPublic : false;
-
-  const effectivePublic = globalPublic ? true : tradeIdeasPublic;
-  return effectivePublic ? "public" : "private";
+  return {
+    globalEnabled: typeof row?.globalEnabled === "boolean" ? row.globalEnabled : false,
+    tradeIdeasEnabled: typeof row?.tradeIdeasEnabled === "boolean" ? row.tradeIdeasEnabled : false,
+    openPositionsEnabled:
+      typeof row?.openPositionsEnabled === "boolean" ? row.openPositionsEnabled : false,
+    ordersEnabled: typeof row?.ordersEnabled === "boolean" ? row.ordersEnabled : false,
+  };
 };
 
 export const getMyTradeIdeaSettings = query({
@@ -143,7 +127,8 @@ export const upsertMyTradeIdeaSettings = mutation({
 
 export const listMyTradeIdeas = query({
   args: {
-    organizationId: v.string(),
+    // Deprecated: trade ideas are user-owned; keep for backwards compatibility.
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     limit: v.optional(v.number()),
   },
@@ -168,11 +153,27 @@ export const listMyTradeIdeas = query({
   ),
   handler: async (ctx, args) => {
     const limit = Math.max(1, Math.min(200, args.limit ?? 50));
+    const perms = await ctx.db
+      .query("permissions")
+      .withIndex("by_user_scope", (q: any) =>
+        q.eq("userId", args.userId).eq("scopeType", "global").eq("scopeId", null),
+      )
+      .unique();
+    const effectivePublic = isEnabledForType(
+      {
+        globalEnabled: typeof perms?.globalEnabled === "boolean" ? perms.globalEnabled : false,
+        tradeIdeasEnabled:
+          typeof perms?.tradeIdeasEnabled === "boolean" ? perms.tradeIdeasEnabled : false,
+        openPositionsEnabled:
+          typeof perms?.openPositionsEnabled === "boolean" ? perms.openPositionsEnabled : false,
+        ordersEnabled: typeof perms?.ordersEnabled === "boolean" ? perms.ordersEnabled : false,
+      },
+      "tradeIdeas",
+    );
+
     const ideas = await ctx.db
       .query("tradeIdeas")
-      .withIndex("by_org_user_updatedAt", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
-      )
+      .withIndex("by_user_updatedAt", (q: any) => q.eq("userId", args.userId))
       .order("desc")
       .take(limit);
 
@@ -180,11 +181,8 @@ export const listMyTradeIdeas = query({
     for (const idea of ideas) {
       const groups = await ctx.db
         .query("tradeIdeaGroups")
-        .withIndex("by_org_user_tradeIdeaId_openedAt", (q: any) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("userId", args.userId)
-            .eq("tradeIdeaId", idea._id),
+        .withIndex("by_user_tradeIdeaId_openedAt", (q: any) =>
+          q.eq("userId", args.userId).eq("tradeIdeaId", idea._id),
         )
         .order("desc")
         .take(500);
@@ -203,7 +201,7 @@ export const listMyTradeIdeas = query({
         timeframeLabel: typeof idea.timeframeLabel === "string" ? idea.timeframeLabel : undefined,
         thesis: typeof idea.thesis === "string" ? idea.thesis : undefined,
         tags: Array.isArray(idea.tags) ? idea.tags : undefined,
-        visibility: idea.visibility,
+        visibility: effectivePublic ? ("public" as const) : ("private" as const),
         status: idea.status,
         openedAt: Number(idea.openedAt ?? 0),
         lastActivityAt: Number(idea.lastActivityAt ?? 0),
@@ -219,7 +217,8 @@ export const listMyTradeIdeas = query({
 
 export const getMyTradeIdeaDetail = query({
   args: {
-    organizationId: v.string(),
+    // Deprecated: trade ideas are user-owned; keep for backwards compatibility.
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     tradeIdeaId: v.id("tradeIdeas"),
     positionsLimit: v.optional(v.number()),
@@ -236,9 +235,6 @@ export const getMyTradeIdeaDetail = query({
       thesis: v.optional(v.string()),
       tags: v.optional(v.array(v.string())),
       visibility: v.union(v.literal("private"), v.literal("link"), v.literal("public")),
-      shareToken: v.optional(v.string()),
-      shareEnabledAt: v.optional(v.number()),
-      expiresAt: v.optional(v.number()),
       status: v.union(v.literal("active"), v.literal("closed")),
       openedAt: v.number(),
       lastActivityAt: v.number(),
@@ -261,20 +257,34 @@ export const getMyTradeIdeaDetail = query({
   handler: async (ctx, args) => {
     const idea = await ctx.db.get(args.tradeIdeaId);
     if (!idea) return null;
-    if (idea.organizationId !== args.organizationId) return null;
     if (idea.userId !== args.userId) return null;
 
     const positionsLimit = Math.max(1, Math.min(500, args.positionsLimit ?? 200));
     const groups = await ctx.db
       .query("tradeIdeaGroups")
-      .withIndex("by_org_user_tradeIdeaId_openedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("tradeIdeaId", args.tradeIdeaId),
+      .withIndex("by_user_tradeIdeaId_openedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("tradeIdeaId", args.tradeIdeaId),
       )
       .order("desc")
       .take(positionsLimit);
+
+    const perms = await ctx.db
+      .query("permissions")
+      .withIndex("by_user_scope", (q: any) =>
+        q.eq("userId", args.userId).eq("scopeType", "global").eq("scopeId", null),
+      )
+      .unique();
+    const effectivePublic = isEnabledForType(
+      {
+        globalEnabled: typeof perms?.globalEnabled === "boolean" ? perms.globalEnabled : false,
+        tradeIdeasEnabled:
+          typeof perms?.tradeIdeasEnabled === "boolean" ? perms.tradeIdeasEnabled : false,
+        openPositionsEnabled:
+          typeof perms?.openPositionsEnabled === "boolean" ? perms.openPositionsEnabled : false,
+        ordersEnabled: typeof perms?.ordersEnabled === "boolean" ? perms.ordersEnabled : false,
+      },
+      "tradeIdeas",
+    );
 
     return {
       tradeIdeaId: idea._id,
@@ -285,10 +295,7 @@ export const getMyTradeIdeaDetail = query({
       timeframeLabel: typeof idea.timeframeLabel === "string" ? idea.timeframeLabel : undefined,
       thesis: typeof idea.thesis === "string" ? idea.thesis : undefined,
       tags: Array.isArray(idea.tags) ? idea.tags : undefined,
-      visibility: idea.visibility,
-      shareToken: typeof idea.shareToken === "string" ? idea.shareToken : undefined,
-      shareEnabledAt: typeof idea.shareEnabledAt === "number" ? idea.shareEnabledAt : undefined,
-      expiresAt: typeof idea.expiresAt === "number" ? idea.expiresAt : undefined,
+      visibility: effectivePublic ? ("public" as const) : ("private" as const),
       status: idea.status,
       openedAt: Number(idea.openedAt ?? 0),
       lastActivityAt: Number(idea.lastActivityAt ?? 0),
@@ -310,7 +317,8 @@ export const getMyTradeIdeaDetail = query({
 
 export const setTradeIdeaSharing = mutation({
   args: {
-    organizationId: v.string(),
+    // Deprecated: trade idea per-item sharing is replaced by `permissions`.
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     tradeIdeaId: v.id("tradeIdeas"),
     visibility: v.union(v.literal("private"), v.literal("link"), v.literal("public")),
@@ -321,26 +329,10 @@ export const setTradeIdeaSharing = mutation({
     shareToken: v.optional(v.string()),
     visibility: v.union(v.literal("private"), v.literal("link"), v.literal("public")),
   }),
-  handler: async (ctx, args) => {
-    const now = Date.now();
-    const doc = await ctx.db.get(args.tradeIdeaId);
-    if (!doc) throw new Error("Trade idea not found");
-    if (doc.organizationId !== args.organizationId) throw new Error("Unauthorized");
-    if (doc.userId !== args.userId) throw new Error("Unauthorized");
-
-    const enabled = args.visibility !== "private";
-    const nextToken =
-      enabled && typeof doc.shareToken !== "string" ? randomToken() : doc.shareToken;
-
-    await ctx.db.patch(args.tradeIdeaId, {
-      visibility: args.visibility,
-      shareToken: enabled ? nextToken : undefined,
-      shareEnabledAt: enabled ? now : undefined,
-      expiresAt: enabled ? args.expiresAt : undefined,
-      updatedAt: now,
-    });
-
-    return { ok: true, shareToken: enabled ? nextToken : undefined, visibility: args.visibility };
+  handler: async (_ctx, _args) => {
+    // Per-item sharing has been removed; visibility is governed by `permissions` instead.
+    // Keep returning a stable shape for older call sites.
+    return { ok: false, shareToken: undefined, visibility: "private" as const };
   },
 });
 
@@ -381,63 +373,9 @@ export const getSharedTradeIdeaByToken = query({
       ),
     }),
   ),
-  handler: async (ctx, args) => {
-    const token = String(args.shareToken ?? "").trim();
-    if (!token) return null;
-
-    const idea = await ctx.db
-      .query("tradeIdeas")
-      .withIndex("by_shareToken", (q: any) => q.eq("shareToken", token))
-      .unique();
-    if (!idea) return null;
-
-    const visibility = toVisibility((idea as any).visibility);
-    if (visibility === "private") return null;
-
-    const now = Date.now();
-    if (typeof idea.expiresAt === "number" && idea.expiresAt > 0 && idea.expiresAt < now) {
-      return null;
-    }
-
-    const groups = await ctx.db
-      .query("tradeIdeaGroups")
-      .withIndex("by_org_user_tradeIdeaId_openedAt", (q: any) =>
-        q
-          .eq("organizationId", idea.organizationId)
-          .eq("userId", idea.userId)
-          .eq("tradeIdeaId", idea._id),
-      )
-      .order("desc")
-      .take(500);
-
-    return {
-      tradeIdeaId: idea._id,
-      organizationId: String(idea.organizationId),
-      userId: String(idea.userId),
-      symbol: String(idea.symbol ?? ""),
-      instrumentId: typeof idea.instrumentId === "string" ? idea.instrumentId : undefined,
-      bias: toBias((idea as any).bias),
-      timeframe: String(idea.timeframe ?? "custom"),
-      timeframeLabel: typeof idea.timeframeLabel === "string" ? idea.timeframeLabel : undefined,
-      thesis: typeof idea.thesis === "string" ? idea.thesis : undefined,
-      tags: Array.isArray(idea.tags) ? idea.tags : undefined,
-      visibility,
-      status: toIdeaStatus((idea as any).status),
-      openedAt: Number(idea.openedAt ?? 0),
-      lastActivityAt: Number(idea.lastActivityAt ?? 0),
-      positions: groups.map((g) => ({
-        tradeIdeaGroupId: g._id,
-        symbol: String(g.symbol ?? ""),
-        instrumentId: typeof g.instrumentId === "string" ? g.instrumentId : undefined,
-        direction: toDirection((g as any).direction),
-        status: toGroupStatus((g as any).status),
-        openedAt: Number(g.openedAt ?? 0),
-        closedAt: typeof g.closedAt === "number" ? g.closedAt : undefined,
-        realizedPnl: typeof g.realizedPnl === "number" ? g.realizedPnl : undefined,
-        fees: typeof g.fees === "number" ? g.fees : undefined,
-        netQty: Number(g.netQty ?? 0),
-      })),
-    };
+  handler: async (_ctx, _args) => {
+    // Per-item sharing has been removed; trade ideas are not retrievable by a share token anymore.
+    return null;
   },
 });
 
@@ -486,7 +424,6 @@ export const getPublicTradeIdeaById = query({
   handler: async (ctx, args) => {
     const doc = await ctx.db.get(args.tradeIdeaId);
     if (!doc) return null;
-    if (doc.organizationId !== args.organizationId) return null;
     if (doc.userId !== args.expectedUserId) return null;
 
     const visibility = toVisibility((doc as any).visibility);
@@ -507,11 +444,8 @@ export const getPublicTradeIdeaById = query({
 
     const groups = await ctx.db
       .query("tradeIdeaGroups")
-      .withIndex("by_org_user_tradeIdeaId_openedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.expectedUserId)
-          .eq("tradeIdeaId", args.tradeIdeaId),
+      .withIndex("by_user_tradeIdeaId_openedAt", (q: any) =>
+        q.eq("userId", args.expectedUserId).eq("tradeIdeaId", args.tradeIdeaId),
       )
       .order("desc")
       .take(500);
@@ -551,7 +485,8 @@ export const getPublicTradeIdeaById = query({
 
 export const listPublicTradeIdeasForUser = query({
   args: {
-    organizationId: v.string(),
+    // Deprecated: trade ideas are user-owned; keep for backwards compatibility.
+    organizationId: v.optional(v.string()),
     expectedUserId: v.string(), // Clerk user id of the profile being viewed
     limit: v.optional(v.number()),
   },
@@ -569,14 +504,13 @@ export const listPublicTradeIdeasForUser = query({
   ),
   handler: async (ctx, args) => {
     const limit = Math.max(1, Math.min(200, args.limit ?? 50));
+    const perms = await getGlobalPermissions(ctx, args.expectedUserId);
+    const enabled = isEnabledForType(perms, "tradeIdeas");
+    if (!enabled) return [];
+
     const ideas = await ctx.db
       .query("tradeIdeas")
-      .withIndex("by_org_user_visibility_updatedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.expectedUserId)
-          .eq("visibility", "public"),
-      )
+      .withIndex("by_user_updatedAt", (q: any) => q.eq("userId", args.expectedUserId))
       .order("desc")
       .take(limit);
 
@@ -595,7 +529,8 @@ export const listPublicTradeIdeasForUser = query({
 
 export const createTradeIdea = mutation({
   args: {
-    organizationId: v.string(),
+    // Deprecated: trade ideas are user-owned; keep for backwards compatibility.
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     symbol: v.string(),
     instrumentId: v.optional(v.string()),
@@ -611,16 +546,7 @@ export const createTradeIdea = mutation({
     const symbol = normalizeSymbol(args.symbol);
     if (!symbol) throw new Error("Missing symbol");
 
-    const defaultVisibility = await getEffectiveTradeIdeasDefaultVisibility(
-      ctx,
-      args.organizationId,
-      args.userId,
-    );
-    const shareToken =
-      defaultVisibility !== "private" ? randomToken() : undefined;
-
     const tradeIdeaId = await ctx.db.insert("tradeIdeas", {
-      organizationId: args.organizationId,
       userId: args.userId,
       symbol,
       instrumentId: args.instrumentId,
@@ -629,9 +555,6 @@ export const createTradeIdea = mutation({
       timeframeLabel: args.timeframeLabel,
       thesis: args.thesis,
       tags: args.tags,
-      visibility: defaultVisibility,
-      shareToken,
-      shareEnabledAt: shareToken ? now : undefined,
       status: "active",
       openedAt: now,
       lastStartedAt: now,
@@ -645,7 +568,8 @@ export const createTradeIdea = mutation({
 
 export const backfillIdeasForUser = mutation({
   args: {
-    organizationId: v.string(),
+    // Deprecated: trade ideas are user-owned; keep for backwards compatibility.
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     scanCap: v.optional(v.number()),
     limitAssigned: v.optional(v.number()),
@@ -683,21 +607,15 @@ export const backfillIdeasForUser = mutation({
     // Pull recent open + closed groups and process oldest->newest for stable auto-gap grouping.
     const open = await ctx.db
       .query("tradeIdeaGroups")
-      .withIndex("by_org_user_status_openedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("status", "open"),
+      .withIndex("by_user_status_openedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("status", "open"),
       )
       .order("desc")
       .take(scanCap);
     const closed = await ctx.db
       .query("tradeIdeaGroups")
-      .withIndex("by_org_user_status_openedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("status", "closed"),
+      .withIndex("by_user_status_openedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("status", "closed"),
       )
       .order("desc")
       .take(scanCap);
@@ -729,12 +647,8 @@ export const backfillIdeasForUser = mutation({
 
       const candidates = await ctx.db
         .query("tradeIdeas")
-        .withIndex("by_org_user_symbol_status_lastActivityAt", (q: any) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("userId", args.userId)
-            .eq("symbol", symbol)
-            .eq("status", "active"),
+        .withIndex("by_user_symbol_status_lastActivityAt", (q: any) =>
+          q.eq("userId", args.userId).eq("symbol", symbol).eq("status", "active"),
         )
         .order("desc")
         .take(20);
@@ -756,17 +670,11 @@ export const backfillIdeasForUser = mutation({
       const tradeIdeaId = match
         ? match._id
         : await ctx.db.insert("tradeIdeas", {
-            organizationId: args.organizationId,
             userId: args.userId,
             symbol,
             instrumentId,
             bias: direction,
             timeframe: defaultTimeframe,
-            visibility: await getEffectiveTradeIdeasDefaultVisibility(
-              ctx,
-              args.organizationId,
-              args.userId,
-            ),
             status: "active",
             openedAt: openedAtMs,
             lastStartedAt: openedAtMs,
@@ -929,23 +837,21 @@ export const debugExplainTradeIdeaGroupingForUser = query({
 
     const ideas = await ctx.db
       .query("tradeIdeas")
-      .withIndex("by_org_user_updatedAt", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
-      )
+      .withIndex("by_user_updatedAt", (q: any) => q.eq("userId", args.userId))
       .order("desc")
       .take(500);
 
     const openGroups = await ctx.db
       .query("tradeIdeaGroups")
-      .withIndex("by_org_user_status_openedAt", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId).eq("status", "open"),
+      .withIndex("by_user_status_openedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("status", "open"),
       )
       .order("desc")
       .take(scanCap);
     const closedGroups = await ctx.db
       .query("tradeIdeaGroups")
-      .withIndex("by_org_user_status_openedAt", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId).eq("status", "closed"),
+      .withIndex("by_user_status_openedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("status", "closed"),
       )
       .order("desc")
       .take(scanCap);
@@ -971,8 +877,8 @@ export const debugExplainTradeIdeaGroupingForUser = query({
 
       const candidates = await ctx.db
         .query("tradeIdeas")
-        .withIndex("by_org_user_symbol_status_lastActivityAt", (q: any) =>
-          q.eq("organizationId", args.organizationId).eq("userId", args.userId).eq("symbol", symbol).eq("status", "active"),
+        .withIndex("by_user_symbol_status_lastActivityAt", (q: any) =>
+          q.eq("userId", args.userId).eq("symbol", symbol).eq("status", "active"),
         )
         .order("desc")
         .take(20);
@@ -1058,7 +964,8 @@ export const debugExplainTradeIdeaGroupingForUser = query({
  */
 export const reconcileIdeasForUser = mutation({
   args: {
-    organizationId: v.string(),
+    // Deprecated: trade ideas are user-owned; keep for backwards compatibility.
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     scanCap: v.optional(v.number()),
   },
@@ -1085,9 +992,7 @@ export const reconcileIdeasForUser = mutation({
 
     const ideas = await ctx.db
       .query("tradeIdeas")
-      .withIndex("by_org_user_updatedAt", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
-      )
+      .withIndex("by_user_updatedAt", (q: any) => q.eq("userId", args.userId))
       .order("desc")
       .take(scanCap);
 
@@ -1099,11 +1004,8 @@ export const reconcileIdeasForUser = mutation({
     for (const idea of ideas) {
       const groups = await ctx.db
         .query("tradeIdeaGroups")
-        .withIndex("by_org_user_tradeIdeaId_openedAt", (q: any) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("userId", args.userId)
-            .eq("tradeIdeaId", idea._id),
+        .withIndex("by_user_tradeIdeaId_openedAt", (q: any) =>
+          q.eq("userId", args.userId).eq("tradeIdeaId", idea._id),
         )
         .order("desc")
         .take(50);
@@ -1141,9 +1043,7 @@ export const reconcileIdeasForUser = mutation({
     // Reload after potential symbol patches so merging uses corrected keys.
     const ideas2 = await ctx.db
       .query("tradeIdeas")
-      .withIndex("by_org_user_updatedAt", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
-      )
+      .withIndex("by_user_updatedAt", (q: any) => q.eq("userId", args.userId))
       .order("desc")
       .take(scanCap);
 
@@ -1176,11 +1076,8 @@ export const reconcileIdeasForUser = mutation({
         if (openedGap >= 0 && openedGap <= groupingWindowMs) {
           const candGroups = await ctx.db
             .query("tradeIdeaGroups")
-            .withIndex("by_org_user_tradeIdeaId_openedAt", (q: any) =>
-              q
-                .eq("organizationId", args.organizationId)
-                .eq("userId", args.userId)
-                .eq("tradeIdeaId", candidate._id),
+            .withIndex("by_user_tradeIdeaId_openedAt", (q: any) =>
+              q.eq("userId", args.userId).eq("tradeIdeaId", candidate._id),
             )
             .order("desc")
             .take(2000);

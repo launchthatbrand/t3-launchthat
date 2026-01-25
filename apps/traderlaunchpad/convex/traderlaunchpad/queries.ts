@@ -8,9 +8,11 @@
 import { resolveOrganizationId, resolveViewerUserId } from "./lib/resolve";
 
 import { components } from "../_generated/api";
+import { internal } from "../_generated/api";
 import { paginationOptsValidator } from "convex/server";
 import { internalQuery, query } from "../_generated/server";
 import { v } from "convex/values";
+import { clusterCommunityPositions, type CommunityPosition } from "launchthat-plugin-traderlaunchpad/runtime/discordSnapshot";
 
 const coreTenantQueries = components.launchthat_core_tenant.queries as any;
 
@@ -31,6 +33,7 @@ const tradeIdeasInternal = components.launchthat_traderlaunchpad.tradeIdeas.inte
 const tradingPlans = components.launchthat_traderlaunchpad.tradingPlans.index as any;
 const sharingModule = components.launchthat_traderlaunchpad.sharing as any;
 const visibilityModule = components.launchthat_traderlaunchpad.visibility as any;
+const permissionsModule = components.launchthat_traderlaunchpad.permissions as any;
 const pricedataSources = (components as any).launchthat_pricedata?.sources?.queries as
   | any
   | undefined;
@@ -75,7 +78,6 @@ export const listMySymbolTrades = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
     const userId = await resolveViewerUserId(ctx);
 
     const symbol = String(args.symbol ?? "").trim().toUpperCase();
@@ -84,7 +86,6 @@ export const listMySymbolTrades = query({
     const limit = Math.max(1, Math.min(Number(args.limit ?? 50), 200));
 
     const rows = await ctx.runQuery(tradeIdeasQueries.listLatestForSymbol, {
-      organizationId,
       userId,
       symbol,
       limit,
@@ -100,6 +101,197 @@ export const listMySymbolTrades = query({
       realizedPnl: typeof r.realizedPnl === "number" ? Number(r.realizedPnl) : undefined,
       fees: typeof r.fees === "number" ? Number(r.fees) : undefined,
     }));
+  },
+});
+
+export const getMyGlobalPermissions = query({
+  args: {},
+  returns: v.object({
+    globalEnabled: v.boolean(),
+    tradeIdeasEnabled: v.boolean(),
+    openPositionsEnabled: v.boolean(),
+    ordersEnabled: v.boolean(),
+  }),
+  handler: async (ctx) => {
+    const userId = await resolveViewerUserId(ctx);
+    const row = await ctx.runQuery(permissionsModule.getPermissions, {
+      userId,
+      scopeType: "global",
+    });
+    return {
+      globalEnabled: Boolean((row as any)?.globalEnabled),
+      tradeIdeasEnabled: Boolean((row as any)?.tradeIdeasEnabled),
+      openPositionsEnabled: Boolean((row as any)?.openPositionsEnabled),
+      ordersEnabled: Boolean((row as any)?.ordersEnabled),
+    };
+  },
+});
+
+export const listMyOrgPermissions = query({
+  args: {},
+  returns: v.array(
+    v.object({
+      organizationId: v.string(),
+      role: v.string(),
+      globalEnabled: v.boolean(),
+      tradeIdeasEnabled: v.boolean(),
+      openPositionsEnabled: v.boolean(),
+      ordersEnabled: v.boolean(),
+    }),
+  ),
+  handler: async (ctx) => {
+    const userId = await resolveViewerUserId(ctx);
+    const memberships = (await ctx.runQuery(coreTenantQueries.listOrganizationsByUserId, {
+      userId,
+    })) as unknown as any[];
+
+    const active = Array.isArray(memberships)
+      ? memberships
+          .map((m) => ({
+            organizationId: String((m as any)?.organizationId ?? (m as any)?.org?._id ?? ""),
+            role: String((m as any)?.role ?? ""),
+            isActive: Boolean((m as any)?.isActive),
+          }))
+          .filter((m) => m.organizationId && m.isActive)
+      : [];
+
+    const out: Array<{
+      organizationId: string;
+      role: string;
+      globalEnabled: boolean;
+      tradeIdeasEnabled: boolean;
+      openPositionsEnabled: boolean;
+      ordersEnabled: boolean;
+    }> = [];
+
+    for (const m of active) {
+      const perms = await ctx.runQuery(permissionsModule.getPermissions, {
+        userId,
+        scopeType: "org",
+        scopeId: m.organizationId,
+      });
+      out.push({
+        organizationId: m.organizationId,
+        role: m.role,
+        globalEnabled: Boolean((perms as any)?.globalEnabled),
+        tradeIdeasEnabled: Boolean((perms as any)?.tradeIdeasEnabled),
+        openPositionsEnabled: Boolean((perms as any)?.openPositionsEnabled),
+        ordersEnabled: Boolean((perms as any)?.ordersEnabled),
+      });
+    }
+
+    return out;
+  },
+});
+
+export const getOrgOpenPositionsForSymbol = query({
+  args: {
+    organizationId: v.string(),
+    symbol: v.string(),
+    maxUsers: v.optional(v.number()),
+  },
+  returns: v.object({
+    organizationId: v.string(),
+    symbol: v.string(),
+    usersScanned: v.number(),
+    usersAllowed: v.number(),
+    openPositions: v.number(),
+    clusters: v.array(
+      v.object({
+        count: v.number(),
+        direction: v.union(v.literal("long"), v.literal("short"), v.literal("mixed")),
+        avgEntryPrice: v.number(),
+        avgOpenedAt: v.number(),
+        totalAbsQty: v.number(),
+        netQty: v.number(),
+      }),
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const organizationId = String(args.organizationId ?? "").trim();
+    if (!organizationId) throw new Error("Missing organizationId");
+
+    const viewerUserId = await resolveViewerUserId(ctx);
+    const membership = await resolveMembershipForOrg(ctx, organizationId, viewerUserId);
+    if (!membership) {
+      // Platform tests and platform tooling may need to aggregate any org without membership.
+      await ctx.runQuery(internal.platform.testsAuth.assertPlatformAdmin, {});
+    }
+
+    const symbol = String(args.symbol ?? "").trim().toUpperCase();
+    if (!symbol) {
+      return { organizationId, symbol: "", usersScanned: 0, usersAllowed: 0, openPositions: 0, clusters: [] };
+    }
+
+    const maxUsers = Math.max(1, Math.min(500, Number(args.maxUsers ?? 200)));
+
+    const members = (await ctx.runQuery(coreTenantQueries.listMembersByOrganizationId, {
+      organizationId,
+    })) as unknown as any[];
+
+    const memberUserIds = Array.isArray(members)
+      ? members
+          .map((m) => ({
+            userId: String((m as any)?.userId ?? (m as any)?.member?.userId ?? ""),
+            isActive: Boolean((m as any)?.isActive),
+          }))
+          .filter((m) => m.userId && m.isActive)
+          .map((m) => m.userId)
+      : [];
+
+    const userIds = memberUserIds.slice(0, maxUsers);
+
+    const permsRows = (await ctx.runQuery(permissionsModule.listOrgPermissionsForUsers, {
+      organizationId,
+      userIds,
+    })) as unknown as any[];
+
+    const allowedUserIds = Array.isArray(permsRows)
+      ? permsRows
+          .filter((r) => Boolean((r as any)?.globalEnabled) || Boolean((r as any)?.openPositionsEnabled))
+          .map((r) => String((r as any)?.userId ?? ""))
+          .filter(Boolean)
+      : [];
+
+    const positions: CommunityPosition[] = [];
+    for (const userId of allowedUserIds) {
+      const groups = (await ctx.runQuery(tradeIdeasQueries.listLatestForSymbol, {
+        userId,
+        symbol,
+        status: "open",
+        limit: 200,
+      })) as unknown as any[];
+
+      for (const g of Array.isArray(groups) ? groups : []) {
+        if (String((g as any)?.status ?? "") !== "open") continue;
+        positions.push({
+          userId,
+          direction: (g as any).direction === "short" ? "short" : "long",
+          netQty: typeof (g as any).netQty === "number" ? (g as any).netQty : 0,
+          avgEntryPrice:
+            typeof (g as any).avgEntryPrice === "number" ? (g as any).avgEntryPrice : undefined,
+          openedAt: typeof (g as any).openedAt === "number" ? (g as any).openedAt : 0,
+        });
+      }
+    }
+
+    const clusters = clusterCommunityPositions({ positions, maxClusters: 10 }).map((c) => ({
+      count: c.count,
+      direction: c.direction,
+      avgEntryPrice: c.avgEntryPrice,
+      avgOpenedAt: c.avgOpenedAt,
+      totalAbsQty: c.totalAbsQty,
+      netQty: c.netQty,
+    }));
+
+    return {
+      organizationId,
+      symbol,
+      usersScanned: userIds.length,
+      usersAllowed: allowedUserIds.length,
+      openPositions: positions.length,
+      clusters,
+    };
   },
 });
 
@@ -1766,10 +1958,8 @@ export const listMyTradeIdeasByStatus = query({
     continueCursor: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
     const userId = await resolveViewerUserId(ctx);
     return await ctx.runQuery(tradeIdeasQueries.listByStatus, {
-      organizationId,
       userId,
       status: args.status,
       paginationOpts: args.paginationOpts,
@@ -1796,10 +1986,8 @@ export const listMyTradeIdeaEvents = query({
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
     const userId = await resolveViewerUserId(ctx);
     return await ctx.runQuery(tradeIdeasQueries.listEventsForGroup, {
-      organizationId,
       userId,
       tradeIdeaGroupId: args.tradeIdeaGroupId as any,
       limit: args.limit,
@@ -1815,7 +2003,6 @@ export const getMyTradeIdeaNoteForGroup = query({
     v.object({
       _id: v.string(),
       _creationTime: v.number(),
-      organizationId: v.string(),
       userId: v.string(),
       tradeIdeaGroupId: v.string(),
       reviewStatus: v.union(v.literal("todo"), v.literal("reviewed")),
@@ -1831,10 +2018,8 @@ export const getMyTradeIdeaNoteForGroup = query({
     v.null(),
   ),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
     const userId = await resolveViewerUserId(ctx);
     return await ctx.runQuery(tradeIdeasNotes.getNoteForGroup, {
-      organizationId,
       userId,
       tradeIdeaGroupId: args.tradeIdeaGroupId as any,
     });
@@ -1861,10 +2046,8 @@ export const listMyNextTradeIdeasToReview = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const organizationId = resolveOrganizationId();
     const userId = await resolveViewerUserId(ctx);
     const rows = await ctx.runQuery(tradeIdeasNotes.listNextToReview, {
-      organizationId,
       userId,
       limit: args.limit,
       accountId: args.accountId,

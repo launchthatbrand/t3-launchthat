@@ -3,7 +3,8 @@ import { query } from "../server";
 
 export const getOpenGroupForSymbol = query({
   args: {
-    organizationId: v.string(),
+    // Deprecated: trade data is user-owned; kept for backwards compatibility.
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     symbol: v.string(),
   },
@@ -11,7 +12,6 @@ export const getOpenGroupForSymbol = query({
     v.object({
       _id: v.id("tradeIdeaGroups"),
       _creationTime: v.number(),
-      organizationId: v.string(),
       userId: v.string(),
       connectionId: v.id("tradelockerConnections"),
       accountId: v.string(),
@@ -42,13 +42,13 @@ export const getOpenGroupForSymbol = query({
     v.null(),
   ),
   handler: async (ctx, args) => {
+    const symbol = String(args.symbol ?? "").trim().toUpperCase();
+    if (!symbol) return null;
+
     const latest = await ctx.db
       .query("tradeIdeaGroups")
-      .withIndex("by_org_user_symbol_openedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("symbol", args.symbol),
+      .withIndex("by_user_symbol_status_openedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("symbol", symbol).eq("status", "open"),
       )
       .order("desc")
       .first();
@@ -61,7 +61,8 @@ export const getOpenGroupForSymbol = query({
 
 export const getLatestGroupForSymbol = query({
   args: {
-    organizationId: v.string(),
+    // Deprecated: trade data is user-owned; kept for backwards compatibility.
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     symbol: v.string(),
   },
@@ -69,7 +70,6 @@ export const getLatestGroupForSymbol = query({
     v.object({
       _id: v.id("tradeIdeaGroups"),
       _creationTime: v.number(),
-      organizationId: v.string(),
       userId: v.string(),
       connectionId: v.id("tradelockerConnections"),
       accountId: v.string(),
@@ -100,32 +100,44 @@ export const getLatestGroupForSymbol = query({
     v.null(),
   ),
   handler: async (ctx, args) => {
-    const latest = await ctx.db
+    const symbol = String(args.symbol ?? "").trim().toUpperCase();
+    if (!symbol) return null;
+
+    const latestOpen = await ctx.db
       .query("tradeIdeaGroups")
-      .withIndex("by_org_user_symbol_openedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("symbol", args.symbol),
+      .withIndex("by_user_symbol_status_openedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("symbol", symbol).eq("status", "open"),
       )
       .order("desc")
       .first();
 
-    return latest ?? null;
+    const latestClosed = await ctx.db
+      .query("tradeIdeaGroups")
+      .withIndex("by_user_symbol_status_openedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("symbol", symbol).eq("status", "closed"),
+      )
+      .order("desc")
+      .first();
+
+    const openAt = typeof (latestOpen as any)?.openedAt === "number" ? Number((latestOpen as any).openedAt) : 0;
+    const closedAt = typeof (latestClosed as any)?.openedAt === "number" ? Number((latestClosed as any).openedAt) : 0;
+    if (openAt >= closedAt) return (latestOpen as any) ?? null;
+    return (latestClosed as any) ?? null;
   },
 });
 
 export const hasAnyOpenGroup = query({
   args: {
-    organizationId: v.string(),
+    // Deprecated: trade data is user-owned; kept for backwards compatibility.
+    organizationId: v.optional(v.string()),
     userId: v.string(),
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
     const any = await ctx.db
       .query("tradeIdeaGroups")
-      .withIndex("by_org_user_status_openedAt", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId).eq("status", "open"),
+      .withIndex("by_user_status_openedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("status", "open"),
       )
       .order("desc")
       .first();
@@ -135,7 +147,8 @@ export const hasAnyOpenGroup = query({
 
 export const getGroupIdByPositionId = query({
   args: {
-    organizationId: v.string(),
+    // Deprecated: trade data is user-owned; kept for backwards compatibility.
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     accountId: v.string(),
     positionId: v.string(),
@@ -144,12 +157,8 @@ export const getGroupIdByPositionId = query({
   handler: async (ctx, args) => {
     const doc = await ctx.db
       .query("tradeIdeaGroups")
-      .withIndex("by_org_user_accountId_positionId", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("accountId", args.accountId)
-          .eq("positionId", args.positionId),
+      .withIndex("by_user_accountId_positionId", (q: any) =>
+        q.eq("userId", args.userId).eq("accountId", args.accountId).eq("positionId", args.positionId),
       )
       .unique();
     return doc ? doc._id : null;

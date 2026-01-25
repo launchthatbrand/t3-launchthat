@@ -1414,11 +1414,57 @@ export declare const components: {
         >;
       };
     };
+    permissions: {
+      getPermissions: FunctionReference<
+        "query",
+        "internal",
+        { scopeId?: string; scopeType: "global" | "org"; userId: string },
+        {
+          globalEnabled: boolean;
+          openPositionsEnabled: boolean;
+          ordersEnabled: boolean;
+          scopeId: string | null;
+          scopeType: "global" | "org";
+          tradeIdeasEnabled: boolean;
+          updatedAt: number;
+          userId: string;
+        }
+      >;
+      listOrgPermissionsForUsers: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string; userIds: Array<string> },
+        Array<{
+          globalEnabled: boolean;
+          openPositionsEnabled: boolean;
+          ordersEnabled: boolean;
+          scopeId: string;
+          scopeType: "org";
+          tradeIdeasEnabled: boolean;
+          updatedAt: number;
+          userId: string;
+        }>
+      >;
+      upsertPermissions: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          globalEnabled: boolean;
+          openPositionsEnabled: boolean;
+          ordersEnabled: boolean;
+          scopeId?: string;
+          scopeType: "global" | "org";
+          tradeIdeasEnabled: boolean;
+          userId: string;
+        },
+        null
+      >;
+    };
     publicOrders: {
       listPublicOrdersForUser: FunctionReference<
         "query",
         "internal",
-        { limit?: number; organizationId: string; userId: string },
+        { limit?: number; organizationId?: string; userId: string },
         Array<{
           closedAt: number | null;
           createdAt: number | null;
@@ -1443,6 +1489,9 @@ export declare const components: {
           {
             executionsPatched: number;
             instrumentsReceived: number;
+            ordersHistoryPatched: number;
+            ordersPatched: number;
+            positionsPatched: number;
             tradeIdeaGroupsPatched: number;
           }
         >;
@@ -2198,7 +2247,7 @@ export declare const components: {
           {
             accountId?: string;
             limit?: number;
-            organizationId: string;
+            organizationId?: string;
             userId: string;
           },
           {
@@ -2219,7 +2268,7 @@ export declare const components: {
           {
             accountId?: string;
             limit?: number;
-            organizationId: string;
+            organizationId?: string;
             userId: string;
           },
           Array<{
@@ -2355,7 +2404,7 @@ export declare const components: {
           "internal",
           {
             limitAssigned?: number;
-            organizationId: string;
+            organizationId?: string;
             scanCap?: number;
             userId: string;
           },
@@ -2367,7 +2416,7 @@ export declare const components: {
           {
             bias: "long" | "short" | "neutral";
             instrumentId?: string;
-            organizationId: string;
+            organizationId?: string;
             symbol: string;
             tags?: Array<string>;
             thesis?: string;
@@ -2435,14 +2484,13 @@ export declare const components: {
           "query",
           "internal",
           {
-            organizationId: string;
+            organizationId?: string;
             positionsLimit?: number;
             tradeIdeaId: string;
             userId: string;
           },
           null | {
             bias: "long" | "short" | "neutral";
-            expiresAt?: number;
             instrumentId?: string;
             lastActivityAt: number;
             openedAt: number;
@@ -2458,8 +2506,6 @@ export declare const components: {
               symbol: string;
               tradeIdeaGroupId: string;
             }>;
-            shareEnabledAt?: number;
-            shareToken?: string;
             status: "active" | "closed";
             symbol: string;
             tags?: Array<string>;
@@ -2556,7 +2602,7 @@ export declare const components: {
         listMyTradeIdeas: FunctionReference<
           "query",
           "internal",
-          { limit?: number; organizationId: string; userId: string },
+          { limit?: number; organizationId?: string; userId: string },
           Array<{
             bias: "long" | "short" | "neutral";
             instrumentId?: string;
@@ -2578,7 +2624,7 @@ export declare const components: {
         listPublicTradeIdeasForUser: FunctionReference<
           "query",
           "internal",
-          { expectedUserId: string; limit?: number; organizationId: string },
+          { expectedUserId: string; limit?: number; organizationId?: string },
           Array<{
             bias: "long" | "short" | "neutral";
             lastActivityAt: number;
@@ -2593,7 +2639,7 @@ export declare const components: {
         reconcileIdeasForUser: FunctionReference<
           "mutation",
           "internal",
-          { organizationId: string; scanCap?: number; userId: string },
+          { organizationId?: string; scanCap?: number; userId: string },
           {
             groupsReassigned: number;
             ideasDeleted: number;
@@ -2606,7 +2652,7 @@ export declare const components: {
           "internal",
           {
             expiresAt?: number;
-            organizationId: string;
+            organizationId?: string;
             tradeIdeaId: string;
             userId: string;
             visibility: "private" | "link" | "public";
@@ -2636,7 +2682,7 @@ export declare const components: {
           "internal",
           {
             accountId: string;
-            organizationId: string;
+            organizationId?: string;
             positionId: string;
             userId: string;
           },
@@ -2645,7 +2691,7 @@ export declare const components: {
         getLatestGroupForSymbol: FunctionReference<
           "query",
           "internal",
-          { organizationId: string; symbol: string; userId: string },
+          { organizationId?: string; symbol: string; userId: string },
           {
             _creationTime: number;
             _id: string;
@@ -2666,7 +2712,6 @@ export declare const components: {
             lastProcessedExecutionId?: string;
             netQty: number;
             openedAt: number;
-            organizationId: string;
             positionId?: string;
             realizedPnl?: number;
             status: "open" | "closed";
@@ -2679,7 +2724,7 @@ export declare const components: {
         getOpenGroupForSymbol: FunctionReference<
           "query",
           "internal",
-          { organizationId: string; symbol: string; userId: string },
+          { organizationId?: string; symbol: string; userId: string },
           {
             _creationTime: number;
             _id: string;
@@ -2700,7 +2745,6 @@ export declare const components: {
             lastProcessedExecutionId?: string;
             netQty: number;
             openedAt: number;
-            organizationId: string;
             positionId?: string;
             realizedPnl?: number;
             status: "open" | "closed";
@@ -2713,7 +2757,7 @@ export declare const components: {
         hasAnyOpenGroup: FunctionReference<
           "query",
           "internal",
-          { organizationId: string; userId: string },
+          { organizationId?: string; userId: string },
           boolean
         >;
       };
@@ -2744,7 +2788,6 @@ export declare const components: {
             accountId: string;
             connectionId: string;
             instrumentId: string;
-            organizationId: string;
             userId: string;
           },
           {
@@ -2794,7 +2837,6 @@ export declare const components: {
             lastProcessedExecutionId?: string;
             netQty: number;
             openedAt: number;
-            organizationId: string;
             positionId: string;
             realizedPnl?: number;
             status: "open" | "closed";
@@ -2808,13 +2850,12 @@ export declare const components: {
         getNoteForGroup: FunctionReference<
           "query",
           "internal",
-          { organizationId: string; tradeIdeaGroupId: string; userId: string },
+          { organizationId?: string; tradeIdeaGroupId: string; userId: string },
           {
             _creationTime: number;
             _id: string;
             mistakes?: string;
             nextTime?: string;
-            organizationId: string;
             outcome?: string;
             reviewStatus: "todo" | "reviewed";
             reviewedAt?: number;
@@ -2832,7 +2873,7 @@ export declare const components: {
           {
             accountId?: string;
             limit?: number;
-            organizationId: string;
+            organizationId?: string;
             userId: string;
           },
           Array<{
@@ -2873,7 +2914,7 @@ export declare const components: {
         markReviewed: FunctionReference<
           "mutation",
           "internal",
-          { organizationId: string; tradeIdeaGroupId: string; userId: string },
+          { organizationId?: string; tradeIdeaGroupId: string; userId: string },
           string
         >;
         upsertNoteForGroup: FunctionReference<
@@ -2882,7 +2923,7 @@ export declare const components: {
           {
             mistakes?: string;
             nextTime?: string;
-            organizationId: string;
+            organizationId?: string;
             outcome?: string;
             setup?: string;
             tags?: Array<string>;
@@ -2918,7 +2959,6 @@ export declare const components: {
             lastProcessedExecutionId?: string;
             netQty: number;
             openedAt: number;
-            organizationId: string;
             positionId?: string;
             realizedPnl?: number;
             status: "open" | "closed";
@@ -2953,7 +2993,6 @@ export declare const components: {
           "query",
           "internal",
           {
-            organizationId: string;
             paginationOpts: {
               cursor: string | null;
               endCursor?: string | null;
@@ -2988,7 +3027,6 @@ export declare const components: {
               lastProcessedExecutionId?: string;
               netQty: number;
               openedAt: number;
-              organizationId: string;
               positionId?: string;
               realizedPnl?: number;
               status: "open" | "closed";
@@ -3004,12 +3042,7 @@ export declare const components: {
         listEventsForGroup: FunctionReference<
           "query",
           "internal",
-          {
-            limit?: number;
-            organizationId: string;
-            tradeIdeaGroupId: string;
-            userId: string;
-          },
+          { limit?: number; tradeIdeaGroupId: string; userId: string },
           Array<{
             _creationTime: number;
             _id: string;
@@ -3019,7 +3052,6 @@ export declare const components: {
             externalExecutionId: string;
             externalOrderId?: string;
             externalPositionId?: string;
-            organizationId: string;
             tradeIdeaGroupId: string;
             userId: string;
           }>
@@ -3029,7 +3061,7 @@ export declare const components: {
           "internal",
           {
             limit?: number;
-            organizationId: string;
+            status?: "open" | "closed";
             symbol: string;
             userId: string;
           },
@@ -3053,7 +3085,6 @@ export declare const components: {
             lastProcessedExecutionId?: string;
             netQty: number;
             openedAt: number;
-            organizationId: string;
             positionId?: string;
             realizedPnl?: number;
             status: "open" | "closed";
@@ -3062,19 +3093,6 @@ export declare const components: {
             thesis?: string;
             tradeIdeaId?: string;
             updatedAt: number;
-            userId: string;
-          }>
-        >;
-        listOpenGroupsForOrgSymbol: FunctionReference<
-          "query",
-          "internal",
-          { limit?: number; organizationId: string; symbol: string },
-          Array<{
-            avgEntryPrice?: number;
-            direction: "long" | "short";
-            netQty: number;
-            openedAt: number;
-            tradeIdeaGroupId: string;
             userId: string;
           }>
         >;

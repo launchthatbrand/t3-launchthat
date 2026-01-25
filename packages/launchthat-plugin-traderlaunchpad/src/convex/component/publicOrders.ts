@@ -12,7 +12,7 @@ type PublicOrderRow = {
 
 export const listPublicOrdersForUser = query({
   args: {
-    organizationId: v.string(),
+    organizationId: v.optional(v.string()),
     userId: v.string(), // Clerk user id
     limit: v.optional(v.number()),
   },
@@ -27,26 +27,22 @@ export const listPublicOrdersForUser = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const visibility = await ctx.db
-      .query("visibilitySettings")
-      .withIndex("by_org_user", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
+    const perms = await ctx.db
+      .query("permissions")
+      .withIndex("by_user_scope", (q: any) =>
+        q.eq("userId", args.userId).eq("scopeType", "global").eq("scopeId", null),
       )
       .unique();
 
-    const globalPublic =
-      typeof visibility?.globalPublic === "boolean" ? visibility.globalPublic : false;
-    const ordersPublic =
-      typeof visibility?.ordersPublic === "boolean" ? visibility.ordersPublic : false;
-    const enabled = globalPublic ? true : ordersPublic;
+    const globalEnabled = typeof perms?.globalEnabled === "boolean" ? perms.globalEnabled : false;
+    const ordersEnabled = typeof perms?.ordersEnabled === "boolean" ? perms.ordersEnabled : false;
+    const enabled = globalEnabled ? true : ordersEnabled;
     if (!enabled) return [];
 
     const limit = Math.max(1, Math.min(200, args.limit ?? 50));
     const rows = await ctx.db
       .query("tradeOrdersHistory")
-      .withIndex("by_org_user_createdAt", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
-      )
+      .withIndex("by_user_createdAt", (q: any) => q.eq("userId", args.userId))
       .order("desc")
       .take(limit);
 

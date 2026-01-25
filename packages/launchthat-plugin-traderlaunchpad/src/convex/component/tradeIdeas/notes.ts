@@ -6,7 +6,6 @@ import { v } from "convex/values";
 const noteView = v.object({
   _id: v.id("tradeIdeaNotes"),
   _creationTime: v.number(),
-  organizationId: v.string(),
   userId: v.string(),
   tradeIdeaGroupId: v.id("tradeIdeaGroups"),
   reviewStatus: v.union(v.literal("todo"), v.literal("reviewed")),
@@ -22,7 +21,8 @@ const noteView = v.object({
 
 export const getNoteForGroup = query({
   args: {
-    organizationId: v.string(),
+    // Deprecated: trade notes are user-owned; kept for backwards compatibility.
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     tradeIdeaGroupId: v.id("tradeIdeaGroups"),
   },
@@ -30,11 +30,8 @@ export const getNoteForGroup = query({
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("tradeIdeaNotes")
-      .withIndex("by_org_user_tradeIdeaGroupId", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("tradeIdeaGroupId", args.tradeIdeaGroupId),
+      .withIndex("by_user_tradeIdeaGroupId", (q: any) =>
+        q.eq("userId", args.userId).eq("tradeIdeaGroupId", args.tradeIdeaGroupId),
       )
       .unique();
     return existing ?? null;
@@ -43,7 +40,8 @@ export const getNoteForGroup = query({
 
 export const upsertNoteForGroup = mutation({
   args: {
-    organizationId: v.string(),
+    // Deprecated: trade notes are user-owned; kept for backwards compatibility.
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     tradeIdeaGroupId: v.id("tradeIdeaGroups"),
     thesis: v.optional(v.string()),
@@ -58,11 +56,8 @@ export const upsertNoteForGroup = mutation({
     const now = Date.now();
     const existing = await ctx.db
       .query("tradeIdeaNotes")
-      .withIndex("by_org_user_tradeIdeaGroupId", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("tradeIdeaGroupId", args.tradeIdeaGroupId),
+      .withIndex("by_user_tradeIdeaGroupId", (q: any) =>
+        q.eq("userId", args.userId).eq("tradeIdeaGroupId", args.tradeIdeaGroupId),
       )
       .unique();
 
@@ -84,7 +79,6 @@ export const upsertNoteForGroup = mutation({
     }
 
     return await ctx.db.insert("tradeIdeaNotes", {
-      organizationId: args.organizationId,
       userId: args.userId,
       tradeIdeaGroupId: args.tradeIdeaGroupId,
       reviewStatus: "todo",
@@ -102,7 +96,8 @@ export const upsertNoteForGroup = mutation({
 
 export const markReviewed = mutation({
   args: {
-    organizationId: v.string(),
+    // Deprecated: trade notes are user-owned; kept for backwards compatibility.
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     tradeIdeaGroupId: v.id("tradeIdeaGroups"),
   },
@@ -111,11 +106,8 @@ export const markReviewed = mutation({
     const now = Date.now();
     const existing = await ctx.db
       .query("tradeIdeaNotes")
-      .withIndex("by_org_user_tradeIdeaGroupId", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("tradeIdeaGroupId", args.tradeIdeaGroupId),
+      .withIndex("by_user_tradeIdeaGroupId", (q: any) =>
+        q.eq("userId", args.userId).eq("tradeIdeaGroupId", args.tradeIdeaGroupId),
       )
       .unique();
 
@@ -129,7 +121,6 @@ export const markReviewed = mutation({
     }
 
     return await ctx.db.insert("tradeIdeaNotes", {
-      organizationId: args.organizationId,
       userId: args.userId,
       tradeIdeaGroupId: args.tradeIdeaGroupId,
       reviewStatus: "reviewed",
@@ -141,7 +132,8 @@ export const markReviewed = mutation({
 
 export const listNextToReview = query({
   args: {
-    organizationId: v.string(),
+    // Deprecated: trade data is user-owned; kept for backwards compatibility.
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     accountId: v.optional(v.string()),
     limit: v.optional(v.number()),
@@ -168,11 +160,8 @@ export const listNextToReview = query({
     // We use openedAt ordering because it's indexed; closedAt is derived from lastExecutionAt.
     const candidates = await ctx.db
       .query("tradeIdeaGroups")
-      .withIndex("by_org_user_status_openedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("status", "closed"),
+      .withIndex("by_user_status_openedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("status", "closed"),
       )
       .order("desc")
       .take(200);
@@ -206,11 +195,8 @@ export const listNextToReview = query({
 
       const note = await ctx.db
         .query("tradeIdeaNotes")
-        .withIndex("by_org_user_tradeIdeaGroupId", (q: any) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("userId", args.userId)
-            .eq("tradeIdeaGroupId", ti._id),
+        .withIndex("by_user_tradeIdeaGroupId", (q: any) =>
+          q.eq("userId", args.userId).eq("tradeIdeaGroupId", ti._id),
         )
         .unique();
 
@@ -285,11 +271,8 @@ export const listRecentClosedWithReviewStatus = query({
     // We use openedAt ordering because it's indexed; closedAt is derived from lastExecutionAt.
     const candidates = await ctx.db
       .query("tradeIdeaGroups")
-      .withIndex("by_org_user_status_openedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("status", "closed"),
+      .withIndex("by_user_status_openedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("status", "closed"),
       )
       .order("desc")
       .take(limit);
@@ -322,11 +305,8 @@ export const listRecentClosedWithReviewStatus = query({
 
       const note = await ctx.db
         .query("tradeIdeaNotes")
-        .withIndex("by_org_user_tradeIdeaGroupId", (q: any) =>
-          q
-            .eq("organizationId", args.organizationId)
-            .eq("userId", args.userId)
-            .eq("tradeIdeaGroupId", ti._id),
+        .withIndex("by_user_tradeIdeaGroupId", (q: any) =>
+          q.eq("userId", args.userId).eq("tradeIdeaGroupId", ti._id),
         )
         .unique();
 

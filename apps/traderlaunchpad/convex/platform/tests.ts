@@ -12,13 +12,13 @@ import { discordJson, discordMultipart } from "launchthat-plugin-discord/runtime
 
 import { PNG } from "pngjs";
 import { action } from "../_generated/server";
-import { clusterCommunityPositions } from "launchthat-plugin-traderlaunchpad/runtime/discordSnapshot";
 import { env } from "../../src/env";
 import { resolveOrgBotToken } from "launchthat-plugin-discord/runtime/credentials";
 import { v } from "convex/values";
 
 // Avoid typed imports here (can cause TS deep instantiation errors).
 const components: any = require("../_generated/api").components;
+const api: any = require("../_generated/api").api;
 const internal: any = require("../_generated/api").internal;
 
 const requirePlatformAdmin = async (ctx: any) => {
@@ -285,12 +285,16 @@ const renderSnapshotPng = (args: {
   lo -= pad;
   hi += pad;
 
+  const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
+
   const xForT = (t: number) => {
-    const p = (t - xMinT) / Math.max(1, xMaxT - xMinT);
+    const pRaw = (t - xMinT) / Math.max(1, xMaxT - xMinT);
+    const p = clamp01(pRaw);
     return chartX + p * chartW;
   };
   const yForPrice = (p: number) => {
-    const pct = (p - lo) / Math.max(1e-9, hi - lo);
+    const pctRaw = (p - lo) / Math.max(1e-9, hi - lo);
+    const pct = clamp01(pctRaw);
     return chartY + (1 - pct) * chartH;
   };
 
@@ -349,6 +353,7 @@ const renderSnapshotPng = (args: {
 
 const buildSnapshotPreview = async (ctx: any, args: any) => {
   const symbol = normalizeSymbol(String(args?.symbol ?? ""));
+  const requestedOrgId = coerceString(args?.organizationId);
   const maxUsersRaw = Number(args?.maxUsers ?? 100);
   const maxUsers = Math.max(1, Math.min(500, Math.floor(maxUsersRaw)));
 
@@ -425,55 +430,69 @@ const buildSnapshotPreview = async (ctx: any, args: any) => {
     bars = flattenBars(chunkList, usedFromMs, usedToMs);
   }
 
-  // Sample up to N unique users across orgs that have OPEN groups on this symbol.
-  // This keeps the preview test independent of org/guild configuration.
-  const orgRows = (await ctx.runQuery(
-    components.launchthat_core_tenant.queries.listOrganizationsPublic,
-    { includePlatform: false, limit: 500 },
-  )) as any[] | null;
-  const orgIds = (Array.isArray(orgRows) ? orgRows : [])
-    .map((o) => coerceString(o?._id))
-    .filter(Boolean);
+  // Load clusters via the app-level org aggregation (membership ∩ permissions ∩ user-owned groups).
+  // If `organizationId` is provided, use it directly (for Discord + deterministic debugging).
+  // Otherwise, try all public orgs and pick the "best" candidate for meta visibility.
+  const orgIds = requestedOrgId
+    ? [requestedOrgId]
+    : ((await ctx.runQuery(components.launchthat_core_tenant.queries.listOrganizationsPublic, {
+        includePlatform: false,
+        limit: 500,
+      })) as any[] | null)
+        ?.map((o: any) => coerceString(o?._id))
+        .filter(Boolean) ?? [];
 
-  const seenUsers = new Set<string>();
-  const positions: {
-    userId: string;
-    direction: "long" | "short";
-    netQty: number;
-    avgEntryPrice?: number;
-    openedAt: number;
-  }[] = [];
+  let usedOrgId = "";
+  let usersAllowed = 0;
+  let openPositions = 0;
+  let clusters: any[] = [];
+  let usersScanned: number | null = null;
+
+  // "Best" means: prefer any positions; otherwise prefer most allowed users (helps debugging perms).
+  let best: {
+    organizationId: string;
+    usersAllowed: number;
+    openPositions: number;
+    clusters: any[];
+    usersScanned: number;
+  } | null = null;
 
   for (const organizationId of orgIds) {
-    if (positions.length >= maxUsers) break;
-    const remaining = maxUsers - positions.length;
-    const openGroups = (await ctx.runQuery(
-      components.launchthat_traderlaunchpad.tradeIdeas.queries.listOpenGroupsForOrgSymbol,
-      { organizationId, symbol, limit: Math.min(1000, Math.max(50, remaining * 5)) },
-    )) as any[] | null;
-    const rows = Array.isArray(openGroups) ? openGroups : [];
+    const res = await ctx.runQuery(api.traderlaunchpad.queries.getOrgOpenPositionsForSymbol, {
+      organizationId,
+      symbol,
+      maxUsers,
+    });
 
-    for (const g of rows) {
-      if (positions.length >= maxUsers) break;
-      const userId = coerceString(g?.userId);
-      if (!userId || seenUsers.has(userId)) continue;
-      const avgEntryPrice = typeof g?.avgEntryPrice === "number" ? g.avgEntryPrice : undefined;
-      const openedAt = typeof g?.openedAt === "number" ? g.openedAt : 0;
-      if (!avgEntryPrice || !openedAt) continue;
+    const c = Array.isArray(res?.clusters) ? res.clusters : [];
+    const n = typeof res?.openPositions === "number" ? res.openPositions : 0;
+    const allowed = typeof res?.usersAllowed === "number" ? res.usersAllowed : 0;
+    const scanned = typeof res?.usersScanned === "number" ? res.usersScanned : 0;
 
-      const direction: "long" | "short" = g?.direction === "short" ? "short" : "long";
-      positions.push({
-        userId,
-        direction,
-        netQty: typeof g?.netQty === "number" ? g.netQty : 0,
-        avgEntryPrice,
-        openedAt,
-      });
-      seenUsers.add(userId);
+    const candidate = {
+      organizationId,
+      usersAllowed: allowed,
+      openPositions: n,
+      clusters: c,
+      usersScanned: scanned,
+    };
+
+    if (!best) {
+      best = candidate;
+    } else if (candidate.openPositions > best.openPositions) {
+      best = candidate;
+    } else if (best.openPositions === 0 && candidate.usersAllowed > best.usersAllowed) {
+      best = candidate;
     }
   }
 
-  const clusters = clusterCommunityPositions({ positions, maxClusters: 10 });
+  if (best) {
+    usedOrgId = best.organizationId;
+    usersAllowed = best.usersAllowed;
+    usersScanned = best.usersScanned;
+    openPositions = best.openPositions;
+    clusters = best.clusters;
+  }
 
   const pngBytes = renderSnapshotPng({ symbol, bars, clusters, now });
   // Convex arrays cap at 8192 items; return PNG as base64 string instead.
@@ -489,10 +508,13 @@ const buildSnapshotPreview = async (ctx: any, args: any) => {
       sourceKey,
       tradableInstrumentId,
       bars: bars.length,
-      openPositions: positions.length,
+      openPositions,
       clusters: clusters.length,
       sampleMaxUsers: maxUsers,
       orgsScanned: orgIds.length,
+      orgUsed: usedOrgId,
+      usersAllowed,
+      usersScanned,
       chunksFound: chunkList.length,
       queryFromMs,
       fromMs,

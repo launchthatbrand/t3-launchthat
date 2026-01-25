@@ -11,7 +11,6 @@ const toDateKey = (tsMs: number): string => {
 const tradeIdeaView = v.object({
   _id: v.id("tradeIdeaGroups"),
   _creationTime: v.number(),
-  organizationId: v.string(),
   userId: v.string(),
   connectionId: v.id("tradelockerConnections"),
   accountId: v.string(),
@@ -36,7 +35,8 @@ const tradeIdeaView = v.object({
 
 export const getSummary = query({
   args: {
-    organizationId: v.string(),
+    // Deprecated: trade data is user-owned; kept for backwards compatibility.
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     accountId: v.optional(v.string()),
     // Phase 1: consider only last N closed trades for performance.
@@ -59,22 +59,16 @@ export const getSummary = query({
 
     const open = await ctx.db
       .query("tradeIdeaGroups")
-      .withIndex("by_org_user_status_openedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("status", "open"),
+      .withIndex("by_user_status_openedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("status", "open"),
       )
       .order("desc")
       .take(200);
 
     const closed = await ctx.db
       .query("tradeIdeaGroups")
-      .withIndex("by_org_user_status_openedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("status", "closed"),
+      .withIndex("by_user_status_openedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("status", "closed"),
       )
       .order("desc")
       .take(limit);
@@ -120,7 +114,8 @@ export const getSummary = query({
 
 export const listByInstrument = query({
   args: {
-    organizationId: v.string(),
+    // Deprecated: trade data is user-owned; kept for backwards compatibility.
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     accountId: v.optional(v.string()),
     limit: v.optional(v.number()),
@@ -143,11 +138,8 @@ export const listByInstrument = query({
     // Pull a reasonable slice of closed tradeIdeas and aggregate client-side.
     const closed = await ctx.db
       .query("tradeIdeaGroups")
-      .withIndex("by_org_user_status_openedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("status", "closed"),
+      .withIndex("by_user_status_openedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("status", "closed"),
       )
       .order("desc")
       .take(500);
@@ -279,9 +271,7 @@ export const listCalendarDailyStats = query({
     // Unrealized (as-of last sync): sum current open positions unrealized and attach to today's date.
     const positions = await ctx.db
       .query("tradePositions")
-      .withIndex("by_org_user_openedAt", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
-      )
+      .withIndex("by_user_openedAt", (q: any) => q.eq("userId", args.userId))
       .order("desc")
       .take(1000);
     const unrealizedTotal = (positions as any[]).reduce((acc, p) => {

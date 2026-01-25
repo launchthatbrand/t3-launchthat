@@ -41,17 +41,16 @@ export const listExecutionsForUser = query({
 
     const rows = await ctx.db
       .query("tradeExecutions")
-      .withIndex("by_org_user_executedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .gte("executedAt", from)
-          .lte("executedAt", to),
+      .withIndex("by_user_executedAt", (q: any) =>
+        q.eq("userId", args.userId).gte("executedAt", from).lte("executedAt", to),
       )
       .order("asc")
       .take(limit);
 
-    return rows;
+    return (Array.isArray(rows) ? rows : []).map((r: any) => ({
+      ...r,
+      organizationId: args.organizationId,
+    }));
   },
 });
 
@@ -67,13 +66,25 @@ export const listInstrumentIdsMissingExecutionSymbols = query({
     const limit = Math.max(1, Math.min(200, args.limit ?? 200));
     const scanCap = Math.max(50, Math.min(5000, args.scanCap ?? 2000));
 
-    // Scan recent executions and collect distinct instrumentIds where symbol is missing.
+    const isMissingOrInstrumentIdSymbol = (
+      symbol: string,
+      instrumentId: string,
+    ): boolean => {
+      const s = symbol.trim();
+      if (!s) return true;
+      const upper = s.toUpperCase();
+      if (upper === "UNKNOWN") return true;
+      if (s === instrumentId) return true;
+      // TradeLocker sometimes uses numeric "symbol" which is actually the tradableInstrumentId.
+      if (/^\d+$/.test(s)) return true;
+      return false;
+    };
+
+    // Scan recent executions and collect distinct instrumentIds where symbol is missing/invalid.
     // (Convex can't query for "symbol is undefined" via an index.)
     const rows = await ctx.db
       .query("tradeExecutions")
-      .withIndex("by_org_user_executedAt", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
-      )
+      .withIndex("by_user_executedAt", (q: any) => q.eq("userId", args.userId))
       .order("desc")
       .take(scanCap);
 
@@ -88,7 +99,7 @@ export const listInstrumentIdsMissingExecutionSymbols = query({
       if (!instrumentId) continue;
       const symbol =
         typeof (r as any).symbol === "string" ? String((r as any).symbol).trim() : "";
-      if (symbol) continue;
+      if (!isMissingOrInstrumentIdSymbol(symbol, instrumentId)) continue;
       if (seen.has(instrumentId)) continue;
       seen.add(instrumentId);
       out.push(instrumentId);
@@ -133,16 +144,18 @@ export const listExecutionsForPosition = query({
 
     const rows = await ctx.db
       .query("tradeExecutions")
-      .withIndex("by_org_user_externalPositionId", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("externalPositionId", positionId),
+      .withIndex("by_user_externalPositionId", (q: any) =>
+        q.eq("userId", args.userId).eq("externalPositionId", positionId),
       )
-      .order("asc")
-      .take(limit);
+      .take(Math.max(200, limit));
 
-    return rows;
+    const sorted = (Array.isArray(rows) ? rows : []).slice().sort((a: any, b: any) => {
+      const at = typeof a?.executedAt === "number" ? a.executedAt : 0;
+      const bt = typeof b?.executedAt === "number" ? b.executedAt : 0;
+      return at - bt;
+    });
+
+    return sorted.slice(0, limit).map((r: any) => ({ ...r, organizationId: args.organizationId }));
   },
 });
 
@@ -174,12 +187,10 @@ export const listOrdersForUser = query({
     const limit = Math.max(1, Math.min(500, args.limit ?? 200));
     const rows = await ctx.db
       .query("tradeOrders")
-      .withIndex("by_org_user_createdAt", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
-      )
+      .withIndex("by_user_createdAt", (q: any) => q.eq("userId", args.userId))
       .order("desc")
       .take(limit);
-    return rows;
+    return (Array.isArray(rows) ? rows : []).map((r: any) => ({ ...r, organizationId: args.organizationId }));
   },
 });
 
@@ -211,12 +222,10 @@ export const listOrdersHistoryForUser = query({
     const limit = Math.max(1, Math.min(500, args.limit ?? 200));
     const rows = await ctx.db
       .query("tradeOrdersHistory")
-      .withIndex("by_org_user_createdAt", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
-      )
+      .withIndex("by_user_createdAt", (q: any) => q.eq("userId", args.userId))
       .order("desc")
       .take(limit);
-    return rows;
+    return (Array.isArray(rows) ? rows : []).map((r: any) => ({ ...r, organizationId: args.organizationId }));
   },
 });
 
@@ -285,15 +294,15 @@ export const listOrdersForUserByInstrumentId = query({
     if (!instrumentId) return [];
     const rows = await ctx.db
       .query("tradeOrders")
-      .withIndex("by_org_user_instrumentId_updatedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("instrumentId", instrumentId),
+      .withIndex("by_user_instrumentId_updatedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("instrumentId", instrumentId),
       )
       .order("desc")
       .take(limit);
-    return rows;
+    return (Array.isArray(rows) ? rows : []).map((r: any) => ({
+      ...r,
+      organizationId: args.organizationId,
+    }));
   },
 });
 
@@ -328,15 +337,15 @@ export const listOrdersHistoryForUserByInstrumentId = query({
     if (!instrumentId) return [];
     const rows = await ctx.db
       .query("tradeOrdersHistory")
-      .withIndex("by_org_user_instrumentId_updatedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("instrumentId", instrumentId),
+      .withIndex("by_user_instrumentId_updatedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("instrumentId", instrumentId),
       )
       .order("desc")
       .take(limit);
-    return rows;
+    return (Array.isArray(rows) ? rows : []).map((r: any) => ({
+      ...r,
+      organizationId: args.organizationId,
+    }));
   },
 });
 
@@ -374,15 +383,15 @@ export const listExecutionsForUserByInstrumentId = query({
     if (!instrumentId) return [];
     const rows = await ctx.db
       .query("tradeExecutions")
-      .withIndex("by_org_user_instrumentId_executedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("instrumentId", instrumentId),
+      .withIndex("by_user_instrumentId_executedAt", (q: any) =>
+        q.eq("userId", args.userId).eq("instrumentId", instrumentId),
       )
       .order("desc")
       .take(limit);
-    return rows;
+    return (Array.isArray(rows) ? rows : []).map((r: any) => ({
+      ...r,
+      organizationId: args.organizationId,
+    }));
   },
 });
 
@@ -473,15 +482,18 @@ export const listExecutionsForOrder = query({
     if (!externalOrderId) return [];
     const rows = await ctx.db
       .query("tradeExecutions")
-      .withIndex("by_org_user_externalOrderId", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("userId", args.userId)
-          .eq("externalOrderId", externalOrderId),
+      .withIndex("by_user_externalOrderId", (q: any) =>
+        q.eq("userId", args.userId).eq("externalOrderId", externalOrderId),
       )
-      .order("desc")
-      .take(limit);
-    return rows;
+      .take(Math.max(200, limit));
+
+    const sorted = (Array.isArray(rows) ? rows : []).slice().sort((a: any, b: any) => {
+      const at = typeof a?.executedAt === "number" ? a.executedAt : 0;
+      const bt = typeof b?.executedAt === "number" ? b.executedAt : 0;
+      return bt - at;
+    });
+
+    return sorted.slice(0, limit).map((r: any) => ({ ...r, organizationId: args.organizationId }));
   },
 });
 
@@ -513,12 +525,10 @@ export const listPositionsForUser = query({
     const limit = Math.max(1, Math.min(500, args.limit ?? 200));
     const rows = await ctx.db
       .query("tradePositions")
-      .withIndex("by_org_user_openedAt", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
-      )
+      .withIndex("by_user_openedAt", (q: any) => q.eq("userId", args.userId))
       .order("desc")
       .take(limit);
-    return rows;
+    return (Array.isArray(rows) ? rows : []).map((r: any) => ({ ...r, organizationId: args.organizationId }));
   },
 });
 

@@ -498,11 +498,13 @@ const extractInstrumentSymbol = (payload: any): string | undefined => {
     root?.instrument,
     root?.tradableInstrument?.symbol,
     root?.tradableInstrument?.name,
-    root?.tradableInstrumentId, // last-resort: some payloads only include ID
   ];
   for (const candidate of candidates) {
     if (typeof candidate === "string" && candidate.trim()) {
-      return candidate.trim();
+      const v = candidate.trim();
+      // Ignore numeric-only strings (TradeLocker sometimes uses IDs here).
+      if (/^\d+$/.test(v)) continue;
+      return v;
     }
   }
   return undefined;
@@ -3945,24 +3947,37 @@ export const syncTradeLockerConnection = action({
       return symbol;
     };
 
+    const isMissingOrInstrumentIdSymbol = (raw: unknown): boolean => {
+      const s = typeof raw === "string" ? raw.trim() : "";
+      if (!s) return true;
+      if (s.toUpperCase() === "UNKNOWN") return true;
+      // TradeLocker sometimes puts a numeric "symbol" which is actually the tradableInstrumentId.
+      // Treat numeric-only strings as missing so we can resolve the real symbol via instrument details.
+      return /^\d+$/.test(s);
+    };
+
     for (const o of orders) {
-      if (!o.symbol && o.instrumentId) {
-        o.symbol = await resolveInstrumentSymbol(o.instrumentId);
+      if (isMissingOrInstrumentIdSymbol(o.symbol) && o.instrumentId) {
+        const resolved = await resolveInstrumentSymbol(o.instrumentId);
+        if (resolved) o.symbol = resolved;
       }
     }
     for (const o of ordersHistory) {
-      if (!o.symbol && o.instrumentId) {
-        o.symbol = await resolveInstrumentSymbol(o.instrumentId);
+      if (isMissingOrInstrumentIdSymbol(o.symbol) && o.instrumentId) {
+        const resolved = await resolveInstrumentSymbol(o.instrumentId);
+        if (resolved) o.symbol = resolved;
       }
     }
     for (const p of positions) {
-      if (!p.symbol && p.instrumentId) {
-        p.symbol = await resolveInstrumentSymbol(p.instrumentId);
+      if (isMissingOrInstrumentIdSymbol(p.symbol) && p.instrumentId) {
+        const resolved = await resolveInstrumentSymbol(p.instrumentId);
+        if (resolved) p.symbol = resolved;
       }
     }
     for (const e of executions) {
-      if (!e.symbol && e.instrumentId) {
-        e.symbol = await resolveInstrumentSymbol(e.instrumentId);
+      if (isMissingOrInstrumentIdSymbol(e.symbol) && e.instrumentId) {
+        const resolved = await resolveInstrumentSymbol(e.instrumentId);
+        if (resolved) e.symbol = resolved;
       }
     }
 
