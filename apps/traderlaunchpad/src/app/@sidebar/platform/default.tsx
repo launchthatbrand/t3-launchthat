@@ -103,41 +103,6 @@ export default function AdminSidebarDefault() {
       <SidebarHeader className="p-0">
         <TraderLaunchpadAdminTeamSwitcher />
         {/* Match the nav menu inset so the logo aligns with items. */}
-        <SidebarMenu className="p-3 group-data-[collapsible=icon]:items-center">
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              size="default"
-              tooltip={{
-                children: "Trader Launchpad",
-                hidden: false,
-              }}
-              // Default SidebarMenuButton collapses to `size-8` in icon mode.
-              // Override that here so the brand mark stays larger + square.
-              className="md:h-11 w-full p-0 rounded-xl hover:bg-white/8 active:bg-white/10 group-data-[collapsible=icon]:size-11! group-data-[collapsible=icon]:p-0!"
-            >
-              <Link
-                href="/admin/dashboard"
-                className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0"
-              >
-                <div className="grid size-10 place-items-center overflow-hidden rounded-xl border border-white/10 bg-white/3">
-                  <Image
-                    src="/images/tl-logo-1.png"
-                    alt="Trader Launchpad"
-                    width={100}
-                    height={100}
-                    // Logo should always be slightly larger than nav icons.
-                    className="h-7 w-7 object-contain"
-                    priority
-                  />
-                </div>
-                <span className="bg-linear-to-b from-white via-orange-200 to-orange-500 bg-clip-text text-sm font-semibold text-transparent group-data-[collapsible=icon]:hidden">
-                  Trader Launchpad
-                </span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu className="p-3 gap-2 group-data-[collapsible=icon]:items-center">

@@ -237,14 +237,74 @@ export default function AdminAnalyticsPage() {
     setSaveVisibility(selectedSavedReport.visibility);
   }, [selectedSavedReport]);
 
-  const shareUrl = React.useMemo(() => {
-    const token =
-      selectedSavedReport && typeof selectedSavedReport.shareToken === "string"
-        ? selectedSavedReport.shareToken
-        : "";
-    if (!token) return "";
-    return `${window.location.origin}/u/${encodeURIComponent(shareUsername)}/a/${token}`;
-  }, [selectedSavedReport, shareUsername]);
+  const shortlinkSettings = useQuery(
+    api.shortlinks.queries.getPublicShortlinkSettings,
+    shouldQuery ? {} : "skip",
+  ) as { domain: string; enabled: boolean; codeLength: number } | undefined;
+
+  const createShortlink = useMutation(api.shortlinks.mutations.createShortlink);
+  const [shareUrl, setShareUrl] = React.useState<string>("");
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      const token =
+        selectedSavedReport && typeof selectedSavedReport.shareToken === "string"
+          ? selectedSavedReport.shareToken
+          : "";
+      if (!token || !selectedSavedReportId) {
+        if (!cancelled) setShareUrl("");
+        return;
+      }
+
+      const path = `/u/${encodeURIComponent(shareUsername)}/a/${token}`;
+
+      const domain = String(shortlinkSettings?.domain ?? "").trim();
+      const enabled = Boolean(shortlinkSettings?.enabled);
+
+      try {
+        const resUnknown: unknown = await createShortlink({
+          path,
+          kind: "analyticsReport",
+          targetId: selectedSavedReportId,
+        });
+        const res =
+          resUnknown && typeof resUnknown === "object"
+            ? (resUnknown as { url?: unknown; code?: unknown })
+            : null;
+        const code = typeof res?.code === "string" ? res.code : "";
+
+        // Prefer explicit `url` from the server wrapper when configured.
+        if (typeof res?.url === "string" && res.url.trim()) {
+          if (!cancelled) setShareUrl(res.url);
+          return;
+        }
+
+        // Local dev (or unconfigured domain): use same-origin redirect route.
+        if (code) {
+          const localUrl = `${window.location.origin}/s/${encodeURIComponent(code)}`;
+          if (!cancelled) setShareUrl(localUrl);
+          return;
+        }
+
+        // Configured domain but wrapper didn't return url (should be rare): best-effort.
+        if (enabled && domain && code) {
+          if (!cancelled) setShareUrl(`https://${domain}/${code}`);
+          return;
+        }
+
+        if (!cancelled) setShareUrl(`${window.location.origin}${path}`);
+      } catch {
+        if (!cancelled) setShareUrl(`${window.location.origin}${path}`);
+      }
+    };
+
+    if (shouldQuery) void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [createShortlink, selectedSavedReport, selectedSavedReportId, shareUsername, shortlinkSettings?.domain, shortlinkSettings?.enabled, shouldQuery]);
 
   const compareAReport = useQuery(
     api.traderlaunchpad.queries.getMyAnalyticsReport,
@@ -652,7 +712,8 @@ export default function AdminAnalyticsPage() {
                   </Button>
                 </div>
                 <div className="text-muted-foreground text-xs">
-                  Share links are unguessable tokens. Anyone with the link can view.
+                  Shortlinks are generated when sharing is enabled. Configure the short domain in{" "}
+                  <span className="font-medium text-foreground">/platform/settings/shortlinks</span>.
                 </div>
               </div>
             </div>

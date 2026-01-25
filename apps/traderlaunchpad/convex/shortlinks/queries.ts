@@ -14,11 +14,6 @@ export const resolveShortlinkByCode = query({
     const code = String(args.code ?? "").trim();
     if (!code) return null;
 
-    const settings = await ctx.runQuery(components.launchthat_shortlinks.queries.getSettings, {
-      appKey: APP_KEY,
-    });
-    if (!settings.enabled) return null;
-
     const row = await ctx.runQuery(components.launchthat_shortlinks.queries.getByCode, {
       appKey: APP_KEY,
       code,
