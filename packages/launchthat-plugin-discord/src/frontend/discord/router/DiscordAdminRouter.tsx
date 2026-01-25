@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 import type {
   DiscordLinkComponent,
+  DiscordChannelField,
   DiscordPageProps,
   DiscordTemplateContext,
 } from "../types";
@@ -13,6 +14,8 @@ import {
   DiscordAuditPage,
   DiscordChannelsPage,
   DiscordConnectionsPage,
+  DiscordGuildChannelsPage,
+  DiscordGuildOverviewPage,
   DiscordGuildSettingsPage,
   DiscordOverviewPage,
   DiscordTemplatesPage,
@@ -25,6 +28,7 @@ type DiscordAdminRouterProps = DiscordPageProps & {
   LinkComponent?: DiscordLinkComponent;
   templateContexts?: DiscordTemplateContext[];
   defaultTemplateKind?: string;
+  channelFields?: DiscordChannelField[];
 };
 
 export function DiscordAdminRouter({
@@ -35,6 +39,7 @@ export function DiscordAdminRouter({
   LinkComponent,
   templateContexts,
   defaultTemplateKind,
+  channelFields,
   ui,
   className,
 }: DiscordAdminRouterProps) {
@@ -82,10 +87,11 @@ export function DiscordAdminRouter({
 
       {segment === "overview" ? (
         isFocusedGuild && focusedGuildId ? (
-          <DiscordGuildSettingsPage
+          <DiscordGuildOverviewPage
             api={api}
             organizationId={organizationId}
             guildId={focusedGuildId}
+            basePath={scopedBasePath}
             ui={ui}
           />
         ) : (
@@ -116,7 +122,17 @@ export function DiscordAdminRouter({
         />
       ) : null}
       {segment === "channels" ? (
-        <DiscordChannelsPage api={api} organizationId={organizationId} ui={ui} />
+        isFocusedGuild && focusedGuildId ? (
+          <DiscordGuildChannelsPage
+            api={api}
+            organizationId={organizationId}
+            guildId={focusedGuildId}
+            channelFields={channelFields}
+            ui={ui}
+          />
+        ) : (
+          <DiscordChannelsPage api={api} organizationId={organizationId} ui={ui} />
+        )
       ) : null}
       {segment === "audit" ? (
         <DiscordAuditPage api={api} organizationId={organizationId} ui={ui} />

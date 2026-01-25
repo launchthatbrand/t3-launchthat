@@ -60,6 +60,22 @@ export type DiscordTemplatesPageProps = DiscordPageProps & {
   defaultTemplateKind?: string;
 };
 
+export type DiscordChannelField = {
+  /**
+   * Key in the guildSettings document (e.g. "mentorTradesChannelId").
+   * This keeps the mapping UI modular while persisting to the shared plugin table.
+   */
+  key: string;
+  label: string;
+  description?: string;
+  placeholder?: string;
+};
+
+export type DiscordChannelsPageProps = DiscordPageProps & {
+  guildId?: string;
+  channelFields?: DiscordChannelField[];
+};
+
 export type DiscordTemplateField = {
   key: string;
   label: string;

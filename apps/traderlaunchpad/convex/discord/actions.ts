@@ -1,11 +1,10 @@
-import { v } from "convex/values";
-
-import { components } from "../_generated/api";
-import { action } from "../_generated/server";
+import { exchangeDiscordCode, fetchDiscordUser } from "launchthat-plugin-discord/runtime/oauth";
 import { resolveOrganizationId, resolveViewerUserId } from "../traderlaunchpad/lib/resolve";
 
-import { exchangeDiscordCode, fetchDiscordUser } from "launchthat-plugin-discord/runtime/oauth";
+import { action } from "../_generated/server";
+import { components } from "../_generated/api";
 import { resolveDiscordCredentials } from "launchthat-plugin-discord/runtime/credentials";
+import { v } from "convex/values";
 
 const discordOauthMutations = components.launchthat_discord.oauth.mutations as any;
 const discordOauthHelperQueries =
@@ -227,11 +226,11 @@ export const startUserLink = action({
     const clientId =
       botMode === "custom"
         ? (typeof orgConfig?.customClientId === "string" && orgConfig.customClientId.trim()) ||
-          (typeof orgConfig?.clientId === "string" && orgConfig.clientId.trim()) ||
-          ""
+        (typeof orgConfig?.clientId === "string" && orgConfig.clientId.trim()) ||
+        ""
         : (process.env.DISCORD_GLOBAL_CLIENT_ID ??
-            process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID ??
-            "").trim();
+          process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID ??
+          "").trim();
 
     if (!clientId) {
       throw new Error(

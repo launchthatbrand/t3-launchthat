@@ -62,6 +62,42 @@ export function AdminOrgDiscordAdminClient(props: { organizationId: string }) {
     [],
   );
 
+  const channelFields = React.useMemo(
+    () => [
+      {
+        key: "announcementChannelId",
+        label: "Announcements channel ID",
+        description: "Where org announcements are posted in this guild.",
+        placeholder: "e.g. 1234567890",
+      },
+      {
+        key: "mentorTradesChannelId",
+        label: "Mentor trades channel ID",
+        description: "Trade feed for mentors (or premium members).",
+        placeholder: "e.g. 1234567890",
+      },
+      {
+        key: "memberTradesChannelId",
+        label: "Member trades channel ID",
+        description: "Trade feed for members (general).",
+        placeholder: "e.g. 1234567890",
+      },
+      {
+        key: "supportForumChannelId",
+        label: "Support forum channel ID",
+        description: "Forum channel used for support threads (if enabled).",
+        placeholder: "e.g. 1234567890",
+      },
+      {
+        key: "supportPrivateIntakeChannelId",
+        label: "Support private intake channel ID",
+        description: "Private intake text channel for escalations (optional).",
+        placeholder: "e.g. 1234567890",
+      },
+    ],
+    [],
+  );
+
   return (
     <DiscordAdminRouter
       segments={segments}
@@ -70,6 +106,7 @@ export function AdminOrgDiscordAdminClient(props: { organizationId: string }) {
       LinkComponent={Link}
       templateContexts={templateContexts}
       defaultTemplateKind="tradeidea"
+      channelFields={channelFields}
       ui={ui}
       api={{
         queries: api.discord.queries,
