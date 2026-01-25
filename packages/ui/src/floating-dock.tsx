@@ -116,6 +116,9 @@ export const FloatingDockDesktop = ({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [touchGestureActive, setTouchGestureActive] = useState(false);
   const gestureStartedOnItemRef = useRef(false);
+  const touchGestureActiveRef = useRef(false);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchPointerIdRef = useRef<number | null>(null);
 
   const ctxValue = useMemo(
     () => ({ touchGestureActive }),
@@ -130,20 +133,38 @@ export const FloatingDockDesktop = ({
     if (!startedOnItem) return;
 
     gestureStartedOnItemRef.current = true;
-    setTouchGestureActive(true);
+    touchGestureActiveRef.current = false;
+    setTouchGestureActive(false);
+    touchStartRef.current = { x: e.clientX, y: e.clientY };
+    touchPointerIdRef.current = e.pointerId;
     mouseX.set(e.pageX);
-
-    // Keep receiving pointer events even if the finger leaves the dock.
-    e.currentTarget.setPointerCapture(e.pointerId);
-    // Prevent page scroll while interacting with the dock.
-    e.preventDefault();
   };
 
   const moveTouchGesture: React.PointerEventHandler<HTMLDivElement> = (e) => {
     if (!gestureStartedOnItemRef.current) return;
     if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
-    mouseX.set(e.pageX);
-    e.preventDefault();
+
+    const start = touchStartRef.current;
+    const isActive = touchGestureActiveRef.current;
+
+    if (!isActive && start) {
+      const dx = Math.abs(e.clientX - start.x);
+      const dy = Math.abs(e.clientY - start.y);
+      // Only activate "slide to select" after a small movement threshold.
+      // This preserves normal tap-to-navigate behavior.
+      if (dx > 6 || dy > 6) {
+        touchGestureActiveRef.current = true;
+        setTouchGestureActive(true);
+        // Keep receiving pointer events even if the finger leaves the dock.
+        e.currentTarget.setPointerCapture(e.pointerId);
+      }
+    }
+
+    if (touchGestureActiveRef.current) {
+      mouseX.set(e.pageX);
+      // Prevent page scroll while sliding across the dock.
+      e.preventDefault();
+    }
   };
 
   const endTouchGesture: React.PointerEventHandler<HTMLDivElement> = (e) => {
@@ -151,13 +172,26 @@ export const FloatingDockDesktop = ({
     if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
 
     gestureStartedOnItemRef.current = false;
+    const wasSliding = touchGestureActiveRef.current;
+    touchGestureActiveRef.current = false;
     setTouchGestureActive(false);
+    touchStartRef.current = null;
+    touchPointerIdRef.current = null;
+
+    // For simple taps, allow the underlying Link click to navigate normally.
+    if (!wasSliding) {
+      mouseX.set(Infinity);
+      return;
+    }
 
     const container = containerRef.current;
     const anchors = container?.querySelectorAll<HTMLAnchorElement>(
       'a[data-dock-item="true"]',
     );
-    if (!anchors || anchors.length === 0) return;
+    if (!anchors || anchors.length === 0) {
+      mouseX.set(Infinity);
+      return;
+    }
 
     const x = e.clientX;
     // Use a synchronous loop (not `forEach`) so TypeScript can see `bestHref`
@@ -318,11 +352,17 @@ function IconContainer({
       aria-current={isActiveRoute ? "page" : undefined}
       onPointerUp={handlePointerUp}
       onClick={handleClick}
+      onContextMenu={(e) => {
+        // Prevent iOS long-press "copy/open in new tab" style menus on dock icons.
+        e.preventDefault();
+      }}
       data-dock-item="true"
       className={cn(
         "inline-flex rounded-full outline-none",
         // Remove iOS tap highlight; prefer explicit active styles.
         "touch-manipulation [-webkit-tap-highlight-color:transparent]",
+        // Avoid text selection / callouts on long press.
+        "select-none [-webkit-touch-callout:none] [-webkit-user-select:none]",
         // Only show focus styles for keyboard navigation.
         "focus-visible:ring-2 focus-visible:ring-orange-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-black",
       )}
