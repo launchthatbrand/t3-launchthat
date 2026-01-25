@@ -205,8 +205,26 @@ export const trackMyNotificationEvent = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const debug = process.env.NODE_ENV !== "production";
     const userId = await resolveViewerUserId(ctx);
-    if (!userId) return null;
+    if (!userId) {
+      if (debug) {
+        console.log("[trackMyNotificationEvent] no userId (unauth)", {
+          notificationId: args.notificationId,
+        });
+      }
+      return null;
+    }
+
+    if (debug) {
+      console.log("[trackMyNotificationEvent] tracking", {
+        userId,
+        notificationId: args.notificationId,
+        channel: args.channel,
+        eventType: args.eventType,
+        targetUrl: args.targetUrl,
+      });
+    }
 
     await ctx.runMutation(notificationsMutations.trackNotificationEvent, {
       notificationId: args.notificationId,
@@ -215,6 +233,10 @@ export const trackMyNotificationEvent = mutation({
       eventType: (args.eventType ?? "clicked").trim() || "clicked",
       targetUrl: args.targetUrl,
     });
+
+    if (debug) {
+      console.log("[trackMyNotificationEvent] ok", { notificationId: args.notificationId });
+    }
     return null;
   },
 });

@@ -57,6 +57,9 @@ const asPushSubJson = (sub: PushSubscription): PushSubJson => {
 export const PushNotificationsClient = () => {
   const { isAuthenticated } = useConvexAuth();
   const enabled = typeof window !== "undefined" && isRootHost(window.location.hostname);
+  const debug =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 
   const hasNotificationApi =
     typeof Notification !== "undefined" &&
@@ -75,6 +78,68 @@ export const PushNotificationsClient = () => {
   const [registrationReady, setRegistrationReady] = React.useState(false);
   const [permission, setPermission] = React.useState<NotificationPermission>("default");
   const [hasBrowserSubscription, setHasBrowserSubscription] = React.useState(false);
+
+  const pendingKey = "__tl_pending_notification_clicks";
+
+  const readPending = React.useCallback((): Array<{ id: string; targetUrl?: string }> => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.sessionStorage.getItem(pendingKey);
+      if (!raw) return [];
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .map((x) =>
+          x && typeof x === "object"
+            ? {
+                id:
+                  typeof (x as { id?: unknown }).id === "string"
+                    ? String((x as { id?: unknown }).id).trim()
+                    : "",
+                targetUrl:
+                  typeof (x as { targetUrl?: unknown }).targetUrl === "string"
+                    ? String((x as { targetUrl?: unknown }).targetUrl)
+                    : undefined,
+              }
+            : { id: "" },
+        )
+        .filter((x) => x.id);
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const writePending = React.useCallback(
+    (next: Array<{ id: string; targetUrl?: string }>) => {
+      if (typeof window === "undefined") return;
+      try {
+        window.sessionStorage.setItem(pendingKey, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+    },
+    [],
+  );
+
+  const enqueuePending = React.useCallback(
+    (idRaw: string, targetUrl?: string) => {
+      const id = String(idRaw ?? "").trim();
+      if (!id) return;
+      const existing = readPending();
+      if (existing.some((x) => x.id === id)) return;
+      const next = [...existing, { id, targetUrl }];
+      writePending(next);
+      if (debug) {
+        // eslint-disable-next-line no-console
+        console.log("[PushNotificationsClient] queued click (auth not ready)", {
+          id,
+          targetUrl,
+          queued: next.length,
+        });
+      }
+    },
+    [debug, readPending, writePending],
+  );
 
   React.useEffect(() => {
     if (!enabled) return;
@@ -97,8 +162,21 @@ export const PushNotificationsClient = () => {
         const sub = await reg.pushManager.getSubscription();
         if (cancelled) return;
         setHasBrowserSubscription(Boolean(sub));
+        if (debug) {
+          // eslint-disable-next-line no-console
+          console.log("[PushNotificationsClient] SW ready", {
+            enabled,
+            isAuthenticated,
+            permission: hasNotificationApi ? Notification.permission : "n/a",
+            hasBrowserSubscription: Boolean(sub),
+          });
+        }
       } catch {
         // ignore; UI (if any) will remain disabled
+        if (debug) {
+          // eslint-disable-next-line no-console
+          console.log("[PushNotificationsClient] SW registration failed");
+        }
       }
     };
     void run();
@@ -228,14 +306,37 @@ export const PushNotificationsClient = () => {
 
     const track = async (notificationId: string, targetUrl?: string) => {
       const id = String(notificationId ?? "").trim();
+      if (debug) {
+        // eslint-disable-next-line no-console
+        console.log("[PushNotificationsClient] track() called", {
+          id,
+          targetUrl,
+          isAuthenticated,
+        });
+      }
       if (!id) return;
-      if (!isAuthenticated) return;
-      await trackMyNotificationEvent({
-        notificationId: id,
-        channel: "push",
-        eventType: "clicked",
-        targetUrl,
-      });
+      if (!isAuthenticated) {
+        enqueuePending(id, targetUrl);
+        return;
+      }
+      try {
+        await trackMyNotificationEvent({
+          notificationId: id,
+          channel: "push",
+          eventType: "clicked",
+          targetUrl,
+        });
+        if (debug) {
+          // eslint-disable-next-line no-console
+          console.log("[PushNotificationsClient] trackMyNotificationEvent ok", { id });
+        }
+      } catch (e) {
+        enqueuePending(id, targetUrl);
+        if (debug) {
+          // eslint-disable-next-line no-console
+          console.log("[PushNotificationsClient] trackMyNotificationEvent failed", e);
+        }
+      }
     };
 
     // URL param attribution
@@ -243,6 +344,10 @@ export const PushNotificationsClient = () => {
       const url = new URL(window.location.href);
       const n = url.searchParams.get("__n");
       if (n) {
+        if (debug) {
+          // eslint-disable-next-line no-console
+          console.log("[PushNotificationsClient] found __n param", { n, href: url.toString() });
+        }
         void track(n, url.pathname + url.search);
         url.searchParams.delete("__n");
         window.history.replaceState({}, "", url.toString());
@@ -260,6 +365,13 @@ export const PushNotificationsClient = () => {
       if (!data || data.kind !== "notificationClick") return;
       const notificationId = typeof data.notificationId === "string" ? data.notificationId : "";
       const url = typeof data.url === "string" ? data.url : undefined;
+      if (debug) {
+        // eslint-disable-next-line no-console
+        console.log("[PushNotificationsClient] SW message notificationClick", {
+          notificationId,
+          url,
+        });
+      }
       void track(notificationId, url);
     };
 
@@ -268,6 +380,51 @@ export const PushNotificationsClient = () => {
       navigator.serviceWorker.removeEventListener("message", onMessage);
     };
   }, [enabled, isAuthenticated, trackMyNotificationEvent]);
+
+  // Flush queued click events once auth becomes available.
+  React.useEffect(() => {
+    if (!enabled) return;
+    if (!isAuthenticated) return;
+
+    const pending = readPending();
+    if (pending.length === 0) return;
+
+    if (debug) {
+      // eslint-disable-next-line no-console
+      console.log("[PushNotificationsClient] flushing queued clicks", {
+        count: pending.length,
+      });
+    }
+
+    // Clear first to avoid duplicates if the mutation triggers a re-render.
+    writePending([]);
+
+    for (const item of pending) {
+      const id = String(item.id ?? "").trim();
+      if (!id) continue;
+      void (async () => {
+        try {
+          await trackMyNotificationEvent({
+            notificationId: id,
+            channel: "push",
+            eventType: "clicked",
+            targetUrl: item.targetUrl,
+          });
+          if (debug) {
+            // eslint-disable-next-line no-console
+            console.log("[PushNotificationsClient] flushed click ok", { id });
+          }
+        } catch (e) {
+          // Re-queue on failure.
+          enqueuePending(id, item.targetUrl);
+          if (debug) {
+            // eslint-disable-next-line no-console
+            console.log("[PushNotificationsClient] flushed click failed (re-queued)", e);
+          }
+        }
+      })();
+    }
+  }, [debug, enabled, enqueuePending, isAuthenticated, readPending, trackMyNotificationEvent, writePending]);
 
   // No UI here (intentionally).
   return null;

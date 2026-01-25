@@ -3,6 +3,11 @@
 // Minimal service worker for Web Push.
 // Intentionally does NOT implement offline caching.
 
+const DEBUG =
+  self.location &&
+  typeof self.location.hostname === "string" &&
+  (self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1");
+
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 
@@ -23,6 +28,11 @@ self.addEventListener("push", (event) => {
       ? String(payload.data.notificationId)
       : "";
 
+  if (DEBUG) {
+    // eslint-disable-next-line no-console
+    console.log("[sw] push received", { title, url, notificationId, payload });
+  }
+
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
@@ -39,8 +49,23 @@ self.addEventListener("notificationclick", (event) => {
   const url = data && data.url ? String(data.url) : "/";
   const notificationId = data && data.notificationId ? String(data.notificationId) : "";
 
+  if (DEBUG) {
+    // eslint-disable-next-line no-console
+    console.log("[sw] notificationclick", { url, notificationId, data });
+  }
+
   event.waitUntil(
     (async () => {
+      // Always try to attach notificationId to the navigation target for attribution.
+      let urlWithId = url;
+      try {
+        const u = new URL(url, self.location.origin);
+        if (notificationId) u.searchParams.set("__n", notificationId);
+        urlWithId = u.toString();
+      } catch {
+        // keep raw url
+      }
+
       // Prefer focusing an existing window/tab if possible.
       const allClients = await self.clients.matchAll({
         type: "window",
@@ -48,7 +73,16 @@ self.addEventListener("notificationclick", (event) => {
       });
 
       for (const client of allClients) {
+        if (DEBUG) {
+          // eslint-disable-next-line no-console
+          console.log("[sw] found client", { url: client.url });
+        }
+
         if ("focus" in client) {
+          if (DEBUG) {
+            // eslint-disable-next-line no-console
+            console.log("[sw] posting message to existing client", { url, notificationId });
+          }
           client.postMessage({
             kind: "notificationClick",
             url,
@@ -56,6 +90,23 @@ self.addEventListener("notificationclick", (event) => {
             channel: "push",
             eventType: "clicked",
           });
+
+          // Best-effort: navigate the existing tab so `__n` can be picked up reliably.
+          // WindowClient.navigate exists in modern browsers.
+          try {
+            const win = client;
+            if (notificationId && "navigate" in win && typeof win.navigate === "function") {
+              await win.focus();
+              if (DEBUG) {
+                // eslint-disable-next-line no-console
+                console.log("[sw] navigating existing client", { to: urlWithId });
+              }
+              return win.navigate(urlWithId);
+            }
+          } catch {
+            // ignore; fallback to focus only
+          }
+
           return client.focus();
         }
       }
@@ -63,10 +114,16 @@ self.addEventListener("notificationclick", (event) => {
       // If we have to open a new window, include notificationId in the URL so the app
       // can attribute the click after load.
       try {
-        const u = new URL(url, self.location.origin);
-        if (notificationId) u.searchParams.set("__n", notificationId);
-        return self.clients.openWindow(u.toString());
+        if (DEBUG) {
+          // eslint-disable-next-line no-console
+          console.log("[sw] opening new window", { to: urlWithId });
+        }
+        return self.clients.openWindow(urlWithId);
       } catch {
+        if (DEBUG) {
+          // eslint-disable-next-line no-console
+          console.log("[sw] opening new window (raw url)", { to: url });
+        }
         return self.clients.openWindow(url);
       }
     })(),

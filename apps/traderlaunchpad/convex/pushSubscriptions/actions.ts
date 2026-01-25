@@ -1,8 +1,9 @@
 "use node";
 
 import { action } from "../_generated/server";
+import { api } from "../_generated/api";
 import { components } from "../_generated/api";
-import { resolveViewerUserId } from "../traderlaunchpad/lib/resolve";
+import { resolveOrganizationId } from "../traderlaunchpad/lib/resolve";
 import { v } from "convex/values";
 import webpush from "web-push";
 
@@ -33,7 +34,52 @@ export const sendTestPushToMe = action({
     errors: v.array(v.string()),
   }),
   handler: async (ctx, args) => {
-    await resolveViewerUserId(ctx);
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized: not signed in.");
+    }
+
+    // This is the identifier used by the push component to key subscriptions:
+    // subject (Clerk) OR tokenIdentifier (tenant-session Convex auth).
+    const pushUserId =
+      (typeof identity.subject === "string" && identity.subject.trim()
+        ? identity.subject.trim()
+        : "") ||
+      (typeof identity.tokenIdentifier === "string" && identity.tokenIdentifier.trim()
+        ? identity.tokenIdentifier.trim()
+        : "");
+
+    if (!pushUserId) {
+      throw new Error("Unauthorized: missing viewer identity (subject/tokenIdentifier).");
+    }
+
+    const orgId = resolveOrganizationId();
+
+    // Create an in-app notification so we have a canonical notificationId to attribute opens/clicks.
+    // This is required to populate notifications.notificationEvents.
+    const viewer = await ctx.runQuery(api.viewer.queries.getViewerProfile, {});
+    const viewerUserId =
+      viewer && typeof viewer === "object" && "userId" in viewer
+        ? (viewer as { userId?: unknown }).userId
+        : null;
+    const viewerUserIdStr = typeof viewerUserId === "string" ? viewerUserId : "";
+    if (!viewerUserIdStr) {
+      throw new Error("Unauthorized: could not resolve viewer userId.");
+    }
+
+    const notificationId = await ctx.runMutation(
+      components.launchthat_notifications.mutations.createNotification,
+      {
+        userId: viewerUserIdStr,
+        orgId,
+        eventKey: "traderlaunchpad.system.testPush",
+        tabKey: "system",
+        title: String(args.title ?? "Trader Launchpad"),
+        content: String(args.body ?? "Test notification"),
+        actionUrl:
+          typeof args.url === "string" && args.url.trim() ? args.url.trim() : "/",
+      },
+    );
 
     const vapidPublicKey = String(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "").trim();
     const vapidPrivateKey = String(process.env.VAPID_PRIVATE_KEY ?? "").trim();
@@ -54,12 +100,20 @@ export const sendTestPushToMe = action({
       {},
     );
 
+    const debug = process.env.NODE_ENV !== "production";
+    if (debug) {
+      console.log("[sendTestPushToMe] pushUserId=", pushUserId);
+      console.log("[sendTestPushToMe] notificationId=", String(notificationId));
+      console.log("[sendTestPushToMe] subs=", Array.isArray(subs) ? subs.length : 0);
+    }
+
     const payload = JSON.stringify({
       title: String(args.title ?? "Trader Launchpad"),
       body: String(args.body ?? "Test notification"),
       icon: "/icon-192x192.png",
       badge: "/icon-192x192.png",
       url: typeof args.url === "string" && args.url.trim() ? args.url.trim() : "/",
+      data: { notificationId: String(notificationId) },
     });
 
     let sent = 0;
