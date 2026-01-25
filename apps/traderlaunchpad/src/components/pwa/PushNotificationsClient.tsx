@@ -55,6 +55,10 @@ export const PushNotificationsClient = () => {
   const { isAuthenticated } = useConvexAuth();
   const enabled = typeof window !== "undefined" && isRootHost(window.location.hostname);
 
+  const hasNotificationApi =
+    typeof Notification !== "undefined" &&
+    typeof Notification.requestPermission === "function";
+
   const subscriptionRowId = useQuery(
     api.pushSubscriptions.queries.getMySubscriptionRowId,
     enabled && isAuthenticated ? {} : "skip",
@@ -72,7 +76,7 @@ export const PushNotificationsClient = () => {
     if (!enabled) return;
     const supported = "serviceWorker" in navigator && "PushManager" in window;
     setIsSupported(supported);
-    setPermission(Notification.permission);
+    setPermission(hasNotificationApi ? Notification.permission : "default");
     if (!supported) return;
 
     let cancelled = false;
@@ -162,6 +166,8 @@ export const PushNotificationsClient = () => {
         const publicKey = String(env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "").trim();
         if (!publicKey) return false;
 
+        if (!hasNotificationApi) return false;
+
         const perm = await Notification.requestPermission();
         setPermission(perm);
         if (perm !== "granted") return false;
@@ -203,7 +209,7 @@ export const PushNotificationsClient = () => {
     return () => {
       if (g.__tlPush) delete g.__tlPush;
     };
-  }, [enabled, isSupported, registrationReady, isAuthenticated, upsert, remove]);
+  }, [enabled, isSupported, registrationReady, isAuthenticated, hasNotificationApi, upsert, remove]);
 
   // No UI here (intentionally).
   return null;
