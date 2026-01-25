@@ -34,6 +34,7 @@ export function PublicProfileHeader(props: {
   bioExtra?: React.ReactNode;
   tabs?: PublicProfileTab[];
   stats?: PublicProfileStat[];
+  topRightExtra?: React.ReactNode;
   actions?: React.ReactNode;
 }) {
   const tabs = Array.isArray(props.tabs) ? props.tabs : [];
@@ -60,18 +61,24 @@ export function PublicProfileHeader(props: {
         <div className="pointer-events-none absolute -left-24 -top-20 h-56 w-56 rounded-full bg-orange-500/20 blur-3xl" />
         <div className="pointer-events-none absolute right-0 -top-24 h-64 w-64 rounded-full bg-fuchsia-500/10 blur-3xl" />
 
-        <div className="absolute right-3 top-3 flex items-start gap-2 lg:right-4 lg:top-4 lg:gap-3">
-          {stats.map((s) => (
-            <div
-              key={s.label}
-              className="rounded-2xl border border-white/10 bg-black/40 px-2.5 py-2 text-right backdrop-blur-md lg:px-4 lg:py-3"
-            >
-              <div className="text-sm font-semibold tabular-nums text-white lg:text-lg">
-                {s.value}
+        <div className="absolute right-3 top-3 lg:right-4 lg:top-4">
+          <div className="flex items-start gap-2 lg:gap-3">
+            {stats.map((s) => (
+              <div
+                key={s.label}
+                className="rounded-2xl border border-white/10 bg-black/40 px-2.5 py-2 text-right backdrop-blur-md lg:px-4 lg:py-3"
+              >
+                <div className="text-sm font-semibold tabular-nums text-white lg:text-lg">
+                  {s.value}
+                </div>
+                <div className="text-[10px] text-white/55 lg:text-xs">{s.label}</div>
               </div>
-              <div className="text-[10px] text-white/55 lg:text-xs">{s.label}</div>
-            </div>
-          ))}
+            ))}
+          </div>
+
+          {props.topRightExtra ? (
+            <div className="mt-2 flex justify-end">{props.topRightExtra}</div>
+          ) : null}
         </div>
       </div>
 

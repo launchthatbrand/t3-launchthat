@@ -6,7 +6,6 @@ import { cn } from "~/lib/utils";
 
 const tabs: Array<{ href: string; label: string }> = [
   { href: "/admin/settings/account", label: "Account" },
-  { href: "/admin/settings/connections", label: "Connections" },
   { href: "/admin/settings/journal", label: "Journal" },
   { href: "/admin/settings/visibility", label: "Visibility" },
   { href: "/admin/settings/notifications", label: "Notifications" },

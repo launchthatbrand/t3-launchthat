@@ -30,6 +30,9 @@ interface Props {
 
 export function ConnectionsShell(props: Props) {
   const pathname = usePathname();
+  const baseHref = pathname.startsWith("/admin/connections")
+    ? "/admin/connections"
+    : "/admin/settings/connections";
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const shouldQuery = isAuthenticated && !authLoading;
   const dataRaw: unknown = useQuery(
@@ -95,7 +98,7 @@ export function ConnectionsShell(props: Props) {
                 const id =
                   typeof row._id === "string" && row._id ? row._id : "";
                 if (!id) return null;
-                const href = `/admin/settings/connections/${id}`;
+                const href = `${baseHref}/${id}`;
                 const isActive = pathname === href;
 
                 const isSelected =

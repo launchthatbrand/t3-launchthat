@@ -1,13 +1,15 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import React from "react";
-import { AdminSettingsOrgDiscordAdminClient } from "./DiscordAdminClient";
-
-export default function AdminSettingsConnectionsDiscordPage() {
-  return (
-    <div className="space-y-6">
-      <AdminSettingsOrgDiscordAdminClient />
-    </div>
-  );
+export default async function AdminSettingsConnectionsDiscordPage(props: {
+  params: Promise<{ segments?: string | string[] }>;
+}) {
+  const params = await props.params;
+  const segments = Array.isArray(params.segments)
+    ? params.segments
+    : params.segments
+      ? [params.segments]
+      : [];
+  const suffix = segments.map((s) => encodeURIComponent(String(s))).join("/");
+  redirect(`/admin/connections/discord${suffix ? `/${suffix}` : ""}`);
 }
 

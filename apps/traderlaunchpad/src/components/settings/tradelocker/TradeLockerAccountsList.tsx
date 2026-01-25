@@ -27,7 +27,7 @@ export function TradeLockerAccountsList(props: TradeLockerAccountsListProps) {
         const isActive =
           Number(row?.accNum ?? 0) === Number(props.selectedAccNum ?? 0);
         const id = String(row?._id ?? "");
-        const href = `/admin/settings/connections/${id}`;
+        const href = `/admin/connections/${id}`;
 
         const acc = row?.customerAccess;
         const hasMarket =

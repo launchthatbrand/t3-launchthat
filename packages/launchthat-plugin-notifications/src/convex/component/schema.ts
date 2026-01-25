@@ -25,6 +25,7 @@ export default defineSchema({
     sourceUserId: v.optional(v.string()),
     expiresAt: v.optional(v.number()),
   })
+    .index("by_createdAt", ["createdAt"])
     .index("by_user_createdAt", ["userId", "createdAt"])
     .index("by_user_read", ["userId", "read"])
     .index("by_user_org_createdAt", ["userId", "orgId", "createdAt"])
@@ -61,6 +62,7 @@ export default defineSchema({
     targetUrl: v.optional(v.string()),
     createdAt: v.number(),
   })
+    .index("by_createdAt", ["createdAt"])
     .index("by_notificationId_and_createdAt", ["notificationId", "createdAt"])
     .index("by_user_org_createdAt", ["userId", "orgId", "createdAt"])
     .index("by_eventKey_and_channel_and_createdAt", ["eventKey", "channel", "createdAt"]),

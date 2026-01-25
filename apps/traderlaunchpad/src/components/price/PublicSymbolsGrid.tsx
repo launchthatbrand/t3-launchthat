@@ -47,7 +47,7 @@ export function PublicSymbolsGrid() {
       <div className="rounded-3xl border border-white/10 bg-white/3 p-6 text-white/70 backdrop-blur-md">
         <div className="text-sm font-semibold text-white/80">No default price source</div>
         <div className="mt-2 text-sm text-white/60">
-          Set the default source in <span className="font-mono">/admin/settings/connections</span>.
+          Set the default source in <span className="font-mono">/admin/connections</span>.
         </div>
       </div>
     );

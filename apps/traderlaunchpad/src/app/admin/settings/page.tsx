@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 
 const allowedTabs = new Set([
   "account",
-  "connections",
   "journal",
   "visibility",
   "notifications",

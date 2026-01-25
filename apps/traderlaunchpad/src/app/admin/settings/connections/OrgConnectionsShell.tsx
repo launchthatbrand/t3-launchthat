@@ -18,6 +18,9 @@ interface Props {
 export function OrgConnectionsShell(props: Props) {
   const tenant = useTenant();
   const pathname = usePathname();
+  const baseHref = pathname.startsWith("/admin/connections")
+    ? "/admin/connections"
+    : "/admin/settings/connections";
   const orgName = tenant?.name ?? "Organization";
 
   const items = [
@@ -25,13 +28,13 @@ export function OrgConnectionsShell(props: Props) {
       id: "discord",
       title: "Discord",
       description: "Guild connections, templates, routing, and member links.",
-      href: "/admin/settings/connections/discord",
+      href: `${baseHref}/discord`,
     },
     {
       id: "telegram",
       title: "Telegram",
       description: "Channel integrations (coming soon).",
-      href: "/admin/settings/connections/telegram",
+      href: `${baseHref}/telegram`,
       disabled: true,
     },
   ] as const;

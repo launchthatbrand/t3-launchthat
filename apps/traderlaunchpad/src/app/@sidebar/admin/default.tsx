@@ -9,6 +9,7 @@ import {
   IconChartBar,
   IconMessageCircle,
   IconNotebook,
+  IconPlug,
   IconSettings,
   IconTargetArrow,
 } from "@tabler/icons-react";
@@ -106,6 +107,16 @@ const secondaryNavItems: NavItem[] = [
     href: "/admin/feedback",
     icon: (
       <IconMessageCircle
+        stroke={1}
+        className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
+      />
+    ),
+  },
+  {
+    label: "Integrations",
+    href: "/admin/integrations",
+    icon: (
+      <IconPlug
         stroke={1}
         className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
       />

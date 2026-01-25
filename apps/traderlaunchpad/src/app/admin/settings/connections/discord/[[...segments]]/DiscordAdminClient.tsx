@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAction } from "convex/react";
 
 import { api } from "@convex-config/_generated/api";
@@ -13,6 +13,10 @@ import { useTenant } from "~/context/TenantContext";
 export function AdminSettingsOrgDiscordAdminClient() {
   const tenant = useTenant();
   const organizationId = tenant?._id ?? "";
+  const pathname = usePathname();
+  const basePath = pathname.startsWith("/admin/connections/discord")
+    ? "/admin/connections/discord"
+    : "/admin/settings/connections/discord";
   const router = useRouter();
   const searchParams = useSearchParams();
   const completeBotInstall = useAction(api.discord.actions.completeBotInstall);
@@ -32,7 +36,7 @@ export function AdminSettingsOrgDiscordAdminClient() {
     const error = searchParams.get("error");
     if (error) {
       // Keep it simple for now—just clear the URL.
-      router.replace("/admin/settings/connections/discord/connections");
+      router.replace(`${basePath}/connections`);
       return;
     }
     if (!guildId || !state) return;
@@ -45,10 +49,10 @@ export function AdminSettingsOrgDiscordAdminClient() {
       try {
         await completeBotInstall({ state, guildId });
       } finally {
-        router.replace("/admin/settings/connections/discord/connections");
+        router.replace(`${basePath}/connections`);
       }
     })();
-  }, [completeBotInstall, router, searchParams]);
+  }, [basePath, completeBotInstall, router, searchParams]);
 
   const templateContexts = React.useMemo(
     () => [
@@ -102,7 +106,7 @@ export function AdminSettingsOrgDiscordAdminClient() {
     <DiscordAdminRouter
       segments={segments}
       organizationId={organizationId}
-      basePath="/admin/settings/connections/discord"
+      basePath={basePath}
       LinkComponent={Link}
       templateContexts={templateContexts}
       defaultTemplateKind="tradeidea"
