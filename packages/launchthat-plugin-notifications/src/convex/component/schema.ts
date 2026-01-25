@@ -25,6 +25,7 @@ export default defineSchema({
     sourceUserId: v.optional(v.string()),
     expiresAt: v.optional(v.number()),
   })
+    .index("by_createdAt", ["createdAt"])
     .index("by_user_createdAt", ["userId", "createdAt"])
     .index("by_user_read", ["userId", "read"])
     .index("by_user_org_createdAt", ["userId", "orgId", "createdAt"])

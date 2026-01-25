@@ -7,6 +7,7 @@ import {
   IconBrandTabler,
   IconBuilding,
   IconBulb,
+  IconChartBar,
   IconNotebook,
   IconSettings,
   IconTargetArrow,
@@ -74,6 +75,16 @@ const navItems: NavItem[] = [
     href: "/platform/integrations",
     icon: (
       <IconApi
+        stroke={1}
+        className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
+      />
+    ),
+  },
+  {
+    label: "Analytics",
+    href: "/platform/analytics",
+    icon: (
+      <IconChartBar
         stroke={1}
         className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
       />

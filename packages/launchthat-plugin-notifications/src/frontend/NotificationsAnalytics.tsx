@@ -6,13 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 
 export type NotificationsAnalyticsSummary = {
   fromCreatedAt: number;
-  totals: {
+  sent: {
+    notifications: number;
+    byEventKey: Array<{ eventKey: string; count: number }>;
+  };
+  interactions: {
     events: number;
     uniqueNotifications: number;
     uniqueUsers: number;
+    byEventKey: Array<{ eventKey: string; count: number }>;
+    byChannelAndType: Array<{ channel: string; eventType: string; count: number }>;
   };
-  byEventKey: Array<{ eventKey: string; count: number }>;
-  byChannelAndType: Array<{ channel: string; eventType: string; count: number }>;
 };
 
 const formatDateTime = (ms: number) => {
@@ -46,19 +50,19 @@ export const NotificationsAnalytics = (props: {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Events</CardTitle>
+            <CardTitle className="text-sm font-medium">Sent</CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-semibold">
-            {summary ? summary.totals.events.toLocaleString() : "—"}
+            {summary ? summary.sent.notifications.toLocaleString() : "—"}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Unique notifications</CardTitle>
+            <CardTitle className="text-sm font-medium">Interactions</CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-semibold">
-            {summary ? summary.totals.uniqueNotifications.toLocaleString() : "—"}
+            {summary ? summary.interactions.events.toLocaleString() : "—"}
           </CardContent>
         </Card>
 
@@ -67,7 +71,7 @@ export const NotificationsAnalytics = (props: {
             <CardTitle className="text-sm font-medium">Unique users</CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-semibold">
-            {summary ? summary.totals.uniqueUsers.toLocaleString() : "—"}
+            {summary ? summary.interactions.uniqueUsers.toLocaleString() : "—"}
           </CardContent>
         </Card>
       </div>
@@ -75,14 +79,14 @@ export const NotificationsAnalytics = (props: {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Top event keys</CardTitle>
+            <CardTitle className="text-sm font-medium">Top event keys (sent)</CardTitle>
           </CardHeader>
           <CardContent>
-            {!summary || summary.byEventKey.length === 0 ? (
+            {!summary || summary.sent.byEventKey.length === 0 ? (
               <div className="text-muted-foreground text-sm">No events yet.</div>
             ) : (
               <div className="divide-border divide-y">
-                {summary.byEventKey.map((row) => (
+                {summary.sent.byEventKey.map((row) => (
                   <div key={row.eventKey} className="flex items-center justify-between py-2">
                     <div className="font-mono text-sm">{row.eventKey}</div>
                     <div className="text-sm font-medium">{row.count.toLocaleString()}</div>
@@ -95,23 +99,19 @@ export const NotificationsAnalytics = (props: {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">By channel + event</CardTitle>
+            <CardTitle className="text-sm font-medium">Top event keys (interactions)</CardTitle>
           </CardHeader>
           <CardContent>
-            {!summary || summary.byChannelAndType.length === 0 ? (
+            {!summary || summary.interactions.byEventKey.length === 0 ? (
               <div className="text-muted-foreground text-sm">No events yet.</div>
             ) : (
               <div className="divide-border divide-y">
-                {summary.byChannelAndType.map((row) => (
+                {summary.interactions.byEventKey.map((row) => (
                   <div
-                    key={`${row.channel}:${row.eventType}`}
+                    key={row.eventKey}
                     className="flex items-center justify-between py-2"
                   >
-                    <div className="text-sm">
-                      <span className="font-mono">{row.channel || "—"}</span>{" "}
-                      <span className="text-muted-foreground">/</span>{" "}
-                      <span className="font-mono">{row.eventType || "—"}</span>
-                    </div>
+                    <div className="font-mono text-sm">{row.eventKey}</div>
                     <div className="text-sm font-medium">{row.count.toLocaleString()}</div>
                   </div>
                 ))}
@@ -120,6 +120,33 @@ export const NotificationsAnalytics = (props: {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">By channel + event type</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!summary || summary.interactions.byChannelAndType.length === 0 ? (
+            <div className="text-muted-foreground text-sm">No events yet.</div>
+          ) : (
+            <div className="divide-border divide-y">
+              {summary.interactions.byChannelAndType.map((row) => (
+                <div
+                  key={`${row.channel}:${row.eventType}`}
+                  className="flex items-center justify-between py-2"
+                >
+                  <div className="text-sm">
+                    <span className="font-mono">{row.channel || "—"}</span>{" "}
+                    <span className="text-muted-foreground">/</span>{" "}
+                    <span className="font-mono">{row.eventType || "—"}</span>
+                  </div>
+                  <div className="text-sm font-medium">{row.count.toLocaleString()}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -529,17 +529,21 @@ export declare const components: {
         "internal",
         { daysBack?: number; maxRows?: number },
         {
-          byChannelAndType: Array<{
-            channel: string;
-            count: number;
-            eventType: string;
-          }>;
-          byEventKey: Array<{ count: number; eventKey: string }>;
           fromCreatedAt: number;
-          totals: {
+          interactions: {
+            byChannelAndType: Array<{
+              channel: string;
+              count: number;
+              eventType: string;
+            }>;
+            byEventKey: Array<{ count: number; eventKey: string }>;
             events: number;
             uniqueNotifications: number;
             uniqueUsers: number;
+          };
+          sent: {
+            byEventKey: Array<{ count: number; eventKey: string }>;
+            notifications: number;
           };
         }
       >;

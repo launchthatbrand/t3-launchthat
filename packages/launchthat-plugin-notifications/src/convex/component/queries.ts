@@ -255,24 +255,23 @@ export const getEventsAnalyticsSummary = query({
   },
   returns: v.object({
     fromCreatedAt: v.number(),
-    totals: v.object({
+    sent: v.object({
+      notifications: v.number(),
+      byEventKey: v.array(v.object({ eventKey: v.string(), count: v.number() })),
+    }),
+    interactions: v.object({
       events: v.number(),
       uniqueNotifications: v.number(),
       uniqueUsers: v.number(),
+      byEventKey: v.array(v.object({ eventKey: v.string(), count: v.number() })),
+      byChannelAndType: v.array(
+        v.object({
+          channel: v.string(),
+          eventType: v.string(),
+          count: v.number(),
+        }),
+      ),
     }),
-    byEventKey: v.array(
-      v.object({
-        eventKey: v.string(),
-        count: v.number(),
-      }),
-    ),
-    byChannelAndType: v.array(
-      v.object({
-        channel: v.string(),
-        eventType: v.string(),
-        count: v.number(),
-      }),
-    ),
   }),
   handler: async (ctx, args) => {
     const daysBackRaw = typeof args.daysBack === "number" ? args.daysBack : 30;
@@ -329,15 +328,42 @@ export const getEventsAnalyticsSummary = query({
       })
       .sort((a, b) => b.count - a.count);
 
+    // "Sent" = notifications created (canonical delivery). This is distinct from interactions.
+    const sentByEventKeyCount = new Map<string, number>();
+    let notifications = 0;
+
+    const nq = ctx.db
+      .query("notifications")
+      .withIndex("by_createdAt", (q: any) => q.gte("createdAt", fromCreatedAt))
+      .order("desc");
+
+    for await (const row of nq) {
+      notifications += 1;
+      if (notifications > maxRows) break;
+      const eventKey = typeof (row as any).eventKey === "string" ? (row as any).eventKey : "";
+      if (eventKey) {
+        sentByEventKeyCount.set(eventKey, (sentByEventKeyCount.get(eventKey) ?? 0) + 1);
+      }
+    }
+
+    const sentByEventKey = Array.from(sentByEventKeyCount.entries())
+      .map(([eventKey, count]) => ({ eventKey, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 50);
+
     return {
       fromCreatedAt,
-      totals: {
+      sent: {
+        notifications,
+        byEventKey: sentByEventKey,
+      },
+      interactions: {
         events,
         uniqueNotifications: notificationIds.size,
         uniqueUsers: userIds.size,
+        byEventKey,
+        byChannelAndType,
       },
-      byEventKey,
-      byChannelAndType,
     };
   },
 });
