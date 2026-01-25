@@ -36,7 +36,8 @@
   },
   "dependencies": {
     "@acme/ui": "workspace:*",
-    "convex": "^1.23.0"
+    "convex": "^1.23.0",
+    "recharts": "2.15.4"
   },
   "devDependencies": {
     "@acme/eslint-config": "workspace:*",
@@ -54,4 +55,3 @@
   },
   "prettier": "@acme/prettier-config"
 }
-
