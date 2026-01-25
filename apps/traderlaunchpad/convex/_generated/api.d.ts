@@ -28,6 +28,9 @@ import type * as notifications_test from "../notifications/test.js";
 import type * as onboarding_mutations from "../onboarding/mutations.js";
 import type * as onboarding_queries from "../onboarding/queries.js";
 import type * as platform_queries from "../platform/queries.js";
+import type * as platform_tests from "../platform/tests.js";
+import type * as platform_testsAuth from "../platform/testsAuth.js";
+import type * as platform_testsDebug from "../platform/testsDebug.js";
 import type * as publicProfiles_types from "../publicProfiles/types.js";
 import type * as publicProfiles from "../publicProfiles.js";
 import type * as pushSubscriptions_actions from "../pushSubscriptions/actions.js";
@@ -82,6 +85,9 @@ declare const fullApi: ApiFromModules<{
   "onboarding/mutations": typeof onboarding_mutations;
   "onboarding/queries": typeof onboarding_queries;
   "platform/queries": typeof platform_queries;
+  "platform/tests": typeof platform_tests;
+  "platform/testsAuth": typeof platform_testsAuth;
+  "platform/testsDebug": typeof platform_testsDebug;
   "publicProfiles/types": typeof publicProfiles_types;
   publicProfiles: typeof publicProfiles;
   "pushSubscriptions/actions": typeof pushSubscriptions_actions;
@@ -3383,6 +3389,35 @@ export declare const components: {
   launchthat_pricedata: {
     bars: {
       index: {
+        debugListBarChunks: FunctionReference<
+          "query",
+          "internal",
+          {
+            limit?: number;
+            resolution: string;
+            sourceKey: string;
+            tradableInstrumentId: string;
+          },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            bars: Array<{
+              c: number;
+              h: number;
+              l: number;
+              o: number;
+              t: number;
+              v: number;
+            }>;
+            chunkEndMs: number;
+            chunkStartMs: number;
+            createdAt: number;
+            resolution: string;
+            sourceKey: string;
+            tradableInstrumentId: string;
+            updatedAt: number;
+          }>
+        >;
         getBarChunks: FunctionReference<
           "query",
           "internal",
@@ -3432,6 +3467,37 @@ export declare const components: {
             tradableInstrumentId: string;
           },
           { chunkId: string }
+        >;
+      };
+      internalQueries: {
+        debugListBarChunks: FunctionReference<
+          "query",
+          "internal",
+          {
+            limit?: number;
+            resolution: string;
+            sourceKey: string;
+            tradableInstrumentId: string;
+          },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            bars: Array<{
+              c: number;
+              h: number;
+              l: number;
+              o: number;
+              t: number;
+              v: number;
+            }>;
+            chunkEndMs: number;
+            chunkStartMs: number;
+            createdAt: number;
+            resolution: string;
+            sourceKey: string;
+            tradableInstrumentId: string;
+            updatedAt: number;
+          }>
         >;
       };
       mutations: {

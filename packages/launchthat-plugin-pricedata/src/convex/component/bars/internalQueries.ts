@@ -1,5 +1,6 @@
-import { query } from "../server";
 import { v } from "convex/values";
+
+import { query } from "../server";
 
 const barChunkValidator = v.object({
   _id: v.id("priceBarChunks"),
@@ -23,33 +24,30 @@ const barChunkValidator = v.object({
   createdAt: v.number(),
 });
 
-export const getBarChunks = query({
+/**
+ * Debug helper: list raw `priceBarChunks` for exact keys without time window filtering.
+ * Internal-only (for platform tooling / investigations).
+ */
+export const debugListBarChunks = query({
   args: {
     sourceKey: v.string(),
     tradableInstrumentId: v.string(),
     resolution: v.string(),
-    fromMs: v.number(),
-    toMs: v.number(),
+    limit: v.optional(v.number()),
   },
   returns: v.array(barChunkValidator),
   handler: async (ctx, args) => {
-    const fromMs = Math.min(args.fromMs, args.toMs);
-    const toMs = Math.max(args.fromMs, args.toMs);
-
-    // Pull chunks in range using the index. We may over-fetch slightly; filter in memory.
-    const candidates = await ctx.db
+    const limit = Math.max(1, Math.min(50, Number(args.limit ?? 10)));
+    return await ctx.db
       .query("priceBarChunks")
       .withIndex("by_source_instrument_resolution_chunkStart", (q: any) =>
         q
           .eq("sourceKey", args.sourceKey)
           .eq("tradableInstrumentId", args.tradableInstrumentId)
-          .eq("resolution", args.resolution)
-          .gte("chunkStartMs", fromMs),
+          .eq("resolution", args.resolution),
       )
-      .order("asc")
-      .take(500);
-
-    return candidates.filter((c) => c.chunkStartMs <= toMs);
+      .order("desc")
+      .take(limit);
   },
 });
 

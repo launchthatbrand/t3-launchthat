@@ -11,6 +11,7 @@ import {
   IconNotebook,
   IconSettings,
   IconTargetArrow,
+  IconTestPipe,
   IconUsers,
 } from "@tabler/icons-react";
 import {
@@ -85,6 +86,16 @@ const navItems: NavItem[] = [
     href: "/platform/analytics",
     icon: (
       <IconChartBar
+        stroke={1}
+        className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
+      />
+    ),
+  },
+  {
+    label: "Tests",
+    href: "/platform/tests",
+    icon: (
+      <IconTestPipe
         stroke={1}
         className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
       />

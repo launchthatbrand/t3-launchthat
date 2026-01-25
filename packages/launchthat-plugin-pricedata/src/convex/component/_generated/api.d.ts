@@ -9,6 +9,7 @@
  */
 
 import type * as bars_index from "../bars/index.js";
+import type * as bars_internalQueries from "../bars/internalQueries.js";
 import type * as bars_mutations from "../bars/mutations.js";
 import type * as bars_queries from "../bars/queries.js";
 import type * as index from "../index.js";
@@ -37,6 +38,7 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   "bars/index": typeof bars_index;
+  "bars/internalQueries": typeof bars_internalQueries;
   "bars/mutations": typeof bars_mutations;
   "bars/queries": typeof bars_queries;
   index: typeof index;
@@ -52,6 +54,35 @@ declare const fullApi: ApiFromModules<{
 export type Mounts = {
   bars: {
     index: {
+      debugListBarChunks: FunctionReference<
+        "query",
+        "public",
+        {
+          limit?: number;
+          resolution: string;
+          sourceKey: string;
+          tradableInstrumentId: string;
+        },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          bars: Array<{
+            c: number;
+            h: number;
+            l: number;
+            o: number;
+            t: number;
+            v: number;
+          }>;
+          chunkEndMs: number;
+          chunkStartMs: number;
+          createdAt: number;
+          resolution: string;
+          sourceKey: string;
+          tradableInstrumentId: string;
+          updatedAt: number;
+        }>
+      >;
       getBarChunks: FunctionReference<
         "query",
         "public",
@@ -101,6 +132,37 @@ export type Mounts = {
           tradableInstrumentId: string;
         },
         { chunkId: string }
+      >;
+    };
+    internalQueries: {
+      debugListBarChunks: FunctionReference<
+        "query",
+        "public",
+        {
+          limit?: number;
+          resolution: string;
+          sourceKey: string;
+          tradableInstrumentId: string;
+        },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          bars: Array<{
+            c: number;
+            h: number;
+            l: number;
+            o: number;
+            t: number;
+            v: number;
+          }>;
+          chunkEndMs: number;
+          chunkStartMs: number;
+          createdAt: number;
+          resolution: string;
+          sourceKey: string;
+          tradableInstrumentId: string;
+          updatedAt: number;
+        }>
       >;
     };
     mutations: {

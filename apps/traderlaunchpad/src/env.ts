@@ -37,6 +37,8 @@ export const env = createEnv({
     // Optional so Convex/CI environments can run without push configured.
     VAPID_PRIVATE_KEY: z.string().min(1).optional(),
     DISCORD_GLOBAL_CLIENT_ID: z.string().min(1).optional(),
+    DISCORD_GLOBAL_BOT_TOKEN: z.string().min(1).optional(),
+    DISCORD_SECRETS_KEY: z.string().min(1).optional(),
   },
 
   /**
