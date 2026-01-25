@@ -77,6 +77,11 @@ export const create = mutation({
         !(typeof existing.disabledAt === "number" && existing.disabledAt > 0) &&
         !(typeof existing.expiresAt === "number" && existing.expiresAt > 0 && existing.expiresAt < Date.now())
       ) {
+        // Keep the stable code, but update the stored path if the app's canonical
+        // target URL has changed (e.g. username becomes known after initial creation).
+        if (typeof existing.path === "string" && existing.path !== path) {
+          await ctx.db.patch(existing._id, { path });
+        }
         return { code: existing.code };
       }
     }

@@ -117,6 +117,7 @@ const slugify = (value: string) =>
 interface MeApiResponseUser {
   email?: string;
   name?: string;
+  publicUsername?: string;
 }
 
 interface MeApiResponse {
@@ -214,12 +215,20 @@ export default function AdminAnalyticsPage() {
         const res = await fetch("/api/me", { credentials: "include" });
         const jsonUnknown: unknown = await res.json().catch(() => null);
         const user = isMeApiResponse(jsonUnknown) ? jsonUnknown.user : null;
+        const publicUsername =
+          typeof user?.publicUsername === "string" ? user.publicUsername.trim() : "";
         const email = typeof user?.email === "string" ? user.email : "";
         const name = typeof user?.name === "string" ? user.name : "";
         const fallback = email ? (email.split("@")[0] ?? "") : "";
-        const raw = name || fallback || "me";
-        const slug = slugify(raw) || "me";
-        if (!cancelled) setShareUsername(slug);
+
+        // Prefer the canonical username stored in our DB (public profiles rely on it).
+        const raw = publicUsername || name || fallback;
+        const slug = raw ? slugify(raw) : "";
+
+        // If we can't resolve a username, keep "me" (but downstream shortlink creation
+        // will refuse to persist /u/me).
+        const next = slug || "me";
+        if (!cancelled) setShareUsername(next);
       } catch {
         // ignore, keep "me"
       }
@@ -255,6 +264,13 @@ export default function AdminAnalyticsPage() {
           : "";
       if (!token || !selectedSavedReportId) {
         if (!cancelled) setShareUrl("");
+        return;
+      }
+
+      // Never persist /u/me in shortlinks — it will fail public profile validation in prod.
+      // If username hasn't resolved yet, fall back to the token-only share route.
+      if (!shareUsername || shareUsername === "me") {
+        if (!cancelled) setShareUrl(`${window.location.origin}/a/${token}`);
         return;
       }
 

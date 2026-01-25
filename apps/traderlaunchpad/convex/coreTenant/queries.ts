@@ -13,6 +13,7 @@ export const getUserByClerkId = query({
       name: v.optional(v.string()),
       image: v.optional(v.string()),
       bio: v.optional(v.string()),
+      publicUsername: v.optional(v.string()),
       avatarUrl: v.optional(v.string()),
       coverUrl: v.optional(v.string()),
       avatarMediaId: v.optional(v.id("userMedia")),
@@ -45,6 +46,10 @@ export const getUserByClerkId = query({
         name: user.name ?? undefined,
         image: user.image ?? undefined,
         bio: typeof user.bio === "string" ? user.bio : undefined,
+        publicUsername:
+          typeof user.publicUsername === "string" && user.publicUsername.trim()
+            ? user.publicUsername.trim().toLowerCase()
+            : undefined,
         avatarMediaId: user.avatarMediaId ?? undefined,
         coverMediaId: user.coverMediaId ?? undefined,
         avatarUrl: avatarUrlFromMedia ?? (typeof user.image === "string" ? user.image : undefined),
