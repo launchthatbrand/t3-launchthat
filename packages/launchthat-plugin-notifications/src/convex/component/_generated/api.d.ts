@@ -67,6 +67,18 @@ export type Mounts = {
       { notificationId: string },
       boolean
     >;
+    trackNotificationEvent: FunctionReference<
+      "mutation",
+      "public",
+      {
+        channel: string;
+        eventType: string;
+        notificationId: string;
+        targetUrl?: string;
+        userId: string;
+      },
+      null
+    >;
   };
   queries: {
     getDeliveryTogglesForUserEvent: FunctionReference<

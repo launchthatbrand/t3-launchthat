@@ -499,6 +499,18 @@ export declare const components: {
         { notificationId: string },
         boolean
       >;
+      trackNotificationEvent: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          channel: string;
+          eventType: string;
+          notificationId: string;
+          targetUrl?: string;
+          userId: string;
+        },
+        null
+      >;
     };
     queries: {
       getDeliveryTogglesForUserEvent: FunctionReference<

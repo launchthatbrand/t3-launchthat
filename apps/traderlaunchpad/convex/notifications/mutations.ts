@@ -44,6 +44,19 @@ interface NotificationsMutations {
     },
     unknown
   >;
+
+  trackNotificationEvent: FunctionReference<
+    "mutation",
+    "public",
+    {
+      notificationId: string;
+      userId: string;
+      channel: string;
+      eventType: string;
+      targetUrl?: string;
+    },
+    unknown
+  >;
 }
 
 const notificationsMutations = (() => {
@@ -117,12 +130,13 @@ export const createNotificationAndMaybePushByClerkId = mutation({
   returns: v.object({
     notificationCreated: v.boolean(),
     pushAttempted: v.boolean(),
+    notificationId: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
     const userId = await resolveUserIdByClerkId(ctx, args.clerkId);
     if (!userId) return { notificationCreated: false, pushAttempted: false };
 
-    await ctx.runMutation(notificationsMutations.createNotification, {
+    const notificationIdUnknown = await ctx.runMutation(notificationsMutations.createNotification, {
       userId,
       orgId: args.orgId,
       eventKey: args.eventKey,
@@ -131,6 +145,7 @@ export const createNotificationAndMaybePushByClerkId = mutation({
       content: args.content,
       actionUrl: args.actionUrl,
     });
+    const notificationId = typeof notificationIdUnknown === "string" ? notificationIdUnknown : undefined;
 
     const pushAttempted = args.sendPush === true;
     if (pushAttempted) {
@@ -145,12 +160,44 @@ export const createNotificationAndMaybePushByClerkId = mutation({
             url: args.actionUrl,
             icon: "/icon-192x192.png",
             badge: "/icon-192x192.png",
+            data: notificationId ? { notificationId } : undefined,
           },
         },
       );
     }
 
-    return { notificationCreated: true, pushAttempted };
+    return { notificationCreated: true, pushAttempted, notificationId };
+  },
+});
+
+/**
+ * Track an interaction for the current viewer against a notification id.
+ * This is used for push-notification clickthrough tracking.
+ */
+export const trackMyNotificationEvent = mutation({
+  args: {
+    notificationId: v.string(),
+    channel: v.optional(v.string()),
+    eventType: v.optional(v.string()),
+    targetUrl: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    const clerkId = typeof identity?.subject === "string" ? identity.subject : "";
+    if (!clerkId) return null;
+
+    const userId = await resolveUserIdByClerkId(ctx, clerkId);
+    if (!userId) return null;
+
+    await ctx.runMutation(notificationsMutations.trackNotificationEvent, {
+      notificationId: args.notificationId,
+      userId,
+      channel: (args.channel ?? "push").trim() || "push",
+      eventType: (args.eventType ?? "clicked").trim() || "clicked",
+      targetUrl: args.targetUrl,
+    });
+    return null;
   },
 });
 

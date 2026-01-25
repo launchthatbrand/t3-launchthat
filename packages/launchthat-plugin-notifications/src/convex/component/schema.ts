@@ -43,5 +43,26 @@ export default defineSchema({
     inAppEnabled: v.optional(v.record(v.string(), v.boolean())),
     emailEnabled: v.optional(v.record(v.string(), v.boolean())),
   }).index("by_user_org", ["userId", "orgId"]),
+
+  /**
+   * Interaction analytics for notifications (cross-channel).
+   *
+   * Design decision:
+   * - We key by `notifications._id` so clicks/opens can be aggregated across push/in-app/email
+   *   for the same canonical notification.
+   */
+  notificationEvents: defineTable({
+    notificationId: v.id("notifications"),
+    userId: v.string(),
+    orgId: v.string(),
+    eventKey: v.string(),
+    channel: v.string(), // "push" | "inApp" | "email" (string for extensibility)
+    eventType: v.string(), // "clicked" | "opened" | "dismissed"
+    targetUrl: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_notificationId_and_createdAt", ["notificationId", "createdAt"])
+    .index("by_user_org_createdAt", ["userId", "orgId", "createdAt"])
+    .index("by_eventKey_and_channel_and_createdAt", ["eventKey", "channel", "createdAt"]),
 });
 

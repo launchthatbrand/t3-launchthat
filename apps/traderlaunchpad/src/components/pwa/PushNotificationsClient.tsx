@@ -1,18 +1,21 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 "use client";
 
-import React from "react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
+
+import React from "react";
 import { api } from "@convex-config/_generated/api";
 import { env } from "~/env";
 
-type PushSubJson = {
+interface PushSubJson {
   endpoint: string;
   expirationTime?: number | null;
   keys: {
     p256dh: string;
     auth: string;
   };
-};
+}
 
 const normalizeHost = (hostname: string): string =>
   hostname.trim().toLowerCase().replace(/^www\./, "");
@@ -66,6 +69,7 @@ export const PushNotificationsClient = () => {
 
   const upsert = useMutation(api.pushSubscriptions.mutations.upsertMyPushSubscription);
   const remove = useMutation(api.pushSubscriptions.mutations.deleteMyPushSubscription);
+  const trackMyNotificationEvent = useMutation(api.notifications.mutations.trackMyNotificationEvent);
 
   const [isSupported, setIsSupported] = React.useState(false);
   const [registrationReady, setRegistrationReady] = React.useState(false);
@@ -101,6 +105,8 @@ export const PushNotificationsClient = () => {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-compiler/react-compiler
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
 
   // Keep Convex in sync when the browser already has a subscription.
@@ -177,7 +183,7 @@ export const PushNotificationsClient = () => {
           (await reg.pushManager.getSubscription()) ??
           (await reg.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(publicKey),
+            applicationServerKey: urlBase64ToUint8Array(publicKey) as unknown as string | BufferSource | null | undefined,
           }));
 
         setHasBrowserSubscription(Boolean(sub));
@@ -210,6 +216,58 @@ export const PushNotificationsClient = () => {
       if (g.__tlPush) delete g.__tlPush;
     };
   }, [enabled, isSupported, registrationReady, isAuthenticated, hasNotificationApi, upsert, remove]);
+
+  // Track push notification clicks.
+  // We support:
+  // - service worker message (when a client tab is already open)
+  // - `__n=<notificationId>` query param (when SW had to open a new window)
+  React.useEffect(() => {
+    if (!enabled) return;
+    if (typeof window === "undefined") return;
+    if (!("serviceWorker" in navigator)) return;
+
+    const track = async (notificationId: string, targetUrl?: string) => {
+      const id = String(notificationId ?? "").trim();
+      if (!id) return;
+      if (!isAuthenticated) return;
+      await trackMyNotificationEvent({
+        notificationId: id,
+        channel: "push",
+        eventType: "clicked",
+        targetUrl,
+      });
+    };
+
+    // URL param attribution
+    try {
+      const url = new URL(window.location.href);
+      const n = url.searchParams.get("__n");
+      if (n) {
+        void track(n, url.pathname + url.search);
+        url.searchParams.delete("__n");
+        window.history.replaceState({}, "", url.toString());
+      }
+    } catch {
+      // ignore
+    }
+
+    const onMessage = (event: MessageEvent) => {
+      const dataUnknown: unknown = event.data;
+      const data =
+        dataUnknown && typeof dataUnknown === "object"
+          ? (dataUnknown as { kind?: unknown; notificationId?: unknown; url?: unknown })
+          : null;
+      if (!data || data.kind !== "notificationClick") return;
+      const notificationId = typeof data.notificationId === "string" ? data.notificationId : "";
+      const url = typeof data.url === "string" ? data.url : undefined;
+      void track(notificationId, url);
+    };
+
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", onMessage);
+    };
+  }, [enabled, isAuthenticated, trackMyNotificationEvent]);
 
   // No UI here (intentionally).
   return null;

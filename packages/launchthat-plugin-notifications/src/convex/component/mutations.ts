@@ -93,3 +93,39 @@ export const createNotification = mutation({
   },
 });
 
+/**
+ * Record a notification interaction event (click/open/etc).
+ *
+ * This mutation is intentionally "dumb" about auth; the mounting app should pass the
+ * correct `userId` and we verify it matches the notification owner.
+ */
+export const trackNotificationEvent = mutation({
+  args: {
+    notificationId: v.id("notifications"),
+    userId: v.string(),
+    channel: v.string(),
+    eventType: v.string(),
+    targetUrl: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const row = await ctx.db.get(args.notificationId);
+    if (!row) return null;
+    if (String(row.userId) !== String(args.userId)) return null;
+
+    const createdAt = Date.now();
+    await ctx.db.insert("notificationEvents", {
+      notificationId: args.notificationId,
+      userId: String(row.userId),
+      orgId: String(row.orgId),
+      eventKey: String(row.eventKey),
+      channel: String(args.channel),
+      eventType: String(args.eventType),
+      targetUrl: typeof args.targetUrl === "string" ? args.targetUrl : undefined,
+      createdAt,
+    });
+
+    return null;
+  },
+});
+
