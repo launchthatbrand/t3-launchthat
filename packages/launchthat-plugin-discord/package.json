@@ -62,7 +62,8 @@
     "@acme/ui": "workspace:*",
     "convex": "^1.23.0",
     "launchthat-plugin-core": "workspace:*",
-    "launchthat-plugin-core-tenant": "workspace:*"
+    "launchthat-plugin-core-tenant": "workspace:*",
+    "lucide-react": "^0.555.0"
   },
   "devDependencies": {
     "@acme/eslint-config": "workspace:*",
