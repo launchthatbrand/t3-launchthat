@@ -123,9 +123,8 @@ export default function AdminJournalSymbolPage() {
           <Search className="h-4 w-4 text-white/40" />
           {isOrgMode
             ? `${withTrades.length} member${withTrades.length === 1 ? "" : "s"}`
-            : `${Array.isArray(myRows) ? myRows.length : 0} trade${
-                Array.isArray(myRows) && myRows.length === 1 ? "" : "s"
-              }`}{" "}
+            : `${Array.isArray(myRows) ? myRows.length : 0} trade${Array.isArray(myRows) && myRows.length === 1 ? "" : "s"
+            }`}{" "}
           • {canonical || "—"}
         </div>
       </div>
@@ -225,7 +224,7 @@ export default function AdminJournalSymbolPage() {
                             {pnl >= 0 ? "+" : "-"}${Math.abs(pnl).toFixed(2)}
                           </div>
                           <Link
-                            href={`/admin/tradeidea/${encodeURIComponent(g.tradeIdeaGroupId)}`}
+                            href={`/admin/tradeideas/${encodeURIComponent(g.tradeIdeaGroupId)}`}
                             className="inline-flex items-center gap-2 text-xs text-white/60 hover:text-white"
                           >
                             View
@@ -275,7 +274,7 @@ export default function AdminJournalSymbolPage() {
                         </div>
                         <div className="mt-2">
                           <Link
-                            href={`/admin/tradeidea/${encodeURIComponent(t.tradeIdeaGroupId)}`}
+                            href={`/admin/tradeideas/${encodeURIComponent(t.tradeIdeaGroupId)}`}
                             className="inline-flex items-center gap-2 text-xs text-white/60 hover:text-white"
                           >
                             View

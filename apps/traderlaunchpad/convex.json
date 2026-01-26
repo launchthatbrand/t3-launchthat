@@ -2,7 +2,8 @@
   "functions": "convex",
   "node": {
     "externalPackages": [
-      "web-push"
+      "web-push",
+      "@napi-rs/canvas"
     ]
   }
 }

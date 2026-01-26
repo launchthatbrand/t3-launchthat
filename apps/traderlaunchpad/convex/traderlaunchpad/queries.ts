@@ -39,6 +39,12 @@ const pricedataSources = (components as any).launchthat_pricedata?.sources?.quer
   | undefined;
 const pricedataInstruments = (components as any).launchthat_pricedata?.instruments
   ?.queries as any | undefined;
+const pricedataBars = (components as any).launchthat_pricedata?.bars?.queries as
+  | any
+  | undefined;
+
+const normalizeSymbol = (value: string) => value.trim().toUpperCase();
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const resolveMembershipForOrg = async (ctx: any, organizationId: string, userId: string) => {
   const memberships = (await ctx.runQuery(coreTenantQueries.listOrganizationsByUserId, {
@@ -1976,6 +1982,173 @@ export const getMyTradeIdeaById = query({
     return await ctx.runQuery(tradeIdeasQueries.getById, {
       tradeIdeaGroupId: args.tradeIdeaGroupId as any,
     });
+  },
+});
+
+export const getMyTradeIdeaBars = query({
+  args: {
+    tradeIdeaGroupId: v.string(),
+    resolution: v.string(),
+    lookbackDays: v.optional(v.number()),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    tradeIdeaGroupId: v.string(),
+    symbol: v.optional(v.string()),
+    sourceKey: v.optional(v.string()),
+    resolution: v.string(),
+    bars: v.array(
+      v.object({
+        t: v.number(),
+        o: v.number(),
+        h: v.number(),
+        l: v.number(),
+        c: v.number(),
+        v: v.number(),
+      }),
+    ),
+    error: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const tradeIdeaGroupId = String(args.tradeIdeaGroupId ?? "").trim();
+    const resolution = String(args.resolution ?? "").trim();
+    const lookbackDays = Math.max(1, Math.min(30, Math.floor(args.lookbackDays ?? 7)));
+
+    if (!tradeIdeaGroupId) {
+      return {
+        ok: false,
+        tradeIdeaGroupId: "",
+        symbol: undefined,
+        sourceKey: undefined,
+        resolution,
+        bars: [],
+        error: "Missing tradeIdeaGroupId.",
+      };
+    }
+
+    if (!pricedataInstruments || !pricedataBars) {
+      return {
+        ok: false,
+        tradeIdeaGroupId,
+        symbol: undefined,
+        sourceKey: undefined,
+        resolution,
+        bars: [],
+        error: "Price data is not configured.",
+      };
+    }
+
+    const group = await ctx.runQuery(tradeIdeasQueries.getById, {
+      tradeIdeaGroupId: tradeIdeaGroupId as any,
+    });
+    if (!group) {
+      return {
+        ok: false,
+        tradeIdeaGroupId,
+        symbol: undefined,
+        sourceKey: undefined,
+        resolution,
+        bars: [],
+        error: "Trade idea not found.",
+      };
+    }
+
+    const viewerUserId = await resolveViewerUserId(ctx);
+    if (String(group.userId ?? "") !== viewerUserId) {
+      await ctx.runQuery(internal.platform.testsAuth.assertPlatformAdmin, {});
+    }
+
+    const connection = await ctx.runQuery(connectionsQueries.getConnectionById, {
+      connectionId: group.connectionId as any,
+    });
+    if (!connection) {
+      return {
+        ok: false,
+        tradeIdeaGroupId,
+        symbol: String(group.symbol ?? ""),
+        sourceKey: undefined,
+        resolution,
+        bars: [],
+        error: "Connection not found.",
+      };
+    }
+
+    const environment = connection.environment === "live" ? "live" : "demo";
+    const jwtHost =
+      typeof connection.jwtHost === "string" && connection.jwtHost.trim()
+        ? connection.jwtHost.trim()
+        : undefined;
+    const baseUrlHost = jwtHost ?? `${environment}.tradelocker.com`;
+    const server =
+      typeof connection.server === "string" && connection.server.trim()
+        ? connection.server.trim()
+        : "unknown";
+    const sourceKey = `tradelocker:${environment}:${baseUrlHost}:${server}`
+      .toLowerCase()
+      .trim();
+
+    const symbol = normalizeSymbol(String(group.symbol ?? ""));
+    if (!symbol) {
+      return {
+        ok: false,
+        tradeIdeaGroupId,
+        symbol: undefined,
+        sourceKey,
+        resolution,
+        bars: [],
+        error: "Trade idea symbol is missing.",
+      };
+    }
+
+    const instrument = await ctx.runQuery(
+      pricedataInstruments.getInstrumentBySymbol,
+      { sourceKey, symbol },
+    );
+    if (!instrument || typeof instrument.tradableInstrumentId !== "string") {
+      return {
+        ok: false,
+        tradeIdeaGroupId,
+        symbol,
+        sourceKey,
+        resolution,
+        bars: [],
+        error: "Symbol is not mapped for this broker source.",
+      };
+    }
+
+    const toMs = Date.now();
+    const fromMs = toMs - lookbackDays * DAY_MS;
+
+    const chunks = await ctx.runQuery(pricedataBars.getBarChunks, {
+      sourceKey,
+      tradableInstrumentId: instrument.tradableInstrumentId,
+      resolution,
+      fromMs,
+      toMs,
+    });
+
+    const bars = (Array.isArray(chunks) ? chunks : [])
+      .flatMap((c: any) => (Array.isArray(c?.bars) ? c.bars : []))
+      .map((b: any) => ({
+        t: Number(b?.t),
+        o: Number(b?.o),
+        h: Number(b?.h),
+        l: Number(b?.l),
+        c: Number(b?.c),
+        v: Number(b?.v),
+      }))
+      .filter(
+        (b) =>
+          Number.isFinite(b.t) &&
+          Number.isFinite(b.o) &&
+          Number.isFinite(b.h) &&
+          Number.isFinite(b.l) &&
+          Number.isFinite(b.c) &&
+          Number.isFinite(b.v),
+      )
+      .sort((a, b) => a.t - b.t);
+
+    return { ok: true, tradeIdeaGroupId, symbol, sourceKey, resolution, bars };
   },
 });
 

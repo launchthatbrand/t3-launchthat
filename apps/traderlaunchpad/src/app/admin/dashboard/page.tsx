@@ -671,7 +671,7 @@ export default function AdminDashboardPage() {
     (eventId: string) => {
       if (dataMode.effectiveMode === "demo") return `/admin/trade/${eventId}`;
       const gid = calendarTradeIdeaIdByEventId.get(eventId);
-      return gid ? `/admin/tradeidea/${encodeURIComponent(gid)}` : "/admin/orders";
+      return gid ? `/admin/tradeideas/${encodeURIComponent(gid)}` : "/admin/orders";
     },
     [calendarTradeIdeaIdByEventId, dataMode.effectiveMode],
   );
@@ -1061,7 +1061,7 @@ export default function AdminDashboardPage() {
                           <Link
                             href={
                               isLive
-                                ? `/admin/tradeidea/${encodeURIComponent(trade.id)}`
+                                ? `/admin/tradeideas/${encodeURIComponent(trade.id)}`
                                 : `/admin/trade/${trade.id}`
                             }
                           >

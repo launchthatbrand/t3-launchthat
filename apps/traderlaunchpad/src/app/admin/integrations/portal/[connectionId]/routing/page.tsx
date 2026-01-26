@@ -150,7 +150,7 @@ export default function PortalRoutingMockPage() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="rounded-lg border bg-black p-3 font-mono text-xs text-white/80">
-                  {`[TradeIdea Closed]\nSymbol: AUDJPY\nP&L: +$450\nNotes: Needs review\nLink: https://app.traderlaunchpad.com/admin/tradeidea/...`}
+                  {`[TradeIdea Closed]\nSymbol: AUDJPY\nP&L: +$450\nNotes: Needs review\nLink: https://app.traderlaunchpad.com/admin/tradeideas/...`}
                 </div>
                 <div className="text-muted-foreground text-xs">
                   Backend later: template editor, per-org channel mapping, retries.

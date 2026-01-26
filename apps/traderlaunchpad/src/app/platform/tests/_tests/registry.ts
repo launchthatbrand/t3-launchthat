@@ -4,6 +4,7 @@ import type { PlatformTestDefinition } from "./types";
 
 const orgIdSchema = z.string().min(1, "Organization id is required");
 const guildIdSchema = z.string().min(1, "Guild id is required");
+const channelIdSchema = z.string().min(1, "Channel id is required");
 const symbolSchema = z
   .string()
   .min(1, "Symbol is required")
@@ -19,10 +20,12 @@ export const platformTests = [
     paramSchema: z.object({
       symbol: symbolSchema.default("BTCUSD"),
       maxUsers: z.number().int().min(1).max(500).default(100),
+      lookbackDays: z.coerce.number().int().min(1).max(30).default(3),
     }),
     defaults: {
       symbol: "BTCUSD",
       maxUsers: 100,
+      lookbackDays: 3,
     },
   },
   {
@@ -32,14 +35,18 @@ export const platformTests = [
     description: "Generate PNG and POST/PATCH the org+symbol snapshot message to Discord.",
     dangerLevel: "guarded",
     paramSchema: z.object({
-      organizationId: orgIdSchema,
       guildId: guildIdSchema,
+      channelId: channelIdSchema,
       symbol: symbolSchema.default("BTCUSD"),
+      maxUsers: z.coerce.number().int().min(1).max(500).default(100),
+      lookbackDays: z.coerce.number().int().min(1).max(30).default(3),
     }),
     defaults: {
-      organizationId: "",
       guildId: "",
+      channelId: "",
       symbol: "BTCUSD",
+      maxUsers: 100,
+      lookbackDays: 3,
     },
   },
   {
@@ -75,7 +82,7 @@ export const platformTests = [
       body: "Hello from /platform/tests",
     },
   },
-] satisfies PlatformTestDefinition<any>[];
+] satisfies PlatformTestDefinition<z.ZodTypeAny>[];
 
 export type PlatformTestId = (typeof platformTests)[number]["id"];
 

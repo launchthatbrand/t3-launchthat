@@ -195,7 +195,7 @@ function MockOrderDetail(props: { orderId: string }) {
                 </div>
                 <div className="font-medium text-sm">AUDJPY Breakout Strategy</div>
                 <Button variant="link" asChild className="h-auto p-0 mt-2 text-xs text-orange-200 hover:text-orange-100">
-                  <Link href="/admin/tradeidea/mock-1">View Trade Idea →</Link>
+                  <Link href="/admin/tradeideas/mock-1">View Trade Idea →</Link>
                 </Button>
               </div>
             </CardContent>

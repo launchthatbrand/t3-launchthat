@@ -413,7 +413,7 @@ export default function AdminJournalDashboardPage() {
     (eventId: string) => {
       if (dataMode.effectiveMode === "demo") return `/admin/trade/${eventId}`;
       const gid = calendarTradeIdeaIdByEventId.get(eventId);
-      return gid ? `/admin/tradeidea/${encodeURIComponent(gid)}` : "/admin/orders";
+      return gid ? `/admin/tradeideas/${encodeURIComponent(gid)}` : "/admin/orders";
     },
     [calendarTradeIdeaIdByEventId, dataMode.effectiveMode],
   );
@@ -901,25 +901,25 @@ export default function AdminJournalDashboardPage() {
                               {showMeta && meta ? (
                                 <span className="hidden md:inline">
                                   {tradeColumns.showSize &&
-                                  typeof meta.qtyClosed === "number" &&
-                                  Number.isFinite(meta.qtyClosed) ? (
+                                    typeof meta.qtyClosed === "number" &&
+                                    Number.isFinite(meta.qtyClosed) ? (
                                     <>
                                       <span className="px-1.5 text-white/30">•</span>
                                       Size {meta.qtyClosed.toFixed(2)}
                                     </>
                                   ) : null}
                                   {tradeColumns.showHold &&
-                                  typeof meta.holdMsMax === "number" &&
-                                  Number.isFinite(meta.holdMsMax) &&
-                                  meta.holdMsMax > 0 ? (
+                                    typeof meta.holdMsMax === "number" &&
+                                    Number.isFinite(meta.holdMsMax) &&
+                                    meta.holdMsMax > 0 ? (
                                     <>
                                       <span className="px-1.5 text-white/30">•</span>
                                       Hold {formatHoldTime(meta.holdMsMax)}
                                     </>
                                   ) : null}
                                   {tradeColumns.showFees &&
-                                  typeof meta.fees === "number" &&
-                                  Number.isFinite(meta.fees) ? (
+                                    typeof meta.fees === "number" &&
+                                    Number.isFinite(meta.fees) ? (
                                     <>
                                       <span className="px-1.5 text-white/30">•</span>
                                       Fees {meta.fees >= 0 ? "+" : ""}
@@ -982,7 +982,7 @@ export default function AdminJournalDashboardPage() {
                               href={
                                 dataMode.effectiveMode === "demo"
                                   ? `/admin/trade/${trade.id}`
-                                  : `/admin/tradeidea/${encodeURIComponent(trade.id)}`
+                                  : `/admin/tradeideas/${encodeURIComponent(trade.id)}`
                               }
                             >
                               View Trade <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
@@ -996,7 +996,7 @@ export default function AdminJournalDashboardPage() {
                               <div className="text-white/50">Size</div>
                               <div className="mt-0.5 tabular-nums">
                                 {typeof meta?.qtyClosed === "number" &&
-                                Number.isFinite(meta.qtyClosed)
+                                  Number.isFinite(meta.qtyClosed)
                                   ? meta.qtyClosed.toFixed(2)
                                   : "—"}
                               </div>
@@ -1005,8 +1005,8 @@ export default function AdminJournalDashboardPage() {
                               <div className="text-white/50">Hold</div>
                               <div className="mt-0.5 tabular-nums">
                                 {typeof meta?.holdMsMax === "number" &&
-                                Number.isFinite(meta.holdMsMax) &&
-                                meta.holdMsMax > 0
+                                  Number.isFinite(meta.holdMsMax) &&
+                                  meta.holdMsMax > 0
                                   ? formatHoldTime(meta.holdMsMax)
                                   : "—"}
                               </div>

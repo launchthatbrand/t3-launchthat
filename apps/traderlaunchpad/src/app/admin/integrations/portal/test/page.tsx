@@ -84,7 +84,7 @@ export default function AdminPortalTestDeliveryPage() {
                 <Badge className={statusBadge}>{status}</Badge>
               </div>
               <div className="mt-3 rounded-lg border bg-black p-3 font-mono text-xs text-white/80">
-                {`type=tradeidea.closed\nsymbol=AUDJPY\npnl=+$450\nreviewStatus=todo\nurl=https://app.traderlaunchpad.com/admin/tradeidea/...`}
+                {`type=tradeidea.closed\nsymbol=AUDJPY\npnl=+$450\nreviewStatus=todo\nurl=https://app.traderlaunchpad.com/admin/tradeideas/...`}
               </div>
               {lastRun ? (
                 <div className="text-muted-foreground mt-2 text-xs">

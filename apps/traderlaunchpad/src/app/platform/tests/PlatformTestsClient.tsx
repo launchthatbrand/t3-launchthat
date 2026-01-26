@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
@@ -18,6 +18,13 @@ import {
   FormMessage,
 } from "@acme/ui/form";
 import { Input } from "@acme/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@acme/ui/select";
 import { Separator } from "@acme/ui/separator";
 import { Textarea } from "@acme/ui/textarea";
 
@@ -293,11 +300,66 @@ const TestRunner = (props: {
   onPreview: (params: any) => Promise<void>;
   onRun: (params: any) => Promise<void>;
 }) => {
+  const guilds = useQuery(
+    api.platform.testsQueries.listDiscordGuildsForPlatformTests,
+    props.testId === "png.snapshot.send_discord" ? {} : "skip",
+  );
+  const fetchGuildChannels = useAction(
+    api.platform.tests.fetchDiscordGuildChannelsForPlatformTests,
+  );
+
   const form = useForm({
     resolver: zodResolver(props.schema),
     defaultValues: props.defaults,
     mode: "onChange",
   });
+
+  const [channelOptions, setChannelOptions] = React.useState<
+    Array<{ id: string; name: string; type: number }>
+  >([]);
+  const [channelsBusy, setChannelsBusy] = React.useState(false);
+  const watchedGuildId =
+    props.testId === "png.snapshot.send_discord"
+      ? String(form.watch("guildId" as any) ?? "")
+      : "";
+
+  React.useEffect(() => {
+    if (props.testId !== "png.snapshot.send_discord") return;
+    const guildId = String(watchedGuildId ?? "").trim();
+    if (!guildId) {
+      setChannelOptions([]);
+      form.setValue("channelId" as any, "");
+      return;
+    }
+
+    let cancelled = false;
+    setChannelsBusy(true);
+    void fetchGuildChannels({ guildId })
+      .then((res: any) => {
+        if (cancelled) return;
+        const channels = Array.isArray(res?.channels) ? (res.channels as any[]) : [];
+        const mapped = channels
+          .map((c) => ({
+            id: typeof c?.id === "string" ? String(c.id) : "",
+            name: typeof c?.name === "string" ? String(c.name) : "",
+            type: typeof c?.type === "number" ? Number(c.type) : -1,
+          }))
+          .filter((c) => c.id && c.name);
+        setChannelOptions(mapped);
+
+        const current = String(form.getValues("channelId" as any) ?? "").trim();
+        if (current && !mapped.some((c) => c.id === current)) {
+          form.setValue("channelId" as any, "");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setChannelsBusy(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchGuildChannels, form, props.testId, watchedGuildId]);
 
   const fields = React.useMemo(() => Object.keys(props.defaults), [props.defaults]);
 
@@ -335,6 +397,9 @@ const TestRunner = (props: {
             <form className="space-y-3">
               {fields.map((name) => {
                 const isLongText = name === "body" || name === "message";
+                const isDiscordSend = props.testId === "png.snapshot.send_discord";
+                const isGuildSelect = isDiscordSend && name === "guildId";
+                const isChannelSelect = isDiscordSend && name === "channelId";
                 return (
                   <FormField
                     key={name}
@@ -344,7 +409,55 @@ const TestRunner = (props: {
                       <FormItem>
                         <FormLabel className="font-mono text-xs">{name}</FormLabel>
                         <FormControl>
-                          {isLongText ? (
+                          {isGuildSelect ? (
+                            <Select
+                              value={String(field.value ?? "")}
+                              onValueChange={(v) => field.onChange(v)}
+                            >
+                              <SelectTrigger className="h-9 w-full">
+                                <SelectValue placeholder="Select guild…" />
+                              </SelectTrigger>
+                              <SelectContent className="w-(--radix-select-trigger-width) max-w-[calc(100vw-2rem)]">
+                                {(Array.isArray(guilds) ? guilds : []).map((g: any) => {
+                                  const guildId = typeof g?.guildId === "string" ? String(g.guildId) : "";
+                                  if (!guildId) return null;
+                                  const label = typeof g?.guildName === "string" && g.guildName.trim()
+                                    ? `${g.guildName} (${guildId})`
+                                    : guildId;
+                                  return (
+                                    <SelectItem key={guildId} value={guildId}>
+                                      {label}
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                          ) : isChannelSelect ? (
+                            <Select
+                              value={String(field.value ?? "")}
+                              onValueChange={(v) => field.onChange(v)}
+                              disabled={!watchedGuildId.trim() || channelsBusy}
+                            >
+                              <SelectTrigger className="h-9 w-full">
+                                <SelectValue
+                                  placeholder={
+                                    !watchedGuildId.trim()
+                                      ? "Select guild first…"
+                                      : channelsBusy
+                                        ? "Loading channels…"
+                                        : "Select channel…"
+                                  }
+                                />
+                              </SelectTrigger>
+                              <SelectContent className="w-(--radix-select-trigger-width) max-w-[calc(100vw-2rem)]">
+                                {channelOptions.map((c) => (
+                                  <SelectItem key={c.id} value={c.id}>
+                                    #{c.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : isLongText ? (
                             <Textarea
                               {...field}
                               value={String(field.value ?? "")}

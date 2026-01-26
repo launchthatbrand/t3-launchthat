@@ -31,6 +31,7 @@ import type * as platform_queries from "../platform/queries.js";
 import type * as platform_tests from "../platform/tests.js";
 import type * as platform_testsAuth from "../platform/testsAuth.js";
 import type * as platform_testsDebug from "../platform/testsDebug.js";
+import type * as platform_testsQueries from "../platform/testsQueries.js";
 import type * as publicProfiles_types from "../publicProfiles/types.js";
 import type * as publicProfiles from "../publicProfiles.js";
 import type * as pushSubscriptions_actions from "../pushSubscriptions/actions.js";
@@ -88,6 +89,7 @@ declare const fullApi: ApiFromModules<{
   "platform/tests": typeof platform_tests;
   "platform/testsAuth": typeof platform_testsAuth;
   "platform/testsDebug": typeof platform_testsDebug;
+  "platform/testsQueries": typeof platform_testsQueries;
   "publicProfiles/types": typeof publicProfiles_types;
   publicProfiles: typeof publicProfiles;
   "pushSubscriptions/actions": typeof pushSubscriptions_actions;
@@ -1316,6 +1318,31 @@ export declare const components: {
         >;
       };
       queries: {
+        getConnectionById: FunctionReference<
+          "query",
+          "internal",
+          { connectionId: string },
+          {
+            _creationTime: number;
+            _id: string;
+            createdAt: number;
+            environment: "demo" | "live";
+            hasOpenTrade?: boolean;
+            jwtHost?: string;
+            lastBrokerActivityAt?: number;
+            lastError?: string;
+            lastSyncAt: number;
+            organizationId: string;
+            selectedAccNum: number;
+            selectedAccountId: string;
+            server: string;
+            status: "connected" | "error" | "disconnected";
+            syncLeaseOwner?: string;
+            syncLeaseUntil?: number;
+            updatedAt: number;
+            userId: string;
+          } | null
+        >;
         getMyConnection: FunctionReference<
           "query",
           "internal",

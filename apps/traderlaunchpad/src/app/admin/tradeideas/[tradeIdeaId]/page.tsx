@@ -23,8 +23,8 @@ import {
   SelectValue,
 } from "@acme/ui/select";
 
-import { TradingChartCard } from "~/components/charts/TradingChartCard";
-import type { TradingChartMarker, TradingTimeframe } from "~/components/charts/TradingChartMock";
+import type { TradingTimeframe } from "~/components/charts/TradingChartMock";
+import { TradingChartReal } from "~/components/charts/TradingChartReal";
 
 const toDateLabel = (tsMs: number): string => {
   const d = new Date(tsMs);
@@ -40,6 +40,32 @@ const toChartTimeframe = (tf: string): TradingTimeframe => {
   if (v === "h4" || v === "4h") return "4h";
   if (v === "d1" || v === "1d") return "1d";
   return "15m";
+};
+
+const chartTimeframes: TradingTimeframe[] = ["15m", "1h", "4h"];
+
+const resolutionForTimeframe = (timeframe: TradingTimeframe) => {
+  switch (timeframe) {
+    case "1h":
+      return "1H";
+    case "4h":
+      return "4H";
+    case "15m":
+    default:
+      return "15m";
+  }
+};
+
+const lookbackDaysForTimeframe = (timeframe: TradingTimeframe) => {
+  switch (timeframe) {
+    case "4h":
+      return 30;
+    case "1h":
+      return 14;
+    case "15m":
+    default:
+      return 7;
+  }
 };
 
 const slugify = (value: string) =>
@@ -66,6 +92,126 @@ const isMeApiResponse = (v: unknown): v is MeApiResponse => {
   return true;
 };
 
+interface TradeIdeaBar {
+  t: number;
+  o: number;
+  h: number;
+  l: number;
+  c: number;
+  v: number;
+}
+
+interface TradeIdeaBarsResult {
+  ok: boolean;
+  tradeIdeaGroupId: string;
+  symbol?: string;
+  sourceKey?: string;
+  resolution: string;
+  bars: TradeIdeaBar[];
+  error?: string;
+}
+
+interface TradeIdeaGroupSummary {
+  _id: string;
+  tradeIdeaId?: string;
+  symbol?: string;
+}
+
+function TradeIdeaBrokerChart(props: {
+  tradeIdeaGroupId?: string;
+  symbol: string;
+  defaultTimeframe: TradingTimeframe;
+}) {
+  const [timeframe, setTimeframe] = React.useState<TradingTimeframe>(
+    props.defaultTimeframe,
+  );
+  const resolution = resolutionForTimeframe(timeframe);
+  const lookbackDays = lookbackDaysForTimeframe(timeframe);
+
+  React.useEffect(() => {
+    setTimeframe(props.defaultTimeframe);
+  }, [props.defaultTimeframe]);
+
+  const data = useQuery(
+    api.traderlaunchpad.queries.getMyTradeIdeaBars,
+    props.tradeIdeaGroupId
+      ? {
+        tradeIdeaGroupId: props.tradeIdeaGroupId,
+        resolution,
+        lookbackDays,
+      }
+      : "skip",
+  ) as TradeIdeaBarsResult | undefined;
+
+  const isLoading = data === undefined;
+  const bars = Array.isArray(data?.bars) ? data.bars : [];
+  const sourceKey = typeof data?.sourceKey === "string" ? data.sourceKey : "";
+  const error = data && data.ok === false ? data.error ?? "No bars available." : null;
+
+  return (
+    <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+      <CardHeader className="border-b border-white/10 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base">Price Action (Broker)</CardTitle>
+            <Badge variant="outline" className="font-mono text-xs">
+              {props.symbol}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            {chartTimeframes.map((tf) => {
+              const isActive = tf === timeframe;
+              return (
+                <Badge
+                  key={tf}
+                  asChild
+                  variant="outline"
+                  className={cn(
+                    "border-white/10 bg-background/20 transition-colors",
+                    isActive
+                      ? "bg-white/10 text-white"
+                      : "cursor-pointer text-white/70 hover:bg-white/10 hover:text-white",
+                  )}
+                >
+                  <button type="button" onClick={() => setTimeframe(tf)}>
+                    {tf}
+                  </button>
+                </Badge>
+              );
+            })}
+          </div>
+        </div>
+        {sourceKey ? (
+          <div className="mt-2 text-xs text-muted-foreground">
+            Source: <span className="font-mono text-white/70">{sourceKey}</span>
+          </div>
+        ) : null}
+      </CardHeader>
+      <CardContent className="bg-black/40 p-2">
+        {!props.tradeIdeaGroupId ? (
+          <div className="flex h-[360px] items-center justify-center text-sm text-white/60">
+            No broker connection linked to this trade idea yet.
+          </div>
+        ) : isLoading ? (
+          <div className="flex h-[360px] items-center justify-center text-sm text-white/60">
+            Loading price data…
+          </div>
+        ) : error ? (
+          <div className="flex h-[360px] items-center justify-center text-sm text-white/70">
+            {error}
+          </div>
+        ) : bars.length > 0 ? (
+          <TradingChartReal bars={bars} height={360} className="w-full" />
+        ) : (
+          <div className="flex h-[360px] items-center justify-center text-sm text-white/60">
+            No broker bars available yet.
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function AdminTradeIdeaDetailPage() {
   const params = useParams();
   const rawId =
@@ -80,37 +226,80 @@ export default function AdminTradeIdeaDetailPage() {
   const setSharing = useMutation(api.traderlaunchpad.mutations.setMyTradeIdeaSharing);
   const createShortlink = useMutation(api.shortlinks.mutations.createShortlink);
 
-  const detail = useQuery(
+  const detailFromIdeaId = useQuery(
     api.traderlaunchpad.queries.getMyTradeIdeaDetail,
     shouldQuery ? { tradeIdeaId, positionsLimit: 200 } : "skip",
   ) as
     | {
-        tradeIdeaId: string;
+      tradeIdeaId: string;
+      symbol: string;
+      bias: "long" | "short" | "neutral";
+      status: "active" | "closed";
+      timeframe: string;
+      timeframeLabel?: string;
+      thesis?: string;
+      tags?: string[];
+      visibility: "private" | "link" | "public";
+      shareToken?: string;
+      shareEnabledAt?: number;
+      expiresAt?: number;
+      positions: {
+        tradeIdeaGroupId: string;
         symbol: string;
-        bias: "long" | "short" | "neutral";
-        status: "active" | "closed";
-        timeframe: string;
-        timeframeLabel?: string;
-        thesis?: string;
-        tags?: string[];
-        visibility: "private" | "link" | "public";
-        shareToken?: string;
-        shareEnabledAt?: number;
-        expiresAt?: number;
-        positions: {
-          tradeIdeaGroupId: string;
-          symbol: string;
-          direction: "long" | "short";
-          status: "open" | "closed";
-          openedAt: number;
-          closedAt?: number;
-          realizedPnl?: number;
-          fees?: number;
-          netQty: number;
-        }[];
-      }
+        direction: "long" | "short";
+        status: "open" | "closed";
+        openedAt: number;
+        closedAt?: number;
+        realizedPnl?: number;
+        fees?: number;
+        netQty: number;
+      }[];
+    }
     | null
     | undefined;
+
+  const group = useQuery(
+    api.traderlaunchpad.queries.getMyTradeIdeaById,
+    shouldQuery && detailFromIdeaId === null
+      ? { tradeIdeaGroupId: tradeIdeaId }
+      : "skip",
+  ) as TradeIdeaGroupSummary | null | undefined;
+
+  const detailFromGroupId = useQuery(
+    api.traderlaunchpad.queries.getMyTradeIdeaDetail,
+    shouldQuery && group?.tradeIdeaId
+      ? { tradeIdeaId: group.tradeIdeaId, positionsLimit: 200 }
+      : "skip",
+  ) as
+    | {
+      tradeIdeaId: string;
+      symbol: string;
+      bias: "long" | "short" | "neutral";
+      status: "active" | "closed";
+      timeframe: string;
+      timeframeLabel?: string;
+      thesis?: string;
+      tags?: string[];
+      visibility: "private" | "link" | "public";
+      shareToken?: string;
+      shareEnabledAt?: number;
+      expiresAt?: number;
+      positions: {
+        tradeIdeaGroupId: string;
+        symbol: string;
+        direction: "long" | "short";
+        status: "open" | "closed";
+        openedAt: number;
+        closedAt?: number;
+        realizedPnl?: number;
+        fees?: number;
+        netQty: number;
+      }[];
+    }
+    | null
+    | undefined;
+
+  const detail = detailFromGroupId ?? detailFromIdeaId;
 
   const [shareUsername, setShareUsername] = React.useState<string>("me");
   const [shareUrl, setShareUrl] = React.useState<string>("");
@@ -141,7 +330,28 @@ export default function AdminTradeIdeaDetailPage() {
     };
   }, []);
 
-  const positions = React.useMemo(() => (detail && Array.isArray(detail.positions) ? detail.positions : []), [detail]);
+  const positions = React.useMemo(
+    () => (detail && Array.isArray(detail.positions) ? detail.positions : []),
+    [detail],
+  );
+  const resolvedTradeIdeaId = React.useMemo(() => {
+    if (detail && typeof detail.tradeIdeaId === "string" && detail.tradeIdeaId) {
+      return detail.tradeIdeaId;
+    }
+    if (group && typeof group.tradeIdeaId === "string" && group.tradeIdeaId) {
+      return group.tradeIdeaId;
+    }
+    return tradeIdeaId;
+  }, [detail, group, tradeIdeaId]);
+  const primaryGroupId = React.useMemo(
+    () =>
+      positions.length
+        ? positions[0]?.tradeIdeaGroupId
+        : group && typeof group._id === "string"
+          ? group._id
+          : undefined,
+    [group, positions],
+  );
   const openedAt = React.useMemo(
     () => (positions.length ? Math.min(...positions.map((p) => p.openedAt)) : Date.now()),
     [positions],
@@ -157,8 +367,11 @@ export default function AdminTradeIdeaDetailPage() {
   );
 
   const targetIdForShortlink = React.useMemo(
-    () => (detail && typeof detail.tradeIdeaId === "string" ? detail.tradeIdeaId : tradeIdeaId),
-    [detail, tradeIdeaId],
+    () =>
+      detail && typeof detail.tradeIdeaId === "string"
+        ? detail.tradeIdeaId
+        : resolvedTradeIdeaId,
+    [detail, resolvedTradeIdeaId],
   );
 
   const ensureShareUrl = React.useCallback(
@@ -354,33 +567,10 @@ export default function AdminTradeIdeaDetailPage() {
             </Card>
           </div>
 
-          <TradingChartCard
-            title="Price Action"
+          <TradeIdeaBrokerChart
+            tradeIdeaGroupId={primaryGroupId}
             symbol={detail.symbol}
-            height={400}
             defaultTimeframe={toChartTimeframe(detail.timeframe)}
-            timeframes={["15m", "1h", "4h"]}
-            markers={detail.positions.flatMap((p, idx): TradingChartMarker[] => {
-              const isLong = p.direction === "long";
-              const openMarker: TradingChartMarker = {
-                time: p.openedAt,
-                position: isLong ? "belowBar" : "aboveBar",
-                color: isLong ? "#10B981" : "#F43F5E",
-                shape: isLong ? "arrowUp" : "arrowDown",
-                text: `Open ${idx + 1}`,
-              };
-              const closeMarker: TradingChartMarker | null =
-                typeof p.closedAt === "number"
-                  ? {
-                      time: p.closedAt,
-                      position: "inBar" as const,
-                      color: "rgba(255,255,255,0.6)",
-                      shape: "circle" as const,
-                      text: "Close",
-                    }
-                  : null;
-              return closeMarker ? [openMarker, closeMarker] : [openMarker];
-            })}
           />
 
           <Card className="border-white/10 bg-white/3 backdrop-blur-md">
@@ -566,7 +756,7 @@ export default function AdminTradeIdeaDetailPage() {
                           </div>
                         </div>
                         <Button variant="ghost" size="sm" className="h-8 text-xs hover:bg-white/10" asChild>
-                          <Link href={`/admin/tradeidea/${encodeURIComponent(p.tradeIdeaGroupId)}`}>
+                          <Link href={`/admin/tradeideas/${encodeURIComponent(p.tradeIdeaGroupId)}`}>
                             View <ArrowUpRight className="ml-1 h-3 w-3" />
                           </Link>
                         </Button>

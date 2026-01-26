@@ -20,7 +20,7 @@ const EXAMPLE = {
   direction: "long",
   pnl: "+$450",
   reviewStatus: "todo",
-  url: "https://app.traderlaunchpad.com/admin/tradeidea/mock-1",
+  url: "https://app.traderlaunchpad.com/admin/tradeideas/mock-1",
 };
 
 export default function AdminSharingPreviewPage() {

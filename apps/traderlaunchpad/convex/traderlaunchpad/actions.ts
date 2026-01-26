@@ -501,21 +501,9 @@ export const syncMyTradeLockerNow = action({
       },
     );
 
-    // Post-sync: ensure thesis-level TradeIdeas exist by (re)backfilling assignment.
-    // This is idempotent and guarantees `/admin/tradeideas` has rows even if inline assignment
-    // inside the rebuild mutation fails for any reason.
-    let ideasBackfill: any = null;
-    try {
-      ideasBackfill = await ctx.runMutation(
-        componentsUntyped.launchthat_traderlaunchpad.tradeIdeas.ideas.backfillIdeasForUser as any,
-        { organizationId, userId, scanCap: 2000, limitAssigned: 2000 },
-      );
-    } catch (err) {
-      console.log("[syncMyTradeLockerNow] ideas backfill skipped/failed", String(err));
-    }
-
     // Post-sync: backfill symbols using pricedata mapping (tradableInstrumentId -> symbol).
     // TradeLocker executions often omit `symbol`, but we already have a full mapping in `priceInstruments`.
+    let symbolBackfill: any = null;
     try {
       // Prefer sourceKey derived from the user's active TradeLocker connection (matches the data we just synced).
       // Fall back to pricedata's default source if needed.
@@ -634,21 +622,13 @@ export const syncMyTradeLockerNow = action({
               .backfillSymbolsForUser,
             { organizationId, userId, instrumentSymbols, perInstrumentCap: 500 },
           );
-
-          return {
-            ok: true,
-            result: {
-              ...result,
-              ideasBackfill,
-              symbolBackfill: {
-                connectionSourceKey,
-                defaultSourceKey,
-                chosenSourceKey: sourceKey,
-                ids: ids.length,
-                mapped: instrumentSymbols.length,
-                backfill,
-              },
-            },
+          symbolBackfill = {
+            connectionSourceKey,
+            defaultSourceKey,
+            chosenSourceKey: sourceKey,
+            ids: ids.length,
+            mapped: instrumentSymbols.length,
+            backfill,
           };
         }
       }
@@ -657,7 +637,39 @@ export const syncMyTradeLockerNow = action({
       console.log("[syncMyTradeLockerNow] symbol backfill skipped/failed", String(err));
     }
 
-    return { ok: true, result: { ...result, ideasBackfill } };
+    // Post-sync: ensure thesis-level TradeIdeas exist by (re)backfilling assignment.
+    // This is idempotent and guarantees `/admin/tradeideas` has rows even if inline assignment
+    // inside the rebuild mutation fails for any reason.
+    let ideasBackfill: any = null;
+    try {
+      ideasBackfill = await ctx.runMutation(
+        componentsUntyped.launchthat_traderlaunchpad.tradeIdeas.ideas.backfillIdeasForUser as any,
+        { organizationId, userId, scanCap: 2000, limitAssigned: 2000 },
+      );
+    } catch (err) {
+      console.log("[syncMyTradeLockerNow] ideas backfill skipped/failed", String(err));
+    }
+
+    // Post-sync: reconcile idea symbols to group symbols (fixes legacy numeric symbols).
+    let ideasReconcile: any = null;
+    try {
+      ideasReconcile = await ctx.runMutation(
+        componentsUntyped.launchthat_traderlaunchpad.tradeIdeas.ideas.reconcileIdeasForUser as any,
+        { organizationId, userId, scanCap: 1000 },
+      );
+    } catch (err) {
+      console.log("[syncMyTradeLockerNow] ideas reconcile skipped/failed", String(err));
+    }
+
+    return {
+      ok: true,
+      result: {
+        ...result,
+        symbolBackfill,
+        ideasBackfill,
+        ideasReconcile,
+      },
+    };
   },
 });
 

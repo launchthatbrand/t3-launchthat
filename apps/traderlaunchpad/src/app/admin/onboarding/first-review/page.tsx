@@ -108,7 +108,7 @@ export default function OnboardingFirstReviewPage() {
               {nextToReview.map((row) => (
                 <Link
                   key={row.tradeIdeaGroupId}
-                  href={`/admin/tradeidea/${encodeURIComponent(row.tradeIdeaGroupId)}`}
+                  href={`/admin/tradeideas/${encodeURIComponent(row.tradeIdeaGroupId)}`}
                   className="bg-card hover:bg-card/80 flex items-center justify-between rounded-lg border p-4 transition-colors"
                 >
                   <div className="space-y-1">
@@ -153,7 +153,7 @@ export default function OnboardingFirstReviewPage() {
                 <Link
                   href={
                     first
-                      ? `/admin/tradeidea/${encodeURIComponent(first.tradeIdeaGroupId)}`
+                      ? `/admin/tradeideas/${encodeURIComponent(first.tradeIdeaGroupId)}`
                       : "/admin/tradeideas?status=closed"
                   }
                 >

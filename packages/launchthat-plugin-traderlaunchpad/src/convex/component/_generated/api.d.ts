@@ -552,6 +552,31 @@ export type Mounts = {
       >;
     };
     queries: {
+      getConnectionById: FunctionReference<
+        "query",
+        "public",
+        { connectionId: string },
+        {
+          _creationTime: number;
+          _id: string;
+          createdAt: number;
+          environment: "demo" | "live";
+          hasOpenTrade?: boolean;
+          jwtHost?: string;
+          lastBrokerActivityAt?: number;
+          lastError?: string;
+          lastSyncAt: number;
+          organizationId: string;
+          selectedAccNum: number;
+          selectedAccountId: string;
+          server: string;
+          status: "connected" | "error" | "disconnected";
+          syncLeaseOwner?: string;
+          syncLeaseUntil?: number;
+          updatedAt: number;
+          userId: string;
+        } | null
+      >;
       getMyConnection: FunctionReference<
         "query",
         "public",
