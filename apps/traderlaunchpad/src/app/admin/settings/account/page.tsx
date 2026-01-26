@@ -130,15 +130,15 @@ export default function AdminSettingsAccountPage() {
   return (
     <div className="space-y-6">
       <Dialog open={editNameOpen} onOpenChange={setEditNameOpen}>
-        <DialogContent className="border-white/10 bg-black/90 text-white">
+        <DialogContent className="border-white/10 bg-background/90 text-foreground">
           <DialogHeader>
             <DialogTitle>Edit display name</DialogTitle>
           </DialogHeader>
 
-          <label className="block text-sm text-white/70">
+          <label className="block text-sm text-foreground/70">
             Name
             <input
-              className="mt-2 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
+              className="mt-2 w-full rounded-xl border border-white/10 bg-background/40 px-3 py-2 text-sm text-foreground placeholder:text-foreground/40"
               value={draftName}
               onChange={(e) => setDraftName(e.target.value)}
               placeholder="Your display name"
@@ -150,14 +150,14 @@ export default function AdminSettingsAccountPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                className="h-10 rounded-full border-white/10 bg-white/5 text-foreground hover:bg-white/10"
               >
                 Cancel
               </Button>
             </DialogClose>
             <Button
               type="button"
-              className="h-10 rounded-full border-0 bg-orange-600 text-white hover:bg-orange-700"
+              className="h-10 rounded-full border-0 bg-orange-600 text-foreground hover:bg-orange-700"
               onClick={() => {
                 setName(draftName);
                 setEditNameOpen(false);
@@ -171,15 +171,15 @@ export default function AdminSettingsAccountPage() {
       </Dialog>
 
       <Dialog open={editBioOpen} onOpenChange={setEditBioOpen}>
-        <DialogContent className="border-white/10 bg-black/90 text-white">
+        <DialogContent className="border-white/10 bg-background/90 text-foreground">
           <DialogHeader>
             <DialogTitle>Edit bio</DialogTitle>
           </DialogHeader>
 
-          <label className="block text-sm text-white/70">
+          <label className="block text-sm text-foreground/70">
             Trading bio
             <textarea
-              className="mt-2 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
+              className="mt-2 w-full rounded-xl border border-white/10 bg-background/40 px-3 py-2 text-sm text-foreground placeholder:text-foreground/40"
               rows={6}
               value={draftBio}
               onChange={(e) => setDraftBio(e.target.value)}
@@ -192,14 +192,14 @@ export default function AdminSettingsAccountPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                className="h-10 rounded-full border-white/10 bg-white/5 text-foreground hover:bg-white/10"
               >
                 Cancel
               </Button>
             </DialogClose>
             <Button
               type="button"
-              className="h-10 rounded-full border-0 bg-orange-600 text-white hover:bg-orange-700"
+              className="h-10 rounded-full border-0 bg-orange-600 text-foreground hover:bg-orange-700"
               onClick={() => {
                 setBio(draftBio);
                 setEditBioOpen(false);

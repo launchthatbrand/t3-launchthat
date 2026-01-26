@@ -164,23 +164,23 @@ export default function AdminSettingsOrganizationPage() {
 
             <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
               <DialogTrigger asChild>
-                <Button disabled={!isOrgAdmin} className="border-0 bg-orange-600 text-white hover:bg-orange-700">
+                <Button disabled={!isOrgAdmin} className="border-0 bg-orange-600 text-foreground hover:bg-orange-700">
                   Invite user
                 </Button>
               </DialogTrigger>
-              <DialogContent className="border-white/10 bg-black/90 text-white">
+              <DialogContent className="border-white/10 bg-background/90 text-foreground">
                 <DialogHeader>
                   <DialogTitle>Invite user to organization</DialogTitle>
                 </DialogHeader>
 
                 {!isOrgAdmin ? (
-                  <div className="text-sm text-white/70">
+                  <div className="text-sm text-foreground/70">
                     Only organization admins can invite members.
                   </div>
                 ) : (
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="inviteEmail" className="text-white/70">
+                      <Label htmlFor="inviteEmail" className="text-foreground/70">
                         Email
                       </Label>
                       <Input
@@ -188,19 +188,19 @@ export default function AdminSettingsOrganizationPage() {
                         value={inviteEmail}
                         onChange={(e) => setInviteEmail(e.target.value)}
                         placeholder="name@example.com"
-                        className="border-white/10 bg-black/50 text-white placeholder:text-white/40"
+                        className="border-white/10 bg-background/50 text-foreground placeholder:text-foreground/40"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-white/70">Role</Label>
+                      <Label className="text-foreground/70">Role</Label>
                       <div className="flex flex-wrap gap-2">
                         {["viewer", "student"].map((r) => (
                           <Button
                             key={r}
                             type="button"
                             variant={inviteRole === r ? "default" : "outline"}
-                            className={inviteRole === r ? "bg-white/10 text-white" : "border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"}
+                            className={inviteRole === r ? "bg-white/10 text-foreground" : "border-white/15 bg-transparent text-foreground hover:bg-white/10 hover:text-foreground"}
                             onClick={() => setInviteRole(r)}
                           >
                             {r}
@@ -210,14 +210,14 @@ export default function AdminSettingsOrganizationPage() {
                     </div>
 
                     {createdLink ? (
-                      <div className="rounded-lg border border-white/10 bg-black/40 p-3">
-                        <div className="text-xs font-medium text-white/70">Invite link</div>
-                        <div className="mt-2 break-all text-xs text-white/70">{createdLink}</div>
+                      <div className="rounded-lg border border-white/10 bg-background/40 p-3">
+                        <div className="text-xs font-medium text-foreground/70">Invite link</div>
+                        <div className="mt-2 break-all text-xs text-foreground/70">{createdLink}</div>
                         <div className="mt-3 flex gap-2">
                           <Button
                             type="button"
                             variant="outline"
-                            className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                            className="border-white/15 bg-transparent text-foreground hover:bg-white/10 hover:text-foreground"
                             onClick={() => {
                               void navigator.clipboard.writeText(createdLink);
                             }}
@@ -227,7 +227,7 @@ export default function AdminSettingsOrganizationPage() {
                           <Button
                             type="button"
                             variant="outline"
-                            className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                            className="border-white/15 bg-transparent text-foreground hover:bg-white/10 hover:text-foreground"
                             onClick={() => setCreatedLink(null)}
                           >
                             Done
@@ -241,14 +241,14 @@ export default function AdminSettingsOrganizationPage() {
                 <DialogFooter>
                   <Button
                     variant="outline"
-                    className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                    className="border-white/15 bg-transparent text-foreground hover:bg-white/10 hover:text-foreground"
                     onClick={() => setInviteOpen(false)}
                   >
                     Close
                   </Button>
                   <Button
                     disabled={!isOrgAdmin || !organizationId || !inviteEmail.trim()}
-                    className="border-0 bg-orange-600 text-white hover:bg-orange-700"
+                    className="border-0 bg-orange-600 text-foreground hover:bg-orange-700"
                     onClick={() => {
                       void (async () => {
                         if (!organizationId) return;
@@ -417,132 +417,132 @@ export default function AdminSettingsOrganizationPage() {
       {activeTab === "general" ? (
         <>
           <Card>
-        <CardHeader>
-          <CardTitle>Organization</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {org === undefined ? (
-            <div className="text-muted-foreground text-sm">Loading…</div>
-          ) : org === null ? (
-            <div className="text-muted-foreground text-sm">Organization not found.</div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <div className="text-muted-foreground text-xs">Name</div>
-                  <Input value={draftName} onChange={(e) => setDraftName(e.target.value)} />
-                </div>
-                <div className="space-y-1">
-                  <div className="text-muted-foreground text-xs">Slug</div>
-                  <Input
-                    value={draftSlug}
-                    onChange={(e) => setDraftSlug(e.target.value)}
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="text-muted-foreground text-xs">Featured image</div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isSaving}
-                    onClick={() => setLogoPickerOpen(true)}
-                  >
-                    Choose image…
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={!draftLogoMediaId || isSaving}
-                    onClick={() => {
-                      setDraftLogoMediaId(null);
-                      setDraftLogoPreviewUrl(null);
-                    }}
-                  >
-                    Remove
-                  </Button>
-                </div>
-
-                {(draftLogoPreviewUrl ?? org.logoUrl) ? (
-                  <div className="relative mt-2 h-32 w-full overflow-hidden rounded-md border bg-muted/20">
-                    <Image
-                      src={(draftLogoPreviewUrl ?? org.logoUrl) ?? ""}
-                      alt="Organization featured image"
-                      fill
-                      sizes="(max-width: 768px) 100vw, 700px"
-                      className="object-cover"
-                    />
+            <CardHeader>
+              <CardTitle>Organization</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {org === undefined ? (
+                <div className="text-muted-foreground text-sm">Loading…</div>
+              ) : org === null ? (
+                <div className="text-muted-foreground text-sm">Organization not found.</div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <div className="text-muted-foreground text-xs">Name</div>
+                      <Input value={draftName} onChange={(e) => setDraftName(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-muted-foreground text-xs">Slug</div>
+                      <Input
+                        value={draftSlug}
+                        onChange={(e) => setDraftSlug(e.target.value)}
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
+                      />
+                    </div>
                   </div>
-                ) : null}
-              </div>
 
-              <div className="flex justify-end">
-                <Button
-                  disabled={!canSave}
-                  onClick={async () => {
-                    if (!organizationId) return;
-                    setIsSaving(true);
-                    try {
-                      await updateOrg({
-                        organizationId,
-                        name: draftName.trim(),
-                        slug: draftSlug.trim(),
-                        // Clear legacy URL field; logo is now driven by org media library.
-                        logo: null,
-                        logoMediaId: draftLogoMediaId,
-                      });
-                    } finally {
-                      setIsSaving(false);
-                    }
-                  }}
-                >
-                  {isSaving ? "Saving…" : "Save changes"}
-                </Button>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+                  <div className="space-y-2">
+                    <div className="text-muted-foreground text-xs">Featured image</div>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isSaving}
+                        onClick={() => setLogoPickerOpen(true)}
+                      >
+                        Choose image…
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={!draftLogoMediaId || isSaving}
+                        onClick={() => {
+                          setDraftLogoMediaId(null);
+                          setDraftLogoPreviewUrl(null);
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
 
-      {organizationId ? (
-        <MediaLibraryDialog<
-          { organizationId: string; limit?: number },
-          { organizationId: string },
-          {
-            organizationId: string;
-            storageId: string;
-            contentType: string;
-            size: number;
-            filename?: string;
-          },
-          OrganizationMediaRow
-        >
-          open={logoPickerOpen}
-          onOpenChange={setLogoPickerOpen}
-          title="Organization media"
-          listRef={api.coreTenant.organizations.listOrganizationMedia}
-          listArgs={{ organizationId, limit: 200 }}
-          generateUploadUrlRef={api.coreTenant.organizations.generateOrganizationMediaUploadUrl}
-          uploadArgs={{ organizationId }}
-          createRef={api.coreTenant.organizations.createOrganizationMedia}
-          buildCreateArgs={({ storageId, file }: { storageId: string; file: File }) => ({
-            organizationId,
-            storageId,
-            contentType: file.type || "application/octet-stream",
-            size: file.size,
-            filename: file.name,
-          })}
-          onSelect={(item: OrganizationMediaRow) => {
-            setDraftLogoMediaId(item._id);
-            setDraftLogoPreviewUrl(item.url);
-          }}
-        />
-      ) : null}
+                    {(draftLogoPreviewUrl ?? org.logoUrl) ? (
+                      <div className="relative mt-2 h-32 w-full overflow-hidden rounded-md border bg-muted/20">
+                        <Image
+                          src={(draftLogoPreviewUrl ?? org.logoUrl) ?? ""}
+                          alt="Organization featured image"
+                          fill
+                          sizes="(max-width: 768px) 100vw, 700px"
+                          className="object-cover"
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      disabled={!canSave}
+                      onClick={async () => {
+                        if (!organizationId) return;
+                        setIsSaving(true);
+                        try {
+                          await updateOrg({
+                            organizationId,
+                            name: draftName.trim(),
+                            slug: draftSlug.trim(),
+                            // Clear legacy URL field; logo is now driven by org media library.
+                            logo: null,
+                            logoMediaId: draftLogoMediaId,
+                          });
+                        } finally {
+                          setIsSaving(false);
+                        }
+                      }}
+                    >
+                      {isSaving ? "Saving…" : "Save changes"}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {organizationId ? (
+            <MediaLibraryDialog<
+              { organizationId: string; limit?: number },
+              { organizationId: string },
+              {
+                organizationId: string;
+                storageId: string;
+                contentType: string;
+                size: number;
+                filename?: string;
+              },
+              OrganizationMediaRow
+            >
+              open={logoPickerOpen}
+              onOpenChange={setLogoPickerOpen}
+              title="Organization media"
+              listRef={api.coreTenant.organizations.listOrganizationMedia}
+              listArgs={{ organizationId, limit: 200 }}
+              generateUploadUrlRef={api.coreTenant.organizations.generateOrganizationMediaUploadUrl}
+              uploadArgs={{ organizationId }}
+              createRef={api.coreTenant.organizations.createOrganizationMedia}
+              buildCreateArgs={({ storageId, file }: { storageId: string; file: File }) => ({
+                organizationId,
+                storageId,
+                contentType: file.type || "application/octet-stream",
+                size: file.size,
+                filename: file.name,
+              })}
+              onSelect={(item: OrganizationMediaRow) => {
+                setDraftLogoMediaId(item._id);
+                setDraftLogoPreviewUrl(item.url);
+              }}
+            />
+          ) : null}
         </>
       ) : null}
     </div>

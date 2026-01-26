@@ -72,34 +72,44 @@ export default function AdminSettingsOrganizationsPage() {
   }, [router]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Organizations</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <EntityList<MembershipRow>
-          data={Array.isArray(rows) ? rows : []}
-          columns={columns}
-          isLoading={rows === undefined}
-          defaultViewMode="list"
-          viewModes={["list"]}
-          enableSearch={true}
-          entityActions={entityActions}
-          onRowClick={(row: MembershipRow) => {
-            router.push(`/admin/organization/${encodeURIComponent(row._id)}/public-profile`);
-          }}
-          getRowId={(row: MembershipRow) => row._id}
-          emptyState={
-            <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed">
-              <div className="text-lg font-medium">No organizations</div>
-              <div className="text-muted-foreground mt-1 text-sm">
-                You’re not currently a member of any organizations.
+    <div className="relative animate-in fade-in space-y-8 text-foreground selection:bg-orange-500/30 duration-500">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Organizations</h1>
+          <p className="mt-1 text-muted-foreground">
+            Manage your organizations and what data they have access to.
+          </p>
+        </div>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Organizations</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EntityList<MembershipRow>
+            data={Array.isArray(rows) ? rows : []}
+            columns={columns}
+            isLoading={rows === undefined}
+            defaultViewMode="list"
+            viewModes={["list"]}
+            enableSearch={true}
+            entityActions={entityActions}
+            onRowClick={(row: MembershipRow) => {
+              router.push(`/admin/organization/${encodeURIComponent(row._id)}/public-profile`);
+            }}
+            getRowId={(row: MembershipRow) => row._id}
+            emptyState={
+              <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed">
+                <div className="text-lg font-medium">No organizations</div>
+                <div className="text-muted-foreground mt-1 text-sm">
+                  You’re not currently a member of any organizations.
+                </div>
               </div>
-            </div>
-          }
-        />
-      </CardContent>
-    </Card>
+            }
+          />
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

@@ -1,16 +1,15 @@
 "use client";
 
-import React from "react";
-import { useRouter } from "next/navigation";
-
-import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
 import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
 import { useMutation, useQuery } from "convex/react";
 
+import { Button } from "@acme/ui/button";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import React from "react";
 import { api } from "@convex-config/_generated/api";
 import { useHostContext } from "~/context/HostContext";
+import { useRouter } from "next/navigation";
 
 export default function PlatformOrganizationsPage() {
   const { isAuthHost } = useHostContext();
@@ -126,7 +125,7 @@ function PlatformOrganizationsPageInner() {
             columns={columns}
             isLoading={rows === undefined}
             defaultViewMode="list"
-            viewModes={["list"]}
+            viewModes={[]}
             enableSearch={false}
             entityActions={entityActions}
             onRowClick={(row: OrgRow) => {

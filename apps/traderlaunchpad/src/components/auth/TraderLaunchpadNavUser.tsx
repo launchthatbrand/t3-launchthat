@@ -51,7 +51,7 @@ function TraderLaunchpadNavUserClerk(props: { afterSignOutUrl?: string }) {
       <Button
         type="button"
         variant="ghost"
-        className="text-gray-200 hover:bg-white/10 hover:text-white"
+        className="text-foreground/70 hover:bg-foreground/5 hover:text-foreground dark:text-gray-200 dark:hover:bg-white/10 dark:hover:text-white"
         onClick={() => {
           if (typeof window === "undefined") return;
           const returnTo =
@@ -335,7 +335,7 @@ function TraderLaunchpadNavUserTenant() {
       <Button
         type="button"
         variant="ghost"
-        className="text-gray-200 hover:bg-white/10 hover:text-white opacity-60"
+        className="text-foreground/60 hover:bg-foreground/5 hover:text-foreground opacity-60 dark:text-gray-200 dark:hover:bg-white/10 dark:hover:text-white"
         disabled
       >
         Loading…
@@ -348,7 +348,7 @@ function TraderLaunchpadNavUserTenant() {
       <Button
         type="button"
         variant="ghost"
-        className="text-gray-200 hover:bg-white/10 hover:text-white"
+        className="text-foreground/70 hover:bg-foreground/5 hover:text-foreground dark:text-gray-200 dark:hover:bg-white/10 dark:hover:text-white"
         onClick={handleSignIn}
       >
         Sign in
@@ -361,11 +361,11 @@ function TraderLaunchpadNavUserTenant() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white/90 hover:bg-white/10"
+          className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-white/70 px-2 py-1.5 text-sm text-foreground/90 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10"
         >
-          <Avatar className="h-7 w-7 border border-white/10">
+          <Avatar className="h-7 w-7 border border-border/60 dark:border-white/10">
             <AvatarImage src={avatar} alt={name} />
-            <AvatarFallback className="bg-white/10 text-xs text-white/80">
+            <AvatarFallback className="bg-background/60 text-xs text-foreground/80 dark:bg-white/10 dark:text-white/80">
               {initials || "U"}
             </AvatarFallback>
           </Avatar>

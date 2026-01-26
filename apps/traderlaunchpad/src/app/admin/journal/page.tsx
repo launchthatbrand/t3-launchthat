@@ -133,7 +133,7 @@ function TooltipIcon({
                 transition={{ duration: 0.18, ease: "easeOut" }}
                 className="pointer-events-none fixed inset-0 z-50"
               >
-                <div className="pointer-events-none absolute inset-0 bg-black/50 backdrop-blur-sm" />
+                <div className="pointer-events-none absolute inset-0 bg-background/50 backdrop-blur-sm" />
                 <div
                   className="pointer-events-auto absolute z-10 w-64 -translate-x-full rounded-lg border border-border/40 bg-background/95 p-3 text-foreground shadow-xl backdrop-blur"
                   style={{
@@ -283,7 +283,7 @@ export default function AdminJournalDashboardPage() {
         header: "Trades",
         accessorKey: "tradeCount",
         cell: (r: InstrumentRow) => (
-          <span className="tabular-nums text-white/80">{r.tradeCount.toLocaleString()}</span>
+          <span className="tabular-nums text-foreground/80">{r.tradeCount.toLocaleString()}</span>
         ),
         sortable: true,
       },
@@ -534,7 +534,7 @@ export default function AdminJournalDashboardPage() {
         <div className="flex items-center gap-2">
           <Button
             asChild
-            className="gap-2 border-0 bg-orange-600 text-white hover:bg-orange-700"
+            className="gap-2 border-0 bg-orange-600 text-foreground hover:bg-orange-700"
           >
             <Link href="/admin/orders">
               <Clock className="h-4 w-4" />
@@ -666,7 +666,7 @@ export default function AdminJournalDashboardPage() {
                   <Button
                     type="button"
                     variant={instrumentSortBy === "mostTraded" ? "secondary" : "outline"}
-                    className="h-9 border-border/60 bg-transparent text-foreground hover:bg-foreground/5 hover:text-foreground"
+                    className="h-9 border-border/60 bg-transparent text-foreground hover:bg-foreground/5 hover:text-foreground active:bg-foreground/30"
                     onClick={() => setInstrumentSortBy("mostTraded")}
                   >
                     Most Traded
@@ -674,7 +674,7 @@ export default function AdminJournalDashboardPage() {
                   <Button
                     type="button"
                     variant={instrumentSortBy === "mostProfitable" ? "secondary" : "outline"}
-                    className="h-9 border-border/60 bg-transparent text-foreground hover:bg-foreground/5 hover:text-foreground"
+                    className="h-9 border-border/60 bg-transparent text-foreground hover:bg-foreground/5 hover:text-foreground active:bg-foreground/30"
                     onClick={() => setInstrumentSortBy("mostProfitable")}
                   >
                     Most Profitable
@@ -690,10 +690,11 @@ export default function AdminJournalDashboardPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="p-3">
               <EntityList<InstrumentRow>
                 data={instrumentRows}
                 columns={instrumentColumns}
+
                 isLoading={
                   dataMode.effectiveMode === "live"
                     ? isOrgStats
@@ -702,7 +703,7 @@ export default function AdminJournalDashboardPage() {
                     : false
                 }
                 defaultViewMode="list"
-                viewModes={["list"]}
+                viewModes={[]}
                 enableSearch={true}
                 onRowClick={(r) =>
                   router.push(`/admin/journal/symbol/${encodeURIComponent(r.symbol)}`)
@@ -740,7 +741,7 @@ export default function AdminJournalDashboardPage() {
                 <div className="text-lg font-bold leading-none tabular-nums">
                   {streak} Days
                 </div>
-                <p className="mt-0.5 text-[11px] leading-tight text-white/60">
+                <p className="mt-0.5 text-[11px] leading-tight text-foreground/60">
                   Keep it up. Consistency compounds.
                 </p>
               </CardContent>
@@ -748,7 +749,7 @@ export default function AdminJournalDashboardPage() {
 
             <Card className="border-white/10 bg-white/3 p-3 backdrop-blur-md transition-colors hover:bg-white/6">
               <CardContent className="p-0">
-                <div className="flex items-center justify-between text-[11px] text-white/60">
+                <div className="flex items-center justify-between text-[11px] text-foreground/60">
                   <span className="tabular-nums">
                     {totalTrades.toLocaleString()} trades
                   </span>
@@ -779,14 +780,14 @@ export default function AdminJournalDashboardPage() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="hidden h-8 border-white/15 bg-transparent px-2 text-xs text-white hover:bg-white/10 hover:text-white md:inline-flex"
+                        className="hidden h-8 border-white/15 bg-transparent px-2 text-xs text-foreground hover:bg-white/10 hover:text-foreground md:inline-flex"
                       >
                         Columns
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-60 border-white/10 bg-black/80 p-3 text-white backdrop-blur">
+                    <PopoverContent className="w-60 border-white/10 bg-background/80 p-3 text-foreground backdrop-blur">
                       <div className="space-y-2">
-                        <div className="text-xs font-semibold text-white/80">
+                        <div className="text-xs font-semibold text-foreground/80">
                           Optional fields
                         </div>
                         <div className="flex items-center justify-between gap-2">
@@ -825,7 +826,7 @@ export default function AdminJournalDashboardPage() {
                             }
                           />
                         </div>
-                        <div className="pt-1 text-[11px] text-white/55">
+                        <div className="pt-1 text-[11px] text-foreground/55">
                           (Desktop-only)
                         </div>
                       </div>
@@ -841,7 +842,7 @@ export default function AdminJournalDashboardPage() {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <div className="text-xs text-white/60">
+                <div className="text-xs text-foreground/60">
                   {selectedTradeDate ? selectedDateLabel : "Recent trades"}
                 </div>
                 <TooltipIcon
@@ -896,7 +897,7 @@ export default function AdminJournalDashboardPage() {
                                 {trade.reviewed ? "Reviewed" : "Needs Review"}
                               </span>
                             </div>
-                            <div className="text-xs text-white/60">
+                            <div className="text-xs text-foreground/60">
                               {trade.date} • {trade.reason}
                               {showMeta && meta ? (
                                 <span className="hidden md:inline">
@@ -904,7 +905,7 @@ export default function AdminJournalDashboardPage() {
                                     typeof meta.qtyClosed === "number" &&
                                     Number.isFinite(meta.qtyClosed) ? (
                                     <>
-                                      <span className="px-1.5 text-white/30">•</span>
+                                      <span className="px-1.5 text-foreground/30">•</span>
                                       Size {meta.qtyClosed.toFixed(2)}
                                     </>
                                   ) : null}
@@ -913,7 +914,7 @@ export default function AdminJournalDashboardPage() {
                                     Number.isFinite(meta.holdMsMax) &&
                                     meta.holdMsMax > 0 ? (
                                     <>
-                                      <span className="px-1.5 text-white/30">•</span>
+                                      <span className="px-1.5 text-foreground/30">•</span>
                                       Hold {formatHoldTime(meta.holdMsMax)}
                                     </>
                                   ) : null}
@@ -921,7 +922,7 @@ export default function AdminJournalDashboardPage() {
                                     typeof meta.fees === "number" &&
                                     Number.isFinite(meta.fees) ? (
                                     <>
-                                      <span className="px-1.5 text-white/30">•</span>
+                                      <span className="px-1.5 text-foreground/30">•</span>
                                       Fees {meta.fees >= 0 ? "+" : ""}
                                       {meta.fees.toFixed(2)}
                                     </>
@@ -942,13 +943,13 @@ export default function AdminJournalDashboardPage() {
                         </button>
                       </PopoverTrigger>
 
-                      <PopoverContent className="w-[320px] border-white/10 bg-black/80 p-3 text-white backdrop-blur">
+                      <PopoverContent className="w-[320px] border-white/10 bg-background/80 p-3 text-foreground backdrop-blur">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <div className="text-sm font-semibold">
                               {trade.symbol} • {trade.type}
                             </div>
-                            <div className="mt-0.5 text-xs text-white/60">
+                            <div className="mt-0.5 text-xs text-foreground/60">
                               {trade.tradeDate} • {trade.reason}
                             </div>
                           </div>
@@ -975,7 +976,7 @@ export default function AdminJournalDashboardPage() {
                           </Badge>
                           <Button
                             size="sm"
-                            className="h-8 bg-orange-600 px-2 text-xs text-white hover:bg-orange-700"
+                            className="h-8 bg-orange-600 px-2 text-xs text-foreground hover:bg-orange-700"
                             asChild
                           >
                             <Link
@@ -991,9 +992,9 @@ export default function AdminJournalDashboardPage() {
                         </div>
 
                         {showMeta ? (
-                          <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-white/70">
+                          <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-foreground/70">
                             <div className="rounded-md border border-white/10 bg-white/5 p-2">
-                              <div className="text-white/50">Size</div>
+                              <div className="text-foreground/50">Size</div>
                               <div className="mt-0.5 tabular-nums">
                                 {typeof meta?.qtyClosed === "number" &&
                                   Number.isFinite(meta.qtyClosed)
@@ -1002,7 +1003,7 @@ export default function AdminJournalDashboardPage() {
                               </div>
                             </div>
                             <div className="rounded-md border border-white/10 bg-white/5 p-2">
-                              <div className="text-white/50">Hold</div>
+                              <div className="text-foreground/50">Hold</div>
                               <div className="mt-0.5 tabular-nums">
                                 {typeof meta?.holdMsMax === "number" &&
                                   Number.isFinite(meta.holdMsMax) &&
@@ -1012,7 +1013,7 @@ export default function AdminJournalDashboardPage() {
                               </div>
                             </div>
                             <div className="rounded-md border border-white/10 bg-white/5 p-2">
-                              <div className="text-white/50">Fees</div>
+                              <div className="text-foreground/50">Fees</div>
                               <div className="mt-0.5 tabular-nums">
                                 {typeof meta?.fees === "number" && Number.isFinite(meta.fees)
                                   ? `${meta.fees >= 0 ? "+" : ""}${meta.fees.toFixed(2)}`
@@ -1029,7 +1030,7 @@ export default function AdminJournalDashboardPage() {
 
               <Button
                 variant="outline"
-                className="w-full border-white/15 bg-transparent text-xs text-white hover:bg-white/10 hover:text-white"
+                className="w-full border-white/15 bg-transparent text-xs text-foreground hover:bg-white/10 hover:text-foreground"
                 asChild
               >
                 <Link href="/admin/orders">Open Orders</Link>

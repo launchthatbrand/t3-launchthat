@@ -5,13 +5,14 @@ import {
   SortableItem,
   arrayMove,
 } from "@acme/dnd";
-import { Button } from "@acme/ui/button";
 import { Eye, EyeOff, Save } from "lucide-react";
-import type { DragEndEvent } from "@acme/dnd";
-import React from "react";
 import { SortableContext, verticalListSortingStrategy } from "@acme/dnd";
-import { cn } from "~/lib/utils";
+
+import { Button } from "@acme/ui/button";
+import type { DragEndEvent } from "@acme/dnd";
 import { PublicProfileHeader } from "./PublicProfileHeader";
+import React from "react";
+import { cn } from "~/lib/utils";
 
 type UserProfileSectionKindV1 = "hero" | "links";
 
@@ -104,22 +105,22 @@ export function UserPublicProfile(props: {
     const to = config.sections.findIndex((s) => s.id === overId);
     if (from < 0 || to < 0) return;
 
-    const move = arrayMove as unknown as <T,>(items: T[], from: number, to: number) => T[];
+    const move = arrayMove as unknown as <T, >(items: T[], from: number, to: number) => T[];
     props.onChangeConfigAction?.({ ...config, sections: move(config.sections, from, to) });
   };
 
   return (
     <div className={cn("flex flex-1 flex-col", props.className)}>
       {props.mode === "admin" ? (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white/70 backdrop-blur-md">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-background/30 px-4 py-3 text-sm text-foreground/70 backdrop-blur-md">
           <div>
-            <span className="font-medium text-white">Admin preview</span>
-            <span className="ml-2 text-white/50">This is exactly what the public page renders.</span>
+            <span className="font-medium text-foreground">Admin preview</span>
+            <span className="ml-2 text-foreground/50">This is exactly what the public page renders.</span>
           </div>
           {props.onSaveAction ? (
             <Button
               type="button"
-              className="h-9 rounded-full border-0 bg-orange-600 text-white hover:bg-orange-700"
+              className="h-9 rounded-full border-0 bg-orange-600 text-foreground hover:bg-orange-700"
               onClick={props.onSaveAction}
               disabled={!props.canEdit || Boolean(props.isSaving)}
             >
@@ -142,12 +143,12 @@ export function UserPublicProfile(props: {
                 id={section.id}
                 hideHandle={false}
                 className="border-0 bg-transparent shadow-none"
-                handleClassName="h-9 px-2 text-white/60 hover:text-white"
+                handleClassName="h-9 px-2 text-foreground/60 hover:text-foreground"
                 renderHandle={(handleEl) => (
-                  <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full border border-white/10 bg-black/40 p-1 backdrop-blur-md">
+                  <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full border border-white/10 bg-background/40 p-1 backdrop-blur-md">
                     <button
                       type="button"
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white/70 hover:bg-white/10 hover:text-white"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full text-foreground/70 hover:bg-white/10 hover:text-foreground"
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -261,13 +262,13 @@ function renderSection(props: {
             <>
               <Button
                 variant="outline"
-                className="h-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                className="h-10 rounded-full border-white/10 bg-white/5 text-foreground hover:bg-white/10"
                 disabled={props.mode === "admin"}
               >
                 Follow
               </Button>
               <Button
-                className="h-10 rounded-full border-0 bg-orange-600 text-white hover:bg-orange-700"
+                className="h-10 rounded-full border-0 bg-orange-600 text-foreground hover:bg-orange-700"
                 disabled={props.mode === "admin"}
               >
                 Get in touch
@@ -283,15 +284,15 @@ function renderSection(props: {
       return (
         <div
           key={props.section.id}
-          className="mt-8 rounded-3xl border border-white/10 bg-black/30 p-6 text-white/70 backdrop-blur-md"
+          className="mt-8 rounded-3xl border border-white/10 bg-background/30 p-6 text-foreground/70 backdrop-blur-md"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-sm font-semibold text-white">Links</div>
+            <div className="text-sm font-semibold text-foreground">Links</div>
             {props.canEditInline ? (
               <Button
                 type="button"
                 variant="outline"
-                className="h-9 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                className="h-9 rounded-full border-white/10 bg-white/5 text-foreground hover:bg-white/10"
                 onClick={() => {
                   props.onChangeConfigAction?.({
                     ...props.config,
@@ -307,14 +308,14 @@ function renderSection(props: {
             {props.config.links.map((l, idx) => (
               <div
                 key={`${l.label}:${l.url}:${idx}`}
-                className="rounded-xl border border-white/10 bg-white/3 px-4 py-3 text-sm text-white/80"
+                className="rounded-xl border border-white/10 bg-white/3 px-4 py-3 text-sm text-foreground/80"
               >
                 {props.canEditInline ? (
                   <div className="grid gap-3 md:grid-cols-2">
-                    <label className="text-xs text-white/60">
+                    <label className="text-xs text-foreground/60">
                       Label
                       <input
-                        className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
+                        className="mt-1 w-full rounded-lg border border-white/10 bg-background/40 px-3 py-2 text-sm text-foreground placeholder:text-foreground/40"
                         value={l.label}
                         onChange={(e) => {
                           const nextLinks = props.config.links.map((x, i) =>
@@ -324,10 +325,10 @@ function renderSection(props: {
                         }}
                       />
                     </label>
-                    <label className="text-xs text-white/60">
+                    <label className="text-xs text-foreground/60">
                       URL
                       <input
-                        className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
+                        className="mt-1 w-full rounded-lg border border-white/10 bg-background/40 px-3 py-2 text-sm text-foreground placeholder:text-foreground/40"
                         value={l.url}
                         onChange={(e) => {
                           const nextLinks = props.config.links.map((x, i) =>
@@ -340,8 +341,8 @@ function renderSection(props: {
                   </div>
                 ) : (
                   <a href={l.url} target="_blank" rel="noreferrer" className="block hover:opacity-90">
-                    <div className="font-medium text-white">{l.label}</div>
-                    <div className="mt-0.5 truncate text-xs text-white/50">{l.url}</div>
+                    <div className="font-medium text-foreground">{l.label}</div>
+                    <div className="mt-0.5 truncate text-xs text-foreground/50">{l.url}</div>
                   </a>
                 )}
 
@@ -350,7 +351,7 @@ function renderSection(props: {
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-9 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                      className="h-9 rounded-full border-white/10 bg-white/5 text-foreground hover:bg-white/10"
                       onClick={() => {
                         const nextLinks = props.config.links.filter((_, i) => i !== idx);
                         props.onChangeConfigAction?.({ ...props.config, links: nextLinks });

@@ -2,15 +2,7 @@
 
 import * as React from "react";
 
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { api } from "@convex-config/_generated/api";
-
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { Label } from "@acme/ui/label";
-import { Input } from "@acme/ui/input";
-import { Switch } from "@acme/ui/switch";
-import { Button } from "@acme/ui/button";
-import { toast } from "@acme/ui";
 import {
   Select,
   SelectContent,
@@ -18,6 +10,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
+
+import { Button } from "@acme/ui/button";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
+import { Switch } from "@acme/ui/switch";
+import { api } from "@convex-config/_generated/api";
+import { toast } from "@acme/ui";
 
 const msToHours = (ms: number) => Math.round((ms / (60 * 60 * 1000)) * 100) / 100;
 const hoursToMs = (hours: number) => Math.round(hours * 60 * 60 * 1000);
@@ -41,10 +41,10 @@ export default function AdminSettingsJournalPage() {
     shouldQuery ? {} : "skip",
   ) as
     | {
-        groupingWindowMs: number;
-        splitOnDirectionFlip: boolean;
-        defaultTimeframe: string;
-      }
+      groupingWindowMs: number;
+      splitOnDirectionFlip: boolean;
+      defaultTimeframe: string;
+    }
     | undefined;
 
   const save = useMutation(api.traderlaunchpad.mutations.upsertMyTradeIdeaSettings);
@@ -65,8 +65,8 @@ export default function AdminSettingsJournalPage() {
 
   return (
     <div className="space-y-6">
-      <Card className="border-white/10 bg-white/3 backdrop-blur-md">
-        <CardHeader className="border-b border-white/10">
+      <Card className="border-border/10 bg-white/3 backdrop-blur-md">
+        <CardHeader className="border-b border-border">
           <CardTitle className="text-base">Journal settings</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6 p-6">
@@ -98,7 +98,7 @@ export default function AdminSettingsJournalPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-black/20 p-4">
+              <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-background/20 p-4">
                 <div className="space-y-1">
                   <div className="text-sm font-medium">Split on direction flip</div>
                   <div className="text-sm text-muted-foreground">
@@ -158,8 +158,8 @@ export default function AdminSettingsJournalPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-white/10 bg-white/3 backdrop-blur-md">
-        <CardHeader className="border-b border-white/10">
+      <Card className="border-border bg-white/3 backdrop-blur-md">
+        <CardHeader className="border-b border-border">
           <CardTitle className="text-base">Notes</CardTitle>
         </CardHeader>
         <CardContent className="p-6 text-sm text-muted-foreground">

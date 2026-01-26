@@ -1,14 +1,14 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle2, Clock, Shield } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
+import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
 
 import { Badge } from "@acme/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
-import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
+import Link from "next/link";
+import React from "react";
+import { useRouter } from "next/navigation";
 
 type Level = "info" | "warn" | "error";
 interface Event extends Record<string, unknown> {
@@ -16,12 +16,12 @@ interface Event extends Record<string, unknown> {
   ts: string;
   level: Level;
   type:
-    | "oauth.authorize"
-    | "oauth.deny"
-    | "oauth.token"
-    | "oauth.revoke"
-    | "portal.pull"
-    | "discord.send";
+  | "oauth.authorize"
+  | "oauth.deny"
+  | "oauth.token"
+  | "oauth.revoke"
+  | "portal.pull"
+  | "discord.send";
   clientId: string;
   connectionId: string;
   userId: string;
@@ -179,12 +179,12 @@ export default function PlatformIntegrationsAuditPage() {
             Every authorize, token exchange, pull, send, retry, and revoke should be recorded here.
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-3">
           <EntityList<Event>
             data={[...EVENTS]}
             columns={columns}
             defaultViewMode="list"
-            viewModes={["list"]}
+            viewModes={[]}
             enableSearch={true}
             entityActions={entityActions}
             getRowId={(e: Event) => e.id}

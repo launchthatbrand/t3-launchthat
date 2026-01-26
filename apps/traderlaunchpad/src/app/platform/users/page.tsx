@@ -1,16 +1,15 @@
 "use client";
 
-import React from "react";
-import { useRouter } from "next/navigation";
-import { useQuery } from "convex/react";
-import { Search } from "lucide-react";
-
-import { Badge } from "@acme/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
 import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
 
+import { Badge } from "@acme/ui/badge";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import React from "react";
+import { Search } from "lucide-react";
 import { api } from "@convex-config/_generated/api";
+import { useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
 
 interface PlatformUserRow extends Record<string, unknown> {
   clerkId: string;
@@ -94,13 +93,13 @@ export default function PlatformUsersPage() {
           <CardTitle className="text-base">Directory</CardTitle>
         </CardHeader>
 
-        <CardContent className="p-0">
+        <CardContent className="p-3">
           <EntityList<PlatformUserRow>
             data={rows}
             columns={columns}
             isLoading={users === undefined}
             defaultViewMode="list"
-            viewModes={["list"]}
+            viewModes={["list", "grid"]}
             enableSearch={true}
             entityActions={entityActions}
             onRowClick={(u) => router.push(`/platform/user/${encodeURIComponent(u.clerkId)}`)}

@@ -5,10 +5,6 @@ import {
   SortableItem,
   arrayMove,
 } from "@acme/dnd";
-import { Eye, EyeOff, Pencil, Plus, Save, Trash2 } from "lucide-react";
-import { SortableContext, verticalListSortingStrategy } from "@acme/dnd"
-
-import { Button } from "@acme/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -17,11 +13,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@acme/ui/dialog";
+import { Eye, EyeOff, Pencil, Plus, Save, Trash2 } from "lucide-react";
+import { SortableContext, verticalListSortingStrategy } from "@acme/dnd"
+
+import { Button } from "@acme/ui/button";
 import type { DragEndEvent } from "@acme/dnd";
 import Link from "next/link";
+import { PublicProfileHeader } from "./PublicProfileHeader";
 import React from "react";
 import { cn } from "~/lib/utils";
-import { PublicProfileHeader } from "./PublicProfileHeader";
 
 type OrgProfileSectionKindV1 = "hero" | "about" | "links" | "stats";
 
@@ -214,10 +214,10 @@ function OrgHeroSection(props: {
         avatarInteractive={
           props.mode === "admin" && props.onEditLogoAction
             ? {
-                onClick: props.onEditLogoAction,
-                ariaLabel: "Edit organization avatar",
-                showPencil: true,
-              }
+              onClick: props.onEditLogoAction,
+              ariaLabel: "Edit organization avatar",
+              showPencil: true,
+            }
             : undefined
         }
         badgeLabel="Organization"
@@ -232,17 +232,17 @@ function OrgHeroSection(props: {
         bioInteractive={
           canEditBio
             ? {
-                onClick: () => setEditOpen(true),
-                ariaLabel: "Edit organization bio",
-                showPencil: true,
-              }
+              onClick: () => setEditOpen(true),
+              ariaLabel: "Edit organization bio",
+              showPencil: true,
+            }
             : undefined
         }
         bioExtra={
           fullBio ? (
             <button
               type="button"
-              className="text-xs font-medium text-white/70 underline decoration-white/20 underline-offset-4 hover:text-white"
+              className="text-xs font-medium text-foreground/70 underline decoration-white/20 underline-offset-4 hover:text-foreground"
               onClick={() => setViewBioOpen(true)}
             >
               View full bio
@@ -255,8 +255,8 @@ function OrgHeroSection(props: {
             {(props.heroCtas.length > 0 ? props.heroCtas : []).map((cta) => {
               const isPrimary = cta.variant !== "outline";
               const buttonClassName = isPrimary
-                ? "h-10 rounded-full border-0 bg-orange-600 text-white hover:bg-orange-700"
-                : "h-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10";
+                ? "h-10 rounded-full border-0 bg-orange-600 text-foreground hover:bg-orange-700"
+                : "h-10 rounded-full border-white/10 bg-white/5 text-foreground hover:bg-white/10";
               return (
                 <Button
                   key={cta.id}
@@ -272,7 +272,7 @@ function OrgHeroSection(props: {
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                className="h-10 rounded-full border-white/10 bg-white/5 text-foreground hover:bg-white/10"
                 onClick={props.onAddHeroCta}
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -288,7 +288,7 @@ function OrgHeroSection(props: {
           <Button
             type="button"
             variant="outline"
-            className="h-9 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+            className="h-9 rounded-full border-white/10 bg-white/5 text-foreground hover:bg-white/10"
             onClick={(e) => {
               e.preventDefault();
               props.onEditLogoAction?.();
@@ -301,8 +301,8 @@ function OrgHeroSection(props: {
       ) : null}
 
       {props.canShowCtaEditor ? (
-        <div className="mt-3 w-full max-w-md space-y-2 rounded-2xl border border-white/10 bg-black/40 p-4 text-white/80 backdrop-blur-md">
-          <div className="text-xs font-semibold text-white">Header buttons</div>
+        <div className="mt-3 w-full max-w-md space-y-2 rounded-2xl border border-white/10 bg-background/40 p-4 text-foreground/80 backdrop-blur-md">
+          <div className="text-xs font-semibold text-foreground">Header buttons</div>
           <div className="space-y-2">
             {(props.heroCtas.length > 0 ? props.heroCtas : []).map((cta) => (
               <div
@@ -310,18 +310,18 @@ function OrgHeroSection(props: {
                 className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/3 p-3"
               >
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <label className="text-xs text-white/60">
+                  <label className="text-xs text-foreground/60">
                     Label
                     <input
-                      className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
+                      className="mt-1 w-full rounded-lg border border-white/10 bg-background/40 px-3 py-2 text-sm text-foreground placeholder:text-foreground/40"
                       value={cta.label}
                       onChange={(e) => props.onUpdateHeroCta(cta.id, { label: e.target.value })}
                     />
                   </label>
-                  <label className="text-xs text-white/60">
+                  <label className="text-xs text-foreground/60">
                     URL
                     <input
-                      className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
+                      className="mt-1 w-full rounded-lg border border-white/10 bg-background/40 px-3 py-2 text-sm text-foreground placeholder:text-foreground/40"
                       value={cta.url}
                       onChange={(e) => props.onUpdateHeroCta(cta.id, { url: e.target.value })}
                     />
@@ -331,7 +331,7 @@ function OrgHeroSection(props: {
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-9 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                    className="h-9 rounded-full border-white/10 bg-white/5 text-foreground hover:bg-white/10"
                     onClick={() =>
                       props.onUpdateHeroCta(cta.id, {
                         variant: cta.variant === "outline" ? "primary" : "outline",
@@ -343,7 +343,7 @@ function OrgHeroSection(props: {
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-9 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                    className="h-9 rounded-full border-white/10 bg-white/5 text-foreground hover:bg-white/10"
                     onClick={() => props.onRemoveHeroCta(cta.id)}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
@@ -358,17 +358,17 @@ function OrgHeroSection(props: {
 
       {canEditBio ? (
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
-          <DialogContent className="border-white/10 bg-black/90 text-white">
+          <DialogContent className="border-white/10 bg-background/90 text-foreground">
             <DialogHeader>
               <DialogTitle>Edit organization bio</DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4">
-              <label className="block text-sm text-white/70">
+              <label className="block text-sm text-foreground/70">
                 Excerpt{" "}
-                <span className="text-xs text-white/40">(1–2 sentences shown in header)</span>
+                <span className="text-xs text-foreground/40">(1–2 sentences shown in header)</span>
                 <textarea
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-background/40 px-3 py-2 text-sm text-foreground placeholder:text-foreground/40"
                   rows={3}
                   value={draftExcerpt}
                   onChange={(e) => setDraftExcerpt(e.target.value)}
@@ -376,13 +376,13 @@ function OrgHeroSection(props: {
                 />
               </label>
 
-              <label className="block text-sm text-white/70">
+              <label className="block text-sm text-foreground/70">
                 Bio{" "}
-                <span className="text-xs text-white/40">
+                <span className="text-xs text-foreground/40">
                   (longer bio shown via “View full bio”)
                 </span>
                 <textarea
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-background/40 px-3 py-2 text-sm text-foreground placeholder:text-foreground/40"
                   rows={8}
                   value={draftBio}
                   onChange={(e) => setDraftBio(e.target.value)}
@@ -396,14 +396,14 @@ function OrgHeroSection(props: {
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                  className="h-10 rounded-full border-white/10 bg-white/5 text-foreground hover:bg-white/10"
                 >
                   Cancel
                 </Button>
               </DialogClose>
               <Button
                 type="button"
-                className="h-10 rounded-full border-0 bg-orange-600 text-white hover:bg-orange-700"
+                className="h-10 rounded-full border-0 bg-orange-600 text-foreground hover:bg-orange-700"
                 onClick={handleSaveBioDraft}
               >
                 Save
@@ -415,18 +415,18 @@ function OrgHeroSection(props: {
 
       {fullBio ? (
         <Dialog open={viewBioOpen} onOpenChange={setViewBioOpen}>
-          <DialogContent className="border-white/10 bg-black/90 text-white">
+          <DialogContent className="border-white/10 bg-background/90 text-foreground">
             <DialogHeader>
               <DialogTitle>{title}</DialogTitle>
             </DialogHeader>
-            <div className="whitespace-pre-wrap text-sm leading-relaxed text-white/70">
+            <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/70">
               {fullBio}
             </div>
             <DialogFooter>
               <DialogClose asChild>
                 <Button
                   type="button"
-                  className="h-10 rounded-full border-0 bg-orange-600 text-white hover:bg-orange-700"
+                  className="h-10 rounded-full border-0 bg-orange-600 text-foreground hover:bg-orange-700"
                 >
                   Close
                 </Button>
@@ -518,17 +518,17 @@ export function OrgPublicProfile(props: {
   return (
     <div className={cn("flex flex-1 flex-col", props.className)}>
       {props.mode === "admin" ? (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white/70 backdrop-blur-md">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-background/30 px-4 py-3 text-sm text-foreground/70 backdrop-blur-md">
           <div>
-            <span className="font-medium text-white">Admin preview</span>
-            <span className="ml-2 text-white/50">This is exactly what the public page renders.</span>
+            <span className="font-medium text-foreground">Admin preview</span>
+            <span className="ml-2 text-foreground/50">This is exactly what the public page renders.</span>
             {!props.canEdit ? (
-              <span className="ml-2 text-white/50">(You don’t have edit permissions.)</span>
+              <span className="ml-2 text-foreground/50">(You don’t have edit permissions.)</span>
             ) : null}
           </div>
           {props.canEdit && props.onSaveAction ? (
             <Button
-              className="h-9 rounded-full border-0 bg-orange-600 text-white hover:bg-orange-700"
+              className="h-9 rounded-full border-0 bg-orange-600 text-foreground hover:bg-orange-700"
               onClick={props.onSaveAction}
               disabled={Boolean(props.isSaving)}
             >
@@ -551,12 +551,12 @@ export function OrgPublicProfile(props: {
                 id={section.id}
                 hideHandle={false}
                 className="border-0 bg-transparent shadow-none"
-                handleClassName="h-9 px-2 text-white/60 hover:text-white"
+                handleClassName="h-9 px-2 text-foreground/60 hover:text-foreground"
                 renderHandle={(handle) => (
-                  <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full border border-white/10 bg-black/40 p-1 backdrop-blur-md">
+                  <div className="absolute right-3 top-3 z-10 flex items-center gap-1 rounded-full border border-white/10 bg-background/40 p-1 backdrop-blur-md">
                     <button
                       type="button"
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full text-white/70 hover:bg-white/10 hover:text-white"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full text-foreground/70 hover:bg-white/10 hover:text-foreground"
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -580,7 +580,7 @@ export function OrgPublicProfile(props: {
                     heroCtas,
                     canShowCtaEditor,
                     tabs: props.tabs,
-                  onEditOrgNameAction: props.onEditOrgNameAction,
+                    onEditOrgNameAction: props.onEditOrgNameAction,
                     onAddHeroCta: handleAddHeroCta,
                     onUpdateHeroCta: handleUpdateHeroCta,
                     onRemoveHeroCta: handleRemoveHeroCta,
@@ -648,15 +648,15 @@ function renderSection(props: {
       return (
         <div
           key={section.id}
-          className="mt-8 rounded-3xl border border-white/10 bg-black/30 p-6 text-white/70 backdrop-blur-md"
+          className="mt-8 rounded-3xl border border-white/10 bg-background/30 p-6 text-foreground/70 backdrop-blur-md"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-sm font-semibold text-white">Links</div>
+            <div className="text-sm font-semibold text-foreground">Links</div>
             {props.canEditInline ? (
               <Button
                 type="button"
                 variant="outline"
-                className="h-9 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                className="h-9 rounded-full border-white/10 bg-white/5 text-foreground hover:bg-white/10"
                 onClick={() => {
                   const next = {
                     ...props.config,
@@ -674,14 +674,14 @@ function renderSection(props: {
             {props.config.links.map((l, idx) => (
               <div
                 key={`${l.label}:${l.url}:${idx}`}
-                className="rounded-xl border border-white/10 bg-white/3 px-4 py-3 text-sm text-white/80"
+                className="rounded-xl border border-white/10 bg-white/3 px-4 py-3 text-sm text-foreground/80"
               >
                 {props.canEditInline ? (
                   <div className="grid gap-3 md:grid-cols-2">
-                    <label className="text-xs text-white/60">
+                    <label className="text-xs text-foreground/60">
                       Label
                       <input
-                        className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
+                        className="mt-1 w-full rounded-lg border border-white/10 bg-background/40 px-3 py-2 text-sm text-foreground placeholder:text-foreground/40"
                         value={l.label}
                         onChange={(e) => {
                           const nextLinks = props.config.links.map((x, i) =>
@@ -691,10 +691,10 @@ function renderSection(props: {
                         }}
                       />
                     </label>
-                    <label className="text-xs text-white/60">
+                    <label className="text-xs text-foreground/60">
                       URL
                       <input
-                        className="mt-1 w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-white placeholder:text-white/40"
+                        className="mt-1 w-full rounded-lg border border-white/10 bg-background/40 px-3 py-2 text-sm text-foreground placeholder:text-foreground/40"
                         value={l.url}
                         onChange={(e) => {
                           const nextLinks = props.config.links.map((x, i) =>
@@ -712,8 +712,8 @@ function renderSection(props: {
                     rel="noreferrer"
                     className="block hover:opacity-90"
                   >
-                    <div className="font-medium text-white">{l.label}</div>
-                    <div className="mt-0.5 truncate text-xs text-white/50">{l.url}</div>
+                    <div className="font-medium text-foreground">{l.label}</div>
+                    <div className="mt-0.5 truncate text-xs text-foreground/50">{l.url}</div>
                   </a>
                 )}
 
@@ -722,7 +722,7 @@ function renderSection(props: {
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-9 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                      className="h-9 rounded-full border-white/10 bg-white/5 text-foreground hover:bg-white/10"
                       onClick={() => {
                         const nextLinks = props.config.links.filter((_, i) => i !== idx);
                         props.onChangeConfigAction?.({ ...props.config, links: nextLinks });
@@ -744,10 +744,10 @@ function renderSection(props: {
       return (
         <div
           key={section.id}
-          className="mt-8 rounded-3xl border border-white/10 bg-black/30 p-6 text-white/70 backdrop-blur-md"
+          className="mt-8 rounded-3xl border border-white/10 bg-background/30 p-6 text-foreground/70 backdrop-blur-md"
         >
-          <div className="text-sm font-semibold text-white">Stats</div>
-          <div className="mt-2 text-sm text-white/60">
+          <div className="text-sm font-semibold text-foreground">Stats</div>
+          <div className="mt-2 text-sm text-foreground/60">
             Coming soon: members, weekly PnL, top instruments, and recent trade ideas.
           </div>
         </div>

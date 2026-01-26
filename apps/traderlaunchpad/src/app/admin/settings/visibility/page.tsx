@@ -2,12 +2,12 @@
 
 import * as React from "react";
 
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { api } from "@convex-config/_generated/api";
-
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { Switch } from "@acme/ui/switch";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
+
 import { Button } from "@acme/ui/button";
+import { Switch } from "@acme/ui/switch";
+import { api } from "@convex-config/_generated/api";
 import { toast } from "@acme/ui";
 
 type PermissionsSettings = {
@@ -79,8 +79,8 @@ export default function AdminSettingsVisibilityPage() {
 
   return (
     <div className="space-y-6">
-      <Card className="border-white/10 bg-white/3 backdrop-blur-md">
-        <CardHeader className="border-b border-white/10">
+      <Card className="border-border bg-background/3 backdrop-blur-md">
+        <CardHeader className="border-b border-border">
           <CardTitle className="text-base">Public permissions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6 p-6">
@@ -88,7 +88,7 @@ export default function AdminSettingsVisibilityPage() {
             <div className="text-sm text-muted-foreground">Loading…</div>
           ) : (
             <>
-              <div className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-black/20 p-4">
+              <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-background/20 p-4">
                 <div className="space-y-1">
                   <div className="text-sm font-medium">Enable public sharing</div>
                   <div className="text-sm text-muted-foreground">
@@ -127,7 +127,7 @@ export default function AdminSettingsVisibilityPage() {
                   return (
                     <div
                       key={row.key}
-                      className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-black/20 p-4"
+                      className="flex items-center justify-between gap-4 rounded-lg border border-border bg-background/20 p-4"
                     >
                       <div className="space-y-1">
                         <div className="text-sm font-medium">{row.label}</div>
@@ -170,8 +170,8 @@ export default function AdminSettingsVisibilityPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-white/10 bg-white/3 backdrop-blur-md">
-        <CardHeader className="border-b border-white/10">
+      <Card className="border-border bg-background/3 backdrop-blur-md">
+        <CardHeader className="border-b border-border">
           <CardTitle className="text-base">Organization permissions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6 p-6">
@@ -198,7 +198,7 @@ export default function AdminSettingsVisibilityPage() {
                 return (
                   <div
                     key={org.organizationId}
-                    className="space-y-3 rounded-lg border border-white/10 bg-black/20 p-4"
+                    className="space-y-3 rounded-lg border border-border bg-background/20 p-4"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="space-y-1">
@@ -266,7 +266,7 @@ export default function AdminSettingsVisibilityPage() {
                         return (
                           <div
                             key={row.key}
-                            className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-black/10 p-4"
+                            className="flex items-center justify-between gap-4 rounded-lg border border-border bg-background/10 p-4"
                           >
                             <div className="space-y-1">
                               <div className="text-sm font-medium">{row.label}</div>

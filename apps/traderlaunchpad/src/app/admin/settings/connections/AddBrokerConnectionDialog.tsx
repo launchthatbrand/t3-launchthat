@@ -1,7 +1,6 @@
 "use client";
 
-import React from "react";
-import { Button } from "@acme/ui/button";
+import { AnimatePresence, motion } from "motion/react";
 import {
   Dialog,
   DialogContent,
@@ -10,9 +9,11 @@ import {
   DialogTitle,
 } from "@acme/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@acme/ui/tooltip";
-import { cn } from "~/lib/utils";
+
+import { Button } from "@acme/ui/button";
+import React from "react";
 import { TradeLockerConnectFlow } from "~/components/settings/tradelocker/TradeLockerConnectFlow";
-import { AnimatePresence, motion } from "motion/react";
+import { cn } from "~/lib/utils";
 
 type ProviderKey = "tradelocker" | "mt4" | "mt5" | "binance";
 
@@ -104,7 +105,7 @@ export function AddBrokerConnectionDialog(props: {
       <Button
         type="button"
         className={cn(
-          "h-9 bg-orange-600 text-white hover:bg-orange-700",
+          "h-9 bg-orange-600 text-foreground hover:bg-orange-700",
           props.triggerClassName,
         )}
         onClick={() => setOpen(true)}

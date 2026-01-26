@@ -99,7 +99,7 @@ function AppHeader({
         {sidebarToggle ? <SidebarTriggerWrapper className="-ml-1" /> : null}
         <Separator
           orientation="vertical"
-          className="mx-2 data-[orientation=vertical]:h-4"
+          className="mx-2 data-[orientation=vertical]:h-4 bg-border"
         />
         <div className="flex flex-1 items-center justify-between gap-2">
           <Link href="/" className="flex items-center gap-2">

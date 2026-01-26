@@ -1,11 +1,6 @@
 "use client";
 
-import React from "react";
-import { useRouter } from "next/navigation";
 import { BadgeCheck, Globe, Plus, Shield } from "lucide-react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -13,8 +8,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
 import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import React from "react";
+import { useRouter } from "next/navigation";
 
 interface ClientRow extends Record<string, unknown> {
   id: string;
@@ -163,12 +163,12 @@ export default function PlatformIntegrationsClientsPage() {
           <CardTitle className="text-base">Registry</CardTitle>
           <CardDescription>Find clients by name or client_id (mock).</CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-3">
           <EntityList<ClientRow>
             data={[...CLIENTS]}
             columns={columns}
             defaultViewMode="list"
-            viewModes={["list"]}
+            viewModes={[]}
             enableSearch={true}
             entityActions={entityActions}
             getRowId={(c: ClientRow) => c.id}

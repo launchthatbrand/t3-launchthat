@@ -1,10 +1,5 @@
 "use client";
 
-import React from "react";
-import { useRouter } from "next/navigation";
-import { Shield } from "lucide-react";
-
-import { Badge } from "@acme/ui/badge";
 import {
   Card,
   CardContent,
@@ -12,8 +7,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
 import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
+
+import { Badge } from "@acme/ui/badge";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import React from "react";
+import { Shield } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 type ConnStatus = "active" | "disabled" | "revoked";
 interface ConnectionRow extends Record<string, unknown> {
@@ -192,12 +192,12 @@ export default function PlatformIntegrationsConnectionsPage() {
             Use this table to disable or revoke access when needed.
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-3">
           <EntityList<ConnectionRow>
             data={[...CONNECTIONS]}
             columns={columns}
             defaultViewMode="list"
-            viewModes={["list"]}
+            viewModes={[]}
             enableSearch={true}
             entityActions={entityActions}
             onRowClick={(c) =>
