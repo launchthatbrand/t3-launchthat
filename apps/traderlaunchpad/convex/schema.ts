@@ -98,6 +98,13 @@ export default defineSchema({
     .index("by_uploader", ["uploadedByUserId"])
     .index("by_uploader_createdAt", ["uploadedByUserId", "createdAt"]),
 
+  orgAccessSettings: defineTable({
+    organizationId: v.string(),
+    visibility: v.union(v.literal("public"), v.literal("private")),
+    joinCodesEnabled: v.boolean(),
+    updatedAt: v.number(),
+  }).index("by_org", ["organizationId"]),
+
   orgUserInvites: defineTable({
     organizationId: v.string(),
     email: v.string(),

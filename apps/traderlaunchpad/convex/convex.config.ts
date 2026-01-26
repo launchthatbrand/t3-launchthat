@@ -3,6 +3,7 @@ import launchthat_core_tenant from "../../../packages/launchthat-plugin-core-ten
 import launchthat_discord from "../../../packages/launchthat-plugin-discord/src/convex/component/convex.config";
 import launchthat_email from "../../../packages/launchthat-plugin-email/src/convex/component/convex.config";
 import launchthat_feedback from "../../../packages/launchthat-plugin-feedback/src/convex/component/convex.config";
+import launchthat_joincodes from "../../../packages/launchthat-plugin-joincodes/src/convex/component/convex.config";
 import launchthat_notifications from "../../../packages/launchthat-plugin-notifications/src/convex/component/convex.config";
 import launchthat_onboarding from "../../../packages/launchthat-plugin-onboarding/src/convex/component/convex.config";
 import launchthat_pricedata from "../../../packages/launchthat-plugin-pricedata/src/convex/component/convex.config";
@@ -18,6 +19,7 @@ app.use(launchthat_notifications);
 app.use(launchthat_push);
 app.use(launchthat_email);
 app.use(launchthat_feedback);
+app.use(launchthat_joincodes);
 app.use(launchthat_traderlaunchpad);
 app.use(launchthat_pricedata);
 app.use(launchthat_discord);

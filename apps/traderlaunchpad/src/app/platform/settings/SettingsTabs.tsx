@@ -9,6 +9,7 @@ const tabs: Array<{ href: string; label: string }> = [
   { href: "/platform/settings/emails", label: "Email" },
   { href: "/platform/settings/notifications", label: "Notifications" },
   { href: "/platform/settings/shortlinks", label: "Shortlinks" },
+  { href: "/platform/settings/join-codes", label: "Join codes" },
 ];
 
 export const SettingsTabs = () => {

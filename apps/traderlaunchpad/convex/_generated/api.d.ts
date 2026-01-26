@@ -29,6 +29,7 @@ import type * as notifications_queries from "../notifications/queries.js";
 import type * as notifications_test from "../notifications/test.js";
 import type * as onboarding_mutations from "../onboarding/mutations.js";
 import type * as onboarding_queries from "../onboarding/queries.js";
+import type * as platform_joinCodes from "../platform/joinCodes.js";
 import type * as platform_queries from "../platform/queries.js";
 import type * as platform_test_helpers from "../platform/test/helpers.js";
 import type * as platform_test_mutations from "../platform/test/mutations.js";
@@ -92,6 +93,7 @@ declare const fullApi: ApiFromModules<{
   "notifications/test": typeof notifications_test;
   "onboarding/mutations": typeof onboarding_mutations;
   "onboarding/queries": typeof onboarding_queries;
+  "platform/joinCodes": typeof platform_joinCodes;
   "platform/queries": typeof platform_queries;
   "platform/test/helpers": typeof platform_test_helpers;
   "platform/test/mutations": typeof platform_test_mutations;
@@ -857,6 +859,70 @@ export declare const components: {
           userId: string;
         },
         Array<any>
+      >;
+    };
+  };
+  launchthat_joincodes: {
+    mutations: {
+      createJoinCode: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          code?: string;
+          createdByUserId: string;
+          expiresAt?: number;
+          label?: string;
+          maxUses?: number;
+          organizationId?: string;
+          scope: "platform" | "organization";
+        },
+        { code: string; codeHash: string; joinCodeId: string }
+      >;
+      deactivateJoinCode: FunctionReference<
+        "mutation",
+        "internal",
+        { joinCodeId: string },
+        null
+      >;
+      deleteJoinCode: FunctionReference<
+        "mutation",
+        "internal",
+        { joinCodeId: string },
+        null
+      >;
+      redeemJoinCode: FunctionReference<
+        "mutation",
+        "internal",
+        { code: string; redeemedByUserId: string },
+        {
+          expiresAt?: number;
+          joinCodeId: string;
+          label?: string;
+          maxUses?: number;
+          organizationId?: string;
+          scope: "platform" | "organization";
+          uses: number;
+        } | null
+      >;
+    };
+    queries: {
+      listJoinCodes: FunctionReference<
+        "query",
+        "internal",
+        { organizationId?: string; scope: "platform" | "organization" },
+        Array<{
+          _id: string;
+          createdAt: number;
+          createdByUserId: string;
+          expiresAt?: number;
+          isActive: boolean;
+          label?: string;
+          maxUses?: number;
+          organizationId?: string;
+          scope: "platform" | "organization";
+          updatedAt: number;
+          uses: number;
+        }>
       >;
     };
   };

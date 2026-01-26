@@ -23,6 +23,7 @@ const connectionsQueries = components.launchthat_traderlaunchpad.connections.que
 const connectionsMutations = components.launchthat_traderlaunchpad.connections.mutations as any;
 const coreTenantQueries = components.launchthat_core_tenant.queries as any;
 const coreTenantMutations = components.launchthat_core_tenant.mutations as any;
+const joinCodesMutations = components.launchthat_joincodes.mutations as any;
 const analyticsMutations = components.launchthat_traderlaunchpad.analytics.mutations as any;
 
 const resolveMembershipForOrg = async (ctx: any, organizationId: string, userId: string) => {
@@ -431,6 +432,121 @@ export const revokeOrgUserInvite = mutation({
 
     await ctx.db.patch((invite as any)._id, { revokedAt: Date.now() });
     return null;
+  },
+});
+
+export const setOrgAccessSettings = mutation({
+  args: {
+    organizationId: v.string(),
+    visibility: v.union(v.literal("public"), v.literal("private")),
+    joinCodesEnabled: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId = args.organizationId.trim();
+    const userId = await resolveViewerUserId(ctx);
+    const membership = await resolveMembershipForOrg(ctx, organizationId, userId);
+    if (!membership) return null;
+    if (membership.role !== "owner" && membership.role !== "admin") return null;
+
+    const existing = await ctx.db
+      .query("orgAccessSettings")
+      .withIndex("by_org", (q: any) => q.eq("organizationId", organizationId))
+      .first();
+
+    const now = Date.now();
+    if (existing) {
+      await ctx.db.patch((existing as any)._id, {
+        visibility: args.visibility,
+        joinCodesEnabled: args.joinCodesEnabled,
+        updatedAt: now,
+      });
+      return null;
+    }
+
+    await ctx.db.insert("orgAccessSettings", {
+      organizationId,
+      visibility: args.visibility,
+      joinCodesEnabled: args.joinCodesEnabled,
+      updatedAt: now,
+    });
+    return null;
+  },
+});
+
+export const createOrgJoinCode = mutation({
+  args: {
+    organizationId: v.string(),
+    label: v.optional(v.string()),
+    maxUses: v.optional(v.number()),
+    expiresAt: v.optional(v.number()),
+  },
+  returns: v.object({ code: v.string(), joinCodeId: v.string() }),
+  handler: async (ctx, args) => {
+    const organizationId = args.organizationId.trim();
+    const userId = await resolveViewerUserId(ctx);
+    const membership = await resolveMembershipForOrg(ctx, organizationId, userId);
+    if (!membership) return { code: "", joinCodeId: "" };
+    if (membership.role !== "owner" && membership.role !== "admin") {
+      return { code: "", joinCodeId: "" };
+    }
+
+    const created = await ctx.runMutation(joinCodesMutations.createJoinCode, {
+      scope: "organization",
+      organizationId,
+      label: args.label,
+      maxUses: args.maxUses,
+      expiresAt: args.expiresAt,
+      createdByUserId: userId,
+    });
+
+    return {
+      code: String((created as any)?.code ?? ""),
+      joinCodeId: String((created as any)?.joinCodeId ?? ""),
+    };
+  },
+});
+
+export const redeemOrgJoinCode = mutation({
+  args: {
+    code: v.string(),
+  },
+  returns: v.object({ organizationId: v.string() }),
+  handler: async (ctx, args) => {
+    const userId = await resolveViewerUserId(ctx);
+    const code = String(args.code ?? "").trim();
+    if (!code) return { organizationId: "" };
+
+    const redemption = await ctx.runMutation(joinCodesMutations.redeemJoinCode, {
+      code,
+      redeemedByUserId: userId,
+    });
+    if (!redemption) return { organizationId: "" };
+
+    const scope = String((redemption as any)?.scope ?? "");
+    const organizationId = String((redemption as any)?.organizationId ?? "").trim();
+    if (scope !== "organization" || !organizationId) return { organizationId: "" };
+
+    const settings = await ctx.db
+      .query("orgAccessSettings")
+      .withIndex("by_org", (q: any) => q.eq("organizationId", organizationId))
+      .first();
+    if (settings) {
+      const visibility = String((settings as any)?.visibility ?? "public");
+      const joinCodesEnabled = Boolean((settings as any)?.joinCodesEnabled);
+      if (visibility === "private" && !joinCodesEnabled) {
+        return { organizationId: "" };
+      }
+    }
+
+    await ctx.runMutation(coreTenantMutations.ensureMembership, {
+      userId,
+      organizationId: organizationId as any,
+      role: "viewer" as any,
+      setActive: true,
+    });
+
+    return { organizationId };
   },
 });
 
