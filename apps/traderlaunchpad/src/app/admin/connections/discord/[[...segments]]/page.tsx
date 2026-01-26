@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { AdminSettingsOrgDiscordAdminClient } from "../../settings/connections/discord/[[...segments]]/DiscordAdminClient";
+import { AdminSettingsOrgDiscordAdminClient } from "../../../settings/connections/discord/[[...segments]]/DiscordAdminClient";
 
 export default function AdminConnectionsDiscordPage() {
   return (
