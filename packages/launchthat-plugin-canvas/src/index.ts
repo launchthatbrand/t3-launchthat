@@ -7,7 +7,15 @@
 
 export type { Logger, Rgba, TextAlign, TextOp, TextShadow, TextStyle } from "./types";
 
-export { drawDashedHLine, drawLine, fillCircle, fillRect, hexToRgb, setPixel } from "./png/primitives";
+export {
+  drawDashedHLine,
+  drawLine,
+  fillCircle,
+  fillRect,
+  fillTriangle,
+  hexToRgb,
+  setPixel,
+} from "./png/primitives";
 
 export { drawText5x7 } from "./text/bitmapFont5x7";
 export { drawTextOpsToPng } from "./text/drawTextOps";

@@ -852,6 +852,7 @@ export type Mounts = {
           name: string;
           organizationId: string;
           template: string;
+          templateJson?: string;
         },
         string
       >;
@@ -870,6 +871,7 @@ export type Mounts = {
           organizationId: string;
           template?: string;
           templateId: string;
+          templateJson?: string;
         },
         null
       >;
@@ -883,6 +885,7 @@ export type Mounts = {
           name?: string;
           organizationId: string;
           template: string;
+          templateJson?: string;
         },
         null
       >;
@@ -906,6 +909,7 @@ export type Mounts = {
           kind: string;
           name?: string;
           template: string;
+          templateJson?: string;
           updatedAt: number;
         }
       >;
@@ -922,6 +926,7 @@ export type Mounts = {
           name?: string;
           scope: "org" | "guild";
           template: string;
+          templateJson?: string;
           updatedAt: number;
         }>
       >;

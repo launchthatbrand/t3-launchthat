@@ -62,6 +62,7 @@ export const upsertTemplate = mutation({
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     template: v.string(),
+    templateJson: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -86,6 +87,7 @@ export const createTemplate = mutation({
     name: v.string(),
     description: v.optional(v.string()),
     template: v.string(),
+    templateJson: v.optional(v.string()),
   },
   returns: v.string(),
   handler: async (ctx, args) => {
@@ -112,6 +114,7 @@ export const updateTemplate = mutation({
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     template: v.optional(v.string()),
+    templateJson: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {

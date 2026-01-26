@@ -10,6 +10,7 @@ export const createTemplate = mutation({
     name: v.string(),
     description: v.optional(v.string()),
     template: v.string(),
+    templateJson: v.optional(v.string()),
   },
   returns: v.id("messageTemplates"),
   handler: async (ctx, args) => {
@@ -21,6 +22,7 @@ export const createTemplate = mutation({
       name: args.name,
       description: args.description,
       template: args.template,
+      templateJson: args.templateJson,
       createdAt: now,
       updatedAt: now,
     });
@@ -34,6 +36,7 @@ export const updateTemplate = mutation({
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     template: v.optional(v.string()),
+    templateJson: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -46,6 +49,8 @@ export const updateTemplate = mutation({
       description:
         typeof args.description === "string" ? args.description : row.description,
       template: typeof args.template === "string" ? args.template : row.template,
+      templateJson:
+        typeof args.templateJson === "string" ? args.templateJson : row.templateJson,
       updatedAt: Date.now(),
     });
     return null;
@@ -76,6 +81,7 @@ export const upsertTemplate = mutation({
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     template: v.string(),
+    templateJson: v.optional(v.string()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -95,6 +101,7 @@ export const upsertTemplate = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, {
         template: args.template,
+        templateJson: args.templateJson,
         name:
           typeof args.name === "string"
             ? args.name
@@ -116,6 +123,7 @@ export const upsertTemplate = mutation({
       name: typeof args.name === "string" ? args.name : "Default template",
       description: args.description,
       template: args.template,
+      templateJson: args.templateJson,
       createdAt: now,
       updatedAt: now,
     });

@@ -4697,6 +4697,7 @@ export declare const components: {
             name: string;
             organizationId: string;
             template: string;
+            templateJson?: string;
           },
           string
         >;
@@ -4715,6 +4716,7 @@ export declare const components: {
             organizationId: string;
             template?: string;
             templateId: string;
+            templateJson?: string;
           },
           null
         >;
@@ -4728,6 +4730,7 @@ export declare const components: {
             name?: string;
             organizationId: string;
             template: string;
+            templateJson?: string;
           },
           null
         >;
@@ -4751,6 +4754,7 @@ export declare const components: {
             kind: string;
             name?: string;
             template: string;
+            templateJson?: string;
             updatedAt: number;
           }
         >;
@@ -4767,6 +4771,7 @@ export declare const components: {
             name?: string;
             scope: "org" | "guild";
             template: string;
+            templateJson?: string;
             updatedAt: number;
           }>
         >;

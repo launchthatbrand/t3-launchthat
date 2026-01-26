@@ -17,6 +17,7 @@ import {
   drawText5x7,
   drawTextLayerWithCanvas,
   fillCircle,
+  fillTriangle,
   fillRect,
   hexToRgb,
   ensureCanvasFonts,
@@ -184,6 +185,15 @@ const renderSnapshotPng = (args: {
   symbol: string;
   timeframeLabel: string;
   consensus: "BUY" | "SELL" | "MIXED";
+  showSentimentBadge?: boolean;
+  themeMode?: "dark" | "light" | "custom";
+  bgColor?: string;
+  gridOpacity?: number;
+  gridColor?: string;
+  candleSpacingPct?: number;
+  candleUpColor?: string;
+  candleDownColor?: string;
+  tradeIndicatorShape?: "circle" | "triangle";
   bars: Bar[];
   clusters: {
     count: number;
@@ -207,12 +217,113 @@ const renderSnapshotPng = (args: {
   const img = new PNG({ width, height });
   const textOps: TextOp[] = [];
 
-  // Theme
-  const bg = hexToRgb("#0B1020");
-  const grid = { r: 255, g: 255, b: 255, a: Math.round(255 * 0.06) };
-  const axisText = { r: 255, g: 255, b: 255, a: Math.round(255 * 0.78) };
-  const up = hexToRgb("#22C55E");
-  const down = hexToRgb("#EF4444");
+  // Theme mode + background color
+  const themeMode = args.themeMode ?? "dark";
+  const bgRaw = typeof args.bgColor === "string" ? args.bgColor.trim() : "";
+  const bgParsed = /^#([0-9a-fA-F]{6})$/.exec(bgRaw);
+  const bgHex = bgParsed ? `#${bgParsed[1].toUpperCase()}` : null;
+  const bgRgb = bgHex ? hexToRgb(bgHex) : null;
+  const gridColorRaw = typeof args.gridColor === "string" ? args.gridColor.trim() : "";
+  const gridColorParsed = /^#([0-9a-fA-F]{6})$/.exec(gridColorRaw);
+  const gridColorHex = gridColorParsed
+    ? `#${gridColorParsed[1].toUpperCase()}`
+    : null;
+  const gridRgbOverride = gridColorHex ? hexToRgb(gridColorHex) : null;
+  const gridOpacity =
+    typeof args.gridOpacity === "number" && Number.isFinite(args.gridOpacity)
+      ? Math.max(0, Math.min(0.25, args.gridOpacity))
+      : null;
+
+  const candleSpacingPct =
+    typeof args.candleSpacingPct === "number" && Number.isFinite(args.candleSpacingPct)
+      ? Math.max(0, Math.min(80, Math.round(args.candleSpacingPct)))
+      : 15;
+  const candleUpRaw = typeof args.candleUpColor === "string" ? args.candleUpColor.trim() : "";
+  const candleDownRaw =
+    typeof args.candleDownColor === "string" ? args.candleDownColor.trim() : "";
+  const candleUpParsed = /^#([0-9a-fA-F]{6})$/.exec(candleUpRaw);
+  const candleDownParsed = /^#([0-9a-fA-F]{6})$/.exec(candleDownRaw);
+  const candleUpRgb = candleUpParsed
+    ? hexToRgb(`#${candleUpParsed[1].toUpperCase()}`)
+    : null;
+  const candleDownRgb = candleDownParsed
+    ? hexToRgb(`#${candleDownParsed[1].toUpperCase()}`)
+    : null;
+  const tradeIndicatorShape = args.tradeIndicatorShape ?? "circle";
+
+  const isDarkBg = (() => {
+    const rgb =
+      bgRgb ??
+      (themeMode === "light" ? hexToRgb("#FFFFFF") : hexToRgb("#000000"));
+    // Relative luminance (sRGB)
+    const toLin = (c: number) => {
+      const s = c / 255;
+      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    };
+    const l = 0.2126 * toLin(rgb.r) + 0.7152 * toLin(rgb.g) + 0.0722 * toLin(rgb.b);
+    return l < 0.5;
+  })();
+  const themeCfg: {
+    bg: { r: number; g: number; b: number };
+    header: { r: number; g: number; b: number; a: number };
+    divider: { r: number; g: number; b: number; a: number };
+    grid: { r: number; g: number; b: number; a: number };
+    axisText: { r: number; g: number; b: number; a: number };
+    axisMuted: { r: number; g: number; b: number; a: number };
+    badgeBg: { r: number; g: number; b: number; a: number };
+    badgeBorder: { r: number; g: number; b: number; a: number };
+    badgePrefix: { r: number; g: number; b: number; a: number };
+    titleText: { r: number; g: number; b: number; a: number };
+    shadowA: number;
+  } =
+    themeMode === "light"
+      ? {
+          bg: hexToRgb("#FFFFFF"),
+          header: { r: 255, g: 255, b: 255, a: 230 },
+          divider: { r: 2, g: 6, b: 23, a: 26 },
+          grid: { r: 2, g: 6, b: 23, a: Math.round(255 * 0.08) },
+          axisText: { r: 2, g: 6, b: 23, a: Math.round(255 * 0.82) },
+          axisMuted: { r: 2, g: 6, b: 23, a: Math.round(255 * 0.55) },
+          badgeBg: { r: 255, g: 255, b: 255, a: 235 },
+          badgeBorder: { r: 2, g: 6, b: 23, a: 34 },
+          badgePrefix: { r: 15, g: 23, b: 42, a: 255 },
+          titleText: { r: 2, g: 6, b: 23, a: 255 },
+          shadowA: 60,
+        }
+      : {
+          // Dark base palette (bg is overridden below for custom colors)
+          bg: hexToRgb("#000000"),
+          header: { r: 0, g: 0, b: 0, a: 170 },
+          divider: { r: 255, g: 255, b: 255, a: 24 },
+          grid: { r: 255, g: 255, b: 255, a: Math.round(255 * 0.075) },
+          axisText: { r: 255, g: 255, b: 255, a: Math.round(255 * 0.86) },
+          axisMuted: { r: 255, g: 255, b: 255, a: Math.round(255 * 0.68) },
+          badgeBg: { r: 9, g: 9, b: 11, a: 235 },
+          badgeBorder: { r: 255, g: 255, b: 255, a: 36 },
+          badgePrefix: { r: 226, g: 232, b: 240, a: 255 },
+          titleText: { r: 255, g: 255, b: 255, a: 255 },
+          shadowA: 170,
+        };
+
+  const bg = bgRgb ?? themeCfg.bg;
+  const baseGrid =
+    gridRgbOverride ??
+    (themeMode === "custom"
+      ? {
+          r: isDarkBg ? 255 : 2,
+          g: isDarkBg ? 255 : 6,
+          b: isDarkBg ? 255 : 23,
+        }
+      : { r: themeCfg.grid.r, g: themeCfg.grid.g, b: themeCfg.grid.b });
+  const baseGridOpacity =
+    gridOpacity ??
+    (themeMode === "custom" ? (isDarkBg ? 0.075 : 0.08) : themeCfg.grid.a / 255);
+  const grid = { ...baseGrid, a: Math.round(255 * baseGridOpacity) };
+  const axisText = themeMode === "custom"
+    ? { r: isDarkBg ? 255 : 2, g: isDarkBg ? 255 : 6, b: isDarkBg ? 255 : 23, a: Math.round(255 * (isDarkBg ? 0.86 : 0.82)) }
+    : themeCfg.axisText;
+  const up = candleUpRgb ?? hexToRgb("#22C55E");
+  const down = candleDownRgb ?? hexToRgb("#EF4444");
   const ma = hexToRgb("#60A5FA");
   const mixed = hexToRgb("#A78BFA");
 
@@ -221,8 +332,8 @@ const renderSnapshotPng = (args: {
 
   // Header overlay (TradingView-ish)
   const headerH = s(56);
-  fillRect(img, 0, 0, width, headerH, { r: 0, g: 0, b: 0, a: 120 });
-  drawLine(img, 0, headerH, width, headerH, { r: 255, g: 255, b: 255, a: 28 });
+  fillRect(img, 0, 0, width, headerH, themeCfg.header);
+  drawLine(img, 0, headerH, width, headerH, themeCfg.divider);
 
   // Layout
   const padL = s(40);
@@ -322,9 +433,12 @@ const renderSnapshotPng = (args: {
     text: symbolText,
     x: s(28),
     y: s(12),
-    rgba: { r: 255, g: 255, b: 255, a: 255 },
+    rgba: themeCfg.titleText,
     font: { sizePx: s(28), weight: 800 },
-    shadow: { dx: 0, dy: s(2), blurPx: s(6), rgba: { r: 0, g: 0, b: 0, a: 170 } },
+    shadow:
+      !isDarkBg
+        ? { dx: 0, dy: s(1), blurPx: s(4), rgba: { r: 2, g: 6, b: 23, a: themeCfg.shadowA } }
+        : { dx: 0, dy: s(2), blurPx: s(6), rgba: { r: 0, g: 0, b: 0, a: themeCfg.shadowA } },
     align: "left",
   });
 
@@ -341,7 +455,7 @@ const renderSnapshotPng = (args: {
   }
 
   // Shadcn-ish badge bubble: "Market sentiment : SELL"
-  {
+  if (args.showSentimentBadge ?? true) {
     const badgeFontSize = s(16);
     const badgePadX = s(14);
     const badgePadY = s(8);
@@ -356,8 +470,8 @@ const renderSnapshotPng = (args: {
     const badgeY = Math.round(headerH / 2 - badgeH / 2);
 
     // Border + fill (rounded "pill")
-    const border = { r: 255, g: 255, b: 255, a: 44 };
-    const bg = { r: 2, g: 6, b: 23, a: 210 }; // slate-950-ish
+    const border = themeCfg.badgeBorder;
+    const bg = themeCfg.badgeBg;
     // Outer pill
     fillRect(img, badgeX + badgeR, badgeY, badgeW - badgeR * 2, badgeH, border);
     fillCircle(img, badgeX + badgeR, badgeY + badgeR, badgeR, border);
@@ -381,7 +495,7 @@ const renderSnapshotPng = (args: {
       text: badgeTextPrefix,
       x: textX,
       y: textY,
-      rgba: { r: 226, g: 232, b: 240, a: 255 },
+      rgba: themeCfg.badgePrefix,
       font: { sizePx: badgeFontSize, weight: 700 },
       shadow: { dx: 0, dy: s(1), blurPx: s(3), rgba: { r: 0, g: 0, b: 0, a: 150 } },
       align: "left",
@@ -445,7 +559,9 @@ const renderSnapshotPng = (args: {
   }
 
   // Candles
-  const candleW = Math.max(2, Math.floor(chartW / Math.max(10, bars.length)));
+  const candleSlotW = Math.max(2, Math.floor(chartW / Math.max(10, bars.length)));
+  const spacing = Math.max(0, Math.min(0.8, candleSpacingPct / 100));
+  const candleBodyW = Math.max(1, Math.floor(candleSlotW * (1 - spacing)));
   for (const b of bars) {
     const x = Math.round(xForT(b.t));
     const yO = Math.round(yForPrice(b.o));
@@ -462,7 +578,7 @@ const renderSnapshotPng = (args: {
     // body
     const top = Math.min(yO, yC);
     const bot = Math.max(yO, yC);
-    const w = candleW;
+    const w = candleBodyW;
     const h = Math.max(1, bot - top);
     fillRect(img, Math.round(x - w / 2), top, w, h, rgba);
   }
@@ -523,8 +639,32 @@ const renderSnapshotPng = (args: {
     cy = Math.max(chartY + r + 2, Math.min(chartY + chartH - r - 2, cy));
 
     // Outline (improves visibility over candles)
-    fillCircle(img, cx, cy, r + 2, { r: 0, g: 0, b: 0, a: 200 });
-    fillCircle(img, cx, cy, r, { ...col, a: 220 });
+    if (tradeIndicatorShape === "triangle") {
+      const tipToCandle = c.direction === "short" ? 1 : c.direction === "long" ? -1 : 0;
+      const tipY = cy + tipToCandle * (r + 1);
+      const baseY = cy - tipToCandle * (r + 1);
+      const halfW = Math.max(2, Math.round(r * 1.15));
+
+      // Outline triangle
+      fillTriangle(
+        img,
+        { x: cx, y: tipY },
+        { x: cx - halfW, y: baseY },
+        { x: cx + halfW, y: baseY },
+        { r: 0, g: 0, b: 0, a: 200 },
+      );
+      // Inner triangle (slight inset)
+      fillTriangle(
+        img,
+        { x: cx, y: tipY },
+        { x: cx - Math.max(1, halfW - 2), y: baseY - tipToCandle * 2 },
+        { x: cx + Math.max(1, halfW - 2), y: baseY - tipToCandle * 2 },
+        { ...col, a: 220 },
+      );
+    } else {
+      fillCircle(img, cx, cy, r + 2, { r: 0, g: 0, b: 0, a: 200 });
+      fillCircle(img, cx, cy, r, { ...col, a: 220 });
+    }
   }
 
   const drewWithCanvas = drawTextLayerWithCanvas(img, textOps);
@@ -566,6 +706,32 @@ export const buildSnapshotPreview = async (ctx: any, args: any) => {
   const maxUsers = Math.max(1, Math.min(500, Math.floor(maxUsersRaw)));
   const lookbackDaysRaw = Number(args?.lookbackDays ?? DEFAULT_SNAPSHOT_LOOKBACK_DAYS);
   const lookbackDays = Math.max(1, Math.min(30, Math.floor(lookbackDaysRaw)));
+  const showSentimentBadge =
+    typeof args?.showSentimentBadge === "boolean" ? args.showSentimentBadge : true;
+  const themeModeRaw =
+    typeof args?.themeMode === "string" ? String(args.themeMode).trim().toLowerCase() : "";
+  const themeMode =
+    themeModeRaw === "light" ? "light" : themeModeRaw === "custom" ? "custom" : "dark";
+  const bgColor = typeof args?.bgColor === "string" ? String(args.bgColor) : undefined;
+  const gridOpacityRaw = Number(args?.gridOpacity ?? NaN);
+  const gridOpacity =
+    Number.isFinite(gridOpacityRaw) ? Math.max(0, Math.min(0.25, gridOpacityRaw)) : undefined;
+  const gridColor = typeof args?.gridColor === "string" ? String(args.gridColor) : undefined;
+  const candleSpacingRaw = Number(args?.candleSpacingPct ?? NaN);
+  const candleSpacingPct =
+    Number.isFinite(candleSpacingRaw)
+      ? Math.max(0, Math.min(80, Math.round(candleSpacingRaw)))
+      : undefined;
+  const candleUpColor =
+    typeof args?.candleUpColor === "string" ? String(args.candleUpColor) : undefined;
+  const candleDownColor =
+    typeof args?.candleDownColor === "string" ? String(args.candleDownColor) : undefined;
+  const tradeIndicatorShapeRaw =
+    typeof args?.tradeIndicatorShape === "string"
+      ? String(args.tradeIndicatorShape).trim().toLowerCase()
+      : "";
+  const tradeIndicatorShape =
+    tradeIndicatorShapeRaw === "triangle" ? "triangle" : "circle";
 
   if (!symbol) {
     return {
@@ -582,6 +748,199 @@ export const buildSnapshotPreview = async (ctx: any, args: any) => {
   }
 
   const now = Date.now();
+
+  // Optional: mock preview mode for template previews/test-sends.
+  // Generates deterministic bars + clusters (no pricedata fetch).
+  if (args?.useMockData === true) {
+    const stepMs = 15 * 60 * 1000;
+    const toMsAligned = Math.floor(now / stepMs) * stepMs;
+    const usedToMs = toMsAligned;
+    const usedFromMs = Math.max(0, usedToMs - lookbackDays * DAY_MS);
+    const fromMs30 = Math.max(0, usedToMs - 30 * DAY_MS);
+
+    const mulberry32 = (seed: number) => {
+      let t = seed >>> 0;
+      return () => {
+        t += 0x6d2b79f5;
+        let r = Math.imul(t ^ (t >>> 15), 1 | t);
+        r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+        return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+      };
+    };
+    const seed =
+      Math.abs(
+        Array.from(symbol).reduce((acc, ch) => acc + ch.charCodeAt(0) * 31, 0) +
+          Math.floor(now / DAY_MS),
+      ) | 0;
+    const rnd = mulberry32(seed);
+
+    type MockBar = Bar;
+    const barsAll: MockBar[] = [];
+    const startT = Math.floor(fromMs30 / stepMs) * stepMs;
+    const endT = usedToMs;
+
+    // More realistic-ish price action:
+    // - random walk with volatility "clustering"
+    // - trend regimes that shift every few days
+    // - occasional impulse candles
+    let price = 90000 + (rnd() - 0.5) * 500;
+    let vol = 90; // typical 15m volatility in dollars
+    let volTarget = 110;
+    let drift = 0;
+
+    const barsPerDay = Math.round(DAY_MS / stepMs);
+    const regimeBars = barsPerDay * 3; // change regime every ~3 days
+    let i = 0;
+    for (let t = startT; t <= endT; t += stepMs) {
+      if (i % regimeBars === 0) {
+        // Drift in dollars per candle (small)
+        drift = (rnd() - 0.5) * 22;
+        volTarget = 70 + rnd() * 170;
+      }
+
+      // Mean-reverting volatility with a bit of noise
+      vol = vol * 0.985 + volTarget * 0.015 + (rnd() - 0.5) * 4;
+      vol = Math.max(25, Math.min(280, vol));
+
+      const open = price;
+      const noise = (rnd() - 0.5) * vol * 0.55;
+      let close = open + drift + noise;
+
+      // Rare impulse candle
+      if (rnd() < 0.003) {
+        close += (rnd() - 0.5) * vol * 10;
+      }
+
+      // Wicks: keep most candles modest, with occasional longer "sweep" wicks.
+      // This avoids the constant spiky look.
+      const wickFrac = 0.12 + rnd() * 0.28; // 12%..40% of vol
+      let wickBase = Math.max(10, vol * wickFrac);
+      const sweep = rnd() < 0.02; // ~2% of candles have a longer wick
+      if (sweep) wickBase *= 2.8;
+      wickBase = Math.min(wickBase, 240);
+
+      const high = Math.max(open, close) + rnd() * wickBase;
+      const low = Math.min(open, close) - rnd() * wickBase;
+
+      price = close;
+
+      if (t >= fromMs30 && t <= usedToMs) {
+        barsAll.push({
+          t,
+          o: open,
+          h: high,
+          l: low,
+          c: close,
+          v: Math.round(50 + rnd() * 950),
+        });
+      }
+      i++;
+    }
+
+    // Slice to the requested lookback window for drawing,
+    // but keep axis window anchored to today.
+    const bars = barsAll.filter((b) => b.t >= usedFromMs && b.t <= usedToMs);
+
+    // Mock clusters: one buy near daily low and one sell near daily high.
+    const byDay: Record<
+      string,
+      { hi: number; lo: number; tHi: number; tLo: number } | undefined
+    > = {};
+    for (const b of bars) {
+      const d = new Date(b.t);
+      const key = `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+      const row = byDay[key];
+      if (!row) {
+        byDay[key] = { hi: b.h, lo: b.l, tHi: b.t, tLo: b.t };
+        continue;
+      }
+      if (b.h > row.hi) {
+        row.hi = b.h;
+        row.tHi = b.t;
+      }
+      if (b.l < row.lo) {
+        row.lo = b.l;
+        row.tLo = b.t;
+      }
+    }
+    const clusters: {
+      count: number;
+      direction: "long" | "short" | "mixed";
+      avgEntryPrice: number;
+      avgOpenedAt: number;
+      totalAbsQty: number;
+    }[] = [];
+    for (const key of Object.keys(byDay)) {
+      const row = byDay[key];
+      if (!row) continue;
+      // Buy cluster at low
+      clusters.push({
+        direction: "long",
+        count: 1 + Math.floor(rnd() * 5),
+        totalAbsQty: 0.4 + rnd() * 2.2,
+        avgEntryPrice: row.lo + rnd() * 60,
+        avgOpenedAt: row.tLo,
+      });
+      // Sell cluster at high
+      clusters.push({
+        direction: "short",
+        count: 1 + Math.floor(rnd() * 5),
+        totalAbsQty: 0.4 + rnd() * 2.2,
+        avgEntryPrice: row.hi - rnd() * 60,
+        avgOpenedAt: row.tHi,
+      });
+    }
+
+    const consensus = computeConsensus(
+      clusters.map((c) => ({
+        direction: c.direction,
+        count: c.count,
+        totalAbsQty: c.totalAbsQty,
+      })),
+    );
+    const timeframeLabel = "M15";
+
+    const pngBytes = renderSnapshotPng({
+      symbol,
+      timeframeLabel,
+      consensus: consensus.label,
+      showSentimentBadge,
+      themeMode,
+      bgColor,
+      gridOpacity,
+      gridColor,
+      candleSpacingPct,
+      candleUpColor,
+      candleDownColor,
+      tradeIndicatorShape,
+      bars,
+      clusters,
+      now,
+      fromMs: usedFromMs,
+      toMs: usedToMs,
+    });
+    const base64 = Buffer.from(pngBytes).toString("base64");
+
+    return {
+      kind: "image",
+      contentType: "image/png",
+      filename: `${symbol}-snapshot.png`,
+      base64,
+      meta: {
+        symbol,
+        sourceKey: "mock",
+        tradableInstrumentId: "mock",
+        bars: bars.length,
+        usersAllowed: 0,
+        openPositions: clusters.length,
+        usersScanned: 0,
+        organizationId: requestedOrgId,
+        dataLagMs: null,
+        fromMs: usedFromMs,
+        toMs: usedToMs,
+      },
+    };
+  }
 
   const source = await ctx.runQuery(
     components.launchthat_pricedata.sources.queries.getDefaultSource,
@@ -737,6 +1096,15 @@ export const buildSnapshotPreview = async (ctx: any, args: any) => {
     symbol,
     timeframeLabel,
     consensus: consensus.label,
+    showSentimentBadge,
+    themeMode,
+    bgColor,
+    gridOpacity,
+    gridColor,
+    candleSpacingPct,
+    candleUpColor,
+    candleDownColor,
+    tradeIndicatorShape,
     bars,
     clusters,
     now,

@@ -29,6 +29,7 @@ const normalizeTemplateRow = (row: any, scope: "org" | "guild") => {
     description: typeof row.description === "string" ? row.description : undefined,
     kind: String(row.kind ?? ""),
     template: String(row.template ?? ""),
+    templateJson: typeof row.templateJson === "string" ? row.templateJson : undefined,
     guildId: typeof row.guildId === "string" ? row.guildId : undefined,
     updatedAt: Number(row.updatedAt ?? 0),
     createdAt:
@@ -50,6 +51,7 @@ export const listTemplates = query({
       description: v.optional(v.string()),
       kind: v.string(),
       template: v.string(),
+      templateJson: v.optional(v.string()),
       guildId: v.optional(v.string()),
       updatedAt: v.number(),
       createdAt: v.optional(v.number()),
@@ -105,6 +107,7 @@ export const getTemplateById = query({
       description: v.optional(v.string()),
       kind: v.string(),
       template: v.string(),
+      templateJson: v.optional(v.string()),
       guildId: v.optional(v.string()),
       updatedAt: v.number(),
       createdAt: v.optional(v.number()),
@@ -119,6 +122,7 @@ export const getTemplateById = query({
       description: typeof row.description === "string" ? row.description : undefined,
       kind: String(row.kind ?? ""),
       template: String(row.template ?? ""),
+      templateJson: typeof row.templateJson === "string" ? row.templateJson : undefined,
       guildId: typeof row.guildId === "string" ? row.guildId : undefined,
       updatedAt: Number(row.updatedAt ?? 0),
       createdAt:

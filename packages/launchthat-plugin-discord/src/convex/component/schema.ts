@@ -155,6 +155,11 @@ export default defineSchema({
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     template: v.string(),
+    /**
+     * Optional structured template config (JSON string) for richer templates.
+     * Example: snapshot attachment settings (lookbackDays, showSentimentBadge).
+     */
+    templateJson: v.optional(v.string()),
     createdAt: v.optional(v.number()),
     updatedAt: v.number(),
   })

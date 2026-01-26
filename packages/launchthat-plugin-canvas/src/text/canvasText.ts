@@ -143,15 +143,31 @@ export const drawTextLayerWithCanvas = (img: PNG, ops: TextOp[], opts?: { logger
     }
 
     for (let i = 0; i < overlay.length; i += 4) {
-      const a = (overlay[i + 3] ?? 0) / 255;
-      if (a <= 0) continue;
-      const baseR = img.data[i] ?? 0;
-      const baseG = img.data[i + 1] ?? 0;
-      const baseB = img.data[i + 2] ?? 0;
-      img.data[i] = Math.round((overlay[i] ?? 0) * a + baseR * (1 - a));
-      img.data[i + 1] = Math.round((overlay[i + 1] ?? 0) * a + baseG * (1 - a));
-      img.data[i + 2] = Math.round((overlay[i + 2] ?? 0) * a + baseB * (1 - a));
-      img.data[i + 3] = 255;
+      const srcA255 = overlay[i + 3] ?? 0;
+      if (srcA255 <= 0) continue;
+
+      const srcR = overlay[i] ?? 0;
+      const srcG = overlay[i + 1] ?? 0;
+      const srcB = overlay[i + 2] ?? 0;
+
+      const dstR = img.data[i] ?? 0;
+      const dstG = img.data[i + 1] ?? 0;
+      const dstB = img.data[i + 2] ?? 0;
+      const dstA255 = img.data[i + 3] ?? 0;
+
+      const aS = srcA255 / 255;
+      const aD = dstA255 / 255;
+      const outA = aS + aD * (1 - aS);
+      if (outA <= 0) continue;
+
+      const outR = (srcR * aS + dstR * aD * (1 - aS)) / outA;
+      const outG = (srcG * aS + dstG * aD * (1 - aS)) / outA;
+      const outB = (srcB * aS + dstB * aD * (1 - aS)) / outA;
+
+      img.data[i] = Math.round(outR);
+      img.data[i + 1] = Math.round(outG);
+      img.data[i + 2] = Math.round(outB);
+      img.data[i + 3] = Math.round(outA * 255);
     }
 
     return true;

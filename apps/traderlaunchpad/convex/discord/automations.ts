@@ -30,6 +30,87 @@ const discordOrgConfigInternalQueries =
 const applyTemplate = (template: string, values: Record<string, string | undefined>) =>
   template.replace(/\{\{(\w+)\}\}/g, (_, key) => values[key] ?? "");
 
+const parseTemplateJson = (templateJson: unknown): {
+  hasSnapshot: boolean;
+  lookbackDays: number;
+  showSentimentBadge: boolean;
+  themeMode: "dark" | "light" | "custom";
+  bgColor?: string;
+  gridOpacity?: number;
+  gridColor?: string;
+  candleSpacingPct?: number;
+  candleUpColor?: string;
+  candleDownColor?: string;
+  tradeIndicatorShape?: "circle" | "triangle";
+} => {
+  if (typeof templateJson !== "string" || !templateJson.trim()) {
+    return { hasSnapshot: false, lookbackDays: 3, showSentimentBadge: true, themeMode: "dark" };
+  }
+  try {
+    const parsed = JSON.parse(templateJson) as any;
+    const attachments = Array.isArray(parsed?.attachments) ? parsed.attachments : [];
+    const snap = attachments.find((a: any) => a?.type === "snapshot_png") ?? null;
+    if (!snap) return { hasSnapshot: false, lookbackDays: 3, showSentimentBadge: true, themeMode: "dark" };
+    const lookbackDaysRaw = Number(snap?.params?.lookbackDays ?? 3);
+    const lookbackDays = Math.max(1, Math.min(30, Math.floor(lookbackDaysRaw)));
+    const showSentimentBadge =
+      typeof snap?.params?.showSentimentBadge === "boolean"
+        ? Boolean(snap.params.showSentimentBadge)
+        : true;
+    const themeModeRaw =
+      typeof snap?.params?.themeMode === "string"
+        ? String(snap.params.themeMode).trim().toLowerCase()
+        : "";
+    const themeMode =
+      themeModeRaw === "light"
+        ? "light"
+        : themeModeRaw === "custom"
+          ? "custom"
+          : "dark";
+    const bgColor =
+      typeof snap?.params?.bgColor === "string" ? String(snap.params.bgColor) : undefined;
+    const gridOpacityRaw = Number(snap?.params?.gridOpacity ?? NaN);
+    const gridOpacity =
+      Number.isFinite(gridOpacityRaw) ? Math.max(0, Math.min(0.25, gridOpacityRaw)) : undefined;
+    const gridColor =
+      typeof snap?.params?.gridColor === "string" ? String(snap.params.gridColor) : undefined;
+    const candleSpacingRaw = Number(snap?.params?.candleSpacingPct ?? NaN);
+    const candleSpacingPct =
+      Number.isFinite(candleSpacingRaw)
+        ? Math.max(0, Math.min(80, Math.round(candleSpacingRaw)))
+        : undefined;
+    const candleUpColor =
+      typeof snap?.params?.candleUpColor === "string"
+        ? String(snap.params.candleUpColor)
+        : undefined;
+    const candleDownColor =
+      typeof snap?.params?.candleDownColor === "string"
+        ? String(snap.params.candleDownColor)
+        : undefined;
+    const tradeIndicatorShapeRaw =
+      typeof snap?.params?.tradeIndicatorShape === "string"
+        ? String(snap.params.tradeIndicatorShape).trim().toLowerCase()
+        : "";
+    const tradeIndicatorShape =
+      tradeIndicatorShapeRaw === "triangle" ? "triangle" : "circle";
+    return {
+      hasSnapshot: true,
+      lookbackDays,
+      showSentimentBadge,
+      themeMode,
+      bgColor,
+      gridOpacity,
+      gridColor,
+      candleSpacingPct,
+      candleUpColor,
+      candleDownColor,
+      tradeIndicatorShape,
+    };
+  } catch {
+    return { hasSnapshot: false, lookbackDays: 3, showSentimentBadge: true, themeMode: "dark" };
+  }
+};
+
 const safeJsonParse = (raw: unknown): unknown => {
   if (typeof raw !== "string" || !raw.trim()) return null;
   try {
@@ -236,6 +317,11 @@ export const runDueDiscordAutomations = internalAction({
           templateId: templateId as any,
         });
         const template = typeof templateRow?.template === "string" ? templateRow.template : "";
+        const templateJson =
+          typeof (templateRow as any)?.templateJson === "string"
+            ? String((templateRow as any).templateJson)
+            : "";
+        const snapshotSettings = parseTemplateJson(templateJson);
         const { values, includeSnapshot, snapshotSymbol } = providerKey
           ? await buildContextForProvider(ctx, {
               organizationId,
@@ -265,7 +351,58 @@ export const runDueDiscordAutomations = internalAction({
           }
         }
 
-        if (includeSnapshot) {
+        const actionSnapshotSymbol =
+          typeof cfg.snapshotSymbol === "string" && cfg.snapshotSymbol.trim()
+            ? cfg.snapshotSymbol.trim().toUpperCase()
+            : typeof values.symbol === "string" && values.symbol.trim()
+              ? values.symbol.trim().toUpperCase()
+              : snapshotSymbol;
+
+        if (snapshotSettings.hasSnapshot) {
+          const preview = await buildSnapshotPreview(ctx, {
+            organizationId,
+            symbol: actionSnapshotSymbol,
+            lookbackDays: snapshotSettings.lookbackDays,
+            showSentimentBadge: snapshotSettings.showSentimentBadge,
+            themeMode: snapshotSettings.themeMode,
+            bgColor: snapshotSettings.bgColor,
+            gridOpacity: snapshotSettings.gridOpacity,
+            gridColor: snapshotSettings.gridColor,
+            candleSpacingPct: snapshotSettings.candleSpacingPct,
+            candleUpColor: snapshotSettings.candleUpColor,
+            candleDownColor: snapshotSettings.candleDownColor,
+            tradeIndicatorShape: snapshotSettings.tradeIndicatorShape,
+            maxUsers: 200,
+          });
+          const base64 = typeof (preview as any)?.base64 === "string" ? (preview as any).base64 : "";
+          const pngBytes = base64 ? new Uint8Array(Buffer.from(base64, "base64")) : null;
+          if (!pngBytes) {
+            throw new Error("Snapshot generation failed (missing base64).");
+          }
+
+          const payloadJson = {
+            content: "",
+            embeds: [
+              {
+                title: `Hourly summary: ${actionSnapshotSymbol}`,
+                description: content,
+                image: { url: "attachment://snapshot.png" },
+              },
+            ],
+          };
+
+          const res = await discordMultipart({
+            botToken,
+            method: "POST",
+            url: `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages`,
+            payloadJson,
+            file: { name: "snapshot.png", bytes: pngBytes, contentType: "image/png" },
+          });
+          if (!res.ok) {
+            throw new Error(`Discord multipart send failed (${res.status}): ${res.text.slice(0, 200)}`);
+          }
+        } else if (includeSnapshot) {
+          // Backward-compatible behavior: legacy providers can still opt into snapshot.
           const preview = await buildSnapshotPreview(ctx, {
             organizationId,
             symbol: snapshotSymbol,

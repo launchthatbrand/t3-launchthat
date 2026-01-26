@@ -46,13 +46,6 @@ export function DiscordGuildAutomationPage({
     guildId,
   }) as AutomationRow[] | undefined;
 
-  const symbolOptions = useQuery(
-    api.queries.listSymbolOptions ?? "skip",
-    api.queries.listSymbolOptions
-      ? { ...(organizationId ? { organizationId } : {}), limit: 500 }
-      : "skip",
-  ) as string[] | undefined;
-
   const row = React.useMemo(
     () => (automations ?? []).find((a) => a.id === automationId) ?? null,
     [automationId, automations],
@@ -61,6 +54,13 @@ export function DiscordGuildAutomationPage({
   const listGuildChannels = useAction(api.actions.listGuildChannels);
   const [channels, setChannels] = React.useState<Array<{ id: string; name: string }>>([]);
   const [loadingChannels, setLoadingChannels] = React.useState(false);
+
+  const symbolOptions = useQuery(
+    api.queries.listSymbolOptions ?? "skip",
+    api.queries.listSymbolOptions
+      ? { ...(organizationId ? { organizationId } : {}), limit: 500 }
+      : "skip",
+  ) as string[] | undefined;
 
   const refreshChannels = async () => {
     setLoadingChannels(true);
@@ -104,6 +104,7 @@ export function DiscordGuildAutomationPage({
   const [targetChannelId, setTargetChannelId] = React.useState("");
   const [templateKind, setTemplateKind] = React.useState("tradeidea");
   const [templateId, setTemplateId] = React.useState<string | null>(null);
+  const [snapshotSymbol, setSnapshotSymbol] = React.useState("");
   const [contextProviderKey, setContextProviderKey] = React.useState("");
   const [contextProviderParams, setContextProviderParams] = React.useState("{}");
 
@@ -116,7 +117,7 @@ export function DiscordGuildAutomationPage({
           kind: templateKind,
         }
       : "skip",
-  ) as Array<{ _id: string; name?: string; scope?: "org" | "guild" }> | undefined;
+  ) as Array<{ _id: string; name?: string; scope?: "org" | "guild"; templateJson?: string }> | undefined;
 
   React.useEffect(() => {
     if (!row) return;
@@ -158,6 +159,7 @@ export function DiscordGuildAutomationPage({
     setTargetChannelId(typeof acfg?.channelId === "string" ? acfg.channelId : "");
     setTemplateKind(typeof acfg?.templateKind === "string" ? acfg.templateKind : "tradeidea");
     setTemplateId(typeof acfg?.templateId === "string" ? acfg.templateId : null);
+    setSnapshotSymbol(typeof acfg?.snapshotSymbol === "string" ? acfg.snapshotSymbol : "");
     setContextProviderKey(typeof acfg?.contextProviderKey === "string" ? acfg.contextProviderKey : "");
     setContextProviderParams(typeof acfg?.contextProviderParams === "string" ? acfg.contextProviderParams : "{}");
 
@@ -219,6 +221,7 @@ export function DiscordGuildAutomationPage({
       channelId: targetChannelId.trim(),
       templateKind: templateKind.trim(),
       templateId,
+      snapshotSymbol: snapshotSymbol.trim() || undefined,
       contextProviderKey: contextProviderKey.trim() || undefined,
       contextProviderParams: contextProviderParams || undefined,
     },
@@ -250,6 +253,22 @@ export function DiscordGuildAutomationPage({
     }
     if (!templateId) {
       toast.error("Select a template.");
+      return;
+    }
+    const selectedTemplate = (templatesForAutomation ?? []).find((t) => t._id === templateId);
+    const templateJson = typeof selectedTemplate?.templateJson === "string" ? selectedTemplate.templateJson : "";
+    const templateHasSnapshot = (() => {
+      if (!templateJson) return false;
+      try {
+        const parsed = JSON.parse(templateJson) as any;
+        const attachments = Array.isArray(parsed?.attachments) ? parsed.attachments : [];
+        return attachments.some((a: any) => a?.type === "snapshot_png");
+      } catch {
+        return false;
+      }
+    })();
+    if (templateHasSnapshot && !snapshotSymbol.trim()) {
+      toast.error("Select a snapshot symbol for this template.");
       return;
     }
 
@@ -524,6 +543,43 @@ export function DiscordGuildAutomationPage({
                     />
                   </div>
                 </div>
+
+                {(() => {
+                  const selectedTemplate = (templatesForAutomation ?? []).find((t) => t._id === templateId);
+                  const templateJson = typeof selectedTemplate?.templateJson === "string" ? selectedTemplate.templateJson : "";
+                  let hasSnapshot = false;
+                  try {
+                    const parsed = templateJson ? (JSON.parse(templateJson) as any) : null;
+                    const attachments = Array.isArray(parsed?.attachments) ? parsed.attachments : [];
+                    hasSnapshot = attachments.some((a: any) => a?.type === "snapshot_png");
+                  } catch {
+                    hasSnapshot = false;
+                  }
+
+                  if (!hasSnapshot) return null;
+                  return (
+                    <div className="space-y-2">
+                      <Label>Snapshot symbol</Label>
+                      <Select value={snapshotSymbol} onValueChange={(v) => setSnapshotSymbol(v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a symbol..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(symbolOptions ?? []).map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {!symbolOptions?.length ? (
+                        <div className="text-muted-foreground text-xs">
+                          No symbol options available yet. This list comes from the host app.
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })()}
 
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-muted-foreground text-xs">

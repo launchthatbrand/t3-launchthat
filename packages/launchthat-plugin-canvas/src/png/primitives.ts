@@ -21,10 +21,35 @@ export const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
 export const setPixel = (img: PNG, x: number, y: number, rgba: Rgba) => {
   if (x < 0 || y < 0 || x >= img.width || y >= img.height) return;
   const idx = (img.width * y + x) << 2;
-  img.data[idx] = rgba.r;
-  img.data[idx + 1] = rgba.g;
-  img.data[idx + 2] = rgba.b;
-  img.data[idx + 3] = rgba.a;
+  const srcA = Math.max(0, Math.min(255, rgba.a));
+  if (srcA >= 255) {
+    img.data[idx] = rgba.r;
+    img.data[idx + 1] = rgba.g;
+    img.data[idx + 2] = rgba.b;
+    img.data[idx + 3] = 255;
+    return;
+  }
+  if (srcA <= 0) return;
+
+  // Alpha blend src over dst.
+  const dstR = img.data[idx] ?? 0;
+  const dstG = img.data[idx + 1] ?? 0;
+  const dstB = img.data[idx + 2] ?? 0;
+  const dstA = img.data[idx + 3] ?? 0;
+
+  const aS = srcA / 255;
+  const aD = dstA / 255;
+  const outA = aS + aD * (1 - aS);
+  if (outA <= 0) return;
+
+  const outR = (rgba.r * aS + dstR * aD * (1 - aS)) / outA;
+  const outG = (rgba.g * aS + dstG * aD * (1 - aS)) / outA;
+  const outB = (rgba.b * aS + dstB * aD * (1 - aS)) / outA;
+
+  img.data[idx] = Math.round(outR);
+  img.data[idx + 1] = Math.round(outG);
+  img.data[idx + 2] = Math.round(outB);
+  img.data[idx + 3] = Math.round(outA * 255);
 };
 
 export const fillRect = (img: PNG, x: number, y: number, w: number, h: number, rgba: Rgba) => {
@@ -91,6 +116,37 @@ export const fillCircle = (img: PNG, cx: number, cy: number, r: number, rgba: Rg
     for (let x = -xxSpan; x <= xxSpan; x++) {
       setPixel(img, cx + x, yy, rgba);
     }
+  }
+};
+
+export const fillTriangle = (
+  img: PNG,
+  p0: { x: number; y: number },
+  p1: { x: number; y: number },
+  p2: { x: number; y: number },
+  rgba: Rgba,
+) => {
+  // Sort by y (p0.y <= p1.y <= p2.y)
+  const pts = [p0, p1, p2].sort((a, b) => a.y - b.y);
+  const a = pts[0]!;
+  const b = pts[1]!;
+  const c = pts[2]!;
+
+  const edgeInterp = (y: number, pa: { x: number; y: number }, pb: { x: number; y: number }) => {
+    if (pb.y === pa.y) return pa.x;
+    const t = (y - pa.y) / (pb.y - pa.y);
+    return pa.x + (pb.x - pa.x) * t;
+  };
+
+  const yStart = Math.ceil(a.y);
+  const yEnd = Math.floor(c.y);
+  for (let y = yStart; y <= yEnd; y++) {
+    const xAC = edgeInterp(y, a, c);
+    const isUpper = y < b.y;
+    const xOther = isUpper ? edgeInterp(y, a, b) : edgeInterp(y, b, c);
+    const x0 = Math.ceil(Math.min(xAC, xOther));
+    const x1 = Math.floor(Math.max(xAC, xOther));
+    for (let x = x0; x <= x1; x++) setPixel(img, x, y, rgba);
   }
 };
 

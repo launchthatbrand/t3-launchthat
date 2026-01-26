@@ -261,12 +261,148 @@ export const sendTestDiscordMessage = action({
   },
 });
 
+const buildTemplatePreview = async (
+  ctx: any,
+  args: {
+    organizationId?: string;
+    templateId?: string;
+    template?: string;
+    templateJson?: string;
+    values: Record<string, string>;
+    snapshotSymbol?: string;
+  },
+): Promise<{
+  content: string;
+  imageBase64?: string;
+  contentType?: string;
+  filename?: string;
+}> => {
+  const organizationId =
+    typeof args.organizationId === "string" && args.organizationId.trim()
+      ? args.organizationId.trim()
+      : resolveOrganizationId();
+  const templateId = String(args.templateId ?? "").trim();
+
+  let template = typeof args.template === "string" ? args.template : "";
+  let templateJson = typeof args.templateJson === "string" ? args.templateJson : "";
+
+  if (!template && templateId) {
+    const row = await ctx.runQuery(
+      components.launchthat_discord.templates.queries.getTemplateById as any,
+      { organizationId, templateId },
+    );
+    template = typeof (row as any)?.template === "string" ? String((row as any).template) : "";
+    templateJson =
+      typeof (row as any)?.templateJson === "string" ? String((row as any).templateJson) : "";
+  }
+
+  if (!template) throw new Error("Missing template/templateId");
+  const values = args.values ?? {};
+  const content = template.replace(/\{\{(\w+)\}\}/g, (_, key) => values[key] ?? "");
+
+  // Parse templateJson snapshot config (if present).
+  let snapshotCfg: any = null;
+  try {
+    const parsed = templateJson ? JSON.parse(templateJson) : null;
+    const attachments = Array.isArray(parsed?.attachments) ? parsed.attachments : [];
+    snapshotCfg = attachments.find((a: any) => a?.type === "snapshot_png") ?? null;
+  } catch {
+    snapshotCfg = null;
+  }
+
+  if (!snapshotCfg) return { content };
+
+  const symbol =
+    typeof args.snapshotSymbol === "string" && args.snapshotSymbol.trim()
+      ? args.snapshotSymbol.trim().toUpperCase()
+      : typeof values.symbol === "string" && values.symbol.trim()
+        ? values.symbol.trim().toUpperCase()
+        : "BTCUSD";
+
+  const lookbackDaysRaw = Number(snapshotCfg?.params?.lookbackDays ?? 3);
+  const lookbackDays = Math.max(1, Math.min(30, Math.floor(lookbackDaysRaw)));
+  const showSentimentBadge =
+    typeof snapshotCfg?.params?.showSentimentBadge === "boolean"
+      ? snapshotCfg.params.showSentimentBadge
+      : true;
+  const themeModeRaw =
+    typeof snapshotCfg?.params?.themeMode === "string"
+      ? String(snapshotCfg.params.themeMode).trim().toLowerCase()
+      : "";
+  const themeMode =
+    themeModeRaw === "light"
+      ? "light"
+      : themeModeRaw === "custom"
+        ? "custom"
+        : "dark";
+  const bgColorRaw =
+    typeof snapshotCfg?.params?.bgColor === "string"
+      ? String(snapshotCfg.params.bgColor).trim()
+      : "";
+  const gridOpacityRaw = Number(snapshotCfg?.params?.gridOpacity ?? NaN);
+  const gridOpacity =
+    Number.isFinite(gridOpacityRaw) ? Math.max(0, Math.min(0.25, gridOpacityRaw)) : undefined;
+  const gridColorRaw =
+    typeof snapshotCfg?.params?.gridColor === "string"
+      ? String(snapshotCfg.params.gridColor).trim()
+      : "";
+  const candleSpacingRaw = Number(snapshotCfg?.params?.candleSpacingPct ?? NaN);
+  const candleSpacingPct =
+    Number.isFinite(candleSpacingRaw)
+      ? Math.max(0, Math.min(80, Math.round(candleSpacingRaw)))
+      : undefined;
+  const candleUpColorRaw =
+    typeof snapshotCfg?.params?.candleUpColor === "string"
+      ? String(snapshotCfg.params.candleUpColor).trim()
+      : "";
+  const candleDownColorRaw =
+    typeof snapshotCfg?.params?.candleDownColor === "string"
+      ? String(snapshotCfg.params.candleDownColor).trim()
+      : "";
+  const tradeIndicatorShapeRaw =
+    typeof snapshotCfg?.params?.tradeIndicatorShape === "string"
+      ? String(snapshotCfg.params.tradeIndicatorShape).trim().toLowerCase()
+      : "";
+  const tradeIndicatorShape = tradeIndicatorShapeRaw === "triangle" ? "triangle" : "circle";
+
+  const preview = await buildSnapshotPreview(ctx, {
+    organizationId,
+    symbol,
+    lookbackDays,
+    showSentimentBadge,
+    themeMode,
+    bgColor: bgColorRaw || undefined,
+    gridOpacity,
+    gridColor: gridColorRaw || undefined,
+    candleSpacingPct,
+    candleUpColor: candleUpColorRaw || undefined,
+    candleDownColor: candleDownColorRaw || undefined,
+    tradeIndicatorShape,
+    maxUsers: 200,
+    useMockData: true,
+  });
+
+  const base64 =
+    typeof (preview as any)?.base64 === "string" ? (preview as any).base64 : undefined;
+  const contentType =
+    typeof (preview as any)?.contentType === "string"
+      ? (preview as any).contentType
+      : "image/png";
+  const filename =
+    typeof (preview as any)?.filename === "string"
+      ? (preview as any).filename
+      : `${symbol}-snapshot.png`;
+
+  return { content, imageBase64: base64, contentType, filename };
+};
+
 export const previewTemplate = action({
   args: {
     organizationId: v.optional(v.string()),
-    templateId: v.string(),
+    templateId: v.optional(v.string()),
+    template: v.optional(v.string()),
+    templateJson: v.optional(v.string()),
     values: v.record(v.string(), v.string()),
-    includeSnapshot: v.optional(v.boolean()),
     snapshotSymbol: v.optional(v.string()),
   },
   returns: v.object({
@@ -277,52 +413,14 @@ export const previewTemplate = action({
   }),
   handler: async (ctx, args) => {
     await resolveViewerUserId(ctx);
-
-    const organizationId =
-      typeof args.organizationId === "string" && args.organizationId.trim()
-        ? args.organizationId.trim()
-        : resolveOrganizationId();
-    const templateId = String(args.templateId ?? "").trim();
-    if (!templateId) throw new Error("Missing templateId");
-
-    const row = await ctx.runQuery(
-      components.launchthat_discord.templates.queries.getTemplateById as any,
-      { organizationId, templateId },
-    );
-    const template = typeof (row as any)?.template === "string" ? String((row as any).template) : "";
-    const values = args.values ?? {};
-    const content = template.replace(/\{\{(\w+)\}\}/g, (_, key) => values[key] ?? "");
-
-    if (!args.includeSnapshot) {
-      return { content };
-    }
-
-    const symbol =
-      typeof args.snapshotSymbol === "string" && args.snapshotSymbol.trim()
-        ? args.snapshotSymbol.trim().toUpperCase()
-        : typeof values.symbol === "string" && values.symbol.trim()
-          ? values.symbol.trim().toUpperCase()
-          : "BTCUSD";
-
-    const preview = await buildSnapshotPreview(ctx, {
-      organizationId,
-      symbol,
-      lookbackDays: 3,
-      maxUsers: 200,
+    return await buildTemplatePreview(ctx, {
+      organizationId: args.organizationId,
+      templateId: args.templateId,
+      template: args.template,
+      templateJson: args.templateJson,
+      values: args.values,
+      snapshotSymbol: args.snapshotSymbol,
     });
-
-    const base64 =
-      typeof (preview as any)?.base64 === "string" ? (preview as any).base64 : undefined;
-    const contentType =
-      typeof (preview as any)?.contentType === "string"
-        ? (preview as any).contentType
-        : "image/png";
-    const filename =
-      typeof (preview as any)?.filename === "string"
-        ? (preview as any).filename
-        : `${symbol}-snapshot.png`;
-
-    return { content, imageBase64: base64, contentType, filename };
   },
 });
 
@@ -331,9 +429,11 @@ export const sendTemplateTest = action({
     organizationId: v.optional(v.string()),
     guildId: v.string(),
     channelId: v.string(),
-    templateId: v.string(),
+    templateId: v.optional(v.string()),
+    template: v.optional(v.string()),
+    templateJson: v.optional(v.string()),
     values: v.record(v.string(), v.string()),
-    includeSnapshot: v.optional(v.boolean()),
+    snapshotSymbol: v.optional(v.string()),
   },
   returns: v.object({
     ok: v.boolean(),
@@ -352,13 +452,15 @@ export const sendTemplateTest = action({
     const templateId = String(args.templateId ?? "").trim();
     if (!guildId) throw new Error("Missing guildId");
     if (!channelId) throw new Error("Missing channelId");
-    if (!templateId) throw new Error("Missing templateId");
+    if (!templateId && typeof args.template !== "string") throw new Error("Missing templateId");
 
-    const preview = await ctx.runAction(previewTemplate as any, {
+    const preview = await buildTemplatePreview(ctx, {
       organizationId,
-      templateId,
+      templateId: templateId || undefined,
+      template: typeof args.template === "string" ? args.template : undefined,
+      templateJson: typeof args.templateJson === "string" ? args.templateJson : undefined,
       values: args.values,
-      includeSnapshot: args.includeSnapshot,
+      snapshotSymbol: args.snapshotSymbol,
     });
 
     const content = typeof (preview as any)?.content === "string" ? (preview as any).content : "";
@@ -394,7 +496,7 @@ export const sendTemplateTest = action({
     const botToken = String((creds as any)?.botToken ?? "").trim();
     if (!botToken) throw new Error("Missing Discord bot token");
 
-    const res = args.includeSnapshot && imageBase64
+    const res = imageBase64
       ? await discordMultipart({
           botToken,
           method: "POST",
