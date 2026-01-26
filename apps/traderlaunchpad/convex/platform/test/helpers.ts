@@ -11,24 +11,22 @@
 import { discordJson, discordMultipart } from "launchthat-plugin-discord/runtime/discordApi";
 
 import { PNG } from "pngjs";
-import { action } from "../_generated/server";
-import { env } from "../../src/env";
+import { env } from "../../../src/env";
 import { resolveOrgBotToken } from "launchthat-plugin-discord/runtime/credentials";
-import { v } from "convex/values";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
 // Avoid typed imports here (can cause TS deep instantiation errors).
-const components: any = require("../_generated/api").components;
-const api: any = require("../_generated/api").api;
-const internal: any = require("../_generated/api").internal;
+const components: any = require("../../_generated/api").components;
+const api: any = require("../../_generated/api").api;
+const internal: any = require("../../_generated/api").internal;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_SNAPSHOT_LOOKBACK_DAYS = 3;
 const isFiniteNumber = (n: unknown): n is number =>
   typeof n === "number" && Number.isFinite(n);
 
-const requirePlatformAdmin = async (ctx: any) => {
+export const requirePlatformAdmin = async (ctx: any) => {
   await ctx.runQuery(internal.platform.testsAuth.assertPlatformAdmin, {});
 };
 
@@ -40,11 +38,11 @@ const resolveOrgBotTokenForOrg = async (ctx: any, organizationId: string): Promi
     { organizationId },
   )) as
     | {
-      enabled: boolean;
-      botMode: "global" | "custom";
-      customBotTokenEncrypted?: string;
-      botTokenEncrypted?: string;
-    }
+        enabled: boolean;
+        botMode: "global" | "custom";
+        customBotTokenEncrypted?: string;
+        botTokenEncrypted?: string;
+      }
     | null;
 
   if (!orgSecrets?.enabled) {
@@ -64,7 +62,7 @@ const resolveOrgBotTokenForOrg = async (ctx: any, organizationId: string): Promi
  * Platform test helper: resolve a bot token even if the org hasn't explicitly enabled Discord yet.
  * This is safe because `/platform/tests` is platform-admin only.
  */
-const resolveOrgBotTokenForOrgPlatformTest = async (
+export const resolveOrgBotTokenForOrgPlatformTest = async (
   ctx: any,
   organizationId: string,
 ): Promise<string> => {
@@ -937,7 +935,7 @@ const renderSnapshotPng = (args: {
   }
 
   // Current price guide (red dashed line, ~50% opacity)
-  const currentPrice = bars.length > 0 ? (bars[bars.length - 1]?.c ?? NaN) : NaN;
+  const currentPrice = bars.length > 0 ? bars[bars.length - 1]!.c : NaN;
   if (Number.isFinite(currentPrice)) {
     const y = Math.round(yForPrice(currentPrice));
     const red = { r: 239, g: 68, b: 68, a: 128 };
@@ -1039,8 +1037,7 @@ const renderSnapshotPng = (args: {
   if (!drewWithCanvas) {
     // Fallback: bitmap text (blocky, but better than nothing)
     for (const op of textOps) {
-    const scale =
-      op.font.sizePx >= s(24) ? 3 * s(1) : op.font.sizePx >= s(14) ? 2 * s(1) : 2 * s(1);
+      const scale = op.font.sizePx >= s(24) ? 3 * s(1) : op.font.sizePx >= s(14) ? 2 * s(1) : 2 * s(1);
       const txt = String(op.text).toUpperCase();
       if (op.shadow) {
         drawText5x7({
@@ -1068,7 +1065,7 @@ const renderSnapshotPng = (args: {
   return PNG.sync.write(img);
 };
 
-const buildSnapshotPreview = async (ctx: any, args: any) => {
+export const buildSnapshotPreview = async (ctx: any, args: any) => {
   const symbol = normalizeSymbol(String(args?.symbol ?? ""));
   const requestedOrgId = coerceString(args?.organizationId);
   const maxUsersRaw = Number(args?.maxUsers ?? 100);
@@ -1299,7 +1296,7 @@ const coerceDiscordMessageId = (json: unknown): string => {
   return typeof id === "string" ? id.trim() : "";
 };
 
-const runSendSnapshotToDiscord = async (ctx: any, args: any) => {
+export const runSendSnapshotToDiscord = async (ctx: any, args: any) => {
   const guildId = coerceString(args?.guildId);
   const channelId = coerceString(args?.channelId);
   const symbol = normalizeSymbol(String(args?.symbol ?? ""));
@@ -1422,7 +1419,7 @@ const runSendSnapshotToDiscord = async (ctx: any, args: any) => {
   };
 };
 
-const previewSendEmail = (args: any) => {
+export const previewSendEmail = (args: any) => {
   const toEmail = coerceString(args?.toEmail).toLowerCase();
   const subject = coerceString(args?.subject);
   const body = typeof args?.body === "string" ? args.body : String(args?.body ?? "");
@@ -1443,7 +1440,7 @@ const previewSendEmail = (args: any) => {
   };
 };
 
-const runSendEmail = async (ctx: any, args: any) => {
+export const runSendEmail = async (ctx: any, args: any) => {
   const toEmail = coerceString(args?.toEmail).toLowerCase();
   const subject = coerceString(args?.subject);
   const body = typeof args?.body === "string" ? args.body : String(args?.body ?? "");
@@ -1477,7 +1474,7 @@ const runSendEmail = async (ctx: any, args: any) => {
   };
 };
 
-const previewDiscordBroadcast = async (ctx: any, args: any) => {
+export const previewDiscordBroadcast = async (ctx: any, args: any) => {
   const organizationId = coerceString(args?.organizationId);
   const message = typeof args?.message === "string" ? args.message : String(args?.message ?? "");
   if (!organizationId || !message.trim()) {
@@ -1531,7 +1528,7 @@ const previewDiscordBroadcast = async (ctx: any, args: any) => {
   };
 };
 
-const runDiscordBroadcast = async (ctx: any, args: any) => {
+export const runDiscordBroadcast = async (ctx: any, args: any) => {
   const organizationId = coerceString(args?.organizationId);
   const message = typeof args?.message === "string" ? args.message : String(args?.message ?? "");
   const content = message.trim();
@@ -1611,155 +1608,85 @@ const runDiscordBroadcast = async (ctx: any, args: any) => {
   return { kind: "logs", logs, data: { sends } };
 };
 
-export const fetchDiscordGuildChannelsForPlatformTests = action({
-  args: {
-    guildId: v.string(),
-  },
-  returns: v.object({
-    ok: v.boolean(),
-    guildId: v.string(),
-    organizationId: v.optional(v.string()),
-    guildName: v.optional(v.string()),
-    channels: v.array(
-      v.object({
-        id: v.string(),
-        name: v.string(),
-        type: v.number(),
-      }),
-    ),
-    error: v.optional(v.string()),
-  }),
-  handler: async (ctx, args) => {
-    await requirePlatformAdmin(ctx);
-    const guildId = coerceString(args.guildId);
-    if (!guildId) {
-      return { ok: false, guildId: "", channels: [], error: "Missing guildId." };
-    }
+export const fetchDiscordGuildChannelsForPlatformTestsImpl = async (ctx: any, args: { guildId: string }) => {
+  await requirePlatformAdmin(ctx);
+  const guildId = coerceString(args.guildId);
+  if (!guildId) {
+    return { ok: false, guildId: "", channels: [], error: "Missing guildId." };
+  }
 
-    const guildConn = await ctx.runQuery(
-      components.launchthat_discord.guildConnections.queries.getGuildConnectionByGuildId,
-      { guildId },
-    );
-    const organizationId =
-      guildConn && typeof guildConn.organizationId === "string"
-        ? String(guildConn.organizationId).trim()
-        : "";
-    const guildName =
-      guildConn && typeof guildConn.guildName === "string"
-        ? String(guildConn.guildName).trim()
-        : "";
+  const guildConn = await ctx.runQuery(
+    components.launchthat_discord.guildConnections.queries.getGuildConnectionByGuildId,
+    { guildId },
+  );
+  const organizationId =
+    guildConn && typeof guildConn.organizationId === "string"
+      ? String(guildConn.organizationId).trim()
+      : "";
+  const guildName =
+    guildConn && typeof guildConn.guildName === "string"
+      ? String(guildConn.guildName).trim()
+      : "";
 
-    if (!organizationId) {
-      return {
-        ok: false,
-        guildId,
-        channels: [],
-        error: "Guild is not connected (no organizationId found).",
-      };
-    }
-
-    let botToken = "";
-    try {
-      botToken = await resolveOrgBotTokenForOrgPlatformTest(ctx, organizationId);
-    } catch (e) {
-      return {
-        ok: false,
-        guildId,
-        organizationId,
-        guildName: guildName || undefined,
-        channels: [],
-        error: e instanceof Error ? e.message : String(e),
-      };
-    }
-
-    const url = `https://discord.com/api/v10/guilds/${encodeURIComponent(guildId)}/channels`;
-    const httpRes = await fetch(url, {
-      method: "GET",
-      headers: { Authorization: `Bot ${botToken}` },
-    });
-    if (!httpRes.ok) {
-      const text = await httpRes.text().catch(() => "");
-      return {
-        ok: false,
-        guildId,
-        organizationId,
-        guildName: guildName || undefined,
-        channels: [],
-        error: `Discord API failed: ${httpRes.status} ${text.slice(0, 400)}`,
-      };
-    }
-
-    const json: any = await httpRes.json().catch(() => null);
-    const list = Array.isArray(json) ? json : [];
-    // Keep it simple for the test UI: text + announcement channels only.
-    const allowedTypes = new Set<number>([0, 5]);
-    const channels = list
-      .map((c) => ({
-        id: typeof c?.id === "string" ? String(c.id) : "",
-        name: typeof c?.name === "string" ? String(c.name) : "",
-        type: typeof c?.type === "number" ? Number(c.type) : -1,
-      }))
-      .filter((c) => c.id && c.name && allowedTypes.has(c.type))
-      .sort((a, b) => a.name.localeCompare(b.name));
-
+  if (!organizationId) {
     return {
-      ok: true,
+      ok: false,
+      guildId,
+      channels: [],
+      error: "Guild is not connected (no organizationId found).",
+    };
+  }
+
+  let botToken = "";
+  try {
+    botToken = await resolveOrgBotTokenForOrgPlatformTest(ctx, organizationId);
+  } catch (e) {
+    return {
+      ok: false,
       guildId,
       organizationId,
       guildName: guildName || undefined,
-      channels,
+      channels: [],
+      error: e instanceof Error ? e.message : String(e),
     };
-  },
-});
+  }
 
-export const previewTest = action({
-  args: {
-    testId: v.string(),
-    params: v.any(),
-  },
-  returns: v.any(),
-  handler: async (ctx, args) => {
-    await requirePlatformAdmin(ctx);
-    if (args.testId === "png.snapshot.preview") {
-      return await buildSnapshotPreview(ctx, args.params);
-    }
-    if (args.testId === "png.snapshot.send_discord") {
-      return await buildSnapshotPreview(ctx, args.params);
-    }
-    if (args.testId === "email.send") {
-      return previewSendEmail(args.params);
-    }
-    if (args.testId === "discord.broadcast") {
-      return await previewDiscordBroadcast(ctx, args.params);
-    }
+  const url = `https://discord.com/api/v10/guilds/${encodeURIComponent(guildId)}/channels`;
+  const httpRes = await fetch(url, {
+    method: "GET",
+    headers: { Authorization: `Bot ${botToken}` },
+  });
+  if (!httpRes.ok) {
+    const text = await httpRes.text().catch(() => "");
+    return {
+      ok: false,
+      guildId,
+      organizationId,
+      guildName: guildName || undefined,
+      channels: [],
+      error: `Discord API failed: ${httpRes.status} ${text.slice(0, 400)}`,
+    };
+  }
 
-    return { kind: "logs", logs: [`previewTest not implemented for ${args.testId}`] };
-  },
-});
+  const json: any = await httpRes.json().catch(() => null);
+  const list = Array.isArray(json) ? json : [];
+  // Keep it simple for the test UI: text + announcement channels only.
+  const allowedTypes = new Set<number>([0, 5]);
+  const channels = list
+    .map((c) => ({
+      id: typeof c?.id === "string" ? String(c.id) : "",
+      name: typeof c?.name === "string" ? String(c.name) : "",
+      type: typeof c?.type === "number" ? Number(c.type) : -1,
+    }))
+    .filter((c) => c.id && c.name && allowedTypes.has(c.type))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
-export const runTest = action({
-  args: {
-    testId: v.string(),
-    params: v.any(),
-  },
-  returns: v.any(),
-  handler: async (ctx, args) => {
-    await requirePlatformAdmin(ctx);
-    if (args.testId === "png.snapshot.preview") {
-      // "Run" does not have side-effects for this test; mirror preview.
-      return await buildSnapshotPreview(ctx, args.params);
-    }
-    if (args.testId === "png.snapshot.send_discord") {
-      return await runSendSnapshotToDiscord(ctx, args.params);
-    }
-    if (args.testId === "email.send") {
-      return await runSendEmail(ctx, args.params);
-    }
-    if (args.testId === "discord.broadcast") {
-      return await runDiscordBroadcast(ctx, args.params);
-    }
-
-    return { kind: "logs", logs: [`runTest not implemented for ${args.testId}`] };
-  },
-});
+  return {
+    ok: true,
+    guildId,
+    organizationId,
+    guildName: guildName || undefined,
+    channels,
+  };
+};
 

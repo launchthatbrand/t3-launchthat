@@ -93,7 +93,8 @@ const useBlobUrl = (base64: string | null, contentType: string | null) => {
     }
 
     const u8 = base64ToUint8Array(base64);
-    const blob = new Blob([u8], { type: contentType });
+    const ab = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer;
+    const blob = new Blob([ab], { type: contentType });
     const next = URL.createObjectURL(blob);
     setUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
@@ -108,8 +109,8 @@ const useBlobUrl = (base64: string | null, contentType: string | null) => {
 };
 
 export const PlatformTestsClient = () => {
-  const previewTest = useAction(api.platform.tests.previewTest);
-  const runTest = useAction(api.platform.tests.runTest);
+  const previewTest = useAction(api.platform.test.mutations.previewTest);
+  const runTest = useAction(api.platform.test.mutations.runTest);
 
   const [search, setSearch] = React.useState("");
   const [activeCategory, setActiveCategory] = React.useState<string>("All");
@@ -301,11 +302,11 @@ const TestRunner = (props: {
   onRun: (params: any) => Promise<void>;
 }) => {
   const guilds = useQuery(
-    api.platform.testsQueries.listDiscordGuildsForPlatformTests,
+    api.platform.test.queries.listDiscordGuildsForPlatformTests,
     props.testId === "png.snapshot.send_discord" ? {} : "skip",
   );
   const fetchGuildChannels = useAction(
-    api.platform.tests.fetchDiscordGuildChannelsForPlatformTests,
+    api.platform.test.mutations.fetchDiscordGuildChannelsForPlatformTests,
   );
 
   const form = useForm({
