@@ -758,6 +758,44 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="relative animate-in fade-in space-y-8 text-foreground selection:bg-orange-500/30 duration-500">
+      {!isDismissed && !onboarding.isComplete ? (
+        <div className="rounded-2xl border border-orange-500/20 bg-white/80 px-4 py-2 text-foreground backdrop-blur-md dark:bg-black/45 dark:text-white">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-xs font-semibold text-foreground dark:text-white">
+                Finish setup
+              </div>
+              <div className="text-[11px] text-muted-foreground dark:text-white/60 tabular-nums">
+                {onboarding.completedSteps}/{onboarding.totalSteps} completed
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/40 bg-white/70 text-foreground/70 hover:bg-white hover:text-foreground dark:border-white/10 dark:bg-black/40 dark:text-white/70 dark:hover:bg-white/5 dark:hover:text-white"
+                onClick={handleDismiss}
+                aria-label="Dismiss setup prompt"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <Link
+                href={onboarding.nextStepHref ?? "/admin/onboarding/connect"}
+                className="rounded-full bg-orange-600 px-3 py-1 text-[11px] font-medium text-white hover:bg-orange-700"
+              >
+                Continue
+              </Link>
+            </div>
+          </div>
+          <div className="mt-2">
+            <Progress
+              value={Math.round(
+                (onboarding.completedSteps / onboarding.totalSteps) * 100,
+              )}
+              className="h-1.5"
+            />
+          </div>
+        </div>
+      ) : null}
       <PublicProfileHeader
         coverUrl={viewerProfile?.coverUrl ?? null}
         avatarUrl={viewerProfile?.avatarUrl ?? null}
@@ -779,47 +817,17 @@ export default function AdminDashboardPage() {
             ? viewerProfile.bio
             : "Your performance, insights, and reviews — synced with your trading calendar."
         }
-        topRightExtra={
-          !isDismissed && !onboarding.isComplete ? (
-            <div className="w-[220px] rounded-2xl border border-orange-500/20 bg-white/80 p-2 text-left text-foreground backdrop-blur-md dark:bg-black/45 dark:text-white">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold text-foreground dark:text-white">
-                    Finish setup
-                  </div>
-                  <div className="text-[11px] text-muted-foreground dark:text-white/60 tabular-nums">
-                    {onboarding.completedSteps}/{onboarding.totalSteps} completed
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/40 bg-white/70 text-foreground/70 hover:bg-white hover:text-foreground dark:border-white/10 dark:bg-black/40 dark:text-white/70 dark:hover:bg-white/5 dark:hover:text-white"
-                    onClick={handleDismiss}
-                    aria-label="Dismiss setup prompt"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                  <Link
-                    href={onboarding.nextStepHref ?? "/admin/onboarding/connect"}
-                    className="rounded-full bg-orange-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-orange-700"
-                  >
-                    Continue
-                  </Link>
-                </div>
-              </div>
-              <div className="mt-2">
-                <Progress
-                  value={Math.round(
-                    (onboarding.completedSteps / onboarding.totalSteps) * 100,
-                  )}
-                  className="h-1.5"
-                />
-              </div>
-            </div>
-          ) : null
+        topRightExtra={null}
+        actions={
+          <Button
+            className="gap-2 border-0 bg-orange-600 text-white hover:bg-orange-700"
+            onClick={() => void handleSyncAccount()}
+            disabled={syncingNow}
+          >
+            <Activity className="h-4 w-4" />
+            {syncingNow ? "Syncing..." : "Sync Account"}
+          </Button>
         }
-        actions={<></>}
       />
 
       {isOrgMode ? (
