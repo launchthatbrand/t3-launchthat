@@ -29,6 +29,28 @@ const discordUserLinksMutations =
 const discordUserStreamingMutations =
   components.launchthat_discord.userStreaming.mutations as any;
 
+const computeConsensusLabel = (clusters: any[]): "BUY" | "SELL" | "MIXED" => {
+  let longCount = 0;
+  let shortCount = 0;
+  for (const c of Array.isArray(clusters) ? clusters : []) {
+    const direction = c?.direction === "short" || c?.direction === "mixed" ? c.direction : "long";
+    const n = typeof c?.count === "number" && c.count > 0 ? c.count : 1;
+    if (direction === "short") shortCount += n;
+    else longCount += n;
+  }
+  if (longCount === shortCount) return "MIXED";
+  return longCount > shortCount ? "BUY" : "SELL";
+};
+
+const safeJsonParse = (raw: unknown): unknown => {
+  if (typeof raw !== "string" || !raw.trim()) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
 const randomState = (): string => {
   const c: any = (globalThis as any).crypto;
   if (c?.randomUUID) return String(c.randomUUID());
@@ -562,6 +584,74 @@ export const sendTemplateTest = action({
     }
     const messageId = typeof (res.json as any)?.id === "string" ? String((res.json as any).id) : null;
     return { ok: true, channelId, messageId };
+  },
+});
+
+export const runAutomationDryRun = action({
+  args: {
+    organizationId: v.optional(v.string()),
+    templateId: v.string(),
+    contextProviderKey: v.optional(v.string()),
+    contextProviderParams: v.optional(v.string()),
+    snapshotSymbol: v.optional(v.string()),
+  },
+  returns: v.object({
+    content: v.string(),
+    imageBase64: v.optional(v.string()),
+    contentType: v.optional(v.string()),
+    filename: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    await resolveViewerUserId(ctx);
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+
+    const providerKey =
+      typeof args.contextProviderKey === "string" ? args.contextProviderKey.trim() : "";
+    const paramsRaw = safeJsonParse(args.contextProviderParams);
+    const params =
+      typeof paramsRaw === "object" && paramsRaw !== null ? (paramsRaw as any) : {};
+
+    let values: Record<string, string> = {};
+    let snapshotSymbol: string | undefined =
+      typeof args.snapshotSymbol === "string" && args.snapshotSymbol.trim()
+        ? args.snapshotSymbol.trim().toUpperCase()
+        : undefined;
+
+    if (providerKey === "traderlaunchpad.hourlyTradeSummary") {
+      const symbol =
+        typeof params?.symbol === "string" && params.symbol.trim()
+          ? params.symbol.trim().toUpperCase()
+          : "BTCUSD";
+      const res = await ctx.runQuery((api as any).traderlaunchpad.queries.getOrgOpenPositionsForSymbol, {
+        organizationId,
+        symbol,
+        maxUsers: 500,
+      });
+      const clusters = Array.isArray(res?.clusters) ? res.clusters : [];
+      const openPositions = typeof res?.openPositions === "number" ? res.openPositions : 0;
+      const usersAllowed = typeof res?.usersAllowed === "number" ? res.usersAllowed : 0;
+      const sentiment = computeConsensusLabel(clusters);
+      values = {
+        symbol,
+        openPositions: String(openPositions),
+        usersAllowed: String(usersAllowed),
+        sentiment,
+        now: `<t:${Math.floor(Date.now() / 1000)}:f>`,
+      };
+      snapshotSymbol = snapshotSymbol ?? symbol;
+    } else {
+      values = { now: `<t:${Math.floor(Date.now() / 1000)}:f>` };
+    }
+
+    return await buildTemplatePreview(ctx, {
+      organizationId,
+      templateId: args.templateId,
+      values,
+      snapshotSymbol,
+    });
   },
 });
 

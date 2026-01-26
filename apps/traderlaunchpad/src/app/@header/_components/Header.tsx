@@ -6,7 +6,7 @@ import React from "react";
 
 import { TraderLaunchpadNavUser } from "~/components/auth/TraderLaunchpadNavUser";
 import { NavItems } from "~/components/ui/resizable-navbar";
-import { ThemeToggleButton } from "@acme/ui/theme";
+import { AnimatedThemeToggler } from "@acme/ui";
 import { AddToHomeScreenHeaderButton } from "launchthat-plugin-pwa/frontend";
 
 export function Header() {
@@ -34,7 +34,7 @@ export function Header() {
   ];
 
   return (
-    <header className="sticky z-50 w-full border-b border-white/10 bg-black/50 backdrop-blur-md">
+    <header className="sticky z-50 w-full border-b border-border/40 bg-background/70 backdrop-blur-md">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
@@ -60,9 +60,9 @@ export function Header() {
         <div className="flex items-center gap-4">
           <AddToHomeScreenHeaderButton
             appName="Trader Launchpad"
-            buttonClassName="text-white hover:text-white"
+            buttonClassName="text-foreground hover:text-foreground"
           />
-          <ThemeToggleButton />
+          <AnimatedThemeToggler />
           {/* Portal parity: tenant hosts derive auth state from /api/me; auth host uses Clerk session */}
           <TraderLaunchpadNavUser />
         </div>

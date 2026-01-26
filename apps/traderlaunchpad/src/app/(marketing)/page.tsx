@@ -79,7 +79,7 @@ export default async function HomePage() {
 
   return (
     <div className="relative min-h-screen text-white selection:bg-orange-500/30">
-      <main className="relative z-10 pt-32">
+      <main className="relative z-10 pt-10">
 
         {/* Hero Section */}
         <section className="relative container mx-auto max-w-7xl px-4 text-center">
@@ -91,10 +91,11 @@ export default async function HomePage() {
               </div>
               <h1 className="mx-auto max-w-5xl text-5xl font-bold tracking-tight md:text-7xl lg:text-8xl">
                 <span className="block leading-none">
-                  <GlassTitle
+                  {/* <GlassTitle
                     text="Mission Control"
                     className="h-[2.05em] -mb-8 w-auto max-w-full align-middle"
-                  />
+                  /> */}
+                  Mission Control
                 </span>
                 <div className="mx-auto mt-2 mb-2 flex items-center justify-center gap-4 md:mt-4 md:mb-4">
                   <div className="h-px w-12 bg-linear-to-r from-transparent to-white/30 md:w-24" />
@@ -156,10 +157,11 @@ export default async function HomePage() {
                     </div>
                     <h1 className="mx-auto max-w-5xl text-5xl font-bold tracking-tight md:text-7xl lg:text-8xl">
                       <span className="block leading-none">
-                        <GlassTitle
+                        {/* <GlassTitle
                           text="Mission Control"
                           className="h-[2.05em] -mb-8 w-auto max-w-full align-middle"
-                        />
+                        /> */}
+                        Mission Control
                       </span>
                       <div className="mx-auto mt-2 mb-2 flex items-center justify-center gap-4 md:mt-4 md:mb-4">
                         <div className="h-px w-12 bg-linear-to-r from-transparent to-white/30 md:w-24" />

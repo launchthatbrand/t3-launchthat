@@ -41,7 +41,17 @@ export default function BrokersArchivePage() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {demoBrokers.map((b) => (
-          <AffiliateCard key={b.id} item={b} />
+          <AffiliateCard
+            key={b.id}
+            item={b}
+            titleHref={`/broker/${b.slug}`}
+            primaryCta={{ label: "Connect Broker", href: "/sign-in" }}
+            secondaryCta={{
+              label: "Join Broker",
+              href: b.affiliateUrl,
+              external: true,
+            }}
+          />
         ))}
       </div>
 

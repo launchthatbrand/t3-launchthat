@@ -97,10 +97,10 @@ export default async function RootLayout(props: {
   }
 
   return (
-    <html lang="en" suppressHydrationWarning className="bg-[#0A0A0A]">
+    <html lang="en" suppressHydrationWarning className="bg-background">
       <body
         className={cn(
-          "bg-[#0A0A0A] text-foreground min-h-screen font-sans antialiased",
+          "bg-background text-foreground min-h-screen font-sans antialiased",
           geistSans.variable,
           geistMono.variable,
         )}
@@ -112,8 +112,8 @@ export default async function RootLayout(props: {
               {/* Animated dotted background: desktop only (mobile can freeze). */}
               {isMobileUa ? null : (
                 <DottedGlowBackground
-                  color="rgba(255, 100, 0, 0.15)"
-                  glowColor="rgba(255, 120, 0, 0.6)"
+                  color="var(--tlp-dot-color)"
+                  glowColor="var(--tlp-dot-glow)"
                   gap={24}
                   radius={1.5}
                   speedMin={0.2}
@@ -129,21 +129,21 @@ export default async function RootLayout(props: {
                     className="absolute top-1/4 left-1/4 h-[340px] w-[340px] -translate-x-1/2 -translate-y-1/2 opacity-60"
                     style={{
                       background:
-                        "radial-gradient(circle at center, rgba(249,115,22,0.22) 0%, rgba(249,115,22,0.0) 62%)",
+                        "radial-gradient(circle at center, rgb(var(--tlp-accent-rgb) / 0.18) 0%, rgb(var(--tlp-accent-rgb) / 0.0) 62%)",
                     }}
                   />
                   <div
                     className="absolute right-0 bottom-0 h-[420px] w-[420px] translate-x-1/3 translate-y-1/3 opacity-55"
                     style={{
                       background:
-                        "radial-gradient(circle at center, rgba(249,115,22,0.16) 0%, rgba(249,115,22,0.0) 65%)",
+                        "radial-gradient(circle at center, rgb(var(--tlp-accent-rgb) / 0.12) 0%, rgb(var(--tlp-accent-rgb) / 0.0) 65%)",
                     }}
                   />
                 </>
               ) : (
                 <>
-                  <div className="absolute top-1/4 left-1/4 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-600/20 blur-[140px]" />
-                  <div className="absolute right-0 bottom-0 h-[720px] w-[720px] translate-x-1/3 translate-y-1/3 rounded-full bg-orange-500/10 blur-[160px]" />
+                  <div className="absolute top-1/4 left-1/4 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[rgb(var(--tlp-accent-rgb)/0.18)] blur-[140px]" />
+                  <div className="absolute right-0 bottom-0 h-[720px] w-[720px] translate-x-1/3 translate-y-1/3 rounded-full bg-[rgb(var(--tlp-accent-rgb)/0.10)] blur-[160px]" />
                 </>
               )}
 
@@ -181,7 +181,10 @@ export default async function RootLayout(props: {
                     y2="100%"
                   >
                     <stop offset="0%" stopColor="rgba(255,255,255,0)" />
-                    <stop offset="50%" stopColor="rgba(249,115,22,0.5)" />
+                    <stop
+                      offset="50%"
+                      stopColor="rgb(var(--tlp-accent-rgb) / 0.45)"
+                    />
                     <stop offset="100%" stopColor="rgba(255,255,255,0)" />
                   </linearGradient>
                 </defs>

@@ -25,7 +25,6 @@ import { TenantProvider } from "~/context/TenantContext";
 import { useConvexAuth } from "convex/react";
 import { ConvexUserEnsurer } from "~/app/ConvexUserEnsurer";
 import { TenantConvexProvider } from "launchthat-plugin-core-tenant/next/components/tenant-convex-provider";
-import { ThemeProvider } from "@acme/ui/theme";
 import { PushNotificationsClient } from "~/components/pwa/PushNotificationsClient";
 
 const convexUrl = String(env.NEXT_PUBLIC_CONVEX_URL ?? "");
@@ -51,38 +50,36 @@ export function Providers({ children, tenant, host }: ProvidersProps) {
     isPlatformHost({ hostOrHostname: host, rootDomain });
 
   return (
-    <ThemeProvider>
-      {shouldUseClerk ? (
-        <ClerkProvider>
-          <ConvexProviderWithClerk client={convexClerk} useAuth={useAuth}>
-            <TenantProvider value={tenant}>
-              <HostProvider host={host}>
-                <ConvexUserEnsurer />
-                <PushNotificationsClient />
-                <DataModeProvider>
-                  <ActiveAccountProvider>
-                    <TraderLaunchpadOnboardingGate>{children}</TraderLaunchpadOnboardingGate>
-                  </ActiveAccountProvider>
-                </DataModeProvider>
-              </HostProvider>
-            </TenantProvider>
-          </ConvexProviderWithClerk>
-        </ClerkProvider>
-      ) : (
-        <TenantProvider value={tenant}>
-          <HostProvider host={host}>
-            <TenantConvexProvider convexUrl={convexUrl} nodeEnv={env.NODE_ENV}>
+    shouldUseClerk ? (
+      <ClerkProvider>
+        <ConvexProviderWithClerk client={convexClerk} useAuth={useAuth}>
+          <TenantProvider value={tenant}>
+            <HostProvider host={host}>
+              <ConvexUserEnsurer />
               <PushNotificationsClient />
               <DataModeProvider>
                 <ActiveAccountProvider>
                   <TraderLaunchpadOnboardingGate>{children}</TraderLaunchpadOnboardingGate>
                 </ActiveAccountProvider>
               </DataModeProvider>
-            </TenantConvexProvider>
-          </HostProvider>
-        </TenantProvider>
-      )}
-    </ThemeProvider>
+            </HostProvider>
+          </TenantProvider>
+        </ConvexProviderWithClerk>
+      </ClerkProvider>
+    ) : (
+      <TenantProvider value={tenant}>
+        <HostProvider host={host}>
+          <TenantConvexProvider convexUrl={convexUrl} nodeEnv={env.NODE_ENV}>
+            <PushNotificationsClient />
+            <DataModeProvider>
+              <ActiveAccountProvider>
+                <TraderLaunchpadOnboardingGate>{children}</TraderLaunchpadOnboardingGate>
+              </ActiveAccountProvider>
+            </DataModeProvider>
+          </TenantConvexProvider>
+        </HostProvider>
+      </TenantProvider>
+    )
   );
 }
 
