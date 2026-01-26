@@ -81,8 +81,8 @@ export default function AdminTradeIdeasPage() {
         accessorKey: "symbol",
         cell: (idea: TradeIdeaCardRow) => (
           <div className="space-y-1">
-            <div className="text-sm font-semibold text-white">{idea.symbol}</div>
-            <div className="text-xs text-white/50">{idea.dateLabel}</div>
+            <div className="text-sm font-semibold text-foreground">{idea.symbol}</div>
+            <div className="text-xs text-muted-foreground">{idea.dateLabel}</div>
           </div>
         ),
         sortable: true,
@@ -100,7 +100,7 @@ export default function AdminTradeIdeasPage() {
                 ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
                 : idea.bias === "short"
                   ? "border-red-500/20 bg-red-500/10 text-red-500"
-                  : "border-white/10 bg-white/5 text-white/70",
+                  : "border-border/60 bg-background/40 text-muted-foreground",
             )}
           >
             {idea.bias === "long" ? "Long" : idea.bias === "short" ? "Short" : "Neutral"}
@@ -113,7 +113,7 @@ export default function AdminTradeIdeasPage() {
         header: "Positions",
         accessorKey: "positionsCount",
         cell: (idea: TradeIdeaCardRow) => (
-          <span className="text-sm text-white/80">{idea.positionsCount}</span>
+          <span className="text-sm text-foreground/80">{idea.positionsCount}</span>
         ),
         sortable: true,
       },
@@ -129,7 +129,7 @@ export default function AdminTradeIdeasPage() {
                 ? "text-emerald-500"
                 : idea.pnl < 0
                   ? "text-red-500"
-                  : "text-white/60",
+                  : "text-muted-foreground",
             )}
           >
             {idea.pnl > 0 ? "+" : ""}
@@ -143,7 +143,9 @@ export default function AdminTradeIdeasPage() {
         header: "Status",
         accessorKey: "status",
         cell: (idea: TradeIdeaCardRow) => (
-          <span className="text-sm text-white/80">{idea.status === "active" ? "Active" : "Closed"}</span>
+          <span className="text-sm text-foreground/80">
+            {idea.status === "active" ? "Active" : "Closed"}
+          </span>
         ),
         sortable: true,
       },
@@ -166,11 +168,11 @@ export default function AdminTradeIdeasPage() {
   );
 
   return (
-    <div className="relative animate-in fade-in space-y-8 text-white selection:bg-orange-500/30 duration-500">
+    <div className="relative animate-in fade-in space-y-8 text-foreground selection:bg-orange-500/30 duration-500">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Trade Ideas</h1>
-          <p className="mt-1 text-white/60">
+          <p className="mt-1 text-muted-foreground">
             Thesis ideas (shareable) that group multiple positions/trades.
           </p>
         </div>
@@ -192,15 +194,15 @@ export default function AdminTradeIdeasPage() {
         entityActions={entityActions}
         getRowId={(idea: TradeIdeaCardRow) => idea.id}
         emptyState={
-          <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-white/15 bg-white/3 p-8 text-white/60">
-            <div className="text-lg font-medium text-white">No trade ideas</div>
-            <div className="mt-1 text-sm text-white/60">
+          <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-border/60 bg-card/50 p-8 text-muted-foreground">
+            <div className="text-lg font-medium text-foreground">No trade ideas</div>
+            <div className="mt-1 text-sm text-muted-foreground">
               Sync trades or create an idea to get started.
             </div>
           </div>
         }
         itemRender={(idea: TradeIdeaCardRow) => (
-          <Card className="group relative overflow-hidden transition-colors hover:border-white/20 hover:bg-white/5">
+          <Card className="group relative overflow-hidden transition-colors hover:border-border/60 hover:bg-card/60">
             <div
               className={cn(
                 "absolute top-0 left-0 h-full w-1",
@@ -221,13 +223,13 @@ export default function AdminTradeIdeasPage() {
                           ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
                           : idea.bias === "short"
                             ? "border-red-500/20 bg-red-500/10 text-red-500"
-                            : "border-white/10 bg-white/5 text-white/70",
+                            : "border-border/60 bg-background/40 text-muted-foreground",
                       )}
                     >
                       {idea.bias === "long" ? "Long" : idea.bias === "short" ? "Short" : "Neutral"}
                     </Badge>
                   </div>
-                  <div className="mt-1 text-xs text-white/50">{idea.dateLabel}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{idea.dateLabel}</div>
                 </div>
               </div>
             </CardHeader>
@@ -235,13 +237,17 @@ export default function AdminTradeIdeasPage() {
             <CardContent className="pb-3 pl-6">
               <div className="flex items-end justify-between">
                 <div className="flex flex-col">
-                  <span className="text-xs font-semibold tracking-wider text-white/50 uppercase">
+                  <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                     Net P&L
                   </span>
                   <span
                     className={cn(
                       "text-xl font-bold",
-                      idea.pnl > 0 ? "text-emerald-500" : idea.pnl < 0 ? "text-red-500" : "text-white/60",
+                      idea.pnl > 0
+                        ? "text-emerald-500"
+                        : idea.pnl < 0
+                          ? "text-red-500"
+                          : "text-muted-foreground",
                     )}
                   >
                     {idea.pnl > 0 ? "+" : ""}
@@ -254,17 +260,17 @@ export default function AdminTradeIdeasPage() {
                   </Badge>
                 ) : null}
               </div>
-              <div className="mt-3 text-xs text-white/50">
+              <div className="mt-3 text-xs text-muted-foreground">
                 {idea.positionsCount} position{idea.positionsCount === 1 ? "" : "s"}
               </div>
             </CardContent>
 
-            <CardFooter className="flex items-center justify-between border-t border-white/10 bg-black/20 pt-3 pb-3 pl-6">
-              <div className="text-xs font-medium text-white/60">
+            <CardFooter className="flex items-center justify-between border-t border-border/40 bg-background/40 pt-3 pb-3 pl-6">
+              <div className="text-xs font-medium text-muted-foreground">
                 {idea.status === "active" ? "Active thesis" : "Closed thesis"}
               </div>
 
-              <Button variant="ghost" size="sm" className="ml-auto h-7 text-xs hover:bg-white/10" asChild>
+              <Button variant="ghost" size="sm" className="ml-auto h-7 text-xs hover:bg-foreground/5" asChild>
                 <Link href={`/admin/tradeideas/${idea.id}`}>
                   Open <ArrowUpRight className="ml-1 h-3 w-3" />
                 </Link>

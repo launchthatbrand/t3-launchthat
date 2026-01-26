@@ -2,9 +2,8 @@
 
 import { Button } from "@acme/ui/button";
 import Link from "next/link";
-import React from "react";
 import { Pencil } from "lucide-react";
-
+import React from "react";
 import { cn } from "~/lib/utils";
 
 export interface PublicProfileTab {
@@ -41,13 +40,13 @@ export function PublicProfileHeader(props: {
   const stats = Array.isArray(props.stats)
     ? props.stats
     : [
-        { label: "Followers", value: "—" },
-        { label: "Following", value: "—" },
-        { label: "Likes", value: "—" },
-      ];
+      { label: "Followers", value: "—" },
+      { label: "Following", value: "—" },
+      { label: "Likes", value: "—" },
+    ];
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/30 backdrop-blur-md">
+    <div className="overflow-hidden rounded-3xl border border-border/20 bg-white/80 backdrop-blur-md dark:bg-black/30">
       <div className="relative">
         <div className="h-32 bg-linear-to-r from-orange-500/25 via-orange-500/10 to-transparent md:h-44" />
         {props.coverUrl ? (
@@ -66,12 +65,12 @@ export function PublicProfileHeader(props: {
             {stats.map((s) => (
               <div
                 key={s.label}
-                className="rounded-2xl border border-white/10 bg-black/40 px-2.5 py-2 text-right backdrop-blur-md lg:px-4 lg:py-3"
+                className="rounded-2xl border border-border/20 bg-white/80 px-2.5 py-2 text-right backdrop-blur-md dark:bg-black/40 lg:px-4 lg:py-3"
               >
-                <div className="text-sm font-semibold tabular-nums text-white lg:text-lg">
+                <div className="text-sm font-semibold tabular-nums text-foreground lg:text-lg">
                   {s.value}
                 </div>
-                <div className="text-[10px] text-white/55 lg:text-xs">{s.label}</div>
+                <div className="text-[10px] text-muted-foreground lg:text-xs">{s.label}</div>
               </div>
             ))}
           </div>
@@ -91,7 +90,7 @@ export function PublicProfileHeader(props: {
                   {props.avatarInteractive ? (
                     <button
                       type="button"
-                      className="group flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-black/50 shadow-[0_18px_60px_rgba(0,0,0,0.35)] transition-colors hover:bg-black/55 md:h-28 md:w-28"
+                      className="group flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl border border-border/20 bg-white/90 shadow-[0_18px_60px_rgba(0,0,0,0.18)] transition-colors hover:bg-white md:h-28 md:w-28 dark:border-border/10 dark:bg-black/50 dark:hover:bg-black/55 dark:shadow-[0_18px_60px_rgba(0,0,0,0.35)]"
                       onClick={props.avatarInteractive.onClick}
                       aria-label={props.avatarInteractive.ariaLabel}
                     >
@@ -104,19 +103,19 @@ export function PublicProfileHeader(props: {
                           style={props.avatarStyle}
                         />
                       ) : (
-                        <div className="text-3xl font-semibold text-white/70">
+                        <div className="text-3xl font-semibold text-foreground/70">
                           {(props.avatarFallback || "U").slice(0, 1).toUpperCase()}
                         </div>
                       )}
 
                       {props.avatarInteractive.showPencil ? (
-                        <span className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/55 text-white/80 opacity-0 backdrop-blur-md transition-opacity group-hover:opacity-100">
+                        <span className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/20 bg-white/85 text-foreground/80 opacity-0 backdrop-blur-md transition-opacity group-hover:opacity-100 dark:border-border/10 dark:bg-black/55">
                           <Pencil className="h-4 w-4" />
                         </span>
                       ) : null}
                     </button>
                   ) : (
-                    <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-black/50 shadow-[0_18px_60px_rgba(0,0,0,0.35)] md:h-28 md:w-28">
+                    <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl border border-border/20 bg-white/90 shadow-[0_18px_60px_rgba(0,0,0,0.18)] md:h-28 md:w-28 dark:border-border/10 dark:bg-black/50 dark:shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
                       {props.avatarUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -126,30 +125,30 @@ export function PublicProfileHeader(props: {
                           style={props.avatarStyle}
                         />
                       ) : (
-                        <div className="text-3xl font-semibold text-white/70">
+                        <div className="text-3xl font-semibold text-foreground/70">
                           {(props.avatarFallback || "U").slice(0, 1).toUpperCase()}
                         </div>
                       )}
                     </div>
                   )}
                 </div>
-                <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-4 py-1.5 text-xs font-medium text-orange-200 md:hidden">
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-4 py-1.5 text-xs font-medium text-orange-700 dark:text-orange-200 md:hidden">
                   {props.badgeLabel}
                 </div>
               </div>
 
               <div className="min-w-0">
-                <div className="mb-2 hidden items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-4 py-1.5 text-xs font-medium text-orange-200 md:inline-flex">
+                <div className="mb-2 hidden items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-4 py-1.5 text-xs font-medium text-orange-700 dark:text-orange-200 md:inline-flex">
                   {props.badgeLabel}
                 </div>
                 <div className="flex items-center gap-2">
-                  <h1 className="truncate text-2xl font-bold tracking-tight text-white md:text-4xl">
+                  <h1 className="truncate text-2xl font-bold tracking-tight text-foreground md:text-4xl">
                     {props.title}
                   </h1>
                   {props.titleInteractive ? (
                     <button
                       type="button"
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white/70 backdrop-blur-md transition-colors hover:bg-white/5 hover:text-white"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/20 bg-white/80 text-foreground/70 backdrop-blur-md transition-colors hover:bg-white hover:text-foreground dark:border-border/10 dark:bg-black/40 dark:hover:bg-white/5"
                       onClick={props.titleInteractive.onClick}
                       aria-label={props.titleInteractive.ariaLabel}
                     >
@@ -157,25 +156,25 @@ export function PublicProfileHeader(props: {
                     </button>
                   ) : null}
                 </div>
-                <div className="mt-1 text-sm text-white/55">{props.handle}</div>
+                <div className="mt-1 text-sm text-foreground/55">{props.handle}</div>
                 {props.bioInteractive ? (
                   <div className="mt-3 flex max-w-2xl items-start gap-2">
                     <button
                       type="button"
-                      className="flex-1 text-left text-sm leading-relaxed text-white/65 transition-colors hover:text-white/80"
+                      className="flex-1 text-left text-sm leading-relaxed text-foreground/70 transition-colors hover:text-foreground"
                       onClick={props.bioInteractive.onClick}
                       aria-label={props.bioInteractive.ariaLabel}
                     >
                       {props.bio}
                     </button>
                     {props.bioInteractive.showPencil ? (
-                      <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white/70 backdrop-blur-md">
+                      <span className="mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/20 bg-white/80 text-foreground/70 backdrop-blur-md dark:border-border/10 dark:bg-black/40">
                         <Pencil className="h-4 w-4" />
                       </span>
                     ) : null}
                   </div>
                 ) : (
-                  <div className="mt-3 max-w-2xl text-sm leading-relaxed text-white/65">
+                  <div className="mt-3 max-w-2xl text-sm leading-relaxed text-foreground/70">
                     {props.bio}
                   </div>
                 )}
@@ -194,7 +193,7 @@ export function PublicProfileHeader(props: {
                       "shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors",
                       t.isActive
                         ? "bg-orange-600 text-white"
-                        : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white",
+                        : "bg-white/70 text-foreground/80 hover:bg-white hover:text-foreground dark:bg-white/5 dark:text-foreground/70 dark:hover:bg-white/10",
                     )}
                   >
                     {t.label}
@@ -207,7 +206,7 @@ export function PublicProfileHeader(props: {
                   <>
                     <Button
                       variant="outline"
-                      className="h-10 rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                      className="h-10 rounded-full border-border/20 bg-white/70 text-foreground hover:bg-white dark:border-border/10 dark:bg-white/5 dark:hover:bg-white/10"
                     >
                       Follow
                     </Button>

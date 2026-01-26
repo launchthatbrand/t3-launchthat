@@ -359,6 +359,7 @@ export const upsertTradePosition = mutation({
     const now = Date.now();
     if (existing) {
       await ctx.db.patch(existing._id, {
+        organizationId: args.organizationId,
         connectionId: args.connectionId,
         symbol: args.symbol,
         instrumentId: args.instrumentId,
@@ -374,6 +375,7 @@ export const upsertTradePosition = mutation({
     }
 
     const id = await ctx.db.insert("tradePositions", {
+      organizationId: args.organizationId,
       userId: args.userId,
       connectionId: args.connectionId,
       externalPositionId: args.externalPositionId,

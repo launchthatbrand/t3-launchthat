@@ -1,18 +1,17 @@
 "use client";
 
-import React from "react";
 import { AlertTriangle, Smile } from "lucide-react";
-
-import { cn } from "@acme/ui";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-
+import { Separator, cn } from "@acme/ui";
 import {
   getTradingCalendarRecommendations,
   toDateKey,
   weekdayLabel,
 } from "./tradingCalendarRecommendations";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import React from "react";
 
 interface DailyStat {
   date: string;
@@ -116,7 +115,7 @@ export function TradingCalendarPanel({
   return (
     <Card
       className={cn(
-        "border-white/10 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6",
+        "border-border/40 bg-card/70 gap-3 flex! flex-col backdrop-blur-md transition-colors hover:bg-card/80",
         className,
       )}
     >
@@ -126,12 +125,12 @@ export function TradingCalendarPanel({
           <p className="text-muted-foreground text-sm">
             Daily win/loss totals with quick drill-down.
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-white/60">
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             {rec.goodWeekdays.length > 0 ? (
               <div className="flex items-center gap-1.5">
                 <Smile className="h-3.5 w-3.5 text-orange-300" />
                 <span className="font-medium">Projected strong:</span>
-                <span className="font-semibold text-white/80">
+                <span className="font-semibold text-foreground/80">
                   {rec.goodWeekdays.map(weekdayLabel).join(", ")}
                 </span>
               </div>
@@ -140,7 +139,7 @@ export function TradingCalendarPanel({
               <div className="flex items-center gap-1.5">
                 <AlertTriangle className="h-3.5 w-3.5 text-red-300" />
                 <span className="font-medium">Projected weak:</span>
-                <span className="font-semibold text-white/80">
+                <span className="font-semibold text-foreground/80">
                   {rec.badWeekdays.map(weekdayLabel).join(", ")}
                 </span>
               </div>
@@ -151,31 +150,32 @@ export function TradingCalendarPanel({
           <Button
             variant="outline"
             size="sm"
-            className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+            className="border-border/60 bg-transparent text-foreground hover:bg-foreground/5 hover:text-foreground"
             onClick={() => setMonthOffset((prev) => prev - 1)}
           >
             Prev
           </Button>
-          <Badge variant="outline" className="border-white/15 text-white/80">
+          <Badge variant="outline" className="border-border/60 text-foreground/80">
             {label}
           </Badge>
           <Button
             variant="outline"
             size="sm"
-            className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+            className="border-border/60 bg-transparent text-foreground hover:bg-foreground/5 hover:text-foreground"
             onClick={() => setMonthOffset((prev) => prev + 1)}
           >
             Next
           </Button>
         </div>
       </CardHeader>
+      <Separator className="bg-border" />
       <CardContent
         className={contentClassName}
         onClick={() => onSelectDateAction(null)}
       >
         <div className="grid grid-cols-7 gap-0 sm:gap-2 text-xs">
           {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-            <div key={day} className="text-center text-white/60">
+            <div key={day} className="text-center text-muted-foreground">
               {day}
             </div>
           ))}
@@ -199,17 +199,17 @@ export function TradingCalendarPanel({
                   onSelectDateAction(key);
                 }}
                 className={cn(
-                  "flex flex-col gap-1 border border-white/10 bg-black/20 p-1 text-left transition hover:border-orange-500/60 hover:bg-white/5 sm:rounded-md sm:p-2",
+                  "flex flex-col gap-1 border border-border/40 bg-background/40 p-1 text-left transition hover:border-orange-500/60 hover:bg-foreground/3 sm:rounded-md sm:p-2",
                   // Collapse borders on mobile so it feels like one continuous grid.
                   "rounded-none -ml-px -mt-px sm:ml-0 sm:mt-0",
-                  !inMonth && "bg-black/10 text-white/30",
+                  !inMonth && "bg-background/20 text-muted-foreground/60",
                   isSelected && "z-10 border-orange-500 bg-orange-500/10",
                   isGood &&
-                    !isSelected &&
-                    "border-orange-400/40 bg-linear-to-b from-orange-500/10 to-transparent shadow-[0_0_0_1px_rgba(249,115,22,0.15)]",
+                  !isSelected &&
+                  "border-orange-400/40 bg-linear-to-b from-orange-500/10 to-transparent shadow-[0_0_0_1px_rgba(249,115,22,0.15)]",
                   isBad &&
-                    !isSelected &&
-                    "border-red-400/35 bg-linear-to-b from-red-500/10 to-transparent shadow-[0_0_0_1px_rgba(248,113,113,0.12)]",
+                  !isSelected &&
+                  "border-red-400/35 bg-linear-to-b from-red-500/10 to-transparent shadow-[0_0_0_1px_rgba(248,113,113,0.12)]",
                 )}
               >
                 <div className="flex items-center justify-between text-xs">
@@ -234,8 +234,8 @@ export function TradingCalendarPanel({
                       {formatPnl(pnl)}
                     </div>
                     {typeof stat?.unrealizedPnl === "number" &&
-                    Number.isFinite(stat.unrealizedPnl) &&
-                    stat.unrealizedPnl !== 0 ? (
+                      Number.isFinite(stat.unrealizedPnl) &&
+                      stat.unrealizedPnl !== 0 ? (
                       <div
                         className={cn(
                           "text-[10px] font-medium tabular-nums",
@@ -248,12 +248,12 @@ export function TradingCalendarPanel({
                         {formatPnl(stat.unrealizedPnl)}
                       </div>
                     ) : null}
-                    <div className="text-[10px] text-white/60">
+                    <div className="text-[10px] text-muted-foreground">
                       {stat?.wins ?? 0}W / {stat?.losses ?? 0}L
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-1 text-[10px] text-white/30">
+                  <div className="mt-1 text-[10px] text-muted-foreground/60">
                     <span className="sm:hidden">—</span>
                     <span className="hidden sm:inline">— No trades</span>
                   </div>

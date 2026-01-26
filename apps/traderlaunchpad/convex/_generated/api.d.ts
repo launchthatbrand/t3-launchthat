@@ -817,7 +817,13 @@ export declare const components: {
       createThread: FunctionReference<
         "mutation",
         "internal",
-        { authorUserId: string; boardId: string; body: string; title: string },
+        {
+          authorUserId: string;
+          boardId: string;
+          body: string;
+          title: string;
+          type?: "feedback" | "issue";
+        },
         string
       >;
       toggleUpvote: FunctionReference<
@@ -847,6 +853,7 @@ export declare const components: {
           boardId: string;
           limit?: number;
           sort?: "trending" | "new";
+          type?: "feedback" | "issue";
           userId: string;
         },
         Array<any>

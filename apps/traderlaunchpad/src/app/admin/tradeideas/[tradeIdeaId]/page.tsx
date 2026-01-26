@@ -226,50 +226,14 @@ export default function AdminTradeIdeaDetailPage() {
   const setSharing = useMutation(api.traderlaunchpad.mutations.setMyTradeIdeaSharing);
   const createShortlink = useMutation(api.shortlinks.mutations.createShortlink);
 
-  const detailFromIdeaId = useQuery(
-    api.traderlaunchpad.queries.getMyTradeIdeaDetail,
-    shouldQuery ? { tradeIdeaId, positionsLimit: 200 } : "skip",
-  ) as
-    | {
-      tradeIdeaId: string;
-      symbol: string;
-      bias: "long" | "short" | "neutral";
-      status: "active" | "closed";
-      timeframe: string;
-      timeframeLabel?: string;
-      thesis?: string;
-      tags?: string[];
-      visibility: "private" | "link" | "public";
-      shareToken?: string;
-      shareEnabledAt?: number;
-      expiresAt?: number;
-      positions: {
-        tradeIdeaGroupId: string;
-        symbol: string;
-        direction: "long" | "short";
-        status: "open" | "closed";
-        openedAt: number;
-        closedAt?: number;
-        realizedPnl?: number;
-        fees?: number;
-        netQty: number;
-      }[];
-    }
-    | null
-    | undefined;
-
   const group = useQuery(
     api.traderlaunchpad.queries.getMyTradeIdeaById,
-    shouldQuery && detailFromIdeaId === null
-      ? { tradeIdeaGroupId: tradeIdeaId }
-      : "skip",
+    shouldQuery ? { tradeIdeaGroupId: tradeIdeaId } : "skip",
   ) as TradeIdeaGroupSummary | null | undefined;
 
-  const detailFromGroupId = useQuery(
-    api.traderlaunchpad.queries.getMyTradeIdeaDetail,
-    shouldQuery && group?.tradeIdeaId
-      ? { tradeIdeaId: group.tradeIdeaId, positionsLimit: 200 }
-      : "skip",
+  const detail = useQuery(
+    api.traderlaunchpad.queries.getMyTradeIdeaDetailByAnyId,
+    shouldQuery ? { id: tradeIdeaId, positionsLimit: 200 } : "skip",
   ) as
     | {
       tradeIdeaId: string;
@@ -298,8 +262,6 @@ export default function AdminTradeIdeaDetailPage() {
     }
     | null
     | undefined;
-
-  const detail = detailFromGroupId ?? detailFromIdeaId;
 
   const [shareUsername, setShareUsername] = React.useState<string>("me");
   const [shareUrl, setShareUrl] = React.useState<string>("");

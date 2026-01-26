@@ -172,13 +172,13 @@ export const TradingCalendarWithDrilldown = ({
           if (!open) onSelectDateAction(null);
         }}
       >
-        <DrawerContent className="border-white/10 bg-black/95 text-white">
+        <DrawerContent className="border-border/40 bg-background/95 text-foreground backdrop-blur">
           <DrawerHeader>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="absolute top-3 right-3 h-9 w-9 text-white/80 hover:bg-white/10 hover:text-white"
+              className="absolute top-3 right-3 h-9 w-9 text-foreground/80 hover:bg-foreground/5 hover:text-foreground"
               onClick={() => onSelectDateAction(null)}
               aria-label="Close"
             >
@@ -186,7 +186,7 @@ export const TradingCalendarWithDrilldown = ({
             </Button>
 
             <DrawerTitle>Day details</DrawerTitle>
-            <DrawerDescription className="text-white/60">
+            <DrawerDescription className="text-muted-foreground">
               {selectedDate ? selectedDateLabel : "Pick a day to drill in."}
             </DrawerDescription>
 
@@ -195,7 +195,7 @@ export const TradingCalendarWithDrilldown = ({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-9 w-9 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                className="h-9 w-9 border-border/60 bg-transparent text-foreground hover:bg-foreground/5 hover:text-foreground"
                 onClick={() => handleShiftSelectedDate(-1)}
                 disabled={!selectedDate}
                 aria-label="Previous day"
@@ -209,14 +209,14 @@ export const TradingCalendarWithDrilldown = ({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-9 flex-1 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                    className="h-9 flex-1 border-border/60 bg-transparent text-foreground hover:bg-foreground/5 hover:text-foreground"
                     disabled={!selectedDate}
                   >
                     <Calendar className="mr-2 h-4 w-4 text-orange-300" />
                     <span className="truncate">{selectedDateLabel}</span>
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto border-white/10 bg-black/90 p-3 text-white backdrop-blur">
+                <PopoverContent className="w-auto border-border/40 bg-background/95 p-3 text-foreground backdrop-blur">
                   <DayCalendar
                     mode="single"
                     selected={selectedDateObj}
@@ -230,7 +230,7 @@ export const TradingCalendarWithDrilldown = ({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-9 w-9 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                className="h-9 w-9 border-border/60 bg-transparent text-foreground hover:bg-foreground/5 hover:text-foreground"
                 onClick={() => handleShiftSelectedDate(1)}
                 disabled={!selectedDate}
                 aria-label="Next day"

@@ -14,6 +14,11 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@acme/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@acme/ui/dropdown-menu";
+import {
+  demoOrgTradingPlanCumulativeSummary,
+  demoOrgTradingPlanLeaderboard,
+  demoReviewTrades,
+} from "@acme/demo-data";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 
 import { Badge } from "@acme/ui/badge";
@@ -25,11 +30,6 @@ import { Progress } from "@acme/ui/progress";
 import React from "react";
 import { api } from "@convex-config/_generated/api";
 import { cn } from "@acme/ui";
-import {
-  demoOrgTradingPlanCumulativeSummary,
-  demoOrgTradingPlanLeaderboard,
-  demoReviewTrades,
-} from "@acme/demo-data";
 import { useDataMode } from "~/components/dataMode/DataModeProvider";
 import { useTenant } from "~/context/TenantContext";
 
@@ -300,26 +300,26 @@ function PersonalTradingPlanPage() {
 
   if (isLive && shouldQuery && plans && plans.length === 0) {
     return (
-      <div className="relative animate-in fade-in space-y-6 text-white selection:bg-orange-500/30 duration-500">
+      <div className="relative animate-in fade-in space-y-6 text-foreground selection:bg-orange-500/30 duration-500">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div className="min-w-0">
             <h1 className="text-3xl font-bold tracking-tight">Trading Plan</h1>
-            <p className="mt-1 text-white/60">
+            <p className="mt-1 text-foreground/60">
               You don’t have a trading plan yet. Create your first plan to start tracking consistency.
             </p>
           </div>
         </div>
 
-        <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+        <Card className="border-white/10 bg-background/3 backdrop-blur-md">
           <CardHeader>
             <CardTitle className="text-lg">Create your first trading plan</CardTitle>
-            <CardDescription className="text-white/60">
+            <CardDescription className="text-foreground/60">
               Start with a solid default template and refine it over time.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="w-full space-y-2">
-              <Label htmlFor="planName" className="text-white/70">
+              <Label htmlFor="planName" className="text-foreground/70">
                 Plan name (optional)
               </Label>
               <Input
@@ -327,11 +327,11 @@ function PersonalTradingPlanPage() {
                 value={newPlanName}
                 onChange={(e) => setNewPlanName(e.target.value)}
                 placeholder="e.g. ES Breakout + Retest"
-                className="border-white/10 bg-black/30 text-white placeholder:text-white/40"
+                className="border-white/10 bg-black/30 text-foreground placeholder:text-foreground/40"
               />
             </div>
             <Button
-              className="border-0 bg-orange-600 text-white hover:bg-orange-700"
+              className="border-0 bg-orange-600 text-foreground hover:bg-orange-700"
               onClick={() => void handleCreateFirstPlan()}
               disabled={creating}
             >
@@ -340,7 +340,7 @@ function PersonalTradingPlanPage() {
           </CardContent>
         </Card>
 
-        <Button asChild variant="outline" className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white">
+        <Button asChild variant="outline" className="border-white/15 bg-transparent text-foreground hover:bg-foreground/10 hover:text-foreground">
           <Link href="/admin/dashboard">
             Back to platform dashboard <ArrowUpRight className="ml-2 h-4 w-4" />
           </Link>
@@ -352,19 +352,19 @@ function PersonalTradingPlanPage() {
   const plan = effectivePlan;
   if (!plan) {
     return (
-      <div className="mx-auto max-w-4xl space-y-4 text-white">
-        <div className="text-sm text-white/60">Loading…</div>
+      <div className="mx-auto max-w-4xl space-y-4 text-foreground">
+        <div className="text-sm text-foreground/60">Loading…</div>
       </div>
     );
   }
 
   return (
-    <div className="relative animate-in fade-in space-y-8 text-white selection:bg-orange-500/30 duration-500">
+    <div className="relative animate-in fade-in space-y-8 text-foreground selection:bg-orange-500/30 duration-500">
       {/* Page header (separate from main platform dashboard) */}
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div className="min-w-0">
           <h1 className="text-3xl font-bold tracking-tight">Trading Plan</h1>
-          <p className="mt-1 text-white/60">
+          <p className="mt-1 text-foreground/60">
             Monitor your rules, risk, and consistency — separate from the platform dashboard.
           </p>
         </div>
@@ -376,13 +376,13 @@ function PersonalTradingPlanPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-9 gap-2 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                    className="h-9 gap-2 border-white/15 bg-transparent text-foreground hover:bg-background/10 hover:text-foreground"
                   >
                     <span className="max-w-[220px] truncate">Active: {plan.name}</span>
-                    <ChevronDown className="h-4 w-4 text-white/60" />
+                    <ChevronDown className="h-4 w-4 text-foreground/60" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-72 border-white/10 bg-black/90 text-white">
+                <DropdownMenuContent className="w-72 border-white/10 bg-black/90 text-foreground">
                   {plans.map((p) => {
                     const isActive = p._id === plan._id;
                     return (
@@ -391,17 +391,17 @@ function PersonalTradingPlanPage() {
                         className="cursor-pointer"
                         onSelect={() => void handleSelectPlan(p._id)}
                       >
-                        <span className="mr-2 w-4 shrink-0 text-center text-white/80">
+                        <span className="mr-2 w-4 shrink-0 text-center text-foreground/80">
                           {isActive ? "✓" : ""}
                         </span>
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold">{p.name}</div>
-                          <div className="truncate text-xs text-white/60">{p.version}</div>
+                          <div className="truncate text-xs text-foreground/60">{p.version}</div>
                         </div>
                       </DropdownMenuItem>
                     );
                   })}
-                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuSeparator className="bg-background/10" />
                   <DropdownMenuItem
                     className="cursor-pointer text-orange-300 focus:text-orange-300"
                     onSelect={() => setCreateOpen(true)}
@@ -412,12 +412,12 @@ function PersonalTradingPlanPage() {
               </DropdownMenu>
 
               <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogContent className="border-white/10 bg-black/90 text-white">
+                <DialogContent className="border-white/10 bg-black/90 text-foreground">
                   <DialogHeader>
                     <DialogTitle>Create a new trading plan</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-2">
-                    <Label htmlFor="newPlanName" className="text-white/70">
+                    <Label htmlFor="newPlanName" className="text-foreground/70">
                       Plan name (optional)
                     </Label>
                     <Input
@@ -425,21 +425,21 @@ function PersonalTradingPlanPage() {
                       value={newPlanName}
                       onChange={(e) => setNewPlanName(e.target.value)}
                       placeholder="e.g. NQ Trend Pullback"
-                      className="border-white/10 bg-black/30 text-white placeholder:text-white/40"
+                      className="border-white/10 bg-black/30 text-foreground placeholder:text-foreground/40"
                     />
                   </div>
                   <DialogFooter>
                     <Button
                       type="button"
                       variant="outline"
-                      className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                      className="border-white/15 bg-transparent text-foreground hover:bg-background/10 hover:text-foreground"
                       onClick={() => setCreateOpen(false)}
                     >
                       Cancel
                     </Button>
                     <Button
                       type="button"
-                      className="border-0 bg-orange-600 text-white hover:bg-orange-700"
+                      className="border-0 bg-orange-600 text-foreground hover:bg-orange-700"
                       onClick={() => void handleCreateFirstPlan()}
                       disabled={creating}
                     >
@@ -451,13 +451,13 @@ function PersonalTradingPlanPage() {
             </>
           ) : null}
 
-          <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+          <div className="flex items-center gap-1 rounded-full border border-white/10 bg-background/5 p-1">
             <Button
               type="button"
               variant="ghost"
               className={cn(
-                "h-8 rounded-full px-3 text-xs text-white/70 hover:bg-white/10 hover:text-white",
-                range === "7d" && "bg-white/10 text-white",
+                "h-8 rounded-full px-3 text-xs text-foreground/70 hover:bg-background/10 hover:text-foreground",
+                range === "7d" && "bg-background/10 text-foreground",
               )}
               onClick={() => setRange("7d")}
             >
@@ -467,8 +467,8 @@ function PersonalTradingPlanPage() {
               type="button"
               variant="ghost"
               className={cn(
-                "h-8 rounded-full px-3 text-xs text-white/70 hover:bg-white/10 hover:text-white",
-                range === "30d" && "bg-white/10 text-white",
+                "h-8 rounded-full px-3 text-xs text-foreground/70 hover:bg-background/10 hover:text-foreground",
+                range === "30d" && "bg-background/10 text-foreground",
               )}
               onClick={() => setRange("30d")}
             >
@@ -476,7 +476,7 @@ function PersonalTradingPlanPage() {
             </Button>
           </div>
 
-          <Button className="gap-2 border-0 bg-orange-600 text-white hover:bg-orange-700">
+          <Button className="gap-2 border-0 bg-orange-600 text-foreground hover:bg-orange-700">
             <Brain className="h-4 w-4" />
             Generate AI plan insights (coming)
           </Button>
@@ -484,26 +484,26 @@ function PersonalTradingPlanPage() {
       </div>
 
       {/* Plan overview */}
-      <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+      <Card className="border-white/10 bg-background/3 backdrop-blur-md">
         <CardHeader className="pb-3">
           <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
             <div className="space-y-1">
               <CardTitle className="text-lg">{plan.name}</CardTitle>
-              <CardDescription className="text-white/60">
+              <CardDescription className="text-foreground/60">
                 {plan.version} • Created {new Date(plan.createdAt).toLocaleDateString()} •{" "}
                 {range === "7d" ? "Monitoring last 7 days" : "Monitoring last 30 days"}
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="border-white/15 bg-white/5 text-white/80">
+              <Badge variant="outline" className="border-white/15 bg-background/5 text-foreground/80">
                 <Target className="mr-1 h-3.5 w-3.5 text-orange-300" />
                 {plan.markets.length} markets
               </Badge>
-              <Badge variant="outline" className="border-white/15 bg-white/5 text-white/80">
+              <Badge variant="outline" className="border-white/15 bg-background/5 text-foreground/80">
                 <Clock className="mr-1 h-3.5 w-3.5 text-orange-300" />
                 {plan.sessions.length} sessions
               </Badge>
-              <Badge variant="outline" className="border-white/15 bg-white/5 text-white/80">
+              <Badge variant="outline" className="border-white/15 bg-background/5 text-foreground/80">
                 <Shield className="mr-1 h-3.5 w-3.5 text-orange-300" />
                 {plan.risk.maxRiskPerTradePct}% max risk
               </Badge>
@@ -514,12 +514,12 @@ function PersonalTradingPlanPage() {
           <div className="lg:col-span-2">
             <div className="rounded-xl border border-white/10 bg-black/30 p-4">
               <div className="text-sm font-semibold">Strategy Summary</div>
-              <p className="mt-2 text-sm leading-relaxed text-white/70">{plan.strategySummary}</p>
+              <p className="mt-2 text-sm leading-relaxed text-foreground/70">{plan.strategySummary}</p>
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
               {plan.markets.map((m) => (
-                <Badge key={m} variant="outline" className="border-white/10 bg-white/5 text-white/75">
+                <Badge key={m} variant="outline" className="border-white/10 bg-background/5 text-foreground/75">
                   {m}
                 </Badge>
               ))}
@@ -527,23 +527,23 @@ function PersonalTradingPlanPage() {
           </div>
 
           <div className="space-y-3">
-            <div className="rounded-xl border border-white/10 bg-white/3 p-4">
+            <div className="rounded-xl border border-white/10 bg-background/3 p-4">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-semibold">Adherence</div>
                 <div className="text-sm font-bold">{stats.adherencePct}%</div>
               </div>
               <Progress value={stats.adherencePct} className="mt-2 h-2" />
-              <div className="mt-2 text-xs text-white/60">
+              <div className="mt-2 text-xs text-foreground/60">
                 Based on plan rules + recent behavior (mock).
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-white/3 p-4">
+            <div className="rounded-xl border border-white/10 bg-background/3 p-4">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-semibold">Violations</div>
                 <div className="text-sm font-bold">{stats.violations}</div>
               </div>
-              <div className="mt-2 flex items-center gap-2 text-xs text-white/60">
+              <div className="mt-2 flex items-center gap-2 text-xs text-foreground/60">
                 <AlertTriangle className="h-3.5 w-3.5 text-amber-300" />
                 {range === "7d"
                   ? "Last 7 days"
@@ -556,32 +556,32 @@ function PersonalTradingPlanPage() {
 
       {/* KPI tiles */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+        <Card className="border-white/10 bg-background/3 backdrop-blur-md">
           <CardContent className="p-4">
-            <div className="text-xs font-medium text-white/60">Journal compliance</div>
+            <div className="text-xs font-medium text-foreground/60">Journal compliance</div>
             <div className="mt-1 text-lg font-bold tabular-nums">{stats.journalCompliancePct}%</div>
-            <div className="mt-2 text-[11px] text-white/50">Goal: 90%+</div>
+            <div className="mt-2 text-[11px] text-foreground/50">Goal: 90%+</div>
           </CardContent>
         </Card>
-        <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+        <Card className="border-white/10 bg-background/3 backdrop-blur-md">
           <CardContent className="p-4">
-            <div className="text-xs font-medium text-white/60">Session discipline</div>
+            <div className="text-xs font-medium text-foreground/60">Session discipline</div>
             <div className="mt-1 text-lg font-bold tabular-nums">{stats.sessionDisciplinePct}%</div>
-            <div className="mt-2 text-[11px] text-white/50">Stay inside your sessions</div>
+            <div className="mt-2 text-[11px] text-foreground/50">Stay inside your sessions</div>
           </CardContent>
         </Card>
-        <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+        <Card className="border-white/10 bg-background/3 backdrop-blur-md">
           <CardContent className="p-4">
-            <div className="text-xs font-medium text-white/60">Avg risk / trade (7d)</div>
+            <div className="text-xs font-medium text-foreground/60">Avg risk / trade (7d)</div>
             <div className="mt-1 text-lg font-bold tabular-nums">{stats.avgRiskPct}%</div>
-            <div className="mt-2 text-[11px] text-white/50">Max: {plan.risk.maxRiskPerTradePct}%</div>
+            <div className="mt-2 text-[11px] text-foreground/50">Max: {plan.risk.maxRiskPerTradePct}%</div>
           </CardContent>
         </Card>
-        <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+        <Card className="border-white/10 bg-background/3 backdrop-blur-md">
           <CardContent className="p-4">
-            <div className="text-xs font-medium text-white/60">Review completion</div>
+            <div className="text-xs font-medium text-foreground/60">Review completion</div>
             <div className="mt-1 text-lg font-bold tabular-nums">{stats.reviewRate}%</div>
-            <div className="mt-2 text-[11px] text-white/50">Reviewed trades in journal</div>
+            <div className="mt-2 text-[11px] text-foreground/50">Reviewed trades in journal</div>
           </CardContent>
         </Card>
       </div>
@@ -589,13 +589,13 @@ function PersonalTradingPlanPage() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Rules & risk */}
         <div className="space-y-8 lg:col-span-2">
-          <Card className="border-white/10 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
+          <Card className="border-white/10 bg-background/3 backdrop-blur-md transition-colors hover:bg-background/6">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <ClipboardCheck className="h-5 w-5 text-orange-300" />
                 <CardTitle>Rules (monitoring)</CardTitle>
               </div>
-              <CardDescription className="text-white/60">
+              <CardDescription className="text-foreground/60">
                 These are the constraints your AI Strategy Builder will later help you create and refine.
               </CardDescription>
             </CardHeader>
@@ -603,7 +603,7 @@ function PersonalTradingPlanPage() {
               {plan.rules.map((rule) => (
                 <div
                   key={rule.id}
-                  className="rounded-lg border border-white/10 bg-white/3 p-4 transition-colors hover:bg-white/6"
+                  className="rounded-lg border border-white/10 bg-background/3 p-4 transition-colors hover:bg-background/6"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -621,13 +621,13 @@ function PersonalTradingPlanPage() {
                             "text-xs border-white/15",
                             rule.severity === "hard"
                               ? "bg-rose-500/10 text-rose-200"
-                              : "bg-white/5 text-white/70",
+                              : "bg-background/5 text-foreground/70",
                           )}
                         >
                           {rule.severity === "hard" ? "Hard rule" : "Soft rule"}
                         </Badge>
                       </div>
-                      <div className="mt-1 text-sm text-white/70">{rule.description}</div>
+                      <div className="mt-1 text-sm text-foreground/70">{rule.description}</div>
                     </div>
                   </div>
                 </div>
@@ -635,38 +635,38 @@ function PersonalTradingPlanPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-white/10 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
+          <Card className="border-white/10 bg-background/3 backdrop-blur-md transition-colors hover:bg-background/6">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Shield className="h-5 w-5 text-orange-300" />
                 <CardTitle>Risk Guardrails</CardTitle>
               </div>
-              <CardDescription className="text-white/60">
+              <CardDescription className="text-foreground/60">
                 The “hard stops” that keep you in the game.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-lg border border-white/10 bg-black/30 p-4">
-                <div className="text-xs font-medium text-white/60">Max risk / trade</div>
+                <div className="text-xs font-medium text-foreground/60">Max risk / trade</div>
                 <div className="mt-1 text-lg font-bold tabular-nums">
                   {plan.risk.maxRiskPerTradePct}%
                 </div>
               </div>
               <div className="rounded-lg border border-white/10 bg-black/30 p-4">
-                <div className="text-xs font-medium text-white/60">Max daily loss</div>
+                <div className="text-xs font-medium text-foreground/60">Max daily loss</div>
                 <div className="mt-1 text-lg font-bold tabular-nums">
                   {plan.risk.maxDailyLossPct}%
                 </div>
               </div>
               <div className="rounded-lg border border-white/10 bg-black/30 p-4">
-                <div className="text-xs font-medium text-white/60">Max weekly loss</div>
+                <div className="text-xs font-medium text-foreground/60">Max weekly loss</div>
                 <div className="mt-1 text-lg font-bold tabular-nums">
                   {plan.risk.maxWeeklyLossPct}%
                 </div>
               </div>
               <div className="rounded-lg border border-white/10 bg-black/30 p-4">
-                <div className="text-xs font-medium text-white/60">Limits</div>
-                <div className="mt-1 text-sm text-white/80">
+                <div className="text-xs font-medium text-foreground/60">Limits</div>
+                <div className="mt-1 text-sm text-foreground/80">
                   <span className="font-semibold">{plan.risk.maxOpenPositions}</span> open positions •{" "}
                   <span className="font-semibold">{plan.risk.maxTradesPerDay}</span> trades/day
                 </div>
@@ -677,7 +677,7 @@ function PersonalTradingPlanPage() {
 
         {/* Right rail */}
         <div className="space-y-8">
-          <Card className="border-white/10 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
+          <Card className="border-white/10 bg-background/3 backdrop-blur-md transition-colors hover:bg-background/6">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -688,7 +688,7 @@ function PersonalTradingPlanPage() {
                   {stats.sessionDisciplinePct}%
                 </Badge>
               </div>
-              <CardDescription className="text-white/60">
+              <CardDescription className="text-foreground/60">
                 Where you’re allowed to execute.
               </CardDescription>
             </CardHeader>
@@ -697,9 +697,9 @@ function PersonalTradingPlanPage() {
                 <div key={s.id} className="rounded-lg border border-white/10 bg-black/30 p-3">
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-semibold">{s.label}</div>
-                    <div className="text-xs text-white/60">{s.timezone}</div>
+                    <div className="text-xs text-foreground/60">{s.timezone}</div>
                   </div>
-                  <div className="mt-1 text-xs text-white/70">
+                  <div className="mt-1 text-xs text-foreground/70">
                     {s.days.join(", ")} • {s.start}–{s.end}
                   </div>
                 </div>
@@ -707,18 +707,18 @@ function PersonalTradingPlanPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-white/10 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
+          <Card className="border-white/10 bg-background/3 backdrop-blur-md transition-colors hover:bg-background/6">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <AlertTriangle className="h-4 w-4 text-orange-300" />
                   Recent Violations
                 </CardTitle>
-                <Badge variant="secondary" className="bg-white/5 text-white/70 hover:bg-white/10">
+                <Badge variant="secondary" className="bg-background/5 text-foreground/70 hover:bg-background/10">
                   {isLive ? 0 : DEMO_VIOLATIONS.length}
                 </Badge>
               </div>
-              <CardDescription className="text-white/60">
+              <CardDescription className="text-foreground/60">
                 What to correct before scaling size.
               </CardDescription>
             </CardHeader>
@@ -728,18 +728,18 @@ function PersonalTradingPlanPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold">{v.ruleTitle}</div>
-                      <div className="mt-1 text-xs text-white/60">
+                      <div className="mt-1 text-xs text-foreground/60">
                         {v.date} • {v.severity === "hard" ? "Hard" : "Soft"}
                       </div>
                       {v.note ? (
-                        <div className="mt-2 text-xs text-white/70">{v.note}</div>
+                        <div className="mt-2 text-xs text-foreground/70">{v.note}</div>
                       ) : null}
                     </div>
                     {v.tradeId ? (
                       <Button
                         asChild
                         variant="outline"
-                        className="h-8 shrink-0 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                        className="h-8 shrink-0 border-white/15 bg-transparent text-foreground hover:bg-background/10 hover:text-foreground"
                       >
                         <Link href={`/admin/trade/${encodeURIComponent(v.tradeId)}`}>
                           View
@@ -753,22 +753,22 @@ function PersonalTradingPlanPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-white/10 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
+          <Card className="border-white/10 bg-background/3 backdrop-blur-md transition-colors hover:bg-background/6">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Brain className="h-5 w-5 text-orange-300" />
                 <CardTitle>AI Strategy Builder (coming)</CardTitle>
               </div>
-              <CardDescription className="text-white/60">
+              <CardDescription className="text-foreground/60">
                 Next: onboarding + plan editor. This page will become your plan “control room”.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm text-white/70">
+            <CardContent className="space-y-3 text-sm text-foreground/70">
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-300" />
                 <div>
-                  <div className="font-semibold text-white">What you’ll do here</div>
-                  <div className="mt-1 text-white/70">
+                  <div className="font-semibold text-foreground">What you’ll do here</div>
+                  <div className="mt-1 text-foreground/70">
                     Choose a base plan, customize rules, and get AI suggestions based on violations + stats.
                   </div>
                 </div>
@@ -776,8 +776,8 @@ function PersonalTradingPlanPage() {
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-300" />
                 <div>
-                  <div className="font-semibold text-white">How we’ll measure it</div>
-                  <div className="mt-1 text-white/70">
+                  <div className="font-semibold text-foreground">How we’ll measure it</div>
+                  <div className="mt-1 text-foreground/70">
                     Session adherence, risk sizing, journaling rate, and rule-level violations.
                   </div>
                 </div>
@@ -785,7 +785,7 @@ function PersonalTradingPlanPage() {
 
               <Button
                 asChild
-                className="mt-2 w-full border-0 bg-orange-600 text-white hover:bg-orange-700"
+                className="mt-2 w-full border-0 bg-orange-600 text-foreground hover:bg-orange-700"
               >
                 <Link href="/admin/dashboard">
                   Back to platform dashboard <ArrowUpRight className="ml-2 h-4 w-4" />
@@ -842,11 +842,11 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
     shouldQuery && isLive ? { organizationId: props.organizationId } : "skip",
   ) as
     | {
-        allowedPlanIds: string[];
-        forcedPlanId: string | null;
-        updatedAt: number | null;
-        updatedByUserId: string | null;
-      }
+      allowedPlanIds: string[];
+      forcedPlanId: string | null;
+      updatedAt: number | null;
+      updatedByUserId: string | null;
+    }
     | undefined;
 
   const myOrgPlan = useQuery(
@@ -859,16 +859,16 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
     shouldQuery && isLive ? { organizationId: props.organizationId } : "skip",
   ) as
     | {
-        sampleSize: number;
-        closedTrades: number;
-        openTrades: number;
-        totalFees: number;
-        totalPnl: number;
-        memberCountTotal: number;
-        memberCountEligible: number;
-        memberCountConsidered: number;
-        isTruncated: boolean;
-      }
+      sampleSize: number;
+      closedTrades: number;
+      openTrades: number;
+      totalFees: number;
+      totalPnl: number;
+      memberCountTotal: number;
+      memberCountEligible: number;
+      memberCountConsidered: number;
+      isTruncated: boolean;
+    }
     | null
     | undefined;
 
@@ -877,19 +877,19 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
     shouldQuery && isLive ? { organizationId: props.organizationId } : "skip",
   ) as
     | {
-        userId: string;
-        name: string | null;
-        image: string | null;
-        planId: string;
-        sampleSize: number;
-        closedTrades: number;
-        openTrades: number;
-        totalFees: number;
-        totalPnl: number;
-        rank: number;
-        percentile: number;
-        isViewer: boolean;
-      }[]
+      userId: string;
+      name: string | null;
+      image: string | null;
+      planId: string;
+      sampleSize: number;
+      closedTrades: number;
+      openTrades: number;
+      totalFees: number;
+      totalPnl: number;
+      rank: number;
+      percentile: number;
+      isViewer: boolean;
+    }[]
     | undefined;
 
   interface OrgTradingPlanCumulativeSummary {
@@ -1055,10 +1055,10 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
   if (!shouldQuery) {
     return (
       <div className="container py-10">
-        <Card className="border-white/10 bg-white/3">
+        <Card className="border-white/10 bg-background/3">
           <CardHeader>
             <CardTitle>Organization trading plans</CardTitle>
-            <CardDescription className="text-white/60">
+            <CardDescription className="text-foreground/60">
               Sign in to view organization trading plans.
             </CardDescription>
           </CardHeader>
@@ -1071,8 +1071,8 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
     <div className="container py-10">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Organization trading plans</h1>
-          <p className="mt-1 text-sm text-white/60">
+          <h1 className="text-2xl font-semibold text-foreground">Organization trading plans</h1>
+          <p className="mt-1 text-sm text-foreground/60">
             Admins can approve 1–2 plans for members. Org analytics on this page only considers
             members assigned to approved plan(s).
           </p>
@@ -1082,16 +1082,16 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
           <div className="flex items-center gap-2">
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
               <DialogTrigger asChild>
-                <Button className="border-0 bg-orange-600 text-white hover:bg-orange-700">
+                <Button className="border-0 bg-orange-600 text-foreground hover:bg-orange-700">
                   Create org plan
                 </Button>
               </DialogTrigger>
-              <DialogContent className="border-white/10 bg-black/90 text-white">
+              <DialogContent className="border-white/10 bg-black/90 text-foreground">
                 <DialogHeader>
                   <DialogTitle>Create organization trading plan</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-2">
-                  <Label htmlFor="orgPlanName" className="text-white/70">
+                  <Label htmlFor="orgPlanName" className="text-foreground/70">
                     Name
                   </Label>
                   <Input
@@ -1099,22 +1099,22 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
                     value={newPlanName}
                     onChange={(e) => setNewPlanName(e.target.value)}
                     placeholder="e.g. WSA Futures Plan v1"
-                    className="border-white/10 bg-black/50 text-white placeholder:text-white/40"
+                    className="border-white/10 bg-black/50 text-foreground placeholder:text-foreground/40"
                   />
-                  <div className="text-xs text-white/50">
+                  <div className="text-xs text-foreground/50">
                     Creates from the default template (we’ll add a full editor next).
                   </div>
                 </div>
                 <DialogFooter>
                   <Button
                     variant="outline"
-                    className="border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                    className="border-white/15 bg-transparent text-foreground hover:bg-background/10 hover:text-foreground"
                     onClick={() => setCreateOpen(false)}
                   >
                     Cancel
                   </Button>
                   <Button
-                    className="border-0 bg-orange-600 text-white hover:bg-orange-700"
+                    className="border-0 bg-orange-600 text-foreground hover:bg-orange-700"
                     disabled={saving}
                     onClick={handleCreateOrgPlan}
                   >
@@ -1129,10 +1129,10 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
 
       <div className="mt-8 grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+          <Card className="border-white/10 bg-background/3 backdrop-blur-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Approved plans</CardTitle>
-              <CardDescription className="text-white/60">
+              <CardDescription className="text-foreground/60">
                 {forcedPlanId
                   ? "A forced plan is enabled. Members cannot choose a different plan."
                   : "Members can choose from the org-approved plans."}
@@ -1140,7 +1140,7 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
             </CardHeader>
             <CardContent className="space-y-3">
               {effectiveOrgPlans.length === 0 ? (
-                <div className="rounded-lg border border-white/10 bg-black/30 p-4 text-sm text-white/70">
+                <div className="rounded-lg border border-white/10 bg-black/30 p-4 text-sm text-foreground/70">
                   {isOrgAdmin
                     ? "No org plans yet. Create one to get started."
                     : "No org plans have been configured yet."}
@@ -1157,8 +1157,8 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
                       className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/30 p-3"
                     >
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-white">{p.name}</div>
-                        <div className="mt-0.5 text-xs text-white/60">
+                        <div className="truncate text-sm font-semibold text-foreground">{p.name}</div>
+                        <div className="mt-0.5 text-xs text-foreground/60">
                           {p.version} • Updated {new Date(p.updatedAt).toLocaleDateString()}
                         </div>
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -1167,7 +1167,7 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
                               Approved
                             </Badge>
                           ) : (
-                            <Badge className="bg-white/5 text-white/60 hover:bg-white/10">
+                            <Badge className="bg-background/5 text-foreground/60 hover:bg-background/10">
                               Not approved
                             </Badge>
                           )}
@@ -1189,7 +1189,7 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
                           <Button
                             variant="outline"
                             className={cn(
-                              "h-8 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white",
+                              "h-8 border-white/15 bg-transparent text-foreground hover:bg-background/10 hover:text-foreground",
                               isAllowed ? "border-emerald-500/30" : "",
                             )}
                             disabled={saving}
@@ -1204,21 +1204,21 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="outline"
-                                className="h-8 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                                className="h-8 border-white/15 bg-transparent text-foreground hover:bg-background/10 hover:text-foreground"
                                 disabled={saving}
                               >
                                 Force
                                 <ChevronDown className="ml-2 h-3.5 w-3.5" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="border-white/10 bg-black/90 text-white">
+                            <DropdownMenuContent className="border-white/10 bg-black/90 text-foreground">
                               <DropdownMenuItem
                                 onSelect={() => handleSetForced(null)}
                                 className="cursor-pointer"
                               >
                                 No forced plan
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator className="bg-white/10" />
+                              <DropdownMenuSeparator className="bg-background/10" />
                               <DropdownMenuItem
                                 onSelect={() => handleSetForced(p._id)}
                                 className="cursor-pointer"
@@ -1230,7 +1230,7 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
                         ) : null}
 
                         <Button
-                          className="h-8 border-0 bg-white/10 text-white hover:bg-white/20"
+                          className="h-8 border-0 bg-background/10 text-foreground hover:bg-background/20"
                           disabled={saving || !canSelectPlan || !isAllowed}
                           onClick={() => handleSelectMyPlan(p._id)}
                         >
@@ -1244,56 +1244,56 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
             </CardContent>
           </Card>
 
-          <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+          <Card className="border-white/10 bg-background/3 backdrop-blur-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Organization performance (approved plans)</CardTitle>
-              <CardDescription className="text-white/60">
+              <CardDescription className="text-foreground/60">
                 Aggregated across members who selected an approved org plan.
               </CardDescription>
             </CardHeader>
             <CardContent>
               {isLive && orgSummaryLive === undefined ? (
-                <div className="text-sm text-white/60">Loading organization metrics…</div>
+                <div className="text-sm text-foreground/60">Loading organization metrics…</div>
               ) : isLive && orgSummaryLive === null ? (
-                <div className="text-sm text-white/60">
+                <div className="text-sm text-foreground/60">
                   You don’t have access to organization totals.
                 </div>
               ) : (
                 (() => {
                   const s = effectiveOrgSummary ?? demoSummary;
                   return (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-lg border border-white/10 bg-black/30 p-3">
-                    <div className="text-xs text-white/60">Total PnL</div>
-                    <div className="mt-1 text-lg font-semibold text-white">
-                      {formatCurrency(s.totalPnl)}
-                    </div>
-                  </div>
-                  <div className="rounded-lg border border-white/10 bg-black/30 p-3">
-                    <div className="text-xs text-white/60">Closed trades</div>
-                    <div className="mt-1 text-lg font-semibold text-white">
-                      {formatNumber(s.closedTrades)}
-                    </div>
-                  </div>
-                  <div className="rounded-lg border border-white/10 bg-black/30 p-3">
-                    <div className="text-xs text-white/60">Sample size</div>
-                    <div className="mt-1 text-lg font-semibold text-white">
-                      {formatNumber(s.sampleSize)}
-                    </div>
-                  </div>
-                  <div className="rounded-lg border border-white/10 bg-black/30 p-3">
-                    <div className="text-xs text-white/60">Members considered</div>
-                    <div className="mt-1 text-lg font-semibold text-white">
-                      {formatNumber(s.memberCountConsidered)} /{" "}
-                      {formatNumber(s.memberCountEligible)}
-                    </div>
-                    {s.isTruncated ? (
-                      <div className="mt-1 text-xs text-white/50">
-                        Truncated to protect performance.
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+                        <div className="text-xs text-foreground/60">Total PnL</div>
+                        <div className="mt-1 text-lg font-semibold text-foreground">
+                          {formatCurrency(s.totalPnl)}
+                        </div>
                       </div>
-                    ) : null}
-                  </div>
-                </div>
+                      <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+                        <div className="text-xs text-foreground/60">Closed trades</div>
+                        <div className="mt-1 text-lg font-semibold text-foreground">
+                          {formatNumber(s.closedTrades)}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+                        <div className="text-xs text-foreground/60">Sample size</div>
+                        <div className="mt-1 text-lg font-semibold text-foreground">
+                          {formatNumber(s.sampleSize)}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+                        <div className="text-xs text-foreground/60">Members considered</div>
+                        <div className="mt-1 text-lg font-semibold text-foreground">
+                          {formatNumber(s.memberCountConsidered)} /{" "}
+                          {formatNumber(s.memberCountEligible)}
+                        </div>
+                        {s.isTruncated ? (
+                          <div className="mt-1 text-xs text-foreground/50">
+                            Truncated to protect performance.
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
                   );
                 })()
               )}
@@ -1302,18 +1302,18 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
         </div>
 
         <div className="space-y-6">
-          <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+          <Card className="border-white/10 bg-background/3 backdrop-blur-md">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Leaderboard</CardTitle>
-              <CardDescription className="text-white/60">
+              <CardDescription className="text-foreground/60">
                 Member performance comparison (approved plans only).
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {isLive && leaderboardLive === undefined ? (
-                <div className="text-sm text-white/60">Loading leaderboard…</div>
+                <div className="text-sm text-foreground/60">Loading leaderboard…</div>
               ) : isLive && (leaderboardLive ?? []).length === 0 ? (
-                <div className="text-sm text-white/60">
+                <div className="text-sm text-foreground/60">
                   No eligible members yet. Members must select an approved org plan to appear here.
                 </div>
               ) : (
@@ -1327,16 +1327,16 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <div className="text-xs font-semibold text-white/60">#{row.rank}</div>
-                        <div className="truncate text-sm font-semibold text-white">
+                        <div className="text-xs font-semibold text-foreground/60">#{row.rank}</div>
+                        <div className="truncate text-sm font-semibold text-foreground">
                           {row.name ?? "Member"}
                         </div>
                       </div>
-                      <div className="mt-0.5 text-xs text-white/50">
+                      <div className="mt-0.5 text-xs text-foreground/50">
                         {formatNumber(row.closedTrades)} closed • {row.percentile}% percentile
                       </div>
                     </div>
-                    <div className="text-sm font-semibold text-white">
+                    <div className="text-sm font-semibold text-foreground">
                       {formatCurrency(row.totalPnl)}
                     </div>
                   </div>

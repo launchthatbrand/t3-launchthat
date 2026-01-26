@@ -1979,9 +1979,14 @@ export const getMyTradeIdeaById = query({
   },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
-    return await ctx.runQuery(tradeIdeasQueries.getById, {
-      tradeIdeaGroupId: args.tradeIdeaGroupId as any,
-    });
+    try {
+      return await ctx.runQuery(tradeIdeasQueries.getById, {
+        tradeIdeaGroupId: args.tradeIdeaGroupId as any,
+      });
+    } catch {
+      // If the provided ID doesn't match the table validator, treat it as not-found.
+      return null;
+    }
   },
 });
 
@@ -2578,6 +2583,130 @@ export const getMyTradeIdeaDetail = query({
           : "private";
     const status: "active" | "closed" =
       detail.status === "closed" ? "closed" : "active";
+
+    return {
+      tradeIdeaId: String(detail.tradeIdeaId),
+      symbol: String(detail.symbol ?? ""),
+      instrumentId: typeof detail.instrumentId === "string" ? detail.instrumentId : undefined,
+      bias,
+      timeframe: String(detail.timeframe ?? "custom"),
+      timeframeLabel: typeof detail.timeframeLabel === "string" ? detail.timeframeLabel : undefined,
+      thesis: typeof detail.thesis === "string" ? detail.thesis : undefined,
+      tags: Array.isArray(detail.tags) ? detail.tags : undefined,
+      visibility,
+      shareToken: typeof detail.shareToken === "string" ? detail.shareToken : undefined,
+      shareEnabledAt: typeof detail.shareEnabledAt === "number" ? detail.shareEnabledAt : undefined,
+      expiresAt: typeof detail.expiresAt === "number" ? detail.expiresAt : undefined,
+      status,
+      openedAt: Number(detail.openedAt ?? 0),
+      lastActivityAt: Number(detail.lastActivityAt ?? 0),
+      positions: Array.isArray(detail.positions)
+        ? detail.positions.map((p: any) => ({
+            tradeIdeaGroupId: String(p.tradeIdeaGroupId),
+            symbol: String(p.symbol ?? ""),
+            instrumentId: typeof p.instrumentId === "string" ? p.instrumentId : undefined,
+            direction: (p.direction === "short" ? "short" : "long") as "long" | "short",
+            status: (p.status === "closed" ? "closed" : "open") as "open" | "closed",
+            openedAt: Number(p.openedAt ?? 0),
+            closedAt: typeof p.closedAt === "number" ? p.closedAt : undefined,
+            realizedPnl: typeof p.realizedPnl === "number" ? p.realizedPnl : undefined,
+            fees: typeof p.fees === "number" ? p.fees : undefined,
+            netQty: Number(p.netQty ?? 0),
+          }))
+        : [],
+    };
+  },
+});
+
+export const getMyTradeIdeaDetailByAnyId = query({
+  args: {
+    id: v.string(),
+    positionsLimit: v.optional(v.number()),
+  },
+  returns: v.union(
+    v.null(),
+    v.object({
+      tradeIdeaId: v.string(),
+      symbol: v.string(),
+      instrumentId: v.optional(v.string()),
+      bias: v.union(v.literal("long"), v.literal("short"), v.literal("neutral")),
+      timeframe: v.string(),
+      timeframeLabel: v.optional(v.string()),
+      thesis: v.optional(v.string()),
+      tags: v.optional(v.array(v.string())),
+      visibility: v.union(v.literal("private"), v.literal("link"), v.literal("public")),
+      shareToken: v.optional(v.string()),
+      shareEnabledAt: v.optional(v.number()),
+      expiresAt: v.optional(v.number()),
+      status: v.union(v.literal("active"), v.literal("closed")),
+      openedAt: v.number(),
+      lastActivityAt: v.number(),
+      positions: v.array(
+        v.object({
+          tradeIdeaGroupId: v.string(),
+          symbol: v.string(),
+          instrumentId: v.optional(v.string()),
+          direction: v.union(v.literal("long"), v.literal("short")),
+          status: v.union(v.literal("open"), v.literal("closed")),
+          openedAt: v.number(),
+          closedAt: v.optional(v.number()),
+          realizedPnl: v.optional(v.number()),
+          fees: v.optional(v.number()),
+          netQty: v.number(),
+        }),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+    const raw = String(args.id ?? "").trim();
+    if (!raw) return null;
+
+    // The admin route param is ambiguous (it can be a tradeIdeas ID or a tradeIdeaGroups ID).
+    // Resolve group → tradeIdeaId when possible, otherwise treat as tradeIdeaId.
+    let group: any | null = null;
+    try {
+      group = await ctx.runQuery(tradeIdeasQueries.getById, {
+        tradeIdeaGroupId: raw as any,
+      });
+    } catch {
+      group = null;
+    }
+
+    const tradeIdeaId =
+      group && typeof (group as any).tradeIdeaId === "string" && String((group as any).tradeIdeaId).trim()
+        ? String((group as any).tradeIdeaId).trim()
+        : raw;
+
+    let detail: any | null = null;
+    try {
+      detail = await ctx.runQuery(tradeIdeasIdeas.getMyTradeIdeaDetail, {
+        organizationId,
+        userId,
+        tradeIdeaId: tradeIdeaId as any,
+        positionsLimit: args.positionsLimit,
+      });
+    } catch {
+      // If the ID doesn't match the validator (wrong table), treat as not-found instead of crashing the client.
+      return null;
+    }
+
+    if (!detail) return null;
+
+    const bias: "long" | "short" | "neutral" =
+      detail.bias === "neutral"
+        ? "neutral"
+        : detail.bias === "short"
+          ? "short"
+          : "long";
+    const visibility: "private" | "link" | "public" =
+      detail.visibility === "public"
+        ? "public"
+        : detail.visibility === "link"
+          ? "link"
+          : "private";
+    const status: "active" | "closed" = detail.status === "closed" ? "closed" : "active";
 
     return {
       tradeIdeaId: String(detail.tradeIdeaId),

@@ -7,8 +7,8 @@ import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import React from "react";
 import { RefreshCw } from "lucide-react";
-import { api } from "@convex-config/_generated/api";
 import { TradeLockerApiDebugPanel } from "~/components/settings/tradelocker/TradeLockerApiDebugPanel";
+import { api } from "@convex-config/_generated/api";
 
 type UnknownRecord = Record<string, unknown>;
 interface ConnectionAccountResult {
@@ -61,7 +61,7 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
 
     if (data === undefined) {
         return (
-            <div className="rounded-xl border border-white/10 bg-black/20 p-6 text-sm text-white/60">
+            <div className="rounded-xl border border-border/40 bg-card/50 p-6 text-sm text-muted-foreground">
                 Loading…
             </div>
         );
@@ -69,7 +69,7 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
 
     if (!data) {
         return (
-            <div className="rounded-xl border border-white/10 bg-black/20 p-6 text-sm text-white/60">
+            <div className="rounded-xl border border-border/40 bg-card/50 p-6 text-sm text-muted-foreground">
                 Account not found (or no access).
             </div>
         );
@@ -142,10 +142,10 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
 
     return (
         <div className="space-y-6">
-            <Card className="border-white/10 bg-black/20">
+            <Card className="border-border/40 bg-card/50">
                 <CardHeader className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                        <CardTitle className="text-white/90">
+                        <CardTitle className="text-foreground/90">
                             {provider === "tradelocker"
                                 ? "TradeLocker"
                                 : provider === "unknown"
@@ -153,47 +153,47 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
                                     : provider}
                         </CardTitle>
                         {isActive ? (
-                            <Badge className="bg-blue-600/10 text-blue-200 hover:bg-blue-600/20">
+                            <Badge className="bg-blue-600/10 text-blue-700 hover:bg-blue-600/20 dark:text-blue-200">
                                 Active
                             </Badge>
                         ) : null}
                         {hasMarket === true ? (
-                            <Badge className="bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20">
+                            <Badge className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-200">
                                 Market OK
                             </Badge>
                         ) : hasMarket === false ? (
-                            <Badge className="bg-rose-500/10 text-rose-200 hover:bg-rose-500/20">
+                            <Badge className="bg-rose-500/10 text-rose-700 hover:bg-rose-500/20 dark:text-rose-200">
                                 Blocked
                             </Badge>
                         ) : (
-                            <Badge variant="secondary" className="bg-white/5 text-white/60">
+                            <Badge variant="secondary" className="bg-background/40 text-muted-foreground">
                                 Unknown
                             </Badge>
                         )}
                     </div>
-                    <div className="text-sm text-white/60">
+                    <div className="text-sm text-muted-foreground">
                         {typeof account.name === "string" && account.name.trim()
                             ? account.name
                             : `Account ${accountAccNum ?? "—"}`}
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid gap-2 rounded-lg border border-white/10 bg-black/30 p-4 text-sm">
+                    <div className="grid gap-2 rounded-lg border border-border/40 bg-background/40 p-4 text-sm">
                         <div className="flex items-center justify-between gap-3">
-                            <span className="text-white/55">accNum</span>
-                            <span className="font-mono text-white/80">
+                            <span className="text-muted-foreground">accNum</span>
+                            <span className="font-mono text-foreground/80">
                                 {accountAccNum ?? "—"}
                             </span>
                         </div>
                         <div className="flex items-center justify-between gap-3">
-                            <span className="text-white/55">accountId</span>
-                            <span className="font-mono text-white/80">
+                            <span className="text-muted-foreground">accountId</span>
+                            <span className="font-mono text-foreground/80">
                                 {typeof account.accountId === "string" ? account.accountId : "—"}
                             </span>
                         </div>
                         <div className="flex items-center justify-between gap-3">
-                            <span className="text-white/55">rowId</span>
-                            <span className="font-mono text-white/80">
+                            <span className="text-muted-foreground">rowId</span>
+                            <span className="font-mono text-foreground/80">
                                 {typeof account._id === "string" ? account._id : "—"}
                             </span>
                         </div>
@@ -222,7 +222,7 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
                         <Button
                             type="button"
                             variant="outline"
-                            className="h-9 text-red-300 hover:bg-red-500/10 hover:text-red-200"
+                            className="h-9 text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-300 dark:hover:text-red-200"
                             onClick={handleDisconnect}
                             disabled={busy !== null}
                         >
@@ -231,16 +231,16 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
                     </div>
 
                     {error ? (
-                        <div className="rounded-lg border border-white/10 bg-black/30 p-3 text-sm text-rose-200">
+                        <div className="rounded-lg border border-border/40 bg-background/40 p-3 text-sm text-red-600 dark:text-rose-200">
                             {error}
                         </div>
                     ) : null}
 
-                    <details className="rounded-lg border border-white/10 bg-black/20 p-3">
-                        <summary className="cursor-pointer text-sm font-semibold text-white/70 hover:text-white">
+                    <details className="rounded-lg border border-border/40 bg-background/40 p-3">
+                        <summary className="cursor-pointer text-sm font-semibold text-foreground/70 hover:text-foreground">
                             Debug
                         </summary>
-                        <pre className="mt-3 max-h-[420px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+                        <pre className="mt-3 max-h-[420px] overflow-auto whitespace-pre-wrap rounded-md border border-border/40 bg-background/40 p-3 text-[11px] text-foreground/80">
                             {JSON.stringify({ connection, account }, null, 2)}
                         </pre>
                     </details>
@@ -248,7 +248,7 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
             </Card>
 
             {provider === "tradelocker" ? (
-              <TradeLockerApiDebugPanel accountRowId={props.accountRowId} />
+                <TradeLockerApiDebugPanel accountRowId={props.accountRowId} />
             ) : null}
         </div>
     );

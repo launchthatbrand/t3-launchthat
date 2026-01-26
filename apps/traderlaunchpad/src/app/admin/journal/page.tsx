@@ -120,7 +120,7 @@ function TooltipIcon({
       onMouseLeave={() => setOpen(false)}
     >
       <Button variant="ghost" size="icon" aria-label={title}>
-        <span className="text-white/60">?</span>
+        <span className="text-muted-foreground">?</span>
       </Button>
       {typeof document !== "undefined"
         ? createPortal(
@@ -133,9 +133,9 @@ function TooltipIcon({
                 transition={{ duration: 0.18, ease: "easeOut" }}
                 className="pointer-events-none fixed inset-0 z-50"
               >
-                <div className="pointer-events-none absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                <div className="pointer-events-none absolute inset-0 bg-black/50 backdrop-blur-sm" />
                 <div
-                  className="pointer-events-auto absolute z-10 w-64 -translate-x-full rounded-lg border border-white/10 bg-black/85 p-3 shadow-xl backdrop-blur"
+                  className="pointer-events-auto absolute z-10 w-64 -translate-x-full rounded-lg border border-border/40 bg-background/95 p-3 text-foreground shadow-xl backdrop-blur"
                   style={{
                     top: coords?.top ?? 0,
                     left: coords?.left ?? 0,
@@ -144,7 +144,7 @@ function TooltipIcon({
                   onMouseLeave={() => setOpen(false)}
                 >
                   <div className="text-sm font-semibold">{title}</div>
-                  <div className="mt-1 text-xs text-white/60">{description}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">{description}</div>
                 </div>
               </motion.div>
             ) : null}
@@ -522,11 +522,11 @@ export default function AdminJournalDashboardPage() {
   const router = useRouter();
 
   return (
-    <div className="relative animate-in fade-in space-y-8 text-white selection:bg-orange-500/30 duration-500">
+    <div className="relative animate-in fade-in space-y-8 text-foreground selection:bg-orange-500/30 duration-500">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Journal</h1>
-          <p className="mt-1 text-white/60">
+          <p className="mt-1 text-muted-foreground">
             Review trades, stay consistent, and spot patterns faster.
           </p>
         </div>
@@ -580,7 +580,7 @@ export default function AdminJournalDashboardPage() {
           ) : (
             <Badge
               variant="secondary"
-              className="h-9 border border-white/15 bg-white/5 text-white/80"
+              className="h-9 border border-border/60 bg-background/40 text-foreground/80"
             >
               Viewing org totals
             </Badge>
@@ -589,13 +589,13 @@ export default function AdminJournalDashboardPage() {
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                className="h-9 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                className="h-9 border-border/60 bg-transparent text-foreground hover:bg-foreground/5 hover:text-foreground"
               >
                 <Calendar className="mr-2 h-4 w-4 text-orange-300" />
                 {selectedDateLabel}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto border-white/10 bg-black/90 p-3 text-white backdrop-blur">
+            <PopoverContent className="w-auto border-border/40 bg-background/95 p-3 text-foreground backdrop-blur">
               <DayCalendar
                 mode="single"
                 selected={selectedDateObj}
@@ -631,14 +631,14 @@ export default function AdminJournalDashboardPage() {
             {dataMode.effectiveMode === "demo" ? (
               <TradingTimingInsights />
             ) : (
-              <Card className="border-white/10 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
+              <Card className="border-border/40 bg-card/70 backdrop-blur-md transition-colors hover:bg-card/80">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">Trading Timing Insights</CardTitle>
                     <Badge variant="outline">Live</Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="text-sm text-white/60">
+                <CardContent className="text-sm text-muted-foreground">
                   Coming soon — we’ll calculate best hours/days from your synced executions.
                 </CardContent>
               </Card>
@@ -651,12 +651,12 @@ export default function AdminJournalDashboardPage() {
             </div>
           </div>
 
-          <Card className="border-white/10 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
+          <Card className="border-border/40 bg-card/70 backdrop-blur-md transition-colors hover:bg-card/80">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <CardTitle className="text-base">Trading Instruments</CardTitle>
-                  <div className="mt-1 text-xs text-white/60">
+                  <div className="mt-1 text-xs text-muted-foreground">
                     {isOrgStats
                       ? "Org-wide (members) • Sort by Most Traded / Most Profitable"
                       : "Your trades • Sort by Most Traded / Most Profitable"}
@@ -666,7 +666,7 @@ export default function AdminJournalDashboardPage() {
                   <Button
                     type="button"
                     variant={instrumentSortBy === "mostTraded" ? "secondary" : "outline"}
-                    className="h-9 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                    className="h-9 border-border/60 bg-transparent text-foreground hover:bg-foreground/5 hover:text-foreground"
                     onClick={() => setInstrumentSortBy("mostTraded")}
                   >
                     Most Traded
@@ -674,7 +674,7 @@ export default function AdminJournalDashboardPage() {
                   <Button
                     type="button"
                     variant={instrumentSortBy === "mostProfitable" ? "secondary" : "outline"}
-                    className="h-9 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                    className="h-9 border-border/60 bg-transparent text-foreground hover:bg-foreground/5 hover:text-foreground"
                     onClick={() => setInstrumentSortBy("mostProfitable")}
                   >
                     Most Profitable
@@ -682,7 +682,7 @@ export default function AdminJournalDashboardPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-9 border-white/15 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                    className="h-9 border-border/60 bg-transparent text-foreground hover:bg-foreground/5 hover:text-foreground"
                     onClick={() => setInstrumentSortDir((d) => (d === "desc" ? "asc" : "desc"))}
                   >
                     {instrumentSortDir === "desc" ? "Desc" : "Asc"}
@@ -709,9 +709,9 @@ export default function AdminJournalDashboardPage() {
                 }
                 getRowId={(r: InstrumentRow) => r.symbol}
                 emptyState={
-                  <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-white/10">
-                    <div className="text-lg font-medium text-white">No instruments</div>
-                    <div className="mt-1 text-sm text-white/60">
+                  <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-border/60 bg-card/40">
+                    <div className="text-lg font-medium text-foreground">No instruments</div>
+                    <div className="mt-1 text-sm text-muted-foreground">
                       No trades found to aggregate yet.
                     </div>
                   </div>

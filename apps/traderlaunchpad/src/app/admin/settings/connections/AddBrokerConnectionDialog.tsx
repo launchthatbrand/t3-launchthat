@@ -148,23 +148,23 @@ export function AddBrokerConnectionDialog(props: {
                           disabled={!p.enabled}
                           className={cn(
                             "flex w-full flex-col gap-2 rounded-lg border p-4 text-left transition",
-                            "border-white/10 bg-black/20 hover:bg-black/30",
+                            "border-border/40 bg-card/50 hover:bg-card/70",
                             p.enabled
                               ? "cursor-pointer"
-                              : "cursor-not-allowed opacity-60 hover:bg-black/20",
+                              : "cursor-not-allowed opacity-60 hover:bg-card/50",
                           )}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <div className="text-sm font-semibold text-white/90">
+                            <div className="text-sm font-semibold text-foreground/90">
                               {p.label}
                             </div>
                             {!p.enabled ? (
-                              <span className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/70">
+                              <span className="rounded-md border border-border/40 bg-background/40 px-2 py-0.5 text-[11px] text-muted-foreground">
                                 Coming soon
                               </span>
                             ) : null}
                           </div>
-                          <div className="text-xs text-white/60">{p.description}</div>
+                          <div className="text-xs text-muted-foreground">{p.description}</div>
                         </button>
                       );
 
@@ -181,7 +181,7 @@ export function AddBrokerConnectionDialog(props: {
                     })}
                   </div>
 
-                  <div className="text-xs text-white/50">
+                  <div className="text-xs text-muted-foreground">
                     Only TradeLocker is available right now.
                   </div>
                 </>

@@ -35,8 +35,9 @@ interface FeedbackThreadRow extends Record<string, unknown> {
 export default function AdminFeedbackPage() {
   const router = useRouter();
   const [sort, setSort] = React.useState<"trending" | "new">("trending");
+  const [type, setType] = React.useState<"feedback" | "issue">("feedback");
 
-  const threads = useQuery(api.feedback.queries.listThreads, { sort }) as
+  const threads = useQuery(api.feedback.queries.listThreads, { sort, type }) as
     | FeedbackThreadRow[]
     | undefined;
 
@@ -54,7 +55,7 @@ export default function AdminFeedbackPage() {
     if (!t || !b) return;
     setCreating(true);
     try {
-      await createThread({ title: t, body: b });
+      await createThread({ title: t, body: b, type });
       setTitle("");
       setBody("");
       setCreateOpen(false);
@@ -75,7 +76,7 @@ export default function AdminFeedbackPage() {
         header: "Thread",
         accessorKey: "title",
         cell: (t: FeedbackThreadRow) => (
-          <span className="text-white">{t.title ?? "Untitled"}</span>
+          <span className="text-foreground">{t.title ?? "Untitled"}</span>
         ),
         sortable: true,
       },
@@ -84,7 +85,7 @@ export default function AdminFeedbackPage() {
         header: "Status",
         accessorKey: "status",
         cell: (t: FeedbackThreadRow) => (
-          <span className="text-white/80">{t.status ?? "—"}</span>
+          <span className="text-foreground/80">{t.status ?? "—"}</span>
         ),
         sortable: true,
       },
@@ -93,7 +94,7 @@ export default function AdminFeedbackPage() {
         header: "Comments",
         accessorKey: "commentCount",
         cell: (t: FeedbackThreadRow) => (
-          <span className="text-white/80">{t.commentCount ?? 0}</span>
+          <span className="text-foreground/80">{t.commentCount ?? 0}</span>
         ),
         sortable: true,
       },
@@ -102,7 +103,7 @@ export default function AdminFeedbackPage() {
         header: "Upvotes",
         accessorKey: "upvoteCount",
         cell: (t: FeedbackThreadRow) => (
-          <span className="text-white/80">{t.upvoteCount ?? 0}</span>
+          <span className="text-foreground/80">{t.upvoteCount ?? 0}</span>
         ),
         sortable: true,
       },
@@ -111,13 +112,32 @@ export default function AdminFeedbackPage() {
   );
 
   return (
-    <div className="animate-in fade-in space-y-6 text-white duration-500">
+    <div className="animate-in fade-in space-y-6 text-foreground duration-500">
       <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Feedback</h1>
-          <p className="mt-1 text-white/60">Suggestions and feature requests.</p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {type === "issue" ? "Issues" : "Feedback"}
+          </h1>
+          <p className="mt-1 text-foreground/60">
+            {type === "issue"
+              ? "Bug reports and error logs."
+              : "Suggestions and feature requests."}
+          </p>
         </div>
         <div className="flex items-center gap-2">
+          <Tabs
+            value={type}
+            onValueChange={(v) => setType(v === "issue" ? "issue" : "feedback")}
+          >
+            <TabsList className="border border-white/10 bg-black/20">
+              <TabsTrigger value="feedback" className="text-xs">
+                Feedback
+              </TabsTrigger>
+              <TabsTrigger value="issue" className="text-xs">
+                Issues
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
           <Tabs value={sort} onValueChange={(v) => setSort(v === "new" ? "new" : "trending")}>
             <TabsList className="border border-white/10 bg-black/20">
               <TabsTrigger value="trending" className="text-xs">
@@ -130,10 +150,10 @@ export default function AdminFeedbackPage() {
           </Tabs>
           <Button
             type="button"
-            className="bg-orange-600 text-white hover:bg-orange-700"
+            className="bg-orange-600 text-foreground hover:bg-orange-700"
             onClick={() => setCreateOpen(true)}
           >
-            New recommendation
+            {type === "issue" ? "New issue" : "New recommendation"}
           </Button>
         </div>
       </div>
@@ -159,10 +179,10 @@ export default function AdminFeedbackPage() {
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
-                    <CardTitle className="text-base text-white hover:underline">
+                    <CardTitle className="text-base text-foreground hover:underline">
                       {t.title ?? "Untitled"}
                     </CardTitle>
-                    <div className="text-xs text-white/50">
+                    <div className="text-xs text-foreground/50">
                       {comments} comments • {upvotes} upvotes
                     </div>
                   </div>
@@ -172,7 +192,7 @@ export default function AdminFeedbackPage() {
                     variant={t.viewerHasUpvoted ? "default" : "outline"}
                     className={
                       t.viewerHasUpvoted
-                        ? "bg-orange-600 text-white hover:bg-orange-700"
+                        ? "bg-orange-600 text-foreground hover:bg-orange-700"
                         : ""
                     }
                     onClick={(e) => {
@@ -206,8 +226,8 @@ export default function AdminFeedbackPage() {
         emptyState={
           <Card>
             <CardHeader>
-              <CardTitle className="text-base text-white">No feedback yet</CardTitle>
-              <div className="text-sm text-white/60">
+              <CardTitle className="text-base text-foreground">No feedback yet</CardTitle>
+              <div className="text-sm text-foreground/60">
                 Be the first to create a recommendation.
               </div>
             </CardHeader>
@@ -248,7 +268,7 @@ export default function AdminFeedbackPage() {
                 type="button"
                 onClick={handleCreate}
                 disabled={creating || !title.trim() || !body.trim()}
-                className="bg-orange-600 text-white hover:bg-orange-700"
+                className="bg-orange-600 text-foreground hover:bg-orange-700"
               >
                 {creating ? "Posting..." : "Post"}
               </Button>

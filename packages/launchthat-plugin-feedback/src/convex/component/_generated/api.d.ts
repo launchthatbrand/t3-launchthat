@@ -44,7 +44,13 @@ export type Mounts = {
     createThread: FunctionReference<
       "mutation",
       "public",
-      { authorUserId: string; boardId: string; body: string; title: string },
+      {
+        authorUserId: string;
+        boardId: string;
+        body: string;
+        title: string;
+        type?: "feedback" | "issue";
+      },
       string
     >;
     toggleUpvote: FunctionReference<
@@ -74,6 +80,7 @@ export type Mounts = {
         boardId: string;
         limit?: number;
         sort?: "trending" | "new";
+        type?: "feedback" | "issue";
         userId: string;
       },
       Array<any>

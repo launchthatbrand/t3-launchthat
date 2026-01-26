@@ -111,9 +111,9 @@ function TooltipIcon({
                 transition={{ duration: 0.18, ease: "easeOut" }}
                 className="pointer-events-none fixed inset-0 z-50"
               >
-                <div className="pointer-events-none absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                <div className="pointer-events-none absolute inset-0 bg-background/60 backdrop-blur-sm" />
                 <div
-                  className="pointer-events-auto absolute z-10 w-64 -translate-x-full rounded-lg border border-white/10 bg-black/85 p-3 shadow-xl backdrop-blur"
+                  className="pointer-events-auto absolute z-10 w-64 -translate-x-full rounded-lg border border-border/40 bg-white/95 p-3 text-foreground shadow-xl backdrop-blur dark:border-white/10 dark:bg-black/85 dark:text-white"
                   style={{
                     top: coords?.top ?? 0,
                     left: coords?.left ?? 0,
@@ -757,7 +757,7 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div className="relative animate-in fade-in space-y-8 text-white selection:bg-orange-500/30 duration-500">
+    <div className="relative animate-in fade-in space-y-8 text-foreground selection:bg-orange-500/30 duration-500">
       <PublicProfileHeader
         coverUrl={viewerProfile?.coverUrl ?? null}
         avatarUrl={viewerProfile?.avatarUrl ?? null}
@@ -781,20 +781,20 @@ export default function AdminDashboardPage() {
         }
         topRightExtra={
           !isDismissed && !onboarding.isComplete ? (
-            <div className="w-[220px] rounded-2xl border border-orange-500/20 bg-black/45 p-2 text-left text-white backdrop-blur-md">
+            <div className="w-[220px] rounded-2xl border border-orange-500/20 bg-white/80 p-2 text-left text-foreground backdrop-blur-md dark:bg-black/45 dark:text-white">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold text-white">
+                  <div className="text-xs font-semibold text-foreground dark:text-white">
                     Finish setup
                   </div>
-                  <div className="text-[11px] text-white/60 tabular-nums">
+                  <div className="text-[11px] text-muted-foreground dark:text-white/60 tabular-nums">
                     {onboarding.completedSteps}/{onboarding.totalSteps} completed
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <button
                     type="button"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white/70 hover:bg-white/5 hover:text-white"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/40 bg-white/70 text-foreground/70 hover:bg-white hover:text-foreground dark:border-white/10 dark:bg-black/40 dark:text-white/70 dark:hover:bg-white/5 dark:hover:text-white"
                     onClick={handleDismiss}
                     aria-label="Dismiss setup prompt"
                   >
@@ -832,10 +832,10 @@ export default function AdminDashboardPage() {
       />
 
       {isOrgMode ? (
-        <Card className="border-white/10 bg-black/20">
+        <Card className="border-border/40 bg-card/60 dark:bg-black/20">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Organization performance</CardTitle>
-            <CardDescription className="text-white/60">
+            <CardDescription className="text-muted-foreground dark:text-white/60">
               {isLive
                 ? "Group totals across members in this organization."
                 : "Demo org totals (100 members) for previews/testing."}
@@ -843,23 +843,23 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             {orgAggregateSummary === undefined ? (
-              <div className="text-white/60 text-sm">Loading organization metrics…</div>
+              <div className="text-muted-foreground text-sm">Loading organization metrics…</div>
             ) : orgAggregateSummary === null ? (
-              <div className="text-white/60 text-sm">
+              <div className="text-muted-foreground text-sm">
                 You don’t have access to organization totals.
               </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                  <div className="text-white/60 text-xs">Total PnL (group)</div>
+                <div className="rounded-xl border border-border/40 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
+                  <div className="text-muted-foreground text-xs">Total PnL (group)</div>
                   <div className="mt-1 text-2xl font-semibold">
                     {Number.isFinite(orgAggregateSummary.totalPnl)
                       ? orgAggregateSummary.totalPnl.toFixed(2)
                       : "—"}
                   </div>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-                  <div className="text-white/60 text-xs">Open trades (group)</div>
+                <div className="rounded-xl border border-border/40 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
+                  <div className="text-muted-foreground text-xs">Open trades (group)</div>
                   <div className="mt-1 text-2xl font-semibold">
                     {Number.isFinite(orgAggregateSummary.openTrades)
                       ? orgAggregateSummary.openTrades
@@ -867,7 +867,7 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
                 {orgAggregateSummary.isTruncated ? (
-                  <div className="sm:col-span-2 text-white/50 text-xs">
+                  <div className="sm:col-span-2 text-muted-foreground text-xs">
                     Showing totals for {orgAggregateSummary.memberCountConsidered} of{" "}
                     {orgAggregateSummary.memberCountTotal} members (truncated for performance).
                   </div>
@@ -890,23 +890,23 @@ export default function AdminDashboardPage() {
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                className="gap-2 border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                className="gap-2 border-border/60 dark:bg-transparent text-foreground hover:bg-foreground/5 hover:text-foreground"
               >
                 <Calendar className="h-4 w-4" />
                 <span>{selectedDateLabel}</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto border-white/10 bg-black/70 p-0 text-white">
+            <PopoverContent className="w-auto border-border/40 bg-white/95 p-0 text-foreground dark:bg-black/70 dark:text-white">
               <DayCalendar
                 mode="single"
                 selected={selectedDateObj}
                 onSelect={handleSelectDate}
                 initialFocus
               />
-              <div className="flex items-center justify-between border-t border-white/10 p-2">
+              <div className="flex items-center justify-between border-t border-border/40 p-2 dark:border-white/10">
                 <Button
                   variant="ghost"
-                  className="text-white/70 hover:bg-white/10 hover:text-white"
+                  className="text-muted-foreground hover:bg-foreground/5 hover:text-foreground dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
                   onClick={() => setSelectedTradeDate(null)}
                 >
                   Clear
@@ -928,7 +928,7 @@ export default function AdminDashboardPage() {
               Filtering
             </Badge>
           ) : (
-            <Badge variant="outline" className="border-white/15 text-white/70">
+            <Badge variant="outline" className="border-border/60 text-muted-foreground dark:text-white/70">
               All data
             </Badge>
           )}
@@ -946,7 +946,7 @@ export default function AdminDashboardPage() {
           />
         </div>
         <div className="space-y-8 lg:col-span-1">
-          <Card className="min-h-[530px] h-full border-l-4 border-white/10 border-l-orange-500 bg-white/3 shadow-lg shadow-orange-500/5 backdrop-blur-md transition-colors hover:bg-white/6">
+          <Card className="min-h-[530px] h-full border-l-4 border-border/40 border-l-orange-500 bg-card/70 shadow-lg shadow-orange-500/5 backdrop-blur-md transition-colors hover:bg-card/80 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -955,15 +955,16 @@ export default function AdminDashboardPage() {
                 </CardTitle>
                 <Badge
                   variant="secondary"
-                  className="bg-orange-500/10 text-orange-300 hover:bg-orange-500/20"
+                  className="bg-orange-500/10 ml-auto text-orange-700 hover:bg-orange-500/20 dark:text-orange-300"
                 >
                   {selectedTradeDate ? "Filtered" : "All"}
                 </Badge>
+                <TooltipIcon
+                  title="Trades List"
+                  description="Shows trades filtered by the selected calendar date with review status."
+                />
               </div>
-              <TooltipIcon
-                title="Trades List"
-                description="Shows trades filtered by the selected calendar date with review status."
-              />
+
             </CardHeader>
             <CardContent className="flex h-full flex-col gap-3">
               <div className="flex-1 space-y-2 overflow-y-auto pr-1">
@@ -1022,13 +1023,13 @@ export default function AdminDashboardPage() {
                         </div>
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[320px] border-white/10 bg-black/80 p-3 text-white backdrop-blur">
+                    <PopoverContent className="w-[320px] border-border/40 bg-white/95 p-3 text-foreground backdrop-blur dark:border-white/10 dark:bg-black/80 dark:text-white">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="text-sm font-semibold">
                             {trade.symbol} • {trade.type}
                           </div>
-                          <div className="mt-0.5 text-xs text-white/60">
+                          <div className="mt-0.5 text-xs text-muted-foreground dark:text-white/60">
                             {trade.tradeDate} • {trade.reason}
                           </div>
                         </div>
@@ -1047,8 +1048,10 @@ export default function AdminDashboardPage() {
                         <Badge
                           variant="outline"
                           className={cn(
-                            "border-white/15 text-[10px]",
-                            trade.reviewed ? "text-emerald-200" : "text-amber-200",
+                            "border-border/60 text-[10px]",
+                            trade.reviewed
+                              ? "text-emerald-700 dark:text-emerald-200"
+                              : "text-amber-700 dark:text-amber-200",
                           )}
                         >
                           {trade.reviewed ? "Reviewed" : "Needs review"}
@@ -1076,7 +1079,7 @@ export default function AdminDashboardPage() {
               </div>
               <Button
                 variant="outline"
-                className="w-full border-white/15 bg-transparent text-xs text-white hover:bg-white/10 hover:text-white"
+                className="w-full border-border/60 bg-transparent text-xs text-foreground hover:bg-foreground/5 hover:text-foreground dark:border-white/15 dark:text-white dark:hover:bg-white/10 dark:hover:text-white"
                 asChild
               >
                 <Link href="/admin/tradeideas?status=closed">
@@ -1089,7 +1092,7 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="p-2 gap-2 relative overflow-hidden border-l-4 border-white/10 border-l-emerald-500 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
+        <Card className="p-2 gap-2 relative overflow-hidden border-l-4 border-border/40 border-l-emerald-500 bg-card/70 backdrop-blur-md transition-colors hover:bg-card/80 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
           <CardHeader className=" p-0 flex flex-row items-center justify-between space-y-0 pb-1.5">
             <CardTitle className="text-muted-foreground text-[11px] font-medium">
               Account Balance
@@ -1117,7 +1120,7 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="p-2 gap-2 border-l-4 border-white/10 border-l-orange-500 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
+        <Card className="p-2 gap-2 border-l-4 border-border/40 border-l-orange-500 bg-card/70 backdrop-blur-md transition-colors hover:bg-card/80 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
           <CardHeader className="p-0 flex flex-row items-center justify-between space-y-0 pb-1.5">
             <CardTitle className="text-muted-foreground text-[11px] font-medium">
               Win Rate
@@ -1141,7 +1144,7 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="p-2 gap-2 border-l-4 border-white/10 border-l-orange-500 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
+        <Card className="p-2 gap-2 border-l-4 border-border/40 border-l-orange-500 bg-card/70 backdrop-blur-md transition-colors hover:bg-card/80 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1.5">
             <CardTitle className="text-muted-foreground text-[11px] font-medium">
               Profit Factor
@@ -1167,7 +1170,7 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="p-2 gap-2 border-l-4 border-white/10 border-l-purple-500 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
+        <Card className="p-2 gap-2 border-l-4 border-border/40 border-l-purple-500 bg-card/70 backdrop-blur-md transition-colors hover:bg-card/80 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1.5">
             <CardTitle className="text-muted-foreground text-[11px] font-medium">
               Journal Streak
@@ -1203,7 +1206,7 @@ export default function AdminDashboardPage() {
           {/* KPI Grid */}
 
           {/* Equity Curve Placeholder */}
-          <Card className="border-white/10 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
+          <Card className="border-border/40 bg-card/70 backdrop-blur-md transition-colors hover:bg-card/80 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
             <CardHeader>
               <CardTitle>Performance Analytics</CardTitle>
               <CardDescription>
@@ -1260,7 +1263,7 @@ export default function AdminDashboardPage() {
                   </LineChart>
                 </ChartContainer>
               ) : (
-                <div className="flex h-[300px] w-full items-center justify-center rounded-lg border border-dashed border-white/10 bg-linear-to-b from-orange-500/10 to-transparent px-6 text-center text-sm text-white/70">
+                <div className="flex h-[300px] w-full items-center justify-center rounded-lg border border-dashed border-border/40 bg-linear-to-b from-orange-500/10 to-transparent px-6 text-center text-sm text-muted-foreground dark:border-white/10 dark:text-white/70">
                   No trades yet. As you start trading, we’ll plot your equity curve here.
                 </div>
               )}
@@ -1268,13 +1271,13 @@ export default function AdminDashboardPage() {
           </Card>
 
           {/* AI Insights */}
-          <Card className="border-white/10 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
+          <Card className="border-border/40 bg-card/70 backdrop-blur-md transition-colors hover:bg-card/80 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Brain className="h-5 w-5 text-orange-300" />
                 <CardTitle>Trading Coach Insights</CardTitle>
               </div>
-              <CardDescription className="text-white/60">
+              <CardDescription className="text-muted-foreground dark:text-white/60">
                 AI-driven analysis of your recent behavior and performance.
               </CardDescription>
             </CardHeader>
@@ -1286,11 +1289,11 @@ export default function AdminDashboardPage() {
                   return (
                     <div
                       key={insight.id}
-                      className="flex items-start gap-4 rounded-lg border border-white/10 bg-white/3 p-4 transition-colors hover:bg-white/6"
+                      className="flex items-start gap-4 rounded-lg border border-border/40 bg-card/60 p-4 transition-colors hover:bg-card/70 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6"
                     >
                       <div
                         className={cn(
-                          "rounded-full border border-white/10 bg-black/30 p-2 shadow-sm",
+                          "rounded-full border border-border/40 bg-white/70 p-2 shadow-sm dark:border-white/10 dark:bg-black/30",
                           meta.color,
                         )}
                       >
@@ -1298,7 +1301,7 @@ export default function AdminDashboardPage() {
                       </div>
                       <div>
                         <h4 className="text-sm font-semibold">{insight.title}</h4>
-                        <p className="mt-1 text-sm leading-relaxed text-white/70">
+                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground dark:text-white/70">
                           {insight.description}
                         </p>
                       </div>
@@ -1306,7 +1309,7 @@ export default function AdminDashboardPage() {
                   );
                 })
               ) : (
-                <div className="rounded-lg border border-white/10 bg-black/30 p-4 text-sm text-white/70">
+                <div className="rounded-lg border border-border/40 bg-card/60 p-4 text-sm text-muted-foreground dark:border-white/10 dark:bg-black/30 dark:text-white/70">
                   As you start trading AI will start giving AI suggestions.
                 </div>
               )}
@@ -1318,7 +1321,7 @@ export default function AdminDashboardPage() {
         <div className="space-y-8">
 
           {/* Trading Plan Summary */}
-          <Card className="border-white/10 bg-white/3 backdrop-blur-md transition-colors hover:bg-white/6">
+          <Card className="border-border/40 bg-card/70 backdrop-blur-md transition-colors hover:bg-card/80 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -1327,51 +1330,51 @@ export default function AdminDashboardPage() {
                 </CardTitle>
                 <Badge
                   variant="secondary"
-                  className="bg-orange-500/10 text-orange-300 hover:bg-orange-500/20"
+                  className="bg-orange-500/10 text-orange-700 hover:bg-orange-500/20 dark:text-orange-300"
                 >
                   {(tradingPlanSummary?.kpis.adherencePct ?? tradingPlanKpis.adherencePct)}% adherence
                 </Badge>
               </div>
-              <CardDescription className="text-white/60">
+              <CardDescription className="text-foreground/60">
                 Monitor rules, risk, and consistency (separate from platform dashboard).
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+              <div className="rounded-lg border border-border/40 bg-background/70 p-3">
                 {tradingPlanSummary ? (
                   <>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-white/60">Plan</span>
-                      <span className="font-semibold text-white/90">
+                      <span className="text-foreground/60">Plan</span>
+                      <span className="font-semibold text-foreground/90">
                         {tradingPlanSummary.version}
                       </span>
                     </div>
-                    <div className="mt-2 text-sm font-semibold text-white">
+                    <div className="mt-2 text-sm font-semibold text-foreground">
                       {tradingPlanSummary.name}
                     </div>
-                    <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] text-white/60">
-                      <div className="rounded-md border border-white/10 bg-white/3 p-2">
-                        <div className="text-white/60">Violations (7d)</div>
-                        <div className="mt-1 font-semibold text-white/90 tabular-nums">
+                    <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] text-foreground/60">
+                      <div className="rounded-md border border-border/40 bg-card/60 p-2 dark:border-white/10 dark:bg-white/3">
+                        <div className="text-foreground/60">Violations (7d)</div>
+                        <div className="mt-1 font-semibold text-foreground/90 tabular-nums">
                           {tradingPlanSummary.kpis.violations7d}
                         </div>
                       </div>
-                      <div className="rounded-md border border-white/10 bg-white/3 p-2">
-                        <div className="text-white/60">Avg risk</div>
-                        <div className="mt-1 font-semibold text-white/90 tabular-nums">
+                      <div className="rounded-md border border-border/40 bg-card/60 p-2 dark:border-white/10 dark:bg-white/3">
+                        <div className="text-foreground/60">Avg risk</div>
+                        <div className="mt-1 font-semibold text-foreground/90 tabular-nums">
                           {tradingPlanSummary.kpis.avgRiskPerTradePct7d}%
                         </div>
                       </div>
-                      <div className="rounded-md border border-white/10 bg-white/3 p-2">
-                        <div className="text-white/60">Journal</div>
-                        <div className="mt-1 font-semibold text-white/90 tabular-nums">
+                      <div className="rounded-md border border-border/40 bg-card/60 p-2 dark:border-white/10 dark:bg-white/3">
+                        <div className="text-foreground/60">Journal</div>
+                        <div className="mt-1 font-semibold text-foreground/90 tabular-nums">
                           {tradingPlanSummary.kpis.journalCompliancePct}%
                         </div>
                       </div>
                     </div>
                   </>
                 ) : (
-                  <div className="text-sm text-white/70">
+                  <div className="text-sm text-foreground/70">
                     You don’t have a trading plan yet. Create your first plan to start tracking
                     consistency.
                   </div>

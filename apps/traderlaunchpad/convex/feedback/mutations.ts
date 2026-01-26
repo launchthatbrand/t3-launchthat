@@ -8,7 +8,13 @@ interface FeedbackComponentMutations {
   createThread: FunctionReference<
     "mutation",
     "internal",
-    { boardId: string; authorUserId: string; title: string; body: string },
+    {
+      boardId: string;
+      type?: "feedback" | "issue";
+      authorUserId: string;
+      title: string;
+      body: string;
+    },
     string
   >;
   toggleUpvote: FunctionReference<
@@ -34,7 +40,11 @@ const feedbackMutations = (() => {
 })();
 
 export const createThread = mutation({
-  args: { title: v.string(), body: v.string() },
+  args: {
+    title: v.string(),
+    body: v.string(),
+    type: v.optional(v.union(v.literal("feedback"), v.literal("issue"))),
+  },
   returns: v.string(),
   handler: async (ctx, args): Promise<string> => {
     const userId = await ctx.runMutation(api.coreTenant.mutations.createOrGetUser, {});
@@ -44,6 +54,7 @@ export const createThread = mutation({
 
     const threadId: string = await ctx.runMutation(feedbackMutations.createThread, {
       boardId: "global",
+      type: args.type,
       authorUserId: userId,
       title: args.title,
       body: args.body,

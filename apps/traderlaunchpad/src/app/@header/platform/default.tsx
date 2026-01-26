@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import AppHeader from "@acme/ui/layout/AppHeader";
-import { ThemeToggleButton } from "@acme/ui/theme";
+import { AnimatedThemeToggler } from "@acme/ui";
 import { AddToHomeScreenHeaderButton } from "launchthat-plugin-pwa/frontend";
 import { TraderLaunchpadNavUser } from "~/components/auth/TraderLaunchpadNavUser";
 import { TraderLaunchpadNotificationsMenu } from "~/components/notifications/TraderLaunchpadNotificationsMenu";
@@ -13,15 +13,15 @@ export default function AdminHeaderDefault() {
         appName="Trader Launchpad"
         sidebarToggle={true}
         showLogo={false}
-        className="border-white/10 bg-black/40 text-white backdrop-blur-md"
+        className="border-border/40 bg-background/70 text-foreground backdrop-blur-md"
         // image="/images/tl-logo-1.png"
         rightSlot={
           <div className="flex items-center gap-2">
             <AddToHomeScreenHeaderButton
               appName="Trader Launchpad"
-              buttonClassName="text-white hover:text-white"
+              buttonClassName="text-foreground hover:text-foreground"
             />
-            <ThemeToggleButton />
+            <AnimatedThemeToggler />
             <TraderLaunchpadNotificationsMenu />
             <TraderLaunchpadNavUser afterSignOutUrl="/" />
           </div>

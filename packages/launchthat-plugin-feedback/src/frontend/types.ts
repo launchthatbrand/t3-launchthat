@@ -1,7 +1,10 @@
 export type FeedbackSort = "trending" | "new";
 
+export type FeedbackThreadType = "feedback" | "issue";
+
 export type FeedbackThreadRow = Record<string, unknown> & {
   _id: string;
+  type?: FeedbackThreadType;
   title?: string;
   body?: string;
   status?: string;

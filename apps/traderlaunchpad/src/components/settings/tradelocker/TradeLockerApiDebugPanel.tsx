@@ -2,17 +2,17 @@
 
 import * as React from "react";
 
-import { useAction } from "convex/react";
-import { api } from "@convex-config/_generated/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
-import { cn } from "@acme/ui";
-import { useTradeLockerApiDebugStore } from "~/stores/tradeLockerApiDebugStore";
 import type { TradeLockerDebugTestId } from "~/stores/tradeLockerApiDebugStore";
+import { api } from "@convex-config/_generated/api";
+import { cn } from "@acme/ui";
+import { useAction } from "convex/react";
+import { useTradeLockerApiDebugStore } from "~/stores/tradeLockerApiDebugStore";
 
 // IMPORTANT: Must be a stable reference. Returning a fresh `{}` from a zustand selector
 // can break `useSyncExternalStore` caching and trigger infinite update loops.
@@ -182,9 +182,9 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
                     ? "/user/me/reports/closed-positions-history?accNum={accNum}"
                     : id === "reportBalanceHistory"
                       ? "/user/me/reports/balance-history?accNum={accNum}"
-            : id === "reportOrderHistory"
-                      ? "/user/me/reports/order-history?accNum={accNum}"
-                      : "/backend-api/trade/reports/close-trades-history";
+                      : id === "reportOrderHistory"
+                        ? "/user/me/reports/order-history?accNum={accNum}"
+                        : "/backend-api/trade/reports/close-trades-history";
 
           const res = (await probeBackendPath({
             accountRowId: props.accountRowId,
@@ -291,7 +291,7 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
       <Badge
         variant="secondary"
         className={cn(
-          "border border-white/10 bg-white/5 text-white/70",
+          "border border-border/10 bg-white/5 text-foreground/70",
           ok ? "text-emerald-200" : "text-rose-200",
         )}
       >
@@ -318,10 +318,10 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
   };
 
   return (
-    <Card className="border-white/10 bg-black/20">
+    <Card className="border-border/10 bg-background/20">
       <CardHeader className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-white/90">TradeLocker API Debug</CardTitle>
+          <CardTitle className="text-foreground/90">TradeLocker API Debug</CardTitle>
           <Button
             type="button"
             variant="outline"
@@ -332,22 +332,22 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             {busy ? "Running…" : "Run all tests"}
           </Button>
         </div>
-        <div className="text-sm text-white/60">
+        <div className="text-sm text-foreground/60">
           Query raw Trade endpoints for this connected account.
         </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
         {error ? (
-          <div className="rounded-lg border border-white/10 bg-black/30 p-3 text-sm text-rose-200">
+          <div className="rounded-lg border border-border/10 bg-background/30 p-3 text-sm text-rose-200">
             {error}
           </div>
         ) : null}
 
         <div className="grid gap-3 md:grid-cols-2">
-          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+          <div className="rounded-lg border border-border/10 bg-background/30 p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold text-white/80">
+              <div className="text-sm font-semibold text-foreground/80">
                 1) Trade config
               </div>
               <div className="flex items-center gap-2">
@@ -358,26 +358,26 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+                className="h-9 bg-blue-600 text-foreground hover:bg-blue-700"
                 disabled={busy !== null}
                 onClick={() => void runTest("config")}
               >
                 {busy === "config" ? "Running…" : "Run"}
               </Button>
-              <Badge variant="outline" className="border-white/15 text-white/70">
+              <Badge variant="outline" className="border-border/15 text-foreground/70">
                 {"/trade/config"}
               </Badge>
             </div>
             {getResultValue("config") ? (
-              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-border/10 bg-background/40 p-3 text-[11px] text-foreground/70">
                 {stringify(getResultValue("config"))}
               </pre>
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+          <div className="rounded-lg border border-border/10 bg-background/30 p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold text-white/80">
+              <div className="text-sm font-semibold text-foreground/80">
                 2) Account status (state)
               </div>
               <div className="flex items-center gap-2">
@@ -388,26 +388,26 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+                className="h-9 bg-blue-600 text-foreground hover:bg-blue-700"
                 disabled={busy !== null}
                 onClick={() => void runTest("state")}
               >
                 {busy === "state" ? "Running…" : "Run"}
               </Button>
-              <Badge variant="outline" className="border-white/15 text-white/70">
+              <Badge variant="outline" className="border-border/15 text-foreground/70">
                 {"/trade/accounts/{accountId}/state"}
               </Badge>
             </div>
             {getResultValue("state") ? (
-              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-border/10 bg-background/40 p-3 text-[11px] text-foreground/70">
                 {stringify(getResultValue("state"))}
               </pre>
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+          <div className="rounded-lg border border-border/10 bg-background/30 p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold text-white/80">
+              <div className="text-sm font-semibold text-foreground/80">
                 3) Positions
               </div>
               <div className="flex items-center gap-2">
@@ -418,25 +418,25 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+                className="h-9 bg-blue-600 text-foreground hover:bg-blue-700"
                 disabled={busy !== null}
                 onClick={() => void runTest("positions")}
               >
                 {busy === "positions" ? "Running…" : "Run"}
               </Button>
-              <Badge variant="outline" className="border-white/15 text-white/70">
+              <Badge variant="outline" className="border-border/15 text-foreground/70">
                 {"/trade/accounts/{accountId}/positions"}
               </Badge>
             </div>
             {getResultValue("positions") ? (
-              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-border/10 bg-background/40 p-3 text-[11px] text-foreground/70">
                 {stringify(getResultValue("positions"))}
               </pre>
             ) : null}
           </div>
-          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+          <div className="rounded-lg border border-border/10 bg-background/30 p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold text-white/80">4) Orders</div>
+              <div className="text-sm font-semibold text-foreground/80">4) Orders</div>
               <div className="flex items-center gap-2">
                 {statusBadge(getResultValue("orders"))}
                 {copyButton("orders")}
@@ -445,26 +445,26 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+                className="h-9 bg-blue-600 text-foreground hover:bg-blue-700"
                 disabled={busy !== null}
                 onClick={() => void runTest("orders")}
               >
                 {busy === "orders" ? "Running…" : "Run"}
               </Button>
-              <Badge variant="outline" className="border-white/15 text-white/70">
+              <Badge variant="outline" className="border-border/15 text-foreground/70">
                 {"/trade/accounts/{accountId}/orders"}
               </Badge>
             </div>
             {getResultValue("orders") ? (
-              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-border/10 bg-background/40 p-3 text-[11px] text-foreground/70">
                 {stringify(getResultValue("orders"))}
               </pre>
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+          <div className="rounded-lg border border-border/10 bg-background/30 p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold text-white/80">
+              <div className="text-sm font-semibold text-foreground/80">
                 5) Orders history
               </div>
               <div className="flex items-center gap-2">
@@ -475,26 +475,26 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+                className="h-9 bg-blue-600 text-foreground hover:bg-blue-700"
                 disabled={busy !== null}
                 onClick={() => void runTest("ordersHistory")}
               >
                 {busy === "ordersHistory" ? "Running…" : "Run"}
               </Button>
-              <Badge variant="outline" className="border-white/15 text-white/70">
+              <Badge variant="outline" className="border-border/15 text-foreground/70">
                 {"/trade/accounts/{accountId}/ordersHistory"}
               </Badge>
             </div>
             {getResultValue("ordersHistory") ? (
-              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-border/10 bg-background/40 p-3 text-[11px] text-foreground/70">
                 {stringify(getResultValue("ordersHistory"))}
               </pre>
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+          <div className="rounded-lg border border-border/10 bg-background/30 p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold text-white/80">
+              <div className="text-sm font-semibold text-foreground/80">
                 6) Filled orders
               </div>
               <div className="flex items-center gap-2">
@@ -505,26 +505,26 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+                className="h-9 bg-blue-600 text-foreground hover:bg-blue-700"
                 disabled={busy !== null}
                 onClick={() => void runTest("filledOrders")}
               >
                 {busy === "filledOrders" ? "Running…" : "Run"}
               </Button>
-              <Badge variant="outline" className="border-white/15 text-white/70">
+              <Badge variant="outline" className="border-border/15 text-foreground/70">
                 {"/trade/accounts/{accountId}/filledOrders"}
               </Badge>
             </div>
             {getResultValue("filledOrders") ? (
-              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-border/10 bg-background/40 p-3 text-[11px] text-foreground/70">
                 {stringify(getResultValue("filledOrders"))}
               </pre>
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+          <div className="rounded-lg border border-border/10 bg-background/30 p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold text-white/80">
+              <div className="text-sm font-semibold text-foreground/80">
                 7) Executions (candidate endpoint)
               </div>
               <div className="flex items-center gap-2">
@@ -535,26 +535,26 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+                className="h-9 bg-blue-600 text-foreground hover:bg-blue-700"
                 disabled={busy !== null}
                 onClick={() => void runTest("executions")}
               >
                 {busy === "executions" ? "Running…" : "Run"}
               </Button>
-              <Badge variant="outline" className="border-white/15 text-white/70">
+              <Badge variant="outline" className="border-border/15 text-foreground/70">
                 {"/trade/accounts/{accountId}/executions"}
               </Badge>
             </div>
             {getResultValue("executions") ? (
-              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-border/10 bg-background/40 p-3 text-[11px] text-foreground/70">
                 {stringify(getResultValue("executions"))}
               </pre>
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+          <div className="rounded-lg border border-border/10 bg-background/30 p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold text-white/80">
+              <div className="text-sm font-semibold text-foreground/80">
                 8) User profile (/user/me)
               </div>
               <div className="flex items-center gap-2">
@@ -565,26 +565,26 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+                className="h-9 bg-blue-600 text-foreground hover:bg-blue-700"
                 disabled={busy !== null}
                 onClick={() => void runTest("userMe")}
               >
                 {busy === "userMe" ? "Running…" : "Run"}
               </Button>
-              <Badge variant="outline" className="border-white/15 text-white/70">
+              <Badge variant="outline" className="border-border/15 text-foreground/70">
                 {"/user/me"}
               </Badge>
             </div>
             {getResultValue("userMe") ? (
-              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-border/10 bg-background/40 p-3 text-[11px] text-foreground/70">
                 {stringify(getResultValue("userMe"))}
               </pre>
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+          <div className="rounded-lg border border-border/10 bg-background/30 p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold text-white/80">
+              <div className="text-sm font-semibold text-foreground/80">
                 9) Accounts (/user/me/accounts)
               </div>
               <div className="flex items-center gap-2">
@@ -595,26 +595,26 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+                className="h-9 bg-blue-600 text-foreground hover:bg-blue-700"
                 disabled={busy !== null}
                 onClick={() => void runTest("userMeAccounts")}
               >
                 {busy === "userMeAccounts" ? "Running…" : "Run"}
               </Button>
-              <Badge variant="outline" className="border-white/15 text-white/70">
+              <Badge variant="outline" className="border-border/15 text-foreground/70">
                 {"/user/me/accounts?includeBalance=true"}
               </Badge>
             </div>
             {getResultValue("userMeAccounts") ? (
-              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-border/10 bg-background/40 p-3 text-[11px] text-foreground/70">
                 {stringify(getResultValue("userMeAccounts"))}
               </pre>
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+          <div className="rounded-lg border border-border/10 bg-background/30 p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold text-white/80">
+              <div className="text-sm font-semibold text-foreground/80">
                 10) Trades history report (v2)
               </div>
               <div className="flex items-center gap-2">
@@ -625,26 +625,26 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+                className="h-9 bg-blue-600 text-foreground hover:bg-blue-700"
                 disabled={busy !== null}
                 onClick={() => void runTest("reportTradesHistory")}
               >
                 {busy === "reportTradesHistory" ? "Running…" : "Run"}
               </Button>
-              <Badge variant="outline" className="border-white/15 text-white/70">
+              <Badge variant="outline" className="border-border/15 text-foreground/70">
                 {"/v2/user/me/reports/trades-history?accNum={accNum}"}
               </Badge>
             </div>
             {getResultValue("reportTradesHistory") ? (
-              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-border/10 bg-background/40 p-3 text-[11px] text-foreground/70">
                 {stringify(getResultValue("reportTradesHistory"))}
               </pre>
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+          <div className="rounded-lg border border-border/10 bg-background/30 p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold text-white/80">
+              <div className="text-sm font-semibold text-foreground/80">
                 11) Closed positions history report
               </div>
               <div className="flex items-center gap-2">
@@ -655,26 +655,26 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+                className="h-9 bg-blue-600 text-foreground hover:bg-blue-700"
                 disabled={busy !== null}
                 onClick={() => void runTest("reportClosedPositionsHistory")}
               >
                 {busy === "reportClosedPositionsHistory" ? "Running…" : "Run"}
               </Button>
-              <Badge variant="outline" className="border-white/15 text-white/70">
+              <Badge variant="outline" className="border-border/15 text-foreground/70">
                 {"/user/me/reports/closed-positions-history?accNum={accNum}"}
               </Badge>
             </div>
             {getResultValue("reportClosedPositionsHistory") ? (
-              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-border/10 bg-background/40 p-3 text-[11px] text-foreground/70">
                 {stringify(getResultValue("reportClosedPositionsHistory"))}
               </pre>
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+          <div className="rounded-lg border border-border/10 bg-background/30 p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold text-white/80">
+              <div className="text-sm font-semibold text-foreground/80">
                 12) Balance history report
               </div>
               <div className="flex items-center gap-2">
@@ -685,26 +685,26 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+                className="h-9 bg-blue-600 text-foreground hover:bg-blue-700"
                 disabled={busy !== null}
                 onClick={() => void runTest("reportBalanceHistory")}
               >
                 {busy === "reportBalanceHistory" ? "Running…" : "Run"}
               </Button>
-              <Badge variant="outline" className="border-white/15 text-white/70">
+              <Badge variant="outline" className="border-border/15 text-foreground/70">
                 {"/user/me/reports/balance-history?accNum={accNum}"}
               </Badge>
             </div>
             {getResultValue("reportBalanceHistory") ? (
-              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-border/10 bg-background/40 p-3 text-[11px] text-foreground/70">
                 {stringify(getResultValue("reportBalanceHistory"))}
               </pre>
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+          <div className="rounded-lg border border-border/10 bg-background/30 p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold text-white/80">
+              <div className="text-sm font-semibold text-foreground/80">
                 13) Order history report
               </div>
               <div className="flex items-center gap-2">
@@ -715,26 +715,26 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+                className="h-9 bg-blue-600 text-foreground hover:bg-blue-700"
                 disabled={busy !== null}
                 onClick={() => void runTest("reportOrderHistory")}
               >
                 {busy === "reportOrderHistory" ? "Running…" : "Run"}
               </Button>
-              <Badge variant="outline" className="border-white/15 text-white/70">
+              <Badge variant="outline" className="border-border/15 text-foreground/70">
                 {"/user/me/reports/order-history?accNum={accNum}"}
               </Badge>
             </div>
             {getResultValue("reportOrderHistory") ? (
-              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-border/10 bg-background/40 p-3 text-[11px] text-foreground/70">
                 {stringify(getResultValue("reportOrderHistory"))}
               </pre>
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+          <div className="rounded-lg border border-border/10 bg-background/30 p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold text-white/80">
+              <div className="text-sm font-semibold text-foreground/80">
                 14) Close trades history (backend-api)
               </div>
               <div className="flex items-center gap-2">
@@ -745,26 +745,26 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+                className="h-9 bg-blue-600 text-foreground hover:bg-blue-700"
                 disabled={busy !== null}
                 onClick={() => void runTest("backendCloseTradesHistory")}
               >
                 {busy === "backendCloseTradesHistory" ? "Running…" : "Run"}
               </Button>
-              <Badge variant="outline" className="border-white/15 text-white/70">
+              <Badge variant="outline" className="border-border/15 text-foreground/70">
                 {"/backend-api/trade/reports/close-trades-history"}
               </Badge>
             </div>
             {getResultValue("backendCloseTradesHistory") ? (
-              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-border/10 bg-background/40 p-3 text-[11px] text-foreground/70">
                 {stringify(getResultValue("backendCloseTradesHistory"))}
               </pre>
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+          <div className="rounded-lg border border-border/10 bg-background/30 p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="text-sm font-semibold text-white/80">
+              <div className="text-sm font-semibold text-foreground/80">
                 15) Discover /trade/reports/* endpoints
               </div>
               <div className="flex items-center gap-2">
@@ -775,30 +775,30 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
-                className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+                className="h-9 bg-blue-600 text-foreground hover:bg-blue-700"
                 disabled={busy !== null}
                 onClick={() => void runTest("backendReportsDiscovery")}
               >
                 {busy === "backendReportsDiscovery" ? "Running…" : "Run"}
               </Button>
-              <Badge variant="outline" className="border-white/15 text-white/70">
+              <Badge variant="outline" className="border-border/15 text-foreground/70">
                 {"/trade/reports/* (common candidates)"}
               </Badge>
             </div>
             {getResultValue("backendReportsDiscovery") ? (
-              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+              <pre className="mt-3 max-h-[260px] overflow-auto whitespace-pre-wrap rounded-md border border-border/10 bg-background/40 p-3 text-[11px] text-foreground/70">
                 {stringify(getResultValue("backendReportsDiscovery"))}
               </pre>
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+          <div className="rounded-lg border border-border/10 bg-background/30 p-3">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="space-y-0.5">
-                <div className="text-sm font-semibold text-white/80">
+                <div className="text-sm font-semibold text-foreground/80">
                   16) Market data history (AUDJPY)
                 </div>
-                <div className="text-xs text-white/60">
+                <div className="text-xs text-foreground/60">
                   Uses Trade endpoint: `/trade/history` with `tradableInstrumentId`.
                 </div>
               </div>
@@ -810,33 +810,33 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
 
             <div className="mt-3 grid gap-3 md:grid-cols-4">
               <div className="space-y-1.5">
-                <Label className="text-xs text-white/60">instrumentId</Label>
+                <Label className="text-xs text-foreground/60">instrumentId</Label>
                 <Input
                   value={instrumentId}
                   onChange={(e) => setInstrumentId(e.target.value)}
-                  className="h-9 border-white/15 bg-transparent text-white"
+                  className="h-9 border-border/15 bg-transparent text-foreground"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-white/60">resolution</Label>
+                <Label className="text-xs text-foreground/60">resolution</Label>
                 <Input
                   value={resolution}
                   onChange={(e) => setResolution(e.target.value)}
-                  className="h-9 border-white/15 bg-transparent text-white"
+                  className="h-9 border-border/15 bg-transparent text-foreground"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-white/60">lookbackDays</Label>
+                <Label className="text-xs text-foreground/60">lookbackDays</Label>
                 <Input
                   value={lookbackDays}
                   onChange={(e) => setLookbackDays(e.target.value)}
-                  className="h-9 border-white/15 bg-transparent text-white"
+                  className="h-9 border-border/15 bg-transparent text-foreground"
                 />
               </div>
               <div className="flex items-end">
                 <Button
                   type="button"
-                  className="h-9 w-full bg-blue-600 text-white hover:bg-blue-700"
+                  className="h-9 w-full bg-blue-600 text-foreground hover:bg-blue-700"
                   disabled={busy !== null}
                   onClick={() => void runTest("history")}
                 >
@@ -846,7 +846,7 @@ export function TradeLockerApiDebugPanel(props: { accountRowId: string }) {
             </div>
 
             {getResultValue("history") ? (
-              <pre className="mt-3 max-h-[340px] overflow-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
+              <pre className="mt-3 max-h-[340px] overflow-auto whitespace-pre-wrap rounded-md border border-border/10 bg-background/40 p-3 text-[11px] text-foreground/70">
                 {stringify(getResultValue("history"))}
               </pre>
             ) : null}

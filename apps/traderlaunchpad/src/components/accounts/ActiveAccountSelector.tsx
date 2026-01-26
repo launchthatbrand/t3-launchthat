@@ -31,7 +31,7 @@ export function ActiveAccountSelector(props: { className?: string }) {
           value={selectedRowId}
           onValueChange={(v) => void account.setSelectedAccountRowId(v)}
         >
-          <SelectTrigger className="h-9 w-full min-w-0 border-white/15 bg-transparent text-white hover:bg-white/10 sm:w-auto sm:min-w-[220px]">
+        <SelectTrigger className="h-9 w-full min-w-0 border-border/60 bg-white/70 text-foreground hover:bg-white sm:w-auto sm:min-w-[220px] dark:border-white/15 dark:bg-transparent dark:text-white dark:hover:bg-white/10">
             <SelectValue placeholder="Select account…">{selectedLabel}</SelectValue>
           </SelectTrigger>
           <SelectContent className="w-(--radix-select-trigger-width) max-w-[calc(100vw-2rem)]">

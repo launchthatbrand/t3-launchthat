@@ -35,6 +35,7 @@ const resolveViewerUserId = async (ctx: any): Promise<string | null> => {
 export const listThreads = query({
   args: {
     sort: v.optional(v.union(v.literal("trending"), v.literal("new"))),
+    type: v.optional(v.union(v.literal("feedback"), v.literal("issue"))),
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
@@ -43,7 +44,7 @@ export const listThreads = query({
 
     return (await ctx.runQuery(
       (components as any).launchthat_feedback.queries.listThreadsForUser,
-      { boardId: "global", userId, sort: args.sort },
+      { boardId: "global", userId, sort: args.sort, type: args.type },
     )) as any;
   },
 });

@@ -7,6 +7,7 @@ type SortMode = "trending" | "new";
 export const listThreadsForUser = query({
   args: {
     boardId: v.string(),
+    type: v.optional(v.union(v.literal("feedback"), v.literal("issue"))),
     userId: v.string(),
     sort: v.optional(v.union(v.literal("trending"), v.literal("new"))),
     limit: v.optional(v.number()),
@@ -15,6 +16,7 @@ export const listThreadsForUser = query({
   handler: async (ctx, args) => {
     const sort: SortMode = args.sort ?? "trending";
     const limit = Math.max(1, Math.min(100, args.limit ?? 50));
+    const type = args.type ?? "feedback";
 
     const votes = await ctx.db
       .query("feedbackVotes")
@@ -26,12 +28,14 @@ export const listThreadsForUser = query({
       sort === "new"
         ? ctx.db
             .query("feedbackThreads")
-            .withIndex("by_board_createdAt", (q: any) => q.eq("boardId", args.boardId))
+            .withIndex("by_board_type_createdAt", (q: any) =>
+              q.eq("boardId", args.boardId).eq("type", type),
+            )
             .order("desc")
         : ctx.db
             .query("feedbackThreads")
-            .withIndex("by_board_upvoteCount_and_createdAt", (q: any) =>
-              q.eq("boardId", args.boardId),
+            .withIndex("by_board_type_upvoteCount_and_createdAt", (q: any) =>
+              q.eq("boardId", args.boardId).eq("type", type),
             )
             .order("desc");
 

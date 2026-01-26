@@ -11,6 +11,7 @@ import { v } from "convex/values";
 export default defineSchema({
   feedbackThreads: defineTable({
     boardId: v.string(),
+    type: v.union(v.literal("feedback"), v.literal("issue")),
     authorUserId: v.string(),
     title: v.string(),
     body: v.string(),
@@ -27,7 +28,9 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_board_createdAt", ["boardId", "createdAt"])
-    .index("by_board_upvoteCount_and_createdAt", ["boardId", "upvoteCount", "createdAt"]),
+    .index("by_board_upvoteCount_and_createdAt", ["boardId", "upvoteCount", "createdAt"])
+    .index("by_board_type_createdAt", ["boardId", "type", "createdAt"])
+    .index("by_board_type_upvoteCount_and_createdAt", ["boardId", "type", "upvoteCount", "createdAt"]),
 
   feedbackVotes: defineTable({
     threadId: v.id("feedbackThreads"),

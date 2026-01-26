@@ -34,7 +34,7 @@ interface NavItem {
 }
 
 const NAV_ICON_CLASS =
-  "text-white/80 transition-colors group-hover/menu-button:text-white group-data-[active=true]/menu-button:text-orange-200";
+  "text-foreground/80 transition-colors group-hover/menu-button:text-foreground group-data-[active=true]/menu-button:text-orange-700 dark:group-data-[active=true]/menu-button:text-orange-200";
 // Keep nav icons the same size in both expanded + collapsed (icon) modes.
 const NAV_ICON_SIZE_CLASS = "h-6 w-6";
 
@@ -145,7 +145,7 @@ export default function AdminSidebarDefault() {
   return (
     <Sidebar
       collapsible="icon"
-      className="overflow-hidden border-white/10 bg-black/35 text-white backdrop-blur-md"
+      className="overflow-hidden border-border/40 bg-background/70 text-foreground backdrop-blur-md"
     >
       {/* Remove default header padding so logo aligns with nav menu inset. */}
       <SidebarHeader className="p-1">
@@ -205,7 +205,7 @@ export default function AdminSidebarDefault() {
                   size="default"
                   // Default SidebarMenuButton collapses smaller in icon mode; keep it roomy.
                   // Also override the default `[&>svg]:size-4` so icons stay bigger.
-                  className="h-11 rounded-xl text-white/80 hover:bg-white/8 hover:text-white data-[active=true]:bg-orange-500/15 data-[active=true]:text-orange-100 group-data-[collapsible=icon]:size-11! [&>svg]:size-6!"
+                  className="h-11 rounded-xl text-foreground/80 hover:bg-foreground/5 hover:text-foreground data-[active=true]:bg-orange-500/15 data-[active=true]:text-orange-700 dark:data-[active=true]:text-orange-100 group-data-[collapsible=icon]:size-11! [&>svg]:size-6!"
                 >
                   <Link
                     href={item.href}
@@ -222,7 +222,7 @@ export default function AdminSidebarDefault() {
           })}
         </SidebarMenu>
 
-        <SidebarSeparator className="bg-white/10 w-[90%]!" />
+        <SidebarSeparator className="bg-border w-[90%]!" />
 
         <SidebarMenu className="p-3 pt-2 gap-2 group-data-[collapsible=icon]:items-center">
           {secondaryNavItems.map((item: NavItem) => {
@@ -235,7 +235,7 @@ export default function AdminSidebarDefault() {
                   tooltip={item.label}
                   isActive={isActive}
                   size="default"
-                  className="h-11 rounded-xl text-white/80 hover:bg-white/8 hover:text-white data-[active=true]:bg-orange-500/15 data-[active=true]:text-orange-100 group-data-[collapsible=icon]:size-11! [&>svg]:size-6!"
+                  className="h-11 rounded-xl text-foreground/80 hover:bg-foreground/5 hover:text-foreground data-[active=true]:bg-orange-500/15 data-[active=true]:text-orange-700 dark:data-[active=true]:text-orange-100 group-data-[collapsible=icon]:size-11! [&>svg]:size-6!"
                 >
                   <Link
                     href={item.href}

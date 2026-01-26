@@ -85,22 +85,22 @@ export const TradingCalendarMobile = ({
   return (
     <div
       className={cn(
-        "rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-md",
+        "rounded-3xl border border-border/40 bg-card/70 p-4 backdrop-blur-md",
         className,
       )}
     >
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <div className="text-xs font-medium text-white/60">
+          <div className="text-xs font-medium text-muted-foreground">
             Trading calendar
           </div>
-          <div className="text-base font-semibold text-white">{label}</div>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-white/60">
+          <div className="text-base font-semibold text-foreground">{label}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
             {rec.goodWeekdays.length > 0 ? (
               <div className="flex items-center gap-1.5">
                 <Smile className="h-3.5 w-3.5 text-orange-300" />
                 <span className="font-medium">Strong:</span>
-                <span className="font-semibold text-white/80">
+                <span className="font-semibold text-foreground/80">
                   {rec.goodWeekdays.map(weekdayLabel).join(", ")}
                 </span>
               </div>
@@ -109,7 +109,7 @@ export const TradingCalendarMobile = ({
               <div className="flex items-center gap-1.5">
                 <AlertTriangle className="h-3.5 w-3.5 text-red-300" />
                 <span className="font-medium">Weak:</span>
-                <span className="font-semibold text-white/80">
+                <span className="font-semibold text-foreground/80">
                   {rec.badWeekdays.map(weekdayLabel).join(", ")}
                 </span>
               </div>
@@ -120,7 +120,7 @@ export const TradingCalendarMobile = ({
           <button
             type="button"
             onClick={() => setMonthOffset((v) => v - 1)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-black/30 text-white/80 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-orange-400/50 focus-visible:outline-hidden"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/40 bg-background/60 text-foreground/80 transition-colors hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-orange-400/50 focus-visible:outline-hidden"
             aria-label="Previous month"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -128,7 +128,7 @@ export const TradingCalendarMobile = ({
           <button
             type="button"
             onClick={() => setMonthOffset((v) => v + 1)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-black/30 text-white/80 transition-colors hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-orange-400/50 focus-visible:outline-hidden"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/40 bg-background/60 text-foreground/80 transition-colors hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-orange-400/50 focus-visible:outline-hidden"
             aria-label="Next month"
           >
             <ChevronRight className="h-4 w-4" />
@@ -140,14 +140,14 @@ export const TradingCalendarMobile = ({
         {["S", "M", "Tu", "W", "Th", "F", "S"].map((d, idx) => (
           <div
             key={`${d}-${idx}`}
-            className="text-center font-medium text-white/45"
+            className="text-center font-medium text-muted-foreground"
           >
             {d}
           </div>
         ))}
       </div>
 
-      <div className="mt-2 overflow-hidden rounded-2xl border border-white/10">
+      <div className="mt-2 overflow-hidden rounded-2xl border border-border/40">
         <div className="grid grid-cols-7 gap-0">
         {days.map(({ date, inMonth }) => {
           const key = toDateKey(date);
@@ -177,7 +177,7 @@ export const TradingCalendarMobile = ({
               onClick={() => onSelectDateAction(isSelected ? null : key)}
               className={cn(
                 // Tight grid: no gaps, no rounded day cells (native calendar feel).
-                "relative aspect-square rounded-none border border-white/10 bg-black/25 p-1 text-left transition-colors hover:bg-white/6 focus-visible:ring-2 focus-visible:ring-orange-400/50 focus-visible:outline-hidden",
+                "relative aspect-square rounded-none border border-border/40 bg-background/40 p-1 text-left transition-colors hover:bg-foreground/3 focus-visible:ring-2 focus-visible:ring-orange-400/50 focus-visible:outline-hidden",
                 // Collapse borders between cells.
                 "-ml-px -mt-px",
                 !inMonth && "opacity-50",
@@ -193,8 +193,8 @@ export const TradingCalendarMobile = ({
             >
               <div
                 className={cn(
-                  "text-[11px] font-medium text-white/80",
-                  !inMonth && "text-white/50",
+                  "text-[11px] font-medium text-foreground/80",
+                  !inMonth && "text-muted-foreground",
                 )}
               >
                 {date.getDate()}
@@ -224,18 +224,18 @@ export const TradingCalendarMobile = ({
         </div>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-3">
+      <div className="mt-4 rounded-2xl border border-border/40 bg-background/40 p-3">
         {selectedDate ? (
           selected ? (
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-xs font-medium text-white/60">
+                <div className="text-xs font-medium text-muted-foreground">
                   Selected
                 </div>
-                <div className="text-sm font-semibold text-white">
+                <div className="text-sm font-semibold text-foreground">
                   {selectedDate}
                 </div>
-                <div className="mt-1 text-xs text-white/60">
+                <div className="mt-1 text-xs text-muted-foreground">
                   {selected.wins}W / {selected.losses}L
                 </div>
               </div>
@@ -247,11 +247,11 @@ export const TradingCalendarMobile = ({
                     : "border-red-500/20 bg-red-500/10",
                 )}
               >
-                <div className="text-[10px] font-medium text-white/60">PnL</div>
+                <div className="text-[10px] font-medium text-muted-foreground">PnL</div>
                 <div
                   className={cn(
                     "text-sm font-semibold",
-                    selected.pnl >= 0 ? "text-orange-200" : "text-red-200",
+                    selected.pnl >= 0 ? "text-orange-300" : "text-red-400",
                   )}
                 >
                   {selected.pnl >= 0 ? "+" : ""}

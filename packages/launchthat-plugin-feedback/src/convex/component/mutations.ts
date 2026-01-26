@@ -7,6 +7,7 @@ const asTrimmed = (value: unknown): string => (typeof value === "string" ? value
 export const createThread = mutation({
   args: {
     boardId: v.string(),
+    type: v.optional(v.union(v.literal("feedback"), v.literal("issue"))),
     authorUserId: v.string(),
     title: v.string(),
     body: v.string(),
@@ -21,6 +22,7 @@ export const createThread = mutation({
     const now = Date.now();
     return await ctx.db.insert("feedbackThreads", {
       boardId: args.boardId,
+      type: args.type ?? "feedback",
       authorUserId: args.authorUserId,
       title,
       body,

@@ -321,6 +321,7 @@ export default defineSchema({
     .index("by_user_instrumentId_updatedAt", ["userId", "instrumentId", "updatedAt"]),
 
   tradePositions: defineTable({
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     connectionId: v.id("tradelockerConnections"),
     externalPositionId: v.string(),
@@ -336,6 +337,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_user_externalPositionId", ["userId", "externalPositionId"])
+    .index("by_org_user_openedAt", ["organizationId", "userId", "openedAt"])
     .index("by_user_openedAt", ["userId", "openedAt"]),
 
   tradeRealizationEvents: defineTable({

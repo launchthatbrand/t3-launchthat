@@ -1,14 +1,12 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Plug } from "lucide-react";
-
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
+import Link from "next/link";
+import { Plug } from "lucide-react";
+import React from "react";
 import { cn } from "~/lib/utils";
-
+import { usePathname } from "next/navigation";
 import { useTenant } from "~/context/TenantContext";
 
 interface Props {
@@ -29,6 +27,7 @@ export function OrgConnectionsShell(props: Props) {
       title: "Discord",
       description: "Guild connections, templates, routing, and member links.",
       href: `${baseHref}/discord`,
+      disabled: false,
     },
     {
       id: "telegram",
@@ -43,7 +42,7 @@ export function OrgConnectionsShell(props: Props) {
     <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
       <aside className="space-y-4">
         <div className="flex items-center justify-between gap-3">
-          <div className="text-sm font-semibold text-white/80">Connections</div>
+          <div className="text-sm font-semibold text-foreground/80">Connections</div>
           <Badge
             variant="secondary"
             className="bg-amber-500/10 text-amber-500 hover:bg-amber-500/10"
@@ -53,9 +52,9 @@ export function OrgConnectionsShell(props: Props) {
           </Badge>
         </div>
 
-        <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-          <div className="text-sm font-semibold text-white/90">{orgName}</div>
-          <div className="mt-1 text-xs text-white/55">
+        <div className="rounded-xl border border-border/40 bg-card/50 p-4">
+          <div className="text-sm font-semibold text-foreground/90">{orgName}</div>
+          <div className="mt-1 text-xs text-foreground/55">
             Org-level integrations like Discord and Telegram.
           </div>
         </div>
@@ -68,17 +67,17 @@ export function OrgConnectionsShell(props: Props) {
               <div
                 key={it.id}
                 className={cn(
-                  "rounded-xl border border-white/10 bg-black/20 p-4 transition",
-                  isActive && "border-white/20 bg-black/30",
+                  "rounded-xl border border-border/40 bg-card/50 p-4 transition",
+                  isActive && "border-border/60 bg-card/70",
                   it.disabled && "opacity-60",
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-white/90">
+                    <div className="text-sm font-semibold text-foreground/90">
                       {it.title}
                     </div>
-                    <div className="mt-1 text-xs text-white/55">
+                    <div className="mt-1 text-xs text-foreground/55">
                       {it.description}
                     </div>
                   </div>
