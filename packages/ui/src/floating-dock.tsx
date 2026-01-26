@@ -8,13 +8,13 @@ import {
   useTransform,
 } from "motion/react";
 import { createContext, useContext, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 import { IconLayoutNavbarCollapse } from "@tabler/icons-react";
 import Link from "next/link";
 /* eslint-disable prefer-const */
 import type { MotionValue } from "motion/react";
 import { cn } from "@acme/ui";
-import { usePathname, useRouter } from "next/navigation";
 
 type DockItem = {
   href: string;
@@ -84,7 +84,7 @@ export const FloatingDockMobile = ({
                 <a
                   href={item.href}
                   key={getItemLabel(item)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 dark:bg-neutral-900"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 text-neutral-800 dark:bg-neutral-900 dark:text-white"
                 >
                   <div className="h-4 w-4">{item.icon}</div>
                 </a>
@@ -95,9 +95,9 @@ export const FloatingDockMobile = ({
       </AnimatePresence>
       <button
         onClick={() => setOpen(!open)}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 dark:bg-neutral-800"
+        className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
       >
-        <IconLayoutNavbarCollapse className="h-5 w-5 text-neutral-500 dark:text-neutral-400" />
+        <IconLayoutNavbarCollapse className="h-5 w-5" />
       </button>
     </div>
   );
@@ -373,7 +373,7 @@ function IconContainer({
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         className={cn(
-          "relative flex aspect-square items-center justify-center rounded-full bg-gray-200 dark:bg-neutral-800",
+          "relative flex aspect-square items-center justify-center rounded-full bg-neutral-800",
           // Make taps feel more "native".
           "active:scale-95",
           // Active route highlight.
