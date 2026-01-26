@@ -33,6 +33,7 @@ interface NavItem {
   label: string;
   href: string;
   icon: React.ReactNode;
+  subItems?: Array<{ label: string; href: string }>;
 }
 
 const NAV_ICON_CLASS =
@@ -70,6 +71,20 @@ const navItems: NavItem[] = [
         className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
       />
     ),
+  },
+  {
+    label: "CRM",
+    href: "/platform/crm",
+    icon: (
+      <IconNotebook
+        stroke={1}
+        className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
+      />
+    ),
+    subItems: [
+      { label: "Contacts", href: "/platform/crm/contacts" },
+      { label: "Join codes", href: "/platform/crm/joincodes" },
+    ],
   },
   {
     label: "Integrations",
@@ -155,6 +170,26 @@ export default function AdminSidebarDefault() {
                     </span>
                   </Link>
                 </SidebarMenuButton>
+                {item.subItems && item.subItems.length > 0 ? (
+                  <div className="ml-11 mt-2 space-y-1 text-sm text-muted-foreground group-data-[collapsible=icon]:hidden">
+                    {item.subItems.map((subItem) => {
+                      const subActive = pathname.startsWith(subItem.href);
+                      return (
+                        <Link
+                          key={subItem.href}
+                          href={subItem.href}
+                          className={`block rounded-lg px-2 py-1 transition ${
+                            subActive
+                              ? "bg-orange-500/10 text-orange-700 dark:text-orange-100"
+                              : "hover:bg-foreground/5 hover:text-foreground"
+                          }`}
+                        >
+                          {subItem.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </SidebarMenuItem>
             );
           })}

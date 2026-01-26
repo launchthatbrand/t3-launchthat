@@ -8,11 +8,14 @@
  * @module
  */
 
+import type * as contacts_index from "../contacts/index.js";
 import type * as contacts_mutations from "../contacts/mutations.js";
 import type * as contacts_queries from "../contacts/queries.js";
 import type * as index from "../index.js";
+import type * as marketingTags_index from "../marketingTags/index.js";
 import type * as marketingTags_mutations from "../marketingTags/mutations.js";
 import type * as marketingTags_queries from "../marketingTags/queries.js";
+import type * as queries from "../queries.js";
 
 import type {
   ApiFromModules,
@@ -29,11 +32,14 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "contacts/index": typeof contacts_index;
   "contacts/mutations": typeof contacts_mutations;
   "contacts/queries": typeof contacts_queries;
   index: typeof index;
+  "marketingTags/index": typeof marketingTags_index;
   "marketingTags/mutations": typeof marketingTags_mutations;
   "marketingTags/queries": typeof marketingTags_queries;
+  queries: typeof queries;
 }>;
 export type Mounts = {
   contacts: {
@@ -310,6 +316,18 @@ export type Mounts = {
         }>
       >;
     };
+  };
+  queries: {
+    getCrmDashboardMetrics: FunctionReference<
+      "query",
+      "public",
+      { limit?: number },
+      {
+        contacts: { isTruncated: boolean; total: number };
+        tagAssignments: { isTruncated: boolean; total: number };
+        tags: { isTruncated: boolean; total: number };
+      }
+    >;
   };
 };
 // For now fullApiWithMounts is only fullApi which provides

@@ -29,6 +29,7 @@ import type * as notifications_queries from "../notifications/queries.js";
 import type * as notifications_test from "../notifications/test.js";
 import type * as onboarding_mutations from "../onboarding/mutations.js";
 import type * as onboarding_queries from "../onboarding/queries.js";
+import type * as platform_crm from "../platform/crm.js";
 import type * as platform_joinCodes from "../platform/joinCodes.js";
 import type * as platform_queries from "../platform/queries.js";
 import type * as platform_test_helpers from "../platform/test/helpers.js";
@@ -93,6 +94,7 @@ declare const fullApi: ApiFromModules<{
   "notifications/test": typeof notifications_test;
   "onboarding/mutations": typeof onboarding_mutations;
   "onboarding/queries": typeof onboarding_queries;
+  "platform/crm": typeof platform_crm;
   "platform/joinCodes": typeof platform_joinCodes;
   "platform/queries": typeof platform_queries;
   "platform/test/helpers": typeof platform_test_helpers;
@@ -859,6 +861,299 @@ export declare const components: {
           userId: string;
         },
         Array<any>
+      >;
+    };
+  };
+  launchthat_crm: {
+    contacts: {
+      mutations: {
+        createContact: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            authorId?: string;
+            category?: string;
+            content?: string;
+            excerpt?: string;
+            featuredImageUrl?: string;
+            meta?: any;
+            organizationId?: string;
+            postTypeSlug: string;
+            slug: string;
+            status: string;
+            tags?: Array<string>;
+            title: string;
+            userId?: string;
+          },
+          string
+        >;
+        deleteContact: FunctionReference<
+          "mutation",
+          "internal",
+          { contactId: string; organizationId?: string },
+          null
+        >;
+        updateContact: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            authorId?: string;
+            category?: string;
+            contactId: string;
+            content?: string;
+            excerpt?: string;
+            featuredImageUrl?: string;
+            meta?: any;
+            organizationId?: string;
+            slug?: string;
+            status?: string;
+            tags?: Array<string>;
+            title?: string;
+            userId?: string;
+          },
+          null
+        >;
+      };
+      queries: {
+        getContactById: FunctionReference<
+          "query",
+          "internal",
+          { contactId: string; organizationId?: string },
+          null | {
+            _creationTime: number;
+            _id: string;
+            authorId?: string;
+            category?: string;
+            content?: string;
+            createdAt: number;
+            excerpt?: string;
+            featuredImageUrl?: string;
+            organizationId?: string;
+            postTypeSlug: string;
+            slug: string;
+            status: string;
+            tags?: Array<string>;
+            title: string;
+            updatedAt?: number;
+            userId?: string;
+          }
+        >;
+        getContactBySlug: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; slug: string },
+          null | {
+            _creationTime: number;
+            _id: string;
+            authorId?: string;
+            category?: string;
+            content?: string;
+            createdAt: number;
+            excerpt?: string;
+            featuredImageUrl?: string;
+            organizationId?: string;
+            postTypeSlug: string;
+            slug: string;
+            status: string;
+            tags?: Array<string>;
+            title: string;
+            updatedAt?: number;
+            userId?: string;
+          }
+        >;
+        getContactIdForUser: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; userId: string },
+          string | null
+        >;
+        getContactMeta: FunctionReference<
+          "query",
+          "internal",
+          { contactId: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            contactId: string;
+            createdAt: number;
+            key: string;
+            updatedAt?: number;
+            value?: string | number | boolean | null;
+          }>
+        >;
+        listContacts: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; organizationId?: string; status?: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            authorId?: string;
+            category?: string;
+            content?: string;
+            createdAt: number;
+            excerpt?: string;
+            featuredImageUrl?: string;
+            organizationId?: string;
+            postTypeSlug: string;
+            slug: string;
+            status: string;
+            tags?: Array<string>;
+            title: string;
+            updatedAt?: number;
+            userId?: string;
+          }>
+        >;
+      };
+    };
+    marketingTags: {
+      mutations: {
+        assignMarketingTagToUser: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            assignedBy?: string;
+            contactId: string;
+            expiresAt?: number;
+            marketingTagId: string;
+            notes?: string;
+            organizationId?: string;
+            source?: string;
+          },
+          string
+        >;
+        createMarketingTag: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            category?: string;
+            color?: string;
+            createdBy?: string;
+            description?: string;
+            isActive?: boolean;
+            name: string;
+            organizationId?: string;
+            slug?: string;
+          },
+          string
+        >;
+        removeMarketingTagFromUser: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            contactId: string;
+            marketingTagId: string;
+            organizationId?: string;
+          },
+          boolean
+        >;
+      };
+      queries: {
+        contactHasMarketingTags: FunctionReference<
+          "query",
+          "internal",
+          {
+            contactId: string;
+            organizationId?: string;
+            requireAll?: boolean;
+            tagSlugs: Array<string>;
+          },
+          {
+            hasAccess: boolean;
+            matchingTags: Array<string>;
+            missingTags: Array<string>;
+          }
+        >;
+        getContactIdForUser: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; userId: string },
+          string | null
+        >;
+        getContactMarketingTags: FunctionReference<
+          "query",
+          "internal",
+          { contactId: string; organizationId?: string },
+          Array<{
+            _id: string;
+            assignedAt: number;
+            assignedBy?: string;
+            contactId: string;
+            expiresAt?: number;
+            marketingTag: {
+              _creationTime: number;
+              _id: string;
+              category?: string;
+              color?: string;
+              createdAt?: number;
+              createdBy?: string;
+              description?: string;
+              isActive?: boolean;
+              name: string;
+              organizationId?: string;
+              slug?: string;
+            };
+            notes?: string;
+            source?: string;
+          }>
+        >;
+        getUserMarketingTags: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; userId: string },
+          Array<{
+            _id: string;
+            assignedAt: number;
+            assignedBy?: string;
+            contactId: string;
+            expiresAt?: number;
+            marketingTag: {
+              _creationTime: number;
+              _id: string;
+              category?: string;
+              color?: string;
+              createdAt?: number;
+              createdBy?: string;
+              description?: string;
+              isActive?: boolean;
+              name: string;
+              organizationId?: string;
+              slug?: string;
+            };
+            notes?: string;
+            source?: string;
+          }>
+        >;
+        listMarketingTags: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            category?: string;
+            color?: string;
+            createdAt?: number;
+            createdBy?: string;
+            description?: string;
+            isActive?: boolean;
+            name: string;
+            organizationId?: string;
+            slug?: string;
+          }>
+        >;
+      };
+    };
+    queries: {
+      getCrmDashboardMetrics: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number },
+        {
+          contacts: { isTruncated: boolean; total: number };
+          tagAssignments: { isTruncated: boolean; total: number };
+          tags: { isTruncated: boolean; total: number };
+        }
       >;
     };
   };

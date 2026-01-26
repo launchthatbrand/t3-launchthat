@@ -8,6 +8,8 @@ export {
   crmPlugin,
 } from "./plugin";
 
+export * from "./frontend";
+
 /**
  * Compatibility shim: historically this module mutated an exported `cmsPlugin` variable.
  * No callers exist today, so we keep the API surface but make it explicit.

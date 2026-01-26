@@ -2,7 +2,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
 
 import { JoinCodesSettingsClient } from "~/components/platform/JoinCodesSettingsClient";
 
-export default function PlatformSettingsJoinCodesPage() {
+export default function PlatformCrmJoinCodesPage() {
   return (
     <div className="space-y-4">
       <Card>
