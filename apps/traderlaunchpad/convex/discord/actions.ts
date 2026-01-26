@@ -5,7 +5,7 @@ import { discordJson, discordMultipart } from "launchthat-plugin-discord/runtime
 import { resolveOrganizationId, resolveViewerUserId } from "../traderlaunchpad/lib/resolve";
 
 import { action } from "../_generated/server";
-import { components } from "../_generated/api";
+import { api, components } from "../_generated/api";
 import { resolveDiscordCredentials } from "launchthat-plugin-discord/runtime/credentials";
 import { v } from "convex/values";
 import { buildSnapshotPreview } from "../platform/test/helpers";
@@ -300,17 +300,47 @@ const buildTemplatePreview = async (
   const values = args.values ?? {};
   const content = template.replace(/\{\{(\w+)\}\}/g, (_, key) => values[key] ?? "");
 
-  // Parse templateJson snapshot config (if present).
+  // Parse templateJson attachment config (if present).
   let snapshotCfg: any = null;
+  let orgMediaCfg: any = null;
   try {
     const parsed = templateJson ? JSON.parse(templateJson) : null;
     const attachments = Array.isArray(parsed?.attachments) ? parsed.attachments : [];
     snapshotCfg = attachments.find((a: any) => a?.type === "snapshot_png") ?? null;
+    orgMediaCfg = attachments.find((a: any) => a?.type === "organization_media_image") ?? null;
   } catch {
     snapshotCfg = null;
+    orgMediaCfg = null;
   }
 
-  if (!snapshotCfg) return { content };
+  if (!snapshotCfg && !orgMediaCfg) return { content };
+
+  if (!snapshotCfg && orgMediaCfg) {
+    const mediaIdRaw =
+      typeof orgMediaCfg?.params?.mediaId === "string" ? String(orgMediaCfg.params.mediaId).trim() : "";
+    if (!mediaIdRaw) return { content };
+    const row = await ctx.runQuery(api.coreTenant.organizations.getOrganizationMediaById, {
+      mediaId: mediaIdRaw,
+    });
+    const url = typeof row?.url === "string" ? row.url : "";
+    if (!url) return { content };
+    const res = await fetch(url);
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`Failed to load media (${res.status}): ${text.slice(0, 200)}`);
+    }
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    const base64 = Buffer.from(bytes).toString("base64");
+    const contentType =
+      typeof row?.contentType === "string" && row.contentType ? row.contentType : res.headers.get("content-type") || undefined;
+    const filename =
+      typeof row?.filename === "string" && row.filename.trim()
+        ? row.filename.trim()
+        : contentType?.includes("png")
+          ? "custom.png"
+          : "custom-image";
+    return { content, imageBase64: base64, contentType, filename };
+  }
 
   const symbol =
     typeof args.snapshotSymbol === "string" && args.snapshotSymbol.trim()
@@ -464,7 +494,16 @@ export const sendTemplateTest = action({
     });
 
     const content = typeof (preview as any)?.content === "string" ? (preview as any).content : "";
-    const imageBase64 = typeof (preview as any)?.imageBase64 === "string" ? (preview as any).imageBase64 : "";
+    const imageBase64 =
+      typeof (preview as any)?.imageBase64 === "string" ? (preview as any).imageBase64 : "";
+    const filename =
+      typeof (preview as any)?.filename === "string" && String((preview as any).filename).trim()
+        ? String((preview as any).filename).trim()
+        : "attachment.png";
+    const contentType =
+      typeof (preview as any)?.contentType === "string" && String((preview as any).contentType).trim()
+        ? String((preview as any).contentType).trim()
+        : "image/png";
 
     const orgSecrets = (await ctx.runQuery(
       (components as any).launchthat_discord.orgConfigs.internalQueries.getOrgConfigSecrets,
@@ -503,12 +542,12 @@ export const sendTemplateTest = action({
           url: `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages`,
           payloadJson: {
             content: "",
-            embeds: [{ description: content, image: { url: "attachment://snapshot.png" } }],
+            embeds: [{ description: content, image: { url: `attachment://${filename}` } }],
           },
           file: {
-            name: "snapshot.png",
+            name: filename,
             bytes: new Uint8Array(Buffer.from(imageBase64, "base64")),
-            contentType: "image/png",
+            contentType,
           },
         })
       : await discordJson({

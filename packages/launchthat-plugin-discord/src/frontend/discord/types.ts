@@ -48,6 +48,17 @@ export type DiscordUiApi = {
     // Optional: host app can generate a preview payload for templates.
     previewTemplate?: any;
   };
+  /**
+   * Optional: host app can expose an org-scoped media library for "Custom" template attachments.
+   * This should point at Convex functions that list/upload/create organization media items.
+   */
+  media?: {
+    organizationMedia?: {
+      listRef: any;
+      generateUploadUrlRef: any;
+      createRef: any;
+    };
+  };
 };
 
 export type DiscordUiTheme = {

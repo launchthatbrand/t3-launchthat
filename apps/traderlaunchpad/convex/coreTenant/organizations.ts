@@ -76,6 +76,23 @@ const orgPublicProfileConfigV1Validator = v.object({
   ),
 });
 
+interface OrgPublicProfileConfigV1 {
+  version: "v1";
+  heroCtas?: {
+    id: string;
+    label: string;
+    url: string;
+    variant?: "primary" | "outline";
+  }[];
+  logoCrop?: { x: number; y: number };
+  links: { label: string; url: string }[];
+  sections: {
+    id: string;
+    kind: "hero" | "about" | "links" | "stats";
+    enabled: boolean;
+  }[];
+}
+
 const resolveClerkUserIdFromIdentity = async (
   ctx: QueryCtx | MutationCtx,
 ): Promise<string> => {
@@ -481,6 +498,39 @@ export const listOrganizationMedia = query({
   },
 });
 
+export const getOrganizationMediaById = query({
+  args: { mediaId: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.string(),
+      organizationId: v.string(),
+      url: v.union(v.string(), v.null()),
+      contentType: v.string(),
+      size: v.number(),
+      filename: v.optional(v.string()),
+      createdAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const row = (await ctx.runQuery(
+      components.launchthat_core_tenant.queries.getOrganizationMediaById,
+      { mediaId: args.mediaId },
+    )) as unknown as ComponentOrganizationMediaRow | null;
+    if (!row) return null;
+    await requireOrgAdminOrPlatformAdmin(ctx, String(row.organizationId));
+    return {
+      _id: String(row._id),
+      organizationId: String(row.organizationId),
+      url: row.url,
+      contentType: row.contentType,
+      size: row.size,
+      filename: row.filename,
+      createdAt: row.createdAt,
+    };
+  },
+});
+
 export const deleteOrganizationMedia = mutation({
   args: { mediaId: v.string() },
   returns: v.null(),
@@ -674,7 +724,7 @@ export const getOrganizationById = query({
       description: org.description,
       logoMediaId,
       logoUrl,
-      publicProfileConfig: org.publicProfileConfig as any,
+      publicProfileConfig: org.publicProfileConfig as OrgPublicProfileConfigV1 | undefined,
     };
   },
 });

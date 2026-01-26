@@ -61,7 +61,8 @@
   "dependencies": {
     "@acme/ui": "workspace:*",
     "convex": "^1.23.0",
-    "launchthat-plugin-core": "workspace:*"
+    "launchthat-plugin-core": "workspace:*",
+    "launchthat-plugin-core-tenant": "workspace:*"
   },
   "devDependencies": {
     "@acme/eslint-config": "workspace:*",

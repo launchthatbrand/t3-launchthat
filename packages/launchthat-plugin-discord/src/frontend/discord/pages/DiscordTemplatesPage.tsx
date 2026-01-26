@@ -44,6 +44,7 @@ import React from "react";
 import { Textarea } from "@acme/ui/textarea";
 import { DiscordChannelSelect } from "../components";
 import { CandlestickChart, Palette, X } from "lucide-react";
+import { MediaLibraryDialog } from "launchthat-plugin-core-tenant/frontend";
 
 const cx = (...classes: Array<string | undefined | false>) =>
   classes.filter(Boolean).join(" ");
@@ -94,6 +95,14 @@ export function DiscordTemplatesPage({
   className,
   ui,
 }: DiscordTemplatesPageProps) {
+  type OrganizationMediaRow = {
+    _id: string;
+    url: string | null;
+    filename?: string;
+    contentType: string;
+    createdAt: number;
+  };
+
   const contexts = React.useMemo(
     () =>
       Array.isArray(templateContexts) && templateContexts.length > 0
@@ -147,10 +156,15 @@ export function DiscordTemplatesPage({
   const [designPanel, setDesignPanel] = React.useState<null | "appearance" | "candles">(
     null,
   );
+  const orgMediaApi = api.media?.organizationMedia;
 
-  // Template-owned snapshot attachment state (stored in templateJson).
-  const [attachmentsEnabled, setAttachmentsEnabled] = React.useState(false);
-  const [useChartImage, setUseChartImage] = React.useState(false);
+  type AttachmentType = "none" | "chart_image" | "custom";
+
+  // Template-owned attachment state (stored in templateJson).
+  const [attachmentType, setAttachmentType] = React.useState<AttachmentType>("none");
+  const [customImageMediaId, setCustomImageMediaId] = React.useState<string | null>(null);
+  const [customImageUrlPreview, setCustomImageUrlPreview] = React.useState<string | null>(null);
+  const [customImagePickerOpen, setCustomImagePickerOpen] = React.useState(false);
   const [snapshotLookbackDays, setSnapshotLookbackDays] = React.useState("3");
   const [snapshotShowBadge, setSnapshotShowBadge] = React.useState(true);
   const [snapshotThemeMode, setSnapshotThemeMode] = React.useState<
@@ -208,8 +222,22 @@ export function DiscordTemplatesPage({
   );
 
   const buildTemplateJson = React.useCallback(() => {
-    if (!attachmentsEnabled) return "";
-    if (!useChartImage) return "";
+    if (attachmentType === "none") return "";
+
+    if (attachmentType === "custom") {
+      if (!customImageMediaId) return "";
+      return JSON.stringify({
+        attachments: [
+          {
+            type: "organization_media_image",
+            providerKey: "coreTenant.organizationMedia",
+            params: { mediaId: customImageMediaId },
+          },
+        ],
+      });
+    }
+
+    // attachmentType === "chart_image"
     const lookbackDays = Math.max(1, Math.min(30, Math.floor(Number(snapshotLookbackDays) || 3)));
     const bgColor = normalizeHexColor(snapshotBgColor) ?? "#000000";
     const gridOpacity = Math.max(0, Math.min(0.25, snapshotGridOpacityPct / 100));
@@ -248,8 +276,8 @@ export function DiscordTemplatesPage({
     };
     return JSON.stringify(payload);
   }, [
-    attachmentsEnabled,
-    useChartImage,
+    attachmentType,
+    customImageMediaId,
     snapshotLookbackDays,
     snapshotShowBadge,
     snapshotThemeMode,
@@ -322,8 +350,9 @@ export function DiscordTemplatesPage({
       setValue(selected.template ?? "");
       const tj = typeof (selected as any).templateJson === "string" ? String((selected as any).templateJson) : "";
       setTemplateJson(tj);
-      // Parse snapshot attachment config.
-      let hasSnapshot = false;
+      // Parse attachment config (chart snapshot or custom org media image).
+      let nextAttachmentType: AttachmentType = "none";
+      let nextCustomMediaId: string | null = null;
       let lookbackDays = 3;
       let showBadge = true;
       let themeMode: "dark" | "light" | "custom" = "dark";
@@ -340,8 +369,10 @@ export function DiscordTemplatesPage({
         const parsed = tj ? JSON.parse(tj) : null;
         const attachments = Array.isArray(parsed?.attachments) ? parsed.attachments : [];
         const snap = attachments.find((a: any) => a?.type === "snapshot_png") ?? null;
+        const orgMediaImage =
+          attachments.find((a: any) => a?.type === "organization_media_image") ?? null;
         if (snap) {
-          hasSnapshot = true;
+          nextAttachmentType = "chart_image";
           lookbackDays = Math.max(1, Math.min(30, Math.floor(Number(snap?.params?.lookbackDays ?? 3))));
           showBadge =
             typeof snap?.params?.showSentimentBadge === "boolean" ? Boolean(snap.params.showSentimentBadge) : true;
@@ -416,12 +447,21 @@ export function DiscordTemplatesPage({
               ? String(snap.params.tradeIndicatorShape).trim().toLowerCase()
               : "";
           tradeIndicatorShape = shapeRaw === "triangle" ? "triangle" : "circle";
+        } else if (orgMediaImage) {
+          nextAttachmentType = "custom";
+          const mediaIdRaw =
+            typeof orgMediaImage?.params?.mediaId === "string"
+              ? String(orgMediaImage.params.mediaId).trim()
+              : "";
+          nextCustomMediaId = mediaIdRaw || null;
         }
       } catch {
-        hasSnapshot = false;
+        nextAttachmentType = "none";
+        nextCustomMediaId = null;
       }
-      setAttachmentsEnabled(hasSnapshot);
-      setUseChartImage(hasSnapshot);
+      setAttachmentType(nextAttachmentType);
+      setCustomImageMediaId(nextCustomMediaId);
+      setCustomImageUrlPreview(null);
       setSnapshotLookbackDays(String(lookbackDays));
       setSnapshotShowBadge(showBadge);
       setSnapshotThemeMode(themeMode);
@@ -443,8 +483,9 @@ export function DiscordTemplatesPage({
     setDescription("");
     setValue(activeContext?.defaultTemplate ?? "");
     setTemplateJson("");
-    setAttachmentsEnabled(false);
-    setUseChartImage(false);
+    setAttachmentType("none");
+    setCustomImageMediaId(null);
+    setCustomImageUrlPreview(null);
     setSnapshotLookbackDays("3");
     setSnapshotShowBadge(true);
     setSnapshotThemeMode("dark");
@@ -536,8 +577,9 @@ export function DiscordTemplatesPage({
     setName("");
     setDescription("");
     setValue(activeContext?.defaultTemplate ?? "");
-    setAttachmentsEnabled(false);
-    setUseChartImage(false);
+    setAttachmentType("none");
+    setCustomImageMediaId(null);
+    setCustomImageUrlPreview(null);
     setSnapshotLookbackDays("3");
     setSnapshotShowBadge(true);
     setSnapshotThemeMode("dark");
@@ -620,11 +662,21 @@ export function DiscordTemplatesPage({
     }
   };
 
-  // Dynamic preview (debounced) when chart snapshot settings change.
+  const previewKey = React.useMemo(
+    () =>
+      JSON.stringify({
+        template: value,
+        templateJson: previewTemplateJson,
+        values: sampleValues,
+      }),
+    [previewTemplateJson, sampleValues, value],
+  );
+
+  // Dynamic preview (debounced) when template/attachments change.
   React.useEffect(() => {
     if (!api.actions.previewTemplate) return;
     if (!showEditor) return;
-    if (!attachmentsEnabled || !useChartImage) return;
+    if (!selectedId && !value) return;
     setIsPreviewStale(true);
     if (!autoPreview) return;
     const t = window.setTimeout(() => {
@@ -632,19 +684,7 @@ export function DiscordTemplatesPage({
     }, 400);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    previewTemplateJson,
-    autoPreview,
-  ]);
-
-  // Immediate preview when enabling chart image.
-  React.useEffect(() => {
-    if (!api.actions.previewTemplate) return;
-    if (!showEditor) return;
-    if (!attachmentsEnabled || !useChartImage) return;
-    void handleGeneratePreview();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useChartImage]);
+  }, [previewKey, autoPreview]);
 
   const resetAppearance = React.useCallback(() => {
     setSnapshotThemeMode("dark");
@@ -1183,286 +1223,418 @@ export function DiscordTemplatesPage({
                 <div className="text-sm font-semibold">Attachments</div>
 
                 <div className="space-y-2">
-                  <Label>Enable attachments</Label>
+                  <Label>Attachment type</Label>
                   <Select
-                    value={attachmentsEnabled ? "true" : "false"}
-                    onValueChange={(v) => setAttachmentsEnabled(v === "true")}
+                    value={attachmentType}
+                    onValueChange={(v) => {
+                      const next =
+                        v === "chart_image" ? "chart_image" : v === "custom" ? "custom" : "none";
+                      setAttachmentType(next);
+                      if (next !== "custom") {
+                        setCustomImageMediaId(null);
+                        setCustomImageUrlPreview(null);
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="false">Disabled</SelectItem>
-                      <SelectItem value="true">Enabled</SelectItem>
+                      <SelectItem value="none">None (default)</SelectItem>
+                      <SelectItem value="chart_image">Chart Image</SelectItem>
+                      <SelectItem value="custom">Custom</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                {attachmentsEnabled ? (
+                {attachmentType === "custom" ? (
                   <>
-                    <div className="space-y-2">
-                      <Label>Use Chart Image</Label>
-                      <Select
-                        value={useChartImage ? "true" : "false"}
-                        onValueChange={(v) => setUseChartImage(v === "true")}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="false">No</SelectItem>
-                          <SelectItem value="true">Yes</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {useChartImage ? (
-                      <>
-                        <div className="mt-2 space-y-3">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="text-sm font-medium">Snapshot basics</div>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Custom image</Label>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className={ui?.outlineButtonClassName}
+                            disabled={!orgMediaApi?.listRef || !organizationId}
+                            onClick={() => setCustomImagePickerOpen(true)}
+                          >
+                            {customImageMediaId ? "Change image" : "Choose image"}
+                          </Button>
+                          {customImageMediaId ? (
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
                               onClick={() => {
-                                setSnapshotLookbackDays("3");
-                                setSnapshotShowBadge(true);
+                                setCustomImageMediaId(null);
+                                setCustomImageUrlPreview(null);
                               }}
+                            >
+                              Clear
+                            </Button>
+                          ) : null}
+                        </div>
+                        {!orgMediaApi?.listRef ? (
+                          <p className="text-muted-foreground text-xs">
+                            Media library not configured in this host app.
+                          </p>
+                        ) : customImageMediaId ? (
+                          <p className="text-muted-foreground text-xs">
+                            Selected media: <span className="font-mono">{customImageMediaId}</span>
+                          </p>
+                        ) : (
+                          <p className="text-muted-foreground text-xs">
+                            Pick an image from the organization media library.
+                          </p>
+                        )}
+                      </div>
+                      {customImageUrlPreview ? (
+                        <div className="space-y-2">
+                          <Label>Preview</Label>
+                          <img
+                            alt="Custom attachment preview"
+                            className="max-w-full rounded-md border border-border/60"
+                            src={customImageUrlPreview}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  </>
+                ) : attachmentType === "chart_image" ? (
+                  <>
+                    <div className="mt-2 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm font-medium">Snapshot basics</div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSnapshotLookbackDays("3");
+                            setSnapshotShowBadge(true);
+                          }}
+                        >
+                          Reset
+                        </Button>
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Lookback days</Label>
+                          <Select
+                            value={snapshotLookbackDays}
+                            onValueChange={(v) => setSnapshotLookbackDays(v)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 30 }).map((_, i) => {
+                                const n = String(i + 1);
+                                return (
+                                  <SelectItem key={n} value={n}>
+                                    {n}
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Show market sentiment badge</Label>
+                          <Select
+                            value={snapshotShowBadge ? "true" : "false"}
+                            onValueChange={(v) => setSnapshotShowBadge(v === "true")}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="true">Yes</SelectItem>
+                              <SelectItem value="false">No</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground text-xs">
+                    No attachment will be included when this template is sent.
+                  </p>
+                )}
+              </div>
+
+              {attachmentType === "custom" &&
+              Boolean(orgMediaApi?.listRef) &&
+              Boolean(organizationId) ? (
+                <MediaLibraryDialog<
+                  { organizationId: string; limit?: number },
+                  { organizationId: string },
+                  {
+                    organizationId: string;
+                    storageId: string;
+                    contentType: string;
+                    size: number;
+                    filename?: string;
+                  },
+                  OrganizationMediaRow
+                >
+                  open={customImagePickerOpen}
+                  onOpenChange={setCustomImagePickerOpen}
+                  title="Organization media"
+                  initialSelectedId={customImageMediaId}
+                  listRef={orgMediaApi!.listRef}
+                  listArgs={{ organizationId: String(organizationId), limit: 200 }}
+                  generateUploadUrlRef={orgMediaApi!.generateUploadUrlRef}
+                  uploadArgs={{ organizationId: String(organizationId) }}
+                  createRef={orgMediaApi!.createRef}
+                  buildCreateArgs={({ storageId, file }: { storageId: string; file: File }) => ({
+                    organizationId: String(organizationId),
+                    storageId,
+                    contentType: file.type || "application/octet-stream",
+                    size: file.size,
+                    filename: file.name,
+                  })}
+                  onSelect={(item: OrganizationMediaRow) => {
+                    setCustomImageMediaId(item._id);
+                    setCustomImageUrlPreview(item.url);
+                  }}
+                />
+              ) : null}
+
+              {api.actions.previewTemplate ? (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Label>Preview</Label>
+                      {isPreviewStale ? (
+                        <Badge variant="secondary" className="text-xs">
+                          Preview out of date
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-muted-foreground text-xs">Auto preview</Label>
+                        <Switch
+                          checked={autoPreview}
+                          onCheckedChange={(v) => setAutoPreview(Boolean(v))}
+                        />
+                      </div>
+
+                      {attachmentType === "chart_image" ? (
+                        isMobile ? (
+                          <>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  className={ui?.outlineButtonClassName}
+                                  aria-label="Open candle styling"
+                                  onClick={() => setDesignPanel("candles")}
+                                >
+                                  <CandlestickChart className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent sideOffset={6}>Candles</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  className={ui?.outlineButtonClassName}
+                                  aria-label="Open background and grid styling"
+                                  onClick={() => setDesignPanel("appearance")}
+                                >
+                                  <Palette className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent sideOffset={6}>Appearance</TooltipContent>
+                            </Tooltip>
+                          </>
+                        ) : (
+                          <>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  className={ui?.outlineButtonClassName}
+                                  aria-label="Open candle styling"
+                                >
+                                  <CandlestickChart className="h-4 w-4" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                align="end"
+                                className="w-[380px] max-w-[calc(100vw-2rem)]"
+                              >
+                                {candlesControlsPanel}
+                              </PopoverContent>
+                            </Popover>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  className={ui?.outlineButtonClassName}
+                                  aria-label="Open background and grid styling"
+                                >
+                                  <Palette className="h-4 w-4" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                align="end"
+                                className="w-[380px] max-w-[calc(100vw-2rem)]"
+                              >
+                                {appearanceControlsPanel}
+                              </PopoverContent>
+                            </Popover>
+                          </>
+                        )
+                      ) : null}
+
+                      <Button
+                        variant="outline"
+                        className={ui?.outlineButtonClassName}
+                        disabled={previewing}
+                        onClick={() => void handleGeneratePreview()}
+                      >
+                        {previewing ? "Rendering..." : "Refresh preview"}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {attachmentType === "chart_image" && isMobile ? (
+                    <Drawer
+                      open={designPanel !== null}
+                      onOpenChange={(open) => {
+                        if (!open) setDesignPanel(null);
+                      }}
+                    >
+                      <DrawerContent className="p-0">
+                        <DrawerHeader className="relative">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-3 top-3 h-9 w-9"
+                            onClick={() => setDesignPanel(null)}
+                            aria-label="Close"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                          <DrawerTitle>
+                            {designPanel === "candles"
+                              ? "Candles"
+                              : designPanel === "appearance"
+                                ? "Appearance"
+                                : "Design"}
+                          </DrawerTitle>
+                          <DrawerDescription>
+                            Adjust snapshot styling used for previews, tests, and automations.
+                          </DrawerDescription>
+                        </DrawerHeader>
+                        <div className="max-h-[60vh] overflow-auto px-4 pb-4">
+                          <div className="flex items-center justify-end">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (designPanel === "candles") resetCandles();
+                                if (designPanel === "appearance") resetAppearance();
+                              }}
+                              disabled={designPanel === null}
                             >
                               Reset
                             </Button>
                           </div>
+                          {designPanel === "candles"
+                            ? candlesControlsBody
+                            : designPanel === "appearance"
+                              ? appearanceControlsBody
+                              : null}
+                        </div>
+                      </DrawerContent>
+                    </Drawer>
+                  ) : null}
 
-                          <div className="grid gap-4 md:grid-cols-2">
-                            <div className="space-y-2">
-                              <Label>Lookback days</Label>
-                              <Select
-                                value={snapshotLookbackDays}
-                                onValueChange={(v) => setSnapshotLookbackDays(v)}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {Array.from({ length: 30 }).map((_, i) => {
-                                    const n = String(i + 1);
-                                    return (
-                                      <SelectItem key={n} value={n}>
-                                        {n}
-                                      </SelectItem>
-                                    );
-                                  })}
-                                </SelectContent>
-                              </Select>
-                            </div>
+                  {(() => {
+                    const dataUrl = previewImageBase64
+                      ? `data:image/png;base64,${previewImageBase64}`
+                      : null;
+                    const imageSrc =
+                      dataUrl ?? (attachmentType === "custom" ? customImageUrlPreview : null);
+                    const hasImage = Boolean(imageSrc);
+                    const messageText =
+                      typeof previewContent === "string" && previewContent.trim()
+                        ? previewContent
+                        : "Your message preview will appear here.";
 
-                            <div className="space-y-2">
-                              <Label>Show market sentiment badge</Label>
-                              <Select
-                                value={snapshotShowBadge ? "true" : "false"}
-                                onValueChange={(v) => setSnapshotShowBadge(v === "true")}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="true">Yes</SelectItem>
-                                  <SelectItem value="false">No</SelectItem>
-                                </SelectContent>
-                              </Select>
+                    return (
+                      <div className="overflow-hidden rounded-lg border border-border/60">
+                        <div className="bg-[#0B0D12] p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="h-10 w-10 shrink-0 rounded-full bg-white/10" />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <div className="text-[15px] font-semibold text-white">
+                                  Trader Launchpad
+                                </div>
+                                <span className="rounded-md border border-blue-400/30 bg-blue-500/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-blue-200">
+                                  APP
+                                </span>
+                                <div className="text-xs text-white/50">Now</div>
+                              </div>
+
+                              {attachmentType === "none" ? (
+                                <div className="mt-1 whitespace-pre-wrap text-[15px] leading-5 text-white/90">
+                                  {messageText}
+                                </div>
+                              ) : (
+                                <div className="mt-2 max-w-[560px] overflow-hidden rounded-md border-l-4 border-l-[#ED4245] bg-white/5 p-3">
+                                  <div className="whitespace-pre-wrap text-[14px] leading-5 text-white/90">
+                                    {messageText}
+                                  </div>
+
+                                  {hasImage ? (
+                                    <img
+                                      alt="Discord embed image preview"
+                                      className="mt-3 max-w-full rounded-md border border-white/10"
+                                      src={imageSrc ?? undefined}
+                                    />
+                                  ) : (
+                                    <div className="mt-3 rounded-md border border-dashed border-white/15 p-3 text-sm text-white/60">
+                                      {attachmentType === "custom" && !customImageMediaId
+                                        ? "Choose an image to see it here."
+                                        : "Click “Refresh preview” to render the embed image."}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
-
-                        <p className="text-muted-foreground text-xs">
-                          Preview/test uses <span className="font-medium">BTCUSD</span>. Saved on the template for automations too.
-                        </p>
-
-                        {api.actions.previewTemplate ? (
-                          <div className="space-y-2">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Label>Chart preview</Label>
-                                {isPreviewStale ? (
-                                  <Badge variant="secondary" className="text-xs">
-                                    Preview out of date
-                                  </Badge>
-                                ) : null}
-                              </div>
-                              <div className="flex flex-wrap items-center gap-3">
-                                <div className="flex items-center gap-2">
-                                  <Label className="text-muted-foreground text-xs">Auto preview</Label>
-                                  <Switch
-                                    checked={autoPreview}
-                                    onCheckedChange={(v) => setAutoPreview(Boolean(v))}
-                                  />
-                                </div>
-                                {isMobile ? (
-                                  <>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="icon"
-                                          className={ui?.outlineButtonClassName}
-                                          aria-label="Open candle styling"
-                                          onClick={() => setDesignPanel("candles")}
-                                        >
-                                          <CandlestickChart className="h-4 w-4" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent sideOffset={6}>Candles</TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="icon"
-                                          className={ui?.outlineButtonClassName}
-                                          aria-label="Open background and grid styling"
-                                          onClick={() => setDesignPanel("appearance")}
-                                        >
-                                          <Palette className="h-4 w-4" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent sideOffset={6}>Appearance</TooltipContent>
-                                    </Tooltip>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Popover>
-                                      <PopoverTrigger asChild>
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="icon"
-                                          className={ui?.outlineButtonClassName}
-                                          aria-label="Open candle styling"
-                                        >
-                                          <CandlestickChart className="h-4 w-4" />
-                                        </Button>
-                                      </PopoverTrigger>
-                                      <PopoverContent
-                                        align="end"
-                                        className="w-[380px] max-w-[calc(100vw-2rem)]"
-                                      >
-                                        {candlesControlsPanel}
-                                      </PopoverContent>
-                                    </Popover>
-                                    <Popover>
-                                      <PopoverTrigger asChild>
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="icon"
-                                          className={ui?.outlineButtonClassName}
-                                          aria-label="Open background and grid styling"
-                                        >
-                                          <Palette className="h-4 w-4" />
-                                        </Button>
-                                      </PopoverTrigger>
-                                      <PopoverContent
-                                        align="end"
-                                        className="w-[380px] max-w-[calc(100vw-2rem)]"
-                                      >
-                                        {appearanceControlsPanel}
-                                      </PopoverContent>
-                                    </Popover>
-                                  </>
-                                )}
-                                <Button
-                                  variant="outline"
-                                  className={ui?.outlineButtonClassName}
-                                  disabled={previewing}
-                                  onClick={() => void handleGeneratePreview()}
-                                >
-                                  {previewing ? "Rendering..." : "Refresh preview"}
-                                </Button>
-                              </div>
-                            </div>
-                            {isMobile ? (
-                              <Drawer
-                                open={designPanel !== null}
-                                onOpenChange={(open) => {
-                                  if (!open) setDesignPanel(null);
-                                }}
-                              >
-                                <DrawerContent className="p-0">
-                                  <DrawerHeader className="relative">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="absolute right-3 top-3 h-9 w-9"
-                                      onClick={() => setDesignPanel(null)}
-                                      aria-label="Close"
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
-                                    <DrawerTitle>
-                                      {designPanel === "candles"
-                                        ? "Candles"
-                                        : designPanel === "appearance"
-                                          ? "Appearance"
-                                          : "Design"}
-                                    </DrawerTitle>
-                                    <DrawerDescription>
-                                      Adjust snapshot styling used for previews, tests, and automations.
-                                    </DrawerDescription>
-                                  </DrawerHeader>
-                                  <div className="max-h-[60vh] overflow-auto px-4 pb-4">
-                                    <div className="flex items-center justify-end">
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                          if (designPanel === "candles") resetCandles();
-                                          if (designPanel === "appearance") resetAppearance();
-                                        }}
-                                        disabled={designPanel === null}
-                                      >
-                                        Reset
-                                      </Button>
-                                    </div>
-                                    {designPanel === "candles"
-                                      ? candlesControlsBody
-                                      : designPanel === "appearance"
-                                        ? appearanceControlsBody
-                                        : null}
-                                  </div>
-                                </DrawerContent>
-                              </Drawer>
-                            ) : null}
-                            {previewImageBase64 ? (
-                              <img
-                                alt="Template chart preview"
-                                className="max-w-full rounded-md border border-border/60"
-                                src={`data:image/png;base64,${previewImageBase64}`}
-                              />
-                            ) : (
-                              <div className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">
-                                Enable “Use Chart Image” to render a preview.
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">
-                            Preview pipeline not enabled in this host app yet.
-                          </div>
-                        )}
-                      </>
-                    ) : null}
-                  </>
-                ) : (
-                  <p className="text-muted-foreground text-xs">
-                    When disabled, attachment settings are hidden and nothing is attached.
-                  </p>
-                )}
-              </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <div className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">
+                  Preview pipeline not enabled in this host app yet.
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Available fields</Label>
@@ -1545,14 +1717,6 @@ export function DiscordTemplatesPage({
                 ) : null}
               </div>
 
-              {previewContent ? (
-                <div className="space-y-2">
-                  <Label>Rendered content</Label>
-                  <pre className="bg-muted/40 border border-border/60 rounded-md p-3 text-sm whitespace-pre-wrap">
-                    {previewContent}
-                  </pre>
-                </div>
-              ) : null}
             </CardContent>
           </Card>
         ) : null}

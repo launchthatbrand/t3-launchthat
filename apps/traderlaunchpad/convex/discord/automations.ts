@@ -31,7 +31,7 @@ const applyTemplate = (template: string, values: Record<string, string | undefin
   template.replace(/\{\{(\w+)\}\}/g, (_, key) => values[key] ?? "");
 
 const parseTemplateJson = (templateJson: unknown): {
-  hasSnapshot: boolean;
+  attachmentType: "none" | "snapshot" | "custom";
   lookbackDays: number;
   showSentimentBadge: boolean;
   themeMode: "dark" | "light" | "custom";
@@ -42,15 +42,30 @@ const parseTemplateJson = (templateJson: unknown): {
   candleUpColor?: string;
   candleDownColor?: string;
   tradeIndicatorShape?: "circle" | "triangle";
+  customMediaId?: string;
 } => {
   if (typeof templateJson !== "string" || !templateJson.trim()) {
-    return { hasSnapshot: false, lookbackDays: 3, showSentimentBadge: true, themeMode: "dark" };
+    return { attachmentType: "none", lookbackDays: 3, showSentimentBadge: true, themeMode: "dark" };
   }
   try {
     const parsed = JSON.parse(templateJson) as any;
     const attachments = Array.isArray(parsed?.attachments) ? parsed.attachments : [];
     const snap = attachments.find((a: any) => a?.type === "snapshot_png") ?? null;
-    if (!snap) return { hasSnapshot: false, lookbackDays: 3, showSentimentBadge: true, themeMode: "dark" };
+    const custom = attachments.find((a: any) => a?.type === "organization_media_image") ?? null;
+    if (custom) {
+      const mediaId =
+        typeof custom?.params?.mediaId === "string" ? String(custom.params.mediaId).trim() : "";
+      if (mediaId) {
+        return {
+          attachmentType: "custom",
+          customMediaId: mediaId,
+          lookbackDays: 3,
+          showSentimentBadge: true,
+          themeMode: "dark",
+        };
+      }
+    }
+    if (!snap) return { attachmentType: "none", lookbackDays: 3, showSentimentBadge: true, themeMode: "dark" };
     const lookbackDaysRaw = Number(snap?.params?.lookbackDays ?? 3);
     const lookbackDays = Math.max(1, Math.min(30, Math.floor(lookbackDaysRaw)));
     const showSentimentBadge =
@@ -94,7 +109,7 @@ const parseTemplateJson = (templateJson: unknown): {
     const tradeIndicatorShape =
       tradeIndicatorShapeRaw === "triangle" ? "triangle" : "circle";
     return {
-      hasSnapshot: true,
+      attachmentType: "snapshot",
       lookbackDays,
       showSentimentBadge,
       themeMode,
@@ -107,7 +122,7 @@ const parseTemplateJson = (templateJson: unknown): {
       tradeIndicatorShape,
     };
   } catch {
-    return { hasSnapshot: false, lookbackDays: 3, showSentimentBadge: true, themeMode: "dark" };
+    return { attachmentType: "none", lookbackDays: 3, showSentimentBadge: true, themeMode: "dark" };
   }
 };
 
@@ -358,7 +373,51 @@ export const runDueDiscordAutomations = internalAction({
               ? values.symbol.trim().toUpperCase()
               : snapshotSymbol;
 
-        if (snapshotSettings.hasSnapshot) {
+        if (snapshotSettings.attachmentType === "custom" && snapshotSettings.customMediaId) {
+          const mediaRow = await ctx.runQuery(apiUntyped.coreTenant.organizations.getOrganizationMediaById, {
+            mediaId: snapshotSettings.customMediaId,
+          });
+          const url = typeof mediaRow?.url === "string" ? mediaRow.url : "";
+          if (!url) throw new Error("Custom attachment is missing a URL.");
+          const res = await fetch(url);
+          if (!res.ok) {
+            const text = await res.text().catch(() => "");
+            throw new Error(`Failed to load custom media (${res.status}): ${text.slice(0, 200)}`);
+          }
+          const bytes = new Uint8Array(await res.arrayBuffer());
+          const contentType =
+            typeof mediaRow?.contentType === "string" && mediaRow.contentType
+              ? mediaRow.contentType
+              : res.headers.get("content-type") || "application/octet-stream";
+          const filename =
+            typeof mediaRow?.filename === "string" && mediaRow.filename.trim()
+              ? mediaRow.filename.trim()
+              : contentType.includes("png")
+                ? "custom.png"
+                : "custom-image";
+
+          const payloadJson = {
+            content: "",
+            embeds: [
+              {
+                title: `Hourly summary: ${actionSnapshotSymbol}`,
+                description: content,
+                image: { url: `attachment://${filename}` },
+              },
+            ],
+          };
+
+          const sendRes = await discordMultipart({
+            botToken,
+            method: "POST",
+            url: `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages`,
+            payloadJson,
+            file: { name: filename, bytes, contentType },
+          });
+          if (!sendRes.ok) {
+            throw new Error(`Discord multipart send failed (${sendRes.status}): ${sendRes.text.slice(0, 200)}`);
+          }
+        } else if (snapshotSettings.attachmentType === "snapshot") {
           const preview = await buildSnapshotPreview(ctx, {
             organizationId,
             symbol: actionSnapshotSymbol,

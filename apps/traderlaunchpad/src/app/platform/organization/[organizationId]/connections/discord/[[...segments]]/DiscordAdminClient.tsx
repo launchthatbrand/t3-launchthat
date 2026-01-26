@@ -79,6 +79,13 @@ export function PlatformDiscordAdminClient({ organizationId }: PlatformDiscordAd
         queries: api.discord.queries,
         mutations: api.discord.mutations,
         actions: api.discord.actions,
+        media: {
+          organizationMedia: {
+            listRef: api.coreTenant.organizations.listOrganizationMedia,
+            generateUploadUrlRef: api.coreTenant.organizations.generateOrganizationMediaUploadUrl,
+            createRef: api.coreTenant.organizations.createOrganizationMedia,
+          },
+        },
       }}
     />
   );
