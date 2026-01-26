@@ -819,16 +819,7 @@ export default function AdminDashboardPage() {
             </div>
           ) : null
         }
-        actions={
-          <Button
-            className="gap-2 border-0 bg-orange-600 text-white hover:bg-orange-700"
-            onClick={() => void handleSyncAccount()}
-            disabled={syncingNow}
-          >
-            <Activity className="h-4 w-4" />
-            {syncingNow ? "Syncing..." : "Sync Account"}
-          </Button>
-        }
+        actions={<></>}
       />
 
       {isOrgMode ? (

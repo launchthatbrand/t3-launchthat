@@ -16,7 +16,6 @@ import {
   ContainerScroll,
   FlipWords,
   OrbitingCircles,
-  Safari,
   TextGenerateEffect,
 } from "@acme/ui";
 import { demoBrokers, demoPropFirms, demoPublicProfiles } from "@acme/demo-data";
@@ -33,6 +32,7 @@ import { PricingSection } from "../../components/landing/PricingSection";
 import React from "react";
 import { SpinningSphere } from "~/components/landing/SpinningSphere";
 import { StrategyBuilderAnimation } from "../../components/landing/StrategyBuilderAnimation";
+import { ThemeAwareSafariPreview } from "../../components/landing/ThemeAwareSafariPreview";
 import { auth } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
 
@@ -80,17 +80,17 @@ export default async function HomePage() {
 
   return (
     <div className="relative min-h-screen text-foreground selection:bg-orange-500/30">
-      <main className="relative z-10 pt-10">
+      <main className="relative z-10 pt-5">
 
         {/* Hero Section */}
         <section className="relative container mx-auto max-w-7xl px-4 text-center">
           {isMobileUa ? (
             <>
               {/* Mobile: keep it light (no canvas + no heavy text/scroll animations) */}
-              <div className="mx-auto w-fit rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-1.5 text-xs font-medium dark:text-orange-200 text-black backdrop-blur-sm">
+              <div className="mx-auto w-fit rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-1.5 text-xs font-medium text-black backdrop-blur-sm dark:text-orange-200">
                 Free Trading Journal and AI Powered Analytics
               </div>
-              <h1 className="mx-auto max-w-5xl text-5xl font-bold tracking-tight md:text-7xl lg:text-8xl">
+              <h1 className="mx-auto max-w-5xl text-5xl font-bold tracking-tight leading-[0.95] md:text-7xl lg:text-8xl">
                 <span className="block leading-none">
                   {/* <GlassTitle
                     text="Mission Control"
@@ -98,7 +98,7 @@ export default async function HomePage() {
                   /> */}
                   Mission Control
                 </span>
-                <div className="mx-auto mt-2 mb-2 flex items-center justify-center gap-4 md:mt-4 md:mb-4">
+                <div className="mx-auto mt-3 mb-3 flex items-center justify-center gap-4 md:mt-4 md:mb-4">
                   <div className="h-px w-12 bg-linear-to-r from-transparent to-foreground/30 md:w-24" />
                   <span className="relative font-mono text-xs font-medium tracking-[0.5em] text-foreground/50 md:text-sm">
                     FOR
@@ -108,12 +108,12 @@ export default async function HomePage() {
                 <span className="block leading-none">Trading Communities</span>
               </h1>
 
-              <p className="mx-auto mt-8 max-w-2xl text-lg font-medium text-center text-muted-foreground md:text-xl">
+              <p className="mx-auto mt-6 max-w-2xl text-center text-lg font-medium text-muted-foreground md:text-xl">
                 Turn trades into a plan—AI insights, reminders, and
                 broker-connected analytics so you trade with confidence.
               </p>
 
-              <div className="mt-20 mb-20 flex justify-center">
+              <div className="mt-12 mb-16 flex justify-center">
                 <Link href={primaryCtaHref} className="inline-block">
                   <Button
                     as="div"
@@ -131,10 +131,10 @@ export default async function HomePage() {
                 </Link>
               </div>
 
-              <Safari
+              <ThemeAwareSafariPreview
                 url="traderlaunchpad.com/admin"
-                imageSrc="/images/traderlaunchpad-backend.jpg"
-                className=""
+                lightImageSrc="/images/traderlaunchpad-backend-light.jpg"
+                darkImageSrc="/images/traderlaunchpad-backend.jpg"
               />
             </>
           ) : (
@@ -155,10 +155,10 @@ export default async function HomePage() {
               <ContainerScroll
                 titleComponent={
                   <>
-                    <div className="mx-auto w-fit rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-1.5 text-xs font-medium dark:text-orange-200 text-black backdrop-blur-sm">
+                    <div className="mx-auto w-fit rounded-full border border-orange-500/30 bg-orange-500/10 mb-10 px-4 py-1.5 text-xs font-medium text-black backdrop-blur-sm dark:text-orange-200">
                       Free Trading Journal and AI Powered Analytics
                     </div>
-                    <h1 className="mx-auto max-w-5xl text-5xl font-bold tracking-tight md:text-7xl lg:text-8xl">
+                    <h1 className="mx-auto max-w-5xl text-5xl font-bold tracking-tight leading-[0.95] md:text-7xl lg:text-7xl">
                       <span className="block leading-none">
                         {/* <GlassTitle
                           text="Mission Control"
@@ -166,7 +166,7 @@ export default async function HomePage() {
                         /> */}
                         Mission Control
                       </span>
-                      <div className="mx-auto mt-2 mb-2 flex items-center justify-center gap-4 md:mt-4 md:mb-4">
+                      <div className="mx-auto mt-3 mb-3 flex items-center justify-center gap-4 md:mt-4 md:mb-4">
                         <div className="h-px w-12 bg-linear-to-r from-transparent to-foreground/30 md:w-24" />
                         <span className="relative font-mono text-xs font-medium tracking-[0.5em] text-foreground/50 md:text-sm">
                           FOR
@@ -190,13 +190,13 @@ export default async function HomePage() {
 
                     <TextGenerateEffect
                       words="Turn trades into a plan—AI insights, reminders, and broker-connected analytics so you trade with confidence."
-                      className="mx-auto mt-8 max-w-2xl"
+                      className="mx-auto mt-6 max-w-2xl"
                       textClassName="mt-0 text-lg font-medium text-center text-muted-foreground md:text-xl"
                       wordClassName="text-muted-foreground"
                       duration={0.6}
                     />
 
-                    <div className="mt-20 mb-20 flex justify-center">
+                    <div className="mt-12 mb-16 flex justify-center">
                       <Link href={primaryCtaHref} className="inline-block">
                         <Button
                           as="div"
@@ -216,13 +216,11 @@ export default async function HomePage() {
                   </>
                 }
               >
-                <div>
-                  <Safari
-                    url="traderlaunchpad.com/admin"
-                    imageSrc="/images/traderlaunchpad-backend.jpg"
-                    className=""
-                  />
-                </div>
+                <ThemeAwareSafariPreview
+                  url="traderlaunchpad.com/admin"
+                  lightImageSrc="/images/traderlaunchpad-backend-light.jpg"
+                  darkImageSrc="/images/traderlaunchpad-backend.jpg"
+                />
               </ContainerScroll>
             </>
           )}

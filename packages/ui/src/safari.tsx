@@ -5,12 +5,12 @@ import type { HTMLAttributes } from "react"
 // These constants MUST match that coordinate system; otherwise the media overlay (% math) will
 // not align with the browser “screen” cutout.
 const SAFARI_WIDTH = 1202
-const SAFARI_HEIGHT = 723
+const SAFARI_HEIGHT = 753
 const SCREEN_X = 1
 const SCREEN_Y = 52
 const SCREEN_WIDTH = 1200
 // Screen cutout: y=52 down to ~741 in the mask paths.
-const SCREEN_HEIGHT = 720
+const SCREEN_HEIGHT = 741
 
 // Calculated percentages
 const LEFT_PCT = (SCREEN_X / SAFARI_WIDTH) * 100
