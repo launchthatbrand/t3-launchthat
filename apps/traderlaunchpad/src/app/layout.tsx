@@ -5,6 +5,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import type { Metadata, Viewport } from "next";
 
 import { AdminFloatingDock } from "~/components/admin/AdminFloatingDock";
+import { GridLines } from "~/components/background/GridLines";
 import { Providers } from "./providers";
 import StandardLayout from "@acme/ui/layout/StandardLayout";
 import { ThemeProvider } from "@acme/ui/theme";
@@ -194,6 +195,7 @@ export default async function RootLayout(props: {
                 </defs>
               </svg>
 
+              {/* <GridLines /> */}
             </div>
 
             <div className="relative z-10 min-h-screen">
@@ -210,7 +212,7 @@ export default async function RootLayout(props: {
                 sidebarDefaultOpen={false}
 
               >
-                <div className="container py-6 flex-1">
+                <div className="container flex-1">
                   {props.children}
                 </div>
               </StandardLayout>

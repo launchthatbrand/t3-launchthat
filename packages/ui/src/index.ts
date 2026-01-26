@@ -59,3 +59,5 @@ export * from "./shooting-stars";
 export * from "./floating-dock";
 export * from "./dock";
 export * from "./warp-background";
+export { default as AppleLogo } from "./icons/apple-logo";
+export { default as GooglePlayLogo } from "./icons/google-logo";

@@ -9,12 +9,14 @@ import {
   Webhook,
 } from "lucide-react";
 import {
+  AppleLogo,
   Avatar,
   AvatarFallback,
   AvatarImage,
   Card,
   ContainerScroll,
   FlipWords,
+  GooglePlayLogo,
   OrbitingCircles,
   TextGenerateEffect,
 } from "@acme/ui";
@@ -113,7 +115,7 @@ export default async function HomePage() {
                 broker-connected analytics so you trade with confidence.
               </p>
 
-              <div className="mt-12 mb-16 flex justify-center">
+              <div className="mt-12 mb-6 flex justify-center">
                 <Link href={primaryCtaHref} className="inline-block">
                   <Button
                     as="div"
@@ -128,6 +130,29 @@ export default async function HomePage() {
                       </span>
                     </span>
                   </Button>
+                </Link>
+              </div>
+
+              <div className="mb-12 flex flex-wrap items-center justify-center gap-3 text-xs font-semibold">
+                <Link
+                  href="#"
+                  className="inline-flex items-center gap-2 rounded-xl border border-foreground/15 bg-foreground/5 px-4 py-2 text-foreground/80 backdrop-blur-sm transition hover:bg-foreground/10 hover:text-foreground"
+                >
+                  <AppleLogo size={16} color="currentColor" />
+                  <span className="text-[10px] font-medium tracking-[0.2em] text-foreground/50">
+                    AVAILABLE ON
+                  </span>
+                  <span className="text-sm font-semibold">iOS App Store</span>
+                </Link>
+                <Link
+                  href="#"
+                  className="inline-flex items-center gap-2 rounded-xl border border-foreground/15 bg-foreground/5 px-4 py-2 text-foreground/80 backdrop-blur-sm transition hover:bg-foreground/10 hover:text-foreground"
+                >
+                  <GooglePlayLogo size={16} color="currentColor" />
+                  <span className="text-[10px] font-medium tracking-[0.2em] text-foreground/50">
+                    GET IT ON
+                  </span>
+                  <span className="text-sm font-semibold">Google Play</span>
                 </Link>
               </div>
 
@@ -177,7 +202,7 @@ export default async function HomePage() {
                         <FlipWords
                           words={[
                             "Trading Groups",
-                            "Market Analytics",
+                            "Pattern Recognition",
                             "Data-Driven Traders",
                           ]}
                           duration={4000}
@@ -196,7 +221,7 @@ export default async function HomePage() {
                       duration={0.6}
                     />
 
-                    <div className="mt-12 mb-16 flex justify-center">
+                    <div className="mt-12 mb-6 flex justify-center">
                       <Link href={primaryCtaHref} className="inline-block">
                         <Button
                           as="div"
@@ -211,6 +236,29 @@ export default async function HomePage() {
                             </span>
                           </span>
                         </Button>
+                      </Link>
+                    </div>
+
+                    <div className="mb-12 flex flex-wrap items-center justify-center gap-3 text-xs font-semibold">
+                      <Link
+                        href="#"
+                        className="inline-flex items-center gap-2 rounded-xl border border-foreground/15 bg-foreground/5 px-4 py-2 text-foreground/80 backdrop-blur-sm transition hover:bg-foreground/10 hover:text-foreground"
+                      >
+                        <AppleLogo size={16} color="currentColor" />
+                        <span className="text-[10px] font-medium tracking-[0.2em] text-foreground/50">
+                          AVAILABLE ON
+                        </span>
+                        <span className="text-sm font-semibold">iOS App Store</span>
+                      </Link>
+                      <Link
+                        href="#"
+                        className="inline-flex items-center gap-2 rounded-xl border border-foreground/15 bg-foreground/5 px-4 py-2 text-foreground/80 backdrop-blur-sm transition hover:bg-foreground/10 hover:text-foreground"
+                      >
+                        <GooglePlayLogo size={16} color="currentColor" />
+                        <span className="text-[10px] font-medium tracking-[0.2em] text-foreground/50">
+                          GET IT ON
+                        </span>
+                        <span className="text-sm font-semibold">Google Play</span>
                       </Link>
                     </div>
                   </>

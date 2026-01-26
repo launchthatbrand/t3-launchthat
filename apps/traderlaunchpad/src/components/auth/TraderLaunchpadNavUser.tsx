@@ -86,11 +86,11 @@ function TraderLaunchpadNavUserClerk(props: { afterSignOutUrl?: string }) {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white/90 hover:bg-white/10"
+          className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-white/70 px-2 py-1.5 text-sm text-foreground/90 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10"
         >
-          <Avatar className="h-7 w-7 border border-white/10">
+          <Avatar className="h-7 w-7 border border-border/60 dark:border-white/10">
             <AvatarImage src={avatar} alt={name} />
-            <AvatarFallback className="bg-white/10 text-xs text-white/80">
+            <AvatarFallback className="bg-background/60 text-xs text-foreground/80 dark:bg-white/10 dark:text-white/80">
               {initials || "U"}
             </AvatarFallback>
           </Avatar>

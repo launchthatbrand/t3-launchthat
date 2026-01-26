@@ -1,9 +1,7 @@
-import { ShootingStars } from "@acme/ui";
-
 import { GridLines } from "~/components/background/GridLines";
-import { headers } from "next/headers";
-
 import React from "react";
+import { ShootingStars } from "@acme/ui";
+import { headers } from "next/headers";
 
 export default async function MarketingLayout({
     children,
