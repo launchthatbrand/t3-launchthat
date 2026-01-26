@@ -1,6 +1,6 @@
 export default function DefaultFooter() {
   return (
-    <footer className="mt-10 border-t border-white/10 bg-black/50 backdrop-blur-md">
+    <footer className="mt-10 border-t border-white/10 bg-background/50 backdrop-blur-md">
       <div className="container mx-auto flex flex-col gap-6 px-4 py-10 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}

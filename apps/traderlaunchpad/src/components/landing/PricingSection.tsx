@@ -1,12 +1,12 @@
 "use client";
 
 import { ArrowRight, Check, Info } from "lucide-react";
+import { Card, cn } from "@acme/ui";
 
 import { Button } from "@acme/ui/moving-border";
 import Link from "next/link";
 import React from "react";
 import { Tooltip as TooltipCard } from "@acme/ui/components/ui/tooltip-card";
-import { cn } from "@acme/ui";
 import { motion } from "framer-motion";
 
 const FEATURE_TOOLTIPS: Record<string, React.ReactNode> = {
@@ -117,8 +117,8 @@ export const PricingSection = () => {
       kind: "feature",
       row: {
         label: "Storage amount",
-        free: <span className="text-sm font-medium text-white/85">2 GB</span>,
-        standard: <span className="text-sm font-medium text-white/85">10 GB</span>,
+        free: <span className="text-sm font-medium text-foreground/85">2 GB</span>,
+        standard: <span className="text-sm font-medium text-foreground/85">10 GB</span>,
         pro: <span className="text-sm font-medium text-orange-200">50 GB</span>,
       },
     },
@@ -126,8 +126,8 @@ export const PricingSection = () => {
       kind: "feature",
       row: {
         label: "Number of broker accounts",
-        free: <span className="text-sm font-medium text-white/85">2 accounts</span>,
-        standard: <span className="text-sm font-medium text-white/85">5 accounts</span>,
+        free: <span className="text-sm font-medium text-foreground/85">2 accounts</span>,
+        standard: <span className="text-sm font-medium text-foreground/85">5 accounts</span>,
         pro: <span className="text-sm font-medium text-orange-200">10 accounts</span>,
       },
     },
@@ -135,7 +135,7 @@ export const PricingSection = () => {
       kind: "feature",
       row: {
         label: "Automatic trade imports",
-        free: <span className="text-sm font-medium text-white/70">Limited</span>,
+        free: <span className="text-sm font-medium text-muted-foreground">Limited</span>,
         standard: <span className="text-sm font-medium text-orange-200">Unlimited</span>,
         pro: <span className="text-sm font-medium text-orange-200">Unlimited</span>,
       },
@@ -144,8 +144,8 @@ export const PricingSection = () => {
       kind: "feature",
       row: {
         label: "Backtest exports",
-        free: <span className="text-sm font-medium text-white/70">CSV</span>,
-        standard: <span className="text-sm font-medium text-white/70">CSV</span>,
+        free: <span className="text-sm font-medium text-muted-foreground">CSV</span>,
+        standard: <span className="text-sm font-medium text-muted-foreground">CSV</span>,
         pro: <span className="text-sm font-medium text-orange-200">CSV + PDF</span>,
       },
     },
@@ -155,8 +155,8 @@ export const PricingSection = () => {
       kind: "feature",
       row: {
         label: "Trading plan pairs",
-        free: <span className="text-sm font-medium text-white/85">Max 5</span>,
-        standard: <span className="text-sm font-medium text-white/85">Max 10</span>,
+        free: <span className="text-sm font-medium text-foreground/85">Max 5</span>,
+        standard: <span className="text-sm font-medium text-foreground/85">Max 10</span>,
         pro: <span className="text-sm font-medium text-orange-200">Max 10</span>,
       },
     },
@@ -164,7 +164,7 @@ export const PricingSection = () => {
       kind: "feature",
       row: {
         label: "AI credit (monthly)",
-        free: <div className="flex flex-col gap-2 items-start"><span className="text-sm font-medium text-white/85">$5 / mo</span><sub>~50 AI insights</sub></div>,
+        free: <div className="flex flex-col gap-2 items-start"><span className="text-sm font-medium text-foreground/85">$5 / mo</span><sub className="text-muted-foreground">~50 AI insights</sub></div>,
         standard: <span className="text-sm font-medium text-orange-200">Unlimited</span>,
         pro: <span className="text-sm font-medium text-orange-200">Unlimited</span>,
       },
@@ -173,7 +173,7 @@ export const PricingSection = () => {
       kind: "feature",
       row: {
         label: "AI insights & reminders",
-        free: <span className="text-sm font-medium text-white/70">Limited</span>,
+        free: <span className="text-sm font-medium text-muted-foreground">Limited</span>,
         standard: <span className="text-sm font-medium text-orange-200">Standard AI</span>,
         pro: <span className="text-sm font-medium text-orange-200">Customizable</span>,
       },
@@ -183,7 +183,7 @@ export const PricingSection = () => {
       kind: "feature",
       row: {
         label: "Risk guardrails",
-        free: <span className="text-sm font-medium text-white/70">Core</span>,
+        free: <span className="text-sm font-medium text-muted-foreground">Core</span>,
         standard: <span className="text-sm font-medium text-orange-200">Advanced</span>,
         pro: <span className="text-sm font-medium text-orange-200">Advanced</span>,
       },
@@ -192,7 +192,7 @@ export const PricingSection = () => {
       kind: "feature",
       row: {
         label: "Alerts (push + Discord)",
-        free: <span className="text-sm font-medium text-white/70">Standard</span>,
+        free: <span className="text-sm font-medium text-muted-foreground">Standard</span>,
         standard: <span className="text-sm font-medium text-orange-200">Standard</span>,
         pro: <span className="text-sm font-medium text-orange-200">Priority</span>,
       },
@@ -201,7 +201,7 @@ export const PricingSection = () => {
       kind: "feature",
       row: {
         label: "Signal stream",
-        free: <span className="text-sm font-medium text-white/70">Basic</span>,
+        free: <span className="text-sm font-medium text-muted-foreground">Basic</span>,
         standard: <span className="text-sm font-medium text-orange-200">Advanced</span>,
         pro: <span className="text-sm font-medium text-orange-200">Advanced</span>,
       },
@@ -210,8 +210,8 @@ export const PricingSection = () => {
       kind: "feature",
       row: {
         label: "Organization leaderboards",
-        free: <span className="text-sm font-medium text-white/70">—</span>,
-        standard: <span className="text-sm font-medium text-white/70">—</span>,
+        free: <span className="text-sm font-medium text-muted-foreground">—</span>,
+        standard: <span className="text-sm font-medium text-muted-foreground">—</span>,
         pro: yes,
       },
     },
@@ -219,8 +219,8 @@ export const PricingSection = () => {
       kind: "feature",
       row: {
         label: "Discord trade stream bot",
-        free: <span className="text-sm font-medium text-white/70">—</span>,
-        standard: <span className="text-sm font-medium text-white/70">—</span>,
+        free: <span className="text-sm font-medium text-muted-foreground">—</span>,
+        standard: <span className="text-sm font-medium text-muted-foreground">—</span>,
         pro: yes,
       },
     },
@@ -228,8 +228,8 @@ export const PricingSection = () => {
       kind: "feature",
       row: {
         label: "Customizable AI (org)",
-        free: <span className="text-sm font-medium text-white/70">—</span>,
-        standard: <span className="text-sm font-medium text-white/70">—</span>,
+        free: <span className="text-sm font-medium text-muted-foreground">—</span>,
+        standard: <span className="text-sm font-medium text-muted-foreground">—</span>,
         pro: yes,
       },
     },
@@ -238,10 +238,10 @@ export const PricingSection = () => {
   return (
     <section className="relative container mx-auto mt-24 max-w-7xl px-4 pb-24 md:mt-32">
       <div className="mb-10 flex flex-col gap-2">
-        <h2 className="text-3xl font-bold tracking-tight text-white md:text-5xl">
+        <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-5xl">
           Compare our plans
         </h2>
-        <p className="max-w-2xl text-sm text-gray-400 md:text-base">
+        <p className="max-w-2xl text-sm text-muted-foreground md:text-base">
           Start with the basics, then upgrade when you want more automation and
           more connected accounts.
         </p>
@@ -250,36 +250,36 @@ export const PricingSection = () => {
       {/* Sticky header (pricing cards) */}
       <div className="grid gap-6 lg:grid-cols-4 lg:items-start">
         {/* Left spacer / description (NOT sticky) */}
-        <div className="hidden lg:block">
+        <Card className="hidden lg:block p-0">
           <div
             className={[
-              "rounded-3xl border border-white/10 bg-white/3 backdrop-blur-md transition-all duration-500 ease-in-out",
+              "rounded-3xl border border-foreground/10 bg-foreground/3 backdrop-blur-md transition-all duration-500 ease-in-out",
               isCompact ? "p-5 opacity-80" : "p-8",
             ].join(" ")}
           >
-            <div className="text-sm font-medium text-white/80">Included</div>
+            <div className="text-sm font-medium text-foreground/80">Included</div>
             <div
               className={[
-                "mt-2 font-semibold text-white transition-all duration-500 ease-in-out",
+                "mt-2 font-semibold text-foreground transition-all duration-500 ease-in-out",
                 isCompact ? "text-xl" : "text-2xl",
               ].join(" ")}
             >
               Everything you need to demo the platform
             </div>
-            <div className="mt-3 text-sm text-white/60">
+            <div className="mt-3 text-sm text-muted-foreground">
               Same experience for every visitor. Once you connect an account,
               this will switch to real broker data.
             </div>
             <div className="mt-6 flex items-center gap-3">
               <Link
                 href="/admin/dashboard"
-                className="flex h-10 items-center justify-center rounded-xl border border-white/15 bg-transparent px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10 hover:text-white"
+                className="flex h-10 items-center justify-center rounded-xl border border-foreground/15 bg-transparent px-4 text-sm font-semibold text-foreground transition-colors hover:bg-foreground/5"
               >
                 Try it out
               </Link>
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* Free + Standard + Pro (single glass panel) - sticky */}
         <div
@@ -291,8 +291,8 @@ export const PricingSection = () => {
           ].join(" ")}
           style={{ top: stickyTop }}
         >
-          <div className="rounded-3xl border border-white/12 bg-white/4 backdrop-blur-md">
-            <div className="grid grid-cols-1 divide-y divide-white/10 md:grid-cols-3 md:divide-x md:divide-y-0">
+          <Card className="rounded-3xl border border-foreground/12 bg-foreground/4 backdrop-blur-md">
+            <div className="grid grid-cols-1 divide-y divide-foreground/10 md:grid-cols-3 md:divide-x md:divide-y-0">
               {/* Free */}
               <div
                 className={[
@@ -300,10 +300,10 @@ export const PricingSection = () => {
                   isCompact ? "p-5" : "p-8",
                 ].join(" ")}
               >
-                <div className="text-base font-semibold text-white">Free</div>
+                <div className="text-base font-semibold text-foreground">Free</div>
                 <motion.div
                   layout
-                  className="mt-2 overflow-hidden text-sm text-white/60"
+                  className="mt-2 overflow-hidden text-sm text-muted-foreground"
                   animate={{
                     opacity: isCompact ? 0 : 1,
                     maxHeight: isCompact ? 0 : 40,
@@ -321,19 +321,19 @@ export const PricingSection = () => {
                 >
                   <motion.div
                     layout
-                    className={isCompact ? "text-2xl font-bold text-white" : "flex items-end gap-2"}
+                    className={isCompact ? "text-2xl font-bold text-foreground" : "flex items-end gap-2"}
                     transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                   >
                     <motion.div
                       layout
-                      className={isCompact ? "text-2xl font-bold text-white" : "text-4xl font-bold text-white"}
+                      className={isCompact ? "text-2xl font-bold text-foreground" : "text-4xl font-bold text-foreground"}
                       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                     >
                       {freePrice}
                     </motion.div>
                     <motion.div
                       layout
-                      className="pb-1 text-sm text-white/50"
+                      className="pb-1 text-sm text-foreground/50"
                       animate={{ opacity: isCompact ? 0 : 1, maxHeight: isCompact ? 0 : 24 }}
                       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                     >
@@ -378,12 +378,12 @@ export const PricingSection = () => {
               >
                 <div className="relative">
                   <div className="flex items-center justify-between">
-                    <div className="text-base font-semibold text-white">Standard</div>
+                    <div className="text-base font-semibold text-foreground">Standard</div>
                   </div>
 
                   <motion.div
                     layout
-                    className="mt-2 overflow-hidden text-sm text-white/60"
+                    className="mt-2 overflow-hidden text-sm text-muted-foreground"
                     animate={{
                       opacity: isCompact ? 0 : 1,
                       maxHeight: isCompact ? 0 : 40,
@@ -401,19 +401,19 @@ export const PricingSection = () => {
                   >
                     <motion.div
                       layout
-                      className={isCompact ? "text-2xl font-bold text-white" : "flex items-end gap-2"}
+                      className={isCompact ? "text-2xl font-bold text-foreground" : "flex items-end gap-2"}
                       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                     >
                       <motion.div
                         layout
-                        className={isCompact ? "text-2xl font-bold text-white" : "text-4xl font-bold text-white"}
+                        className={isCompact ? "text-2xl font-bold text-foreground" : "text-4xl font-bold text-foreground"}
                         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                       >
                         {standardPrice}
                       </motion.div>
                       <motion.div
                         layout
-                        className="pb-1 text-sm text-white/50"
+                        className="pb-1 text-sm text-foreground/50"
                         animate={{ opacity: isCompact ? 0 : 1, maxHeight: isCompact ? 0 : 24 }}
                         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                       >
@@ -460,7 +460,7 @@ export const PricingSection = () => {
                 <div className="pointer-events-none absolute inset-0 rounded-3xl bg-linear-to-br from-orange-500/12 via-transparent to-white/6 opacity-80" />
                 <div className="relative">
                   <div className="flex items-center justify-between">
-                    <div className="text-base font-semibold text-white">Pro</div>
+                    <div className="text-base font-semibold text-foreground">Pro</div>
                     <motion.div
                       layout
                       className="rounded-full border border-orange-500/25 bg-orange-500/10 px-2.5 py-1 text-[11px] font-medium text-orange-200"
@@ -477,7 +477,7 @@ export const PricingSection = () => {
 
                   <motion.div
                     layout
-                    className="mt-2 overflow-hidden text-sm text-white/60"
+                    className="mt-2 overflow-hidden text-sm text-muted-foreground"
                     animate={{
                       opacity: isCompact ? 0 : 1,
                       maxHeight: isCompact ? 0 : 40,
@@ -495,19 +495,19 @@ export const PricingSection = () => {
                   >
                     <motion.div
                       layout
-                      className={isCompact ? "text-2xl font-bold text-white" : "flex items-end gap-2"}
+                      className={isCompact ? "text-2xl font-bold text-foreground" : "flex items-end gap-2"}
                       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                     >
                       <motion.div
                         layout
-                        className={isCompact ? "text-2xl font-bold text-white" : "text-4xl font-bold text-white"}
+                        className={isCompact ? "text-2xl font-bold text-foreground" : "text-4xl font-bold text-foreground"}
                         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
                       >
                         {proPrice}
                       </motion.div>
                       <motion.div
                         layout
-                        className="pb-1 text-sm text-white/50"
+                        className="pb-1 text-sm text-foreground/50"
                         animate={{ opacity: isCompact ? 0 : 1, maxHeight: isCompact ? 0 : 24 }}
                         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
                       >
@@ -544,24 +544,24 @@ export const PricingSection = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
         {/* Comparison table (div-based) */}
         <div className="lg:col-span-4">
           {/* Sentinel: used to trigger compact mode once the table reaches the sticky header */}
           <div ref={tableStartRef} className="h-px w-full" aria-hidden="true" />
-          <div className="mt-2 overflow-hidden rounded-3xl border border-white/10 bg-black/30 backdrop-blur-md">
+          <Card className="mt-2 overflow-hidden rounded-3xl border border-foreground/10 bg-foreground/5 backdrop-blur-md">
             <div className="grid grid-cols-1 lg:grid-cols-4">
-              <div className="hidden border-b border-white/10 px-6 py-5 text-sm font-medium text-white/70 lg:block">
+              <div className="hidden border-b border-foreground/10 px-6 py-5 text-sm font-medium text-muted-foreground lg:block">
                 Features
               </div>
-              <div className="hidden border-b border-white/10 px-6 py-5 text-sm font-medium text-white/70 lg:block">
+              <div className="hidden border-b border-foreground/10 px-6 py-5 text-sm font-medium text-muted-foreground lg:block">
                 Free
               </div>
-              <div className="hidden border-b border-white/10 px-6 py-5 text-sm font-medium text-white/70 lg:block">
+              <div className="hidden border-b border-foreground/10 px-6 py-5 text-sm font-medium text-muted-foreground lg:block">
                 Standard
               </div>
-              <div className="hidden border-b border-white/10 px-6 py-5 text-sm font-medium text-white/70 lg:block">
+              <div className="hidden border-b border-foreground/10 px-6 py-5 text-sm font-medium text-muted-foreground lg:block">
                 Pro
               </div>
 
@@ -570,7 +570,7 @@ export const PricingSection = () => {
                   return (
                     <div
                       key={`section:${entry.title}`}
-                      className="col-span-1 border-b border-white/10 bg-white/4 px-6 py-4 text-sm font-semibold text-white/80 lg:col-span-4"
+                      className="col-span-1 border-b border-foreground/10 bg-foreground/4 px-6 py-4 text-sm font-semibold text-foreground/80 lg:col-span-4"
                     >
                       {entry.title}
                     </div>
@@ -580,30 +580,30 @@ export const PricingSection = () => {
                 const row = entry.row;
                 return (
                   <React.Fragment key={row.label}>
-                    <div className="border-b border-white/10 px-6 py-5 text-sm text-white/70">
+                    <div className="border-b border-foreground/10 px-6 py-5 text-sm text-muted-foreground">
                       <TooltipCard
                         content={FEATURE_TOOLTIPS[row.label] ?? "Details coming soon."}
                       >
                         <div className="inline-flex cursor-default items-center gap-2">
-                          <span className="hover:text-white/90">{row.label}</span>
-                          <Info className="h-4 w-4 text-white/35 hover:text-white/70" />
+                          <span className="text-foreground/90">{row.label}</span>
+                          <Info className="h-4 w-4 text-foreground/35 hover:text-foreground/70" />
                         </div>
                       </TooltipCard>
                     </div>
-                    <div className="border-b border-white/10 px-6 py-5">
+                    <div className="border-b border-foreground/10 px-6 py-5">
                       <div className="flex items-center justify-start">{row.free}</div>
                     </div>
-                    <div className="border-b border-white/10 px-6 py-5">
+                    <div className="border-b border-foreground/10 px-6 py-5">
                       <div className="flex items-center justify-start">{row.standard}</div>
                     </div>
-                    <div className="border-b border-white/10 px-6 py-5">
+                    <div className="border-b border-foreground/10 px-6 py-5">
                       <div className="flex items-center justify-start">{row.pro}</div>
                     </div>
                   </React.Fragment>
                 );
               })}
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </section>

@@ -112,8 +112,12 @@ export default async function RootLayout(props: {
               {/* Animated dotted background: desktop only (mobile can freeze). */}
               {isMobileUa ? null : (
                 <DottedGlowBackground
-                  color="var(--tlp-dot-color)"
-                  glowColor="var(--tlp-dot-glow)"
+                  // Use CSS variables so the canvas can resolve actual color values
+                  // (canvas `fillStyle` can't use `var(--x)` directly).
+                  colorLightVar="--tlp-dot-color"
+                  glowColorLightVar="--tlp-dot-glow"
+                  colorDarkVar="--tlp-dot-color"
+                  glowColorDarkVar="--tlp-dot-glow"
                   gap={24}
                   radius={1.5}
                   speedMin={0.2}

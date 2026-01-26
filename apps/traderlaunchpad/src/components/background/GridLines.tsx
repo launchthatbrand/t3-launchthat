@@ -28,8 +28,8 @@ export const GridLines = ({ columns = 3, className }: GridLinesProps) => {
     >
       <div className="relative h-full w-full">
         {/* Edges always visible */}
-        <div className="absolute top-0 left-0 h-full w-px bg-white/5" />
-        <div className="absolute top-0 right-0 h-full w-px bg-white/5" />
+        <div className="absolute top-0 left-0 h-full w-px bg-foreground/8" />
+        <div className="absolute top-0 right-0 h-full w-px bg-foreground/8" />
 
         {/* Interior columns are hidden on mobile */}
         {Array.from({ length: Math.max(0, count - 2) }).map((_, idx) => {
@@ -38,7 +38,7 @@ export const GridLines = ({ columns = 3, className }: GridLinesProps) => {
           return (
             <div
               key={`${count}-${i}`}
-              className="absolute top-0 hidden h-full w-px -translate-x-1/2 bg-white/5 md:block"
+              className="absolute top-0 hidden h-full w-px -translate-x-1/2 bg-foreground/8 md:block"
               style={{ left: `${pct}%` }}
             />
           );

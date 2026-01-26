@@ -105,9 +105,11 @@ export const StrategyBuilderAnimation = ({
   return (
     <div className="mt-7 grid gap-4 md:grid-cols-2">
       {/* Pick a template */}
-      <div className="rounded-2xl border border-white/10 bg-black/30 p-4 backdrop-blur-sm">
+      <div className="rounded-2xl border border-foreground/10 bg-foreground/5 p-4 backdrop-blur-sm">
         <div className="flex items-center justify-between">
-          <div className="text-xs font-medium text-white/80">Pick a template</div>
+          <div className="text-xs font-medium text-foreground/80">
+            Pick a template
+          </div>
           <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-2.5 py-1 text-[11px] font-medium text-orange-200">
             AI guided
           </div>
@@ -122,13 +124,15 @@ export const StrategyBuilderAnimation = ({
                 className={[
                   "relative flex items-center justify-between rounded-xl border px-3 py-2 text-xs transition-colors",
                   isActive
-                    ? "border-orange-500/35 bg-orange-500/10 text-white"
-                    : "border-white/10 bg-white/5 text-white/60",
+                    ? "border-orange-500/35 bg-orange-500/10 text-foreground"
+                    : "border-foreground/10 bg-foreground/3 text-muted-foreground",
                 ].join(" ")}
               >
                 <div className="min-w-0">
                   <div className="truncate font-medium">{t.name}</div>
-                  <div className="mt-0.5 text-[11px] text-white/45">{t.pill}</div>
+                  <div className="mt-0.5 text-[11px] text-foreground/45">
+                    {t.pill}
+                  </div>
                 </div>
 
                 {isActive && (
@@ -148,24 +152,26 @@ export const StrategyBuilderAnimation = ({
         </div>
 
         {/* Selection caret hint */}
-        <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3 text-[11px] text-white/55">
+        <div className="mt-4 rounded-xl border border-foreground/10 bg-foreground/3 p-3 text-[11px] text-foreground/55">
           We’ll turn this into a simple checklist:{" "}
-          <span className="text-white/80">when to trade</span>,{" "}
-          <span className="text-white/80">when to stop</span>, and{" "}
-          <span className="text-white/80">what to avoid</span>.
+          <span className="text-foreground/80">when to trade</span>,{" "}
+          <span className="text-foreground/80">when to stop</span>, and{" "}
+          <span className="text-foreground/80">what to avoid</span>.
         </div>
       </div>
 
       {/* Plan preview */}
-      <div className="rounded-2xl border border-white/10 bg-black/30 p-4 backdrop-blur-sm">
+      <div className="rounded-2xl border border-foreground/10 bg-foreground/5 p-4 backdrop-blur-sm">
         <div className="flex items-center justify-between">
-          <div className="text-xs font-medium text-white/80">Trading plan</div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/70">
+          <div className="text-xs font-medium text-foreground/80">
+            Trading plan
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-foreground/10 bg-foreground/3 px-2.5 py-1 text-[11px] font-medium text-foreground/70">
             Active rules
           </div>
         </div>
 
-        <div className="relative mt-4 min-h-[176px]">
+        <div className="relative mt-4 min-h-44">
           <AnimatePresence mode="wait">
             <motion.div
               key={active.id}
@@ -179,19 +185,19 @@ export const StrategyBuilderAnimation = ({
                 {active.rules.map((row) => (
                   <div
                     key={row.k}
-                    className="rounded-xl border border-white/10 bg-white/5 p-2"
+                    className="rounded-xl border border-foreground/10 bg-foreground/3 p-2"
                   >
-                    <div className="text-[10px] font-medium text-white/55">
+                    <div className="text-[10px] font-medium text-foreground/55">
                       {row.k}
                     </div>
-                    <div className="mt-1 text-xs font-semibold text-white">
+                    <div className="mt-1 text-xs font-semibold text-foreground">
                       {row.v}
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-3 rounded-xl border border-white/10 bg-black/40 p-3 font-mono text-[11px] leading-relaxed text-white/70">
+              <div className="mt-3 rounded-xl border border-foreground/10 bg-foreground/3 p-3 font-mono text-[11px] leading-relaxed text-foreground/70">
                 {active.previewLines.map((line, i) => (
                   <div key={i} className={i === 0 ? "" : "mt-1.5"}>
                     {line}
@@ -199,10 +205,10 @@ export const StrategyBuilderAnimation = ({
                 ))}
               </div>
 
-              <div className="mt-3 flex items-center justify-between text-[11px] text-white/55">
+              <div className="mt-3 flex items-center justify-between text-[11px] text-foreground/55">
                 <div>
                   Auto-updated from your journal + market context{" "}
-                  <span className="text-white/35">(demo)</span>
+                  <span className="text-foreground/35">(demo)</span>
                 </div>
                 <div className="rounded-full border border-orange-500/25 bg-orange-500/10 px-2 py-0.5 text-[10px] font-medium text-orange-200">
                   draft → active

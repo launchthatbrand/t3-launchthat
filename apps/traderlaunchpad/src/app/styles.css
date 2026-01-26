@@ -50,6 +50,25 @@
 /* TraderLaunchpad: global "glass card" styling (applies everywhere `Card` is used)
    NOTE: Must live in utilities layer (and use !important) to override Tailwind utilities like `bg-card`. */
 @layer utilities {
+  .light [data-slot="card"] {
+    border-radius: 1.5rem;
+    /* ~ rounded-3xl */
+    border-color: rgba(0, 0, 0, 0.08) !important;
+    background-color: rgba(255, 255, 255, 0.62) !important;
+    /* frosted glass */
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.06) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(1.25);
+    backdrop-filter: blur(14px) saturate(1.25);
+    transition: border-color 200ms ease, background-color 200ms ease,
+      box-shadow 200ms ease;
+  }
+
+  .light [data-slot="card"]:hover {
+    border-color: rgba(0, 0, 0, 0.14) !important;
+    background-color: rgba(255, 255, 255, 0.78) !important;
+    box-shadow: 0 18px 60px rgba(0, 0, 0, 0.10) !important;
+  }
+
   .dark [data-slot="card"] {
     border-radius: 1.5rem;
     /* ~ rounded-3xl */
@@ -57,8 +76,8 @@
     background-color: rgba(255, 255, 255, 0.03) !important;
     /* see-through by default */
     box-shadow: none !important;
-    -webkit-backdrop-filter: blur(14px);
-    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px) saturate(1.15);
+    backdrop-filter: blur(14px) saturate(1.15);
     transition: border-color 200ms ease, background-color 200ms ease;
   }
 
@@ -114,8 +133,12 @@
   /* TraderLaunchpad marketing glow system (light mode defaults) */
   --tlp-accent-rgb: 249 115 22;
   /* orange-500 */
-  --tlp-dot-color: rgb(249 115 22 / 0.06);
-  --tlp-dot-glow: rgb(249 115 22 / 0.22);
+  /*
+    Canvas multiplies color alpha by ctx.globalAlpha.
+    Keep these a bit stronger in light mode so dots are still visible on white.
+  */
+  --tlp-dot-color: rgba(239, 110, 18, 0.7);
+  --tlp-dot-glow: rgba(249 115 22 / 0.50);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);

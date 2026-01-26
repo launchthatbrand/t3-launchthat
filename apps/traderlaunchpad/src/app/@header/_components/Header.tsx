@@ -1,13 +1,12 @@
 "use client";
 
+import { AddToHomeScreenHeaderButton } from "launchthat-plugin-pwa/frontend";
+import { AnimatedThemeToggler } from "@acme/ui";
 import Image from "next/image";
 import Link from "next/link";
-import React from "react";
-
-import { TraderLaunchpadNavUser } from "~/components/auth/TraderLaunchpadNavUser";
 import { NavItems } from "~/components/ui/resizable-navbar";
-import { AnimatedThemeToggler } from "@acme/ui";
-import { AddToHomeScreenHeaderButton } from "launchthat-plugin-pwa/frontend";
+import React from "react";
+import { TraderLaunchpadNavUser } from "~/components/auth/TraderLaunchpadNavUser";
 
 export function Header() {
   const navItems = [
@@ -47,7 +46,7 @@ export function Header() {
               className="h-12 w-12"
               priority
             />
-            <span className="bg-linear-to-b from-white from-40% via-orange-200 via-60% to-orange-500 bg-clip-text text-lg font-bold tracking-tight text-transparent">
+            <span className="dark:bg-linear-to-b text-black dark:from-white dark:from-40% via-orange-200 via-60% to-orange-500 bg-clip-text text-lg font-bold tracking-tight dark:text-transparent">
               Trader Launchpad
             </span>
           </Link>
