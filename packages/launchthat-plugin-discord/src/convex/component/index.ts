@@ -13,5 +13,7 @@ export * as delivery from "./delivery";
 export * as syncJobs from "./syncJobs";
 export * as routing from "./routing";
 export * as templates from "./templates";
+export * as events from "./events";
+export * as automations from "./automations";
 
 

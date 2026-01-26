@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
@@ -27,6 +27,7 @@ import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import React from "react";
 import { Textarea } from "@acme/ui/textarea";
+import { DiscordChannelSelect } from "../components";
 
 const cx = (...classes: Array<string | undefined | false>) =>
   classes.filter(Boolean).join(" ");
@@ -107,6 +108,54 @@ export function DiscordTemplatesPage({
   const [creating, setCreating] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+
+  // Preview / send-test (optional host-app actions)
+  const listGuildChannels = useAction(api.actions.listGuildChannels);
+  const previewTemplate = useAction(api.actions.previewTemplate ?? "skip");
+  const sendTemplateTest = useAction(api.actions.sendTemplateTest ?? "skip");
+
+  const [channels, setChannels] = React.useState<Array<{ id: string; name: string }>>([]);
+  const [loadingChannels, setLoadingChannels] = React.useState(false);
+  const [testChannelId, setTestChannelId] = React.useState("");
+  const [includeSnapshot, setIncludeSnapshot] = React.useState(false);
+  const [sampleValues, setSampleValues] = React.useState<Record<string, string>>({});
+  const [previewing, setPreviewing] = React.useState(false);
+  const [sendingTest, setSendingTest] = React.useState(false);
+  const [previewContent, setPreviewContent] = React.useState<string>("");
+  const [previewImageBase64, setPreviewImageBase64] = React.useState<string | null>(null);
+
+  const refreshChannels = async () => {
+    if (!guildId) return;
+    setLoadingChannels(true);
+    try {
+      const res = await listGuildChannels({
+        ...(organizationId ? { organizationId } : {}),
+        guildId,
+      });
+      const rows = Array.isArray(res) ? (res as any[]) : [];
+      setChannels(
+        rows
+          .map((c) => ({ id: String(c?.id ?? ""), name: String(c?.name ?? "") }))
+          .filter((c) => c.id && c.name),
+      );
+    } finally {
+      setLoadingChannels(false);
+    }
+  };
+
+  React.useEffect(() => {
+    void refreshChannels();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guildId, organizationId]);
+
+  React.useEffect(() => {
+    const defaults: Record<string, string> = {};
+    for (const f of activeContext?.fields ?? []) {
+      defaults[f.key] = defaults[f.key] ?? "";
+    }
+    setSampleValues((prev) => ({ ...defaults, ...prev }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeContext?.kind]);
 
   React.useEffect(() => {
     if (!Array.isArray(templates)) return;
@@ -224,6 +273,46 @@ export function DiscordTemplatesPage({
       const cursor = start + placeholder.length;
       textarea.setSelectionRange(cursor, cursor);
     });
+  };
+
+  const handleGeneratePreview = async () => {
+    if (!api.actions.previewTemplate) return;
+    if (!selectedId) return;
+    setPreviewing(true);
+    try {
+      const res = await previewTemplate({
+        ...(organizationId ? { organizationId } : {}),
+        templateId: selectedId,
+        values: sampleValues,
+        includeSnapshot,
+      });
+      setPreviewContent(String((res as any)?.content ?? ""));
+      setPreviewImageBase64(
+        typeof (res as any)?.imageBase64 === "string" ? (res as any).imageBase64 : null,
+      );
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
+  const handleSendTest = async () => {
+    if (!api.actions.sendTemplateTest) return;
+    if (!selectedId) return;
+    if (!guildId) return;
+    if (!testChannelId.trim()) return;
+    setSendingTest(true);
+    try {
+      await sendTemplateTest({
+        ...(organizationId ? { organizationId } : {}),
+        guildId,
+        channelId: testChannelId,
+        templateId: selectedId,
+        values: sampleValues,
+        includeSnapshot,
+      });
+    } finally {
+      setSendingTest(false);
+    }
   };
 
   return (
@@ -405,6 +494,120 @@ export function DiscordTemplatesPage({
                   {deleting ? "Deleting..." : "Delete template"}
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {guildId ? (
+          <Card className={ui?.cardClassName}>
+            <CardHeader className={cx("space-y-2", ui?.cardHeaderClassName)}>
+              <CardTitle className={ui?.cardTitleClassName}>Preview & send test</CardTitle>
+              <CardDescription className={ui?.cardDescriptionClassName}>
+                Render the template with sample values and send a test message to Discord.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className={cx("space-y-5", ui?.cardContentClassName)}>
+              {!api.actions.previewTemplate ? (
+                <div className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">
+                  Preview pipeline not enabled in this host app yet.
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Test channel</Label>
+                      <DiscordChannelSelect
+                        value={testChannelId}
+                        onChange={setTestChannelId}
+                        options={channels}
+                        placeholder={loadingChannels ? "Loading..." : "Pick a channel..."}
+                      />
+                      <Button
+                        variant="outline"
+                        className={ui?.outlineButtonClassName}
+                        disabled={loadingChannels}
+                        onClick={() => void refreshChannels()}
+                      >
+                        {loadingChannels ? "Refreshing..." : "Refresh channels"}
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Include snapshot PNG</Label>
+                      <Select
+                        value={includeSnapshot ? "true" : "false"}
+                        onValueChange={(v) => setIncludeSnapshot(v === "true")}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="false">No</SelectItem>
+                          <SelectItem value="true">Yes</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-muted-foreground text-xs">
+                        TraderLaunchpad-only: attaches the snapshot PNG and embeds it in Discord.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {(activeContext?.fields ?? []).slice(0, 8).map((field) => (
+                      <div key={field.key} className="space-y-2">
+                        <Label>{field.label}</Label>
+                        <Input
+                          value={sampleValues[field.key] ?? ""}
+                          onChange={(e) =>
+                            setSampleValues((prev) => ({
+                              ...prev,
+                              [field.key]: e.target.value,
+                            }))
+                          }
+                          placeholder={`{{${field.key}}}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                      variant="outline"
+                      className={ui?.outlineButtonClassName}
+                      disabled={!selectedId || previewing}
+                      onClick={() => void handleGeneratePreview()}
+                    >
+                      {previewing ? "Rendering..." : "Generate preview"}
+                    </Button>
+                    <Button
+                      className={ui?.buttonClassName}
+                      disabled={!api.actions.sendTemplateTest || !testChannelId || sendingTest}
+                      onClick={() => void handleSendTest()}
+                    >
+                      {sendingTest ? "Sending..." : "Send test to Discord"}
+                    </Button>
+                  </div>
+
+                  {previewContent ? (
+                    <div className="space-y-2">
+                      <Label>Rendered content</Label>
+                      <pre className="bg-muted/40 border border-border/60 rounded-md p-3 text-sm whitespace-pre-wrap">
+                        {previewContent}
+                      </pre>
+                    </div>
+                  ) : null}
+
+                  {previewImageBase64 ? (
+                    <div className="space-y-2">
+                      <Label>Rendered image</Label>
+                      <img
+                        alt="Template preview image"
+                        className="max-w-full rounded-md border border-border/60"
+                        src={`data:image/png;base64,${previewImageBase64}`}
+                      />
+                    </div>
+                  ) : null}
+                </>
+              )}
             </CardContent>
           </Card>
         ) : null}

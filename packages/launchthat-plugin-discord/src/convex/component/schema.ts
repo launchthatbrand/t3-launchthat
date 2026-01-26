@@ -325,6 +325,79 @@ export default defineSchema({
       "day",
     ]),
 
+  /**
+   * Zapier-like event stream for Discord automations.
+   * Host apps emit events into this shared table.
+   */
+  discordEvents: defineTable({
+    organizationId: v.string(),
+    guildId: v.optional(v.string()),
+    eventKey: v.string(),
+    payloadJson: v.string(),
+    dedupeKey: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_organizationId_and_createdAt", ["organizationId", "createdAt"])
+    .index("by_organizationId_and_eventKey_and_createdAt", [
+      "organizationId",
+      "eventKey",
+      "createdAt",
+    ])
+    .index("by_organizationId_and_guildId_and_eventKey_and_createdAt", [
+      "organizationId",
+      "guildId",
+      "eventKey",
+      "createdAt",
+    ])
+    .index("by_organizationId_and_dedupeKey", ["organizationId", "dedupeKey"]),
+
+  /**
+   * Zapier-like automation rules: WHEN (schedule/event) DO (send message).
+   * The runner executes in the host app, but config/state is stored here.
+   */
+  discordAutomations: defineTable({
+    organizationId: v.string(),
+    guildId: v.string(),
+    name: v.string(),
+    enabled: v.boolean(),
+    trigger: v.object({
+      type: v.union(v.literal("schedule"), v.literal("event")),
+      config: v.any(),
+    }),
+    // Optional conditions evaluated by the host-app runner.
+    // Examples:
+    // - { marketOpen: true }
+    // - { actorRole: "admin" }
+    conditions: v.optional(v.any()),
+    action: v.object({
+      type: v.literal("send_message"),
+      config: v.any(),
+    }),
+    state: v.optional(
+      v.object({
+        lastRunAt: v.optional(v.number()),
+        cursor: v.optional(v.string()),
+        nextRunAt: v.optional(v.number()),
+      }),
+    ),
+    // Duplicate of state.nextRunAt for indexing.
+    nextRunAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organizationId_and_guildId", ["organizationId", "guildId"])
+    .index("by_organizationId_and_guildId_and_enabled", [
+      "organizationId",
+      "guildId",
+      "enabled",
+    ])
+    .index("by_organizationId_and_enabled_and_nextRunAt", [
+      "organizationId",
+      "enabled",
+      "nextRunAt",
+    ])
+    .index("by_enabled_and_nextRunAt", ["enabled", "nextRunAt"]),
+
   oauthStates: defineTable({
     organizationId: v.string(),
     userId: v.optional(v.string()),

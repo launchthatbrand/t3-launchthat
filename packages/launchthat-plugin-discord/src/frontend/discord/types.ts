@@ -12,6 +12,11 @@ export type DiscordUiApi = {
     getRoutingRuleSet: any;
     listRoutingRules: any;
     resolveChannelsForEvent: any;
+    // Automations
+    listAutomations?: any;
+    listDueAutomations?: any;
+    // Events
+    listRecentEvents?: any;
   };
   mutations: {
     upsertGuildSettings: any;
@@ -22,6 +27,13 @@ export type DiscordUiApi = {
     unlinkMyDiscordLink: any;
     upsertRoutingRuleSet: any;
     replaceRoutingRules: any;
+    // Automations
+    createAutomation?: any;
+    updateAutomation?: any;
+    deleteAutomation?: any;
+    markAutomationRun?: any;
+    // Events
+    emitEvent?: any;
   };
   actions: {
     startBotInstall: any;
@@ -29,6 +41,12 @@ export type DiscordUiApi = {
     startUserLink: any;
     listGuildChannels: any;
     sendTestDiscordMessage: any;
+    // Optional: host app can provide a dry-run runner for previews.
+    runAutomationDryRun?: any;
+    // Optional: host app can send a test using the full pipeline (template + attachments).
+    sendTemplateTest?: any;
+    // Optional: host app can generate a preview payload for templates.
+    previewTemplate?: any;
   };
 };
 

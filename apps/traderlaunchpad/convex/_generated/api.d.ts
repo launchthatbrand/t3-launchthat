@@ -14,7 +14,9 @@ import type * as coreTenant_mutations from "../coreTenant/mutations.js";
 import type * as coreTenant_organizations from "../coreTenant/organizations.js";
 import type * as coreTenant_platformUsers from "../coreTenant/platformUsers.js";
 import type * as coreTenant_queries from "../coreTenant/queries.js";
+import type * as crons from "../crons.js";
 import type * as discord_actions from "../discord/actions.js";
+import type * as discord_automations from "../discord/automations.js";
 import type * as discord_mutations from "../discord/mutations.js";
 import type * as discord_queries from "../discord/queries.js";
 import type * as email_actions from "../email/actions.js";
@@ -75,7 +77,9 @@ declare const fullApi: ApiFromModules<{
   "coreTenant/organizations": typeof coreTenant_organizations;
   "coreTenant/platformUsers": typeof coreTenant_platformUsers;
   "coreTenant/queries": typeof coreTenant_queries;
+  crons: typeof crons;
   "discord/actions": typeof discord_actions;
+  "discord/automations": typeof discord_automations;
   "discord/mutations": typeof discord_mutations;
   "discord/queries": typeof discord_queries;
   "email/actions": typeof email_actions;
@@ -3956,6 +3960,96 @@ export declare const components: {
     };
   };
   launchthat_discord: {
+    automations: {
+      mutations: {
+        createAutomation: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            action: { config: any; type: "send_message" };
+            conditions?: any;
+            enabled: boolean;
+            guildId: string;
+            name: string;
+            organizationId: string;
+            trigger: { config: any; type: "schedule" | "event" };
+          },
+          string
+        >;
+        deleteAutomation: FunctionReference<
+          "mutation",
+          "internal",
+          { automationId: string; organizationId: string },
+          null
+        >;
+        markAutomationRun: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            automationId: string;
+            cursor?: string;
+            lastRunAt?: number;
+            nextRunAt?: number;
+            organizationId: string;
+          },
+          null
+        >;
+        updateAutomation: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            action?: { config: any; type: "send_message" };
+            automationId: string;
+            conditions?: any;
+            enabled?: boolean;
+            name?: string;
+            organizationId: string;
+            trigger?: { config: any; type: "schedule" | "event" };
+          },
+          null
+        >;
+      };
+      queries: {
+        listAutomations: FunctionReference<
+          "query",
+          "internal",
+          { guildId: string; organizationId: string },
+          Array<{
+            action: any;
+            conditions?: any;
+            createdAt: number;
+            enabled: boolean;
+            guildId: string;
+            id: string;
+            name: string;
+            nextRunAt?: number;
+            organizationId: string;
+            state?: any;
+            trigger: any;
+            updatedAt: number;
+          }>
+        >;
+        listDueAutomations: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; now: number; organizationId?: string },
+          Array<{
+            action: any;
+            conditions?: any;
+            createdAt: number;
+            enabled: boolean;
+            guildId: string;
+            id: string;
+            name: string;
+            nextRunAt?: number;
+            organizationId: string;
+            state?: any;
+            trigger: any;
+            updatedAt: number;
+          }>
+        >;
+      };
+    };
     delivery: {
       mutations: {
         incrementUserDeliveryStat: FunctionReference<
@@ -3985,6 +4079,43 @@ export declare const components: {
             daysBack: number;
             totalMessagesSent: number;
           }
+        >;
+      };
+    };
+    events: {
+      mutations: {
+        emitEvent: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            dedupeKey?: string;
+            eventKey: string;
+            guildId?: string;
+            organizationId: string;
+            payloadJson: string;
+          },
+          null
+        >;
+      };
+      queries: {
+        listRecentEvents: FunctionReference<
+          "query",
+          "internal",
+          {
+            eventKey?: string;
+            guildId?: string;
+            limit?: number;
+            organizationId: string;
+          },
+          Array<{
+            createdAt: number;
+            dedupeKey?: string;
+            eventKey: string;
+            guildId?: string;
+            id: string;
+            organizationId: string;
+            payloadJson: string;
+          }>
         >;
       };
     };

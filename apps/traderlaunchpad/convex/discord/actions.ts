@@ -1,10 +1,14 @@
+"use node";
+
 import { exchangeDiscordCode, fetchDiscordUser } from "launchthat-plugin-discord/runtime/oauth";
+import { discordJson, discordMultipart } from "launchthat-plugin-discord/runtime/discordApi";
 import { resolveOrganizationId, resolveViewerUserId } from "../traderlaunchpad/lib/resolve";
 
 import { action } from "../_generated/server";
 import { components } from "../_generated/api";
 import { resolveDiscordCredentials } from "launchthat-plugin-discord/runtime/credentials";
 import { v } from "convex/values";
+import { buildSnapshotPreview } from "../platform/test/helpers";
 
 const discordOauthMutations = components.launchthat_discord.oauth.mutations as any;
 const discordOauthHelperQueries =
@@ -253,6 +257,169 @@ export const sendTestDiscordMessage = action({
       // ignore
     }
 
+    return { ok: true, channelId, messageId };
+  },
+});
+
+export const previewTemplate = action({
+  args: {
+    organizationId: v.optional(v.string()),
+    templateId: v.string(),
+    values: v.record(v.string(), v.string()),
+    includeSnapshot: v.optional(v.boolean()),
+    snapshotSymbol: v.optional(v.string()),
+  },
+  returns: v.object({
+    content: v.string(),
+    imageBase64: v.optional(v.string()),
+    contentType: v.optional(v.string()),
+    filename: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    await resolveViewerUserId(ctx);
+
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    const templateId = String(args.templateId ?? "").trim();
+    if (!templateId) throw new Error("Missing templateId");
+
+    const row = await ctx.runQuery(
+      components.launchthat_discord.templates.queries.getTemplateById as any,
+      { organizationId, templateId },
+    );
+    const template = typeof (row as any)?.template === "string" ? String((row as any).template) : "";
+    const values = args.values ?? {};
+    const content = template.replace(/\{\{(\w+)\}\}/g, (_, key) => values[key] ?? "");
+
+    if (!args.includeSnapshot) {
+      return { content };
+    }
+
+    const symbol =
+      typeof args.snapshotSymbol === "string" && args.snapshotSymbol.trim()
+        ? args.snapshotSymbol.trim().toUpperCase()
+        : typeof values.symbol === "string" && values.symbol.trim()
+          ? values.symbol.trim().toUpperCase()
+          : "BTCUSD";
+
+    const preview = await buildSnapshotPreview(ctx, {
+      organizationId,
+      symbol,
+      lookbackDays: 3,
+      maxUsers: 200,
+    });
+
+    const base64 =
+      typeof (preview as any)?.base64 === "string" ? (preview as any).base64 : undefined;
+    const contentType =
+      typeof (preview as any)?.contentType === "string"
+        ? (preview as any).contentType
+        : "image/png";
+    const filename =
+      typeof (preview as any)?.filename === "string"
+        ? (preview as any).filename
+        : `${symbol}-snapshot.png`;
+
+    return { content, imageBase64: base64, contentType, filename };
+  },
+});
+
+export const sendTemplateTest = action({
+  args: {
+    organizationId: v.optional(v.string()),
+    guildId: v.string(),
+    channelId: v.string(),
+    templateId: v.string(),
+    values: v.record(v.string(), v.string()),
+    includeSnapshot: v.optional(v.boolean()),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    channelId: v.string(),
+    messageId: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, args) => {
+    await resolveViewerUserId(ctx);
+
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    const guildId = String(args.guildId ?? "").trim();
+    const channelId = String(args.channelId ?? "").trim();
+    const templateId = String(args.templateId ?? "").trim();
+    if (!guildId) throw new Error("Missing guildId");
+    if (!channelId) throw new Error("Missing channelId");
+    if (!templateId) throw new Error("Missing templateId");
+
+    const preview = await ctx.runAction(previewTemplate as any, {
+      organizationId,
+      templateId,
+      values: args.values,
+      includeSnapshot: args.includeSnapshot,
+    });
+
+    const content = typeof (preview as any)?.content === "string" ? (preview as any).content : "";
+    const imageBase64 = typeof (preview as any)?.imageBase64 === "string" ? (preview as any).imageBase64 : "";
+
+    const orgSecrets = (await ctx.runQuery(
+      (components as any).launchthat_discord.orgConfigs.internalQueries.getOrgConfigSecrets,
+      { organizationId },
+    )) as any;
+    if (!orgSecrets?.enabled) throw new Error("Discord is not enabled for this organization");
+
+    const secretsKey = process.env.DISCORD_SECRETS_KEY ?? "";
+    const globalClientId =
+      (process.env.DISCORD_GLOBAL_CLIENT_ID ??
+        process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID ??
+        "").trim();
+    const globalClientSecret = (process.env.DISCORD_GLOBAL_CLIENT_SECRET ?? "").trim();
+    const globalBotToken = (process.env.DISCORD_GLOBAL_BOT_TOKEN ?? "").trim();
+
+    const creds = await resolveDiscordCredentials({
+      botMode: orgSecrets.botMode === "custom" ? "custom" : "global",
+      secretsKey,
+      globalClientId,
+      globalClientSecret,
+      globalBotToken,
+      customClientId: orgSecrets.customClientId,
+      customClientSecretEncrypted: orgSecrets.customClientSecretEncrypted,
+      customBotTokenEncrypted: orgSecrets.customBotTokenEncrypted,
+      clientId: orgSecrets.clientId,
+      clientSecretEncrypted: orgSecrets.clientSecretEncrypted,
+      botTokenEncrypted: orgSecrets.botTokenEncrypted,
+    });
+    const botToken = String((creds as any)?.botToken ?? "").trim();
+    if (!botToken) throw new Error("Missing Discord bot token");
+
+    const res = args.includeSnapshot && imageBase64
+      ? await discordMultipart({
+          botToken,
+          method: "POST",
+          url: `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages`,
+          payloadJson: {
+            content: "",
+            embeds: [{ description: content, image: { url: "attachment://snapshot.png" } }],
+          },
+          file: {
+            name: "snapshot.png",
+            bytes: new Uint8Array(Buffer.from(imageBase64, "base64")),
+            contentType: "image/png",
+          },
+        })
+      : await discordJson({
+          botToken,
+          method: "POST",
+          url: `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages`,
+          body: { content },
+        });
+
+    if (!res.ok) {
+      throw new Error(`Discord send failed (${res.status}): ${res.text.slice(0, 200)}`);
+    }
+    const messageId = typeof (res.json as any)?.id === "string" ? String((res.json as any).id) : null;
     return { ok: true, channelId, messageId };
   },
 });

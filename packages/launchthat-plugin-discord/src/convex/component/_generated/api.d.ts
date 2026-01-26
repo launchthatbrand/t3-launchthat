@@ -8,9 +8,15 @@
  * @module
  */
 
+import type * as automations_index from "../automations/index.js";
+import type * as automations_mutations from "../automations/mutations.js";
+import type * as automations_queries from "../automations/queries.js";
 import type * as delivery_index from "../delivery/index.js";
 import type * as delivery_mutations from "../delivery/mutations.js";
 import type * as delivery_queries from "../delivery/queries.js";
+import type * as events_index from "../events/index.js";
+import type * as events_mutations from "../events/mutations.js";
+import type * as events_queries from "../events/queries.js";
 import type * as guildConnections_index from "../guildConnections/index.js";
 import type * as guildConnections_mutations from "../guildConnections/mutations.js";
 import type * as guildConnections_queries from "../guildConnections/queries.js";
@@ -68,9 +74,15 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "automations/index": typeof automations_index;
+  "automations/mutations": typeof automations_mutations;
+  "automations/queries": typeof automations_queries;
   "delivery/index": typeof delivery_index;
   "delivery/mutations": typeof delivery_mutations;
   "delivery/queries": typeof delivery_queries;
+  "events/index": typeof events_index;
+  "events/mutations": typeof events_mutations;
+  "events/queries": typeof events_queries;
   "guildConnections/index": typeof guildConnections_index;
   "guildConnections/mutations": typeof guildConnections_mutations;
   "guildConnections/queries": typeof guildConnections_queries;
@@ -114,6 +126,96 @@ declare const fullApi: ApiFromModules<{
   "userStreaming/queries": typeof userStreaming_queries;
 }>;
 export type Mounts = {
+  automations: {
+    mutations: {
+      createAutomation: FunctionReference<
+        "mutation",
+        "public",
+        {
+          action: { config: any; type: "send_message" };
+          conditions?: any;
+          enabled: boolean;
+          guildId: string;
+          name: string;
+          organizationId: string;
+          trigger: { config: any; type: "schedule" | "event" };
+        },
+        string
+      >;
+      deleteAutomation: FunctionReference<
+        "mutation",
+        "public",
+        { automationId: string; organizationId: string },
+        null
+      >;
+      markAutomationRun: FunctionReference<
+        "mutation",
+        "public",
+        {
+          automationId: string;
+          cursor?: string;
+          lastRunAt?: number;
+          nextRunAt?: number;
+          organizationId: string;
+        },
+        null
+      >;
+      updateAutomation: FunctionReference<
+        "mutation",
+        "public",
+        {
+          action?: { config: any; type: "send_message" };
+          automationId: string;
+          conditions?: any;
+          enabled?: boolean;
+          name?: string;
+          organizationId: string;
+          trigger?: { config: any; type: "schedule" | "event" };
+        },
+        null
+      >;
+    };
+    queries: {
+      listAutomations: FunctionReference<
+        "query",
+        "public",
+        { guildId: string; organizationId: string },
+        Array<{
+          action: any;
+          conditions?: any;
+          createdAt: number;
+          enabled: boolean;
+          guildId: string;
+          id: string;
+          name: string;
+          nextRunAt?: number;
+          organizationId: string;
+          state?: any;
+          trigger: any;
+          updatedAt: number;
+        }>
+      >;
+      listDueAutomations: FunctionReference<
+        "query",
+        "public",
+        { limit?: number; now: number; organizationId?: string },
+        Array<{
+          action: any;
+          conditions?: any;
+          createdAt: number;
+          enabled: boolean;
+          guildId: string;
+          id: string;
+          name: string;
+          nextRunAt?: number;
+          organizationId: string;
+          state?: any;
+          trigger: any;
+          updatedAt: number;
+        }>
+      >;
+    };
+  };
   delivery: {
     mutations: {
       incrementUserDeliveryStat: FunctionReference<
@@ -143,6 +245,43 @@ export type Mounts = {
           daysBack: number;
           totalMessagesSent: number;
         }
+      >;
+    };
+  };
+  events: {
+    mutations: {
+      emitEvent: FunctionReference<
+        "mutation",
+        "public",
+        {
+          dedupeKey?: string;
+          eventKey: string;
+          guildId?: string;
+          organizationId: string;
+          payloadJson: string;
+        },
+        null
+      >;
+    };
+    queries: {
+      listRecentEvents: FunctionReference<
+        "query",
+        "public",
+        {
+          eventKey?: string;
+          guildId?: string;
+          limit?: number;
+          organizationId: string;
+        },
+        Array<{
+          createdAt: number;
+          dedupeKey?: string;
+          eventKey: string;
+          guildId?: string;
+          id: string;
+          organizationId: string;
+          payloadJson: string;
+        }>
       >;
     };
   };

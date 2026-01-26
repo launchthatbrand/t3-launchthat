@@ -26,6 +26,9 @@ const discordUserLinksQueries = components.launchthat_discord.userLinks
   .queries as any;
 const discordUserStreamingQueries = components.launchthat_discord.userStreaming
   .queries as any;
+const discordAutomationsQueries = components.launchthat_discord.automations
+  .queries as any;
+const discordEventsQueries = components.launchthat_discord.events.queries as any;
 
 const pricedataSources = (components as any).launchthat_pricedata?.sources?.queries as
   | any
@@ -263,6 +266,70 @@ export const resolveChannelsForEvent = query({
       symbol: args.symbol,
     });
     return Array.isArray(result) ? result.map((s: any) => String(s)) : [];
+  },
+});
+
+export const listAutomations = query({
+  args: {
+    organizationId: v.optional(v.string()),
+    guildId: v.string(),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    return await ctx.runQuery(discordAutomationsQueries.listAutomations, {
+      organizationId,
+      guildId: args.guildId,
+    });
+  },
+});
+
+export const listDueAutomations = query({
+  args: {
+    organizationId: v.optional(v.string()),
+    now: v.number(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    // Internal tooling / runner use; keep viewer gated for now.
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : undefined;
+    await resolveViewerUserId(ctx);
+    return await ctx.runQuery(discordAutomationsQueries.listDueAutomations, {
+      organizationId,
+      now: args.now,
+      limit: args.limit,
+    });
+  },
+});
+
+export const listRecentDiscordEvents = query({
+  args: {
+    organizationId: v.optional(v.string()),
+    guildId: v.optional(v.string()),
+    eventKey: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    return await ctx.runQuery(discordEventsQueries.listRecentEvents, {
+      organizationId,
+      guildId: args.guildId,
+      eventKey: args.eventKey,
+      limit: args.limit,
+    });
   },
 });
 

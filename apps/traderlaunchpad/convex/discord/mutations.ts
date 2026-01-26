@@ -13,6 +13,9 @@ const discordUserLinksMutations = components.launchthat_discord.userLinks
 const discordUserStreamingMutations = components.launchthat_discord.userStreaming
   .mutations as any;
 const discordRoutingMutations = components.launchthat_discord.routing.mutations as any;
+const discordAutomationsMutations = components.launchthat_discord.automations
+  .mutations as any;
+const discordEventsMutations = components.launchthat_discord.events.mutations as any;
 
 export const upsertGuildSettings = mutation({
   args: {
@@ -263,6 +266,138 @@ export const replaceRoutingRules = mutation({
       guildId: args.guildId,
       kind: args.kind,
       rules: args.rules,
+    });
+    return null;
+  },
+});
+
+export const createAutomation = mutation({
+  args: {
+    organizationId: v.optional(v.string()),
+    guildId: v.string(),
+    name: v.string(),
+    enabled: v.boolean(),
+    trigger: v.any(),
+    conditions: v.optional(v.any()),
+    action: v.any(),
+  },
+  returns: v.string(),
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    const id = await ctx.runMutation(discordAutomationsMutations.createAutomation, {
+      organizationId,
+      guildId: args.guildId,
+      name: args.name,
+      enabled: args.enabled,
+      trigger: args.trigger,
+      conditions: args.conditions,
+      action: args.action,
+    });
+    return String(id);
+  },
+});
+
+export const updateAutomation = mutation({
+  args: {
+    organizationId: v.optional(v.string()),
+    automationId: v.string(),
+    name: v.optional(v.string()),
+    enabled: v.optional(v.boolean()),
+    trigger: v.optional(v.any()),
+    conditions: v.optional(v.any()),
+    action: v.optional(v.any()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    await ctx.runMutation(discordAutomationsMutations.updateAutomation, {
+      organizationId,
+      automationId: args.automationId as any,
+      name: args.name,
+      enabled: args.enabled,
+      trigger: args.trigger,
+      conditions: args.conditions,
+      action: args.action,
+    });
+    return null;
+  },
+});
+
+export const deleteAutomation = mutation({
+  args: {
+    organizationId: v.optional(v.string()),
+    automationId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    await ctx.runMutation(discordAutomationsMutations.deleteAutomation, {
+      organizationId,
+      automationId: args.automationId as any,
+    });
+    return null;
+  },
+});
+
+export const markAutomationRun = mutation({
+  args: {
+    organizationId: v.optional(v.string()),
+    automationId: v.string(),
+    lastRunAt: v.optional(v.number()),
+    nextRunAt: v.optional(v.number()),
+    cursor: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    await ctx.runMutation(discordAutomationsMutations.markAutomationRun, {
+      organizationId,
+      automationId: args.automationId as any,
+      lastRunAt: args.lastRunAt,
+      nextRunAt: args.nextRunAt,
+      cursor: args.cursor,
+    });
+    return null;
+  },
+});
+
+export const emitDiscordEvent = mutation({
+  args: {
+    organizationId: v.optional(v.string()),
+    guildId: v.optional(v.string()),
+    eventKey: v.string(),
+    payloadJson: v.string(),
+    dedupeKey: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    await ctx.runMutation(discordEventsMutations.emitEvent, {
+      organizationId,
+      guildId: args.guildId,
+      eventKey: args.eventKey,
+      payloadJson: args.payloadJson,
+      dedupeKey: args.dedupeKey,
     });
     return null;
   },

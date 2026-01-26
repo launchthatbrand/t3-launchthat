@@ -14,7 +14,8 @@ import {
   DiscordAuditPage,
   DiscordChannelsPage,
   DiscordConnectionsPage,
-  DiscordGuildChannelsPage,
+  DiscordGuildAutomationPage,
+  DiscordGuildAutomationsPage,
   DiscordGuildOverviewPage,
   DiscordGuildSettingsPage,
   DiscordOverviewPage,
@@ -45,12 +46,14 @@ export function DiscordAdminRouter({
 }: DiscordAdminRouterProps) {
   const isFocusedGuild = segments?.[0] === "guilds" && Boolean(segments?.[1]);
   const focusedGuildId = isFocusedGuild ? (segments?.[1] ?? "") : "";
-  const segment = isFocusedGuild ? (segments?.[2] ?? "overview") : (segments?.[0] ?? "overview");
+  const segment =
+    isFocusedGuild ? (segments?.[2] ?? "overview") : (segments?.[0] ?? "overview");
 
   const scopedBasePath = isFocusedGuild
     ? getDiscordAdminRoute(basePath, ["guilds", focusedGuildId])
     : basePath;
   const Link = LinkComponent ?? "a";
+  const focusedAutomationId = isFocusedGuild ? (segments?.[3] ?? "") : "";
 
   return (
     <div className={className}>
@@ -71,11 +74,13 @@ export function DiscordAdminRouter({
               Templates
             </Link>
           </TabsTrigger>
-          <TabsTrigger value="channels" asChild>
-            <Link href={getDiscordAdminRoute(scopedBasePath, ["channels"])}>
-              Channels
-            </Link>
-          </TabsTrigger>
+          {isFocusedGuild ? (
+            <TabsTrigger value="automations" asChild>
+              <Link href={getDiscordAdminRoute(scopedBasePath, ["automations"])}>
+                Automations
+              </Link>
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger value="audit" asChild>
             <Link href={getDiscordAdminRoute(scopedBasePath, ["audit"])}>Audit</Link>
           </TabsTrigger>
@@ -121,15 +126,26 @@ export function DiscordAdminRouter({
           ui={ui}
         />
       ) : null}
-      {segment === "channels" ? (
+      {segment === "automations" || (segment === "channels" && isFocusedGuild) ? (
         isFocusedGuild && focusedGuildId ? (
-          <DiscordGuildChannelsPage
-            api={api}
-            organizationId={organizationId}
-            guildId={focusedGuildId}
-            channelFields={channelFields}
-            ui={ui}
-          />
+          focusedAutomationId ? (
+            <DiscordGuildAutomationPage
+              api={api}
+              organizationId={organizationId}
+              guildId={focusedGuildId}
+              basePath={scopedBasePath}
+              automationId={focusedAutomationId}
+              ui={ui}
+            />
+          ) : (
+            <DiscordGuildAutomationsPage
+              api={api}
+              organizationId={organizationId}
+              guildId={focusedGuildId}
+              basePath={scopedBasePath}
+              ui={ui}
+            />
+          )
         ) : (
           <DiscordChannelsPage api={api} organizationId={organizationId} ui={ui} />
         )

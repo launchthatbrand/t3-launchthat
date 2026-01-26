@@ -106,7 +106,6 @@ export function AdminOrgDiscordAdminClient(props: { organizationId: string }) {
       LinkComponent={Link}
       templateContexts={templateContexts}
       defaultTemplateKind="tradeidea"
-      channelFields={channelFields}
       ui={ui}
       api={{
         queries: api.discord.queries,
