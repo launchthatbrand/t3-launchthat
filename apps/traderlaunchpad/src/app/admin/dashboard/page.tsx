@@ -6,7 +6,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
-
+import React from "react";
+import Link from "next/link";
+import { api } from "@convex-config/_generated/api";
+import { useAction, useConvexAuth, useQuery } from "convex/react";
+import { format as formatDate } from "date-fns";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
   AlertCircle,
@@ -19,15 +24,10 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@acme/ui/card";
-import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
+import { createPortal } from "react-dom";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+
+import type { ChartConfig } from "@acme/ui/chart";
 import {
   demoCalendarDailyStats,
   demoDashboardStats,
@@ -35,33 +35,33 @@ import {
   demoOrgAggregateTradeIdeaAnalyticsSummary,
   demoReviewTrades,
 } from "@acme/demo-data";
-import { useAction, useConvexAuth, useQuery } from "convex/react";
-
-import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
+import { cn } from "@acme/ui";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Calendar as DayCalendar } from "@acme/ui/calendar";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@acme/ui/card";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@acme/ui/chart";
-import type { ChartConfig } from "@acme/ui/chart";
-import Link from "next/link";
+import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
 import { Progress } from "@acme/ui/progress";
-import { PublicProfileHeader } from "~/components/publicProfiles/PublicProfileHeader";
-import React from "react";
-import { TradingCalendarWithDrilldown } from "~/components/dashboard/TradingCalendarWithDrilldown";
+
 import type { TradingCalendarWithDrilldownTradeRow } from "~/components/dashboard/TradingCalendarWithDrilldown";
-import { api } from "@convex-config/_generated/api";
-import { cn } from "@acme/ui";
-import { createPortal } from "react-dom";
-import { format as formatDate } from "date-fns";
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 import { useActiveAccount } from "~/components/accounts/ActiveAccountProvider";
+import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
+import { TradingCalendarWithDrilldown } from "~/components/dashboard/TradingCalendarWithDrilldown";
 import { useDataMode } from "~/components/dataMode/DataModeProvider";
-import { useOnboardingStatus } from "~/lib/onboarding/getOnboardingStatus";
+import { PublicProfileHeader } from "~/components/publicProfiles/PublicProfileHeader";
 import { useTenant } from "~/context/TenantContext";
+import { useOnboardingStatus } from "~/lib/onboarding/getOnboardingStatus";
 import { useTradingCalendarStore } from "~/stores/tradingCalendarStore";
 
 function TooltipIcon({
@@ -111,9 +111,9 @@ function TooltipIcon({
                 transition={{ duration: 0.18, ease: "easeOut" }}
                 className="pointer-events-none fixed inset-0 z-50"
               >
-                <div className="pointer-events-none absolute inset-0 bg-background/60 backdrop-blur-sm" />
+                <div className="bg-background/60 pointer-events-none absolute inset-0 backdrop-blur-sm" />
                 <div
-                  className="pointer-events-auto absolute z-10 w-64 -translate-x-full rounded-lg border border-border/40 bg-white/95 p-3 text-foreground shadow-xl backdrop-blur dark:border-white/10 dark:bg-black/85 dark:text-white"
+                  className="border-border/40 text-foreground pointer-events-auto absolute z-10 w-64 -translate-x-full rounded-lg border bg-white/95 p-3 shadow-xl backdrop-blur dark:border-white/10 dark:bg-black/85 dark:text-white"
                   style={{
                     top: coords?.top ?? 0,
                     left: coords?.left ?? 0,
@@ -221,7 +221,9 @@ const toDateLabel = (tsMs: number): string => {
   return d.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
 };
 
-const computeStreakFromDailyStats = (dailyStats: { date: string }[]): number => {
+const computeStreakFromDailyStats = (
+  dailyStats: { date: string }[],
+): number => {
   const set = new Set(dailyStats.map((s) => s.date));
   const today = new Date();
   let streak = 0;
@@ -404,7 +406,9 @@ export default function AdminDashboardPage() {
   const liveReviewTrades: ReviewTradeRow[] = React.useMemo(() => {
     const rows = Array.isArray(recentClosed) ? recentClosed : [];
     return rows
-      .filter((r) => typeof r.tradeIdeaGroupId === "string" && r.tradeIdeaGroupId)
+      .filter(
+        (r) => typeof r.tradeIdeaGroupId === "string" && r.tradeIdeaGroupId,
+      )
       .map((r) => {
         const pnl = typeof r.realizedPnl === "number" ? r.realizedPnl : 0;
         return {
@@ -427,14 +431,17 @@ export default function AdminDashboardPage() {
   // Note: avgPnl previously shown in a removed card.
 
   const calendarDailyStats: TradingCalendarDailyStat[] = React.useMemo(() => {
-    if (!isLive) return demoCalendarDailyStats as unknown as TradingCalendarDailyStat[];
+    if (!isLive)
+      return demoCalendarDailyStats as unknown as TradingCalendarDailyStat[];
     return Array.isArray(liveCalendarDailyStats)
       ? (liveCalendarDailyStats as unknown as TradingCalendarDailyStat[])
       : [];
   }, [isLive, liveCalendarDailyStats]);
 
   const streak = React.useMemo(() => {
-    return isLive ? computeStreakFromDailyStats(calendarDailyStats) : demoDashboardStats.streak;
+    return isLive
+      ? computeStreakFromDailyStats(calendarDailyStats)
+      : demoDashboardStats.streak;
   }, [calendarDailyStats, isLive]);
 
   const balance = React.useMemo(() => {
@@ -455,15 +462,22 @@ export default function AdminDashboardPage() {
 
   const winRatePct = React.useMemo(() => {
     if (!isLive) return demoDashboardStats.winRate;
-    const winRate = typeof analyticsSummary?.winRate === "number" ? analyticsSummary.winRate : 0;
+    const winRate =
+      typeof analyticsSummary?.winRate === "number"
+        ? analyticsSummary.winRate
+        : 0;
     return Math.round(Math.max(0, Math.min(1, winRate)) * 100);
   }, [analyticsSummary?.winRate, isLive]);
 
   const profitFactor = React.useMemo(() => {
     if (!isLive) return demoDashboardStats.profitFactor;
-    const pnls = reviewTrades.map((t) => t.pnl).filter((n) => Number.isFinite(n));
+    const pnls = reviewTrades
+      .map((t) => t.pnl)
+      .filter((n) => Number.isFinite(n));
     const grossProfit = pnls.filter((n) => n > 0).reduce((a, b) => a + b, 0);
-    const grossLossAbs = Math.abs(pnls.filter((n) => n < 0).reduce((a, b) => a + b, 0));
+    const grossLossAbs = Math.abs(
+      pnls.filter((n) => n < 0).reduce((a, b) => a + b, 0),
+    );
     if (grossLossAbs <= 0) return grossProfit > 0 ? 9.99 : 0;
     const pf = grossProfit / grossLossAbs;
     return Number.isFinite(pf) ? Math.round(pf * 100) / 100 : 0;
@@ -471,7 +485,10 @@ export default function AdminDashboardPage() {
 
   const monthlyReturnPct = React.useMemo(() => {
     if (!isLive) return demoDashboardStats.monthlyReturn;
-    const totalPnl = typeof analyticsSummary?.totalPnl === "number" ? analyticsSummary.totalPnl : 0;
+    const totalPnl =
+      typeof analyticsSummary?.totalPnl === "number"
+        ? analyticsSummary.totalPnl
+        : 0;
     if (!balance) return 0;
     return Math.round((totalPnl / Math.max(1, balance)) * 1000) / 10; // 0.1% precision
   }, [analyticsSummary?.totalPnl, balance, isLive]);
@@ -505,7 +522,10 @@ export default function AdminDashboardPage() {
 
     if (!rows.length) return [];
 
-    const periodPnl = rows.reduce((acc, r) => acc + (Number.isFinite(r.pnl) ? r.pnl : 0), 0);
+    const periodPnl = rows.reduce(
+      (acc, r) => acc + (Number.isFinite(r.pnl) ? r.pnl : 0),
+      0,
+    );
     const startingEquity = dashboardStats.balance - periodPnl;
 
     let cumulativePnl = 0;
@@ -564,7 +584,10 @@ export default function AdminDashboardPage() {
         description: `Profit factor is ${dashboardStats.profitFactor}. Nice risk/reward discipline.`,
         icon: "trendingUp",
       });
-    } else if (dashboardStats.profitFactor > 0 && dashboardStats.profitFactor < 1) {
+    } else if (
+      dashboardStats.profitFactor > 0 &&
+      dashboardStats.profitFactor < 1
+    ) {
       out.push({
         id: "insight-pf",
         kind: "warning",
@@ -587,7 +610,12 @@ export default function AdminDashboardPage() {
     }
 
     return out.slice(0, 3);
-  }, [dashboardStats.profitFactor, dashboardStats.streak, dashboardStats.winRate, isLive]);
+  }, [
+    dashboardStats.profitFactor,
+    dashboardStats.streak,
+    dashboardStats.winRate,
+    isLive,
+  ]);
 
   const tradingPlanKpis: TradingPlanKpis = React.useMemo(() => {
     // In demo mode, show demo KPIs.
@@ -607,26 +635,27 @@ export default function AdminDashboardPage() {
     shouldQuery && isLive ? {} : "skip",
   ) as ActiveTradingPlanSummary | null | undefined;
 
-  const tradingPlanSummary: ActiveTradingPlanSummary | null = React.useMemo(() => {
-    if (!isLive) {
+  const tradingPlanSummary: ActiveTradingPlanSummary | null =
+    React.useMemo(() => {
+      if (!isLive) {
+        return {
+          name: DEMO_TRADING_PLAN.name,
+          version: DEMO_TRADING_PLAN.version,
+          kpis: DEMO_TRADING_PLAN_KPIS,
+        };
+      }
+      if (!activeTradingPlan) return null;
       return {
-        name: DEMO_TRADING_PLAN.name,
-        version: DEMO_TRADING_PLAN.version,
-        kpis: DEMO_TRADING_PLAN_KPIS,
+        name: String(activeTradingPlan.name ?? "Untitled"),
+        version: String(activeTradingPlan.version ?? "v1.0"),
+        kpis: activeTradingPlan.kpis ?? {
+          adherencePct: 0,
+          violations7d: 0,
+          avgRiskPerTradePct7d: 0,
+          journalCompliancePct: 0,
+        },
       };
-    }
-    if (!activeTradingPlan) return null;
-    return {
-      name: String(activeTradingPlan.name ?? "Untitled"),
-      version: String(activeTradingPlan.version ?? "v1.0"),
-      kpis: activeTradingPlan.kpis ?? {
-        adherencePct: 0,
-        violations7d: 0,
-        avgRiskPerTradePct7d: 0,
-        journalCompliancePct: 0,
-      },
-    };
-  }, [activeTradingPlan, isLive]);
+    }, [activeTradingPlan, isLive]);
 
   const syncNow = useAction(api.traderlaunchpad.actions.syncMyTradeLockerNow);
   const [syncingNow, setSyncingNow] = React.useState(false);
@@ -661,7 +690,8 @@ export default function AdminDashboardPage() {
     const rows = Array.isArray(liveCalendarEvents) ? liveCalendarEvents : [];
     for (const r of rows) {
       const eventId = String(r.externalEventId ?? "").trim();
-      const gid = typeof r.tradeIdeaGroupId === "string" ? r.tradeIdeaGroupId : "";
+      const gid =
+        typeof r.tradeIdeaGroupId === "string" ? r.tradeIdeaGroupId : "";
       if (eventId && gid) map.set(eventId, gid);
     }
     return map;
@@ -671,60 +701,80 @@ export default function AdminDashboardPage() {
     (eventId: string) => {
       if (dataMode.effectiveMode === "demo") return `/admin/trade/${eventId}`;
       const gid = calendarTradeIdeaIdByEventId.get(eventId);
-      return gid ? `/admin/tradeideas/${encodeURIComponent(gid)}` : "/admin/orders";
+      return gid
+        ? `/admin/tradeideas/${encodeURIComponent(gid)}`
+        : "/admin/orders";
     },
     [calendarTradeIdeaIdByEventId, dataMode.effectiveMode],
   );
 
-  const calendarTrades: TradingCalendarWithDrilldownTradeRow[] = React.useMemo(() => {
-    if (!isLive) {
-      return reviewTrades.map((t) => ({
-        id: t.id,
-        tradeDate: t.tradeDate,
-        symbol: t.symbol,
-        type: t.type,
-        reviewed: t.reviewed,
-        reason: t.reason,
-        pnl: t.pnl,
-      }));
-    }
+  const calendarTrades: TradingCalendarWithDrilldownTradeRow[] =
+    React.useMemo(() => {
+      if (!isLive) {
+        return reviewTrades.map((t) => ({
+          id: t.id,
+          tradeDate: t.tradeDate,
+          symbol: t.symbol,
+          type: t.type,
+          reviewed: t.reviewed,
+          reason: t.reason,
+          pnl: t.pnl,
+        }));
+      }
 
-    const rows = Array.isArray(liveCalendarEvents)
-      ? (liveCalendarEvents as unknown as any[])
-      : [];
-    return rows.map((e) => {
-      const closedAtMs = typeof e.closedAt === "number" ? e.closedAt : 0;
-      const tradeDate = toDateKey(closedAtMs);
-      const qtyClosed =
-        typeof e.qtyClosed === "number" && Number.isFinite(e.qtyClosed) && e.qtyClosed !== 0
-          ? e.qtyClosed
-          : null;
-      const qtyLabel = qtyClosed !== null ? ` • ${Math.abs(qtyClosed)}` : "";
-      return {
-        id: String(e.externalEventId ?? `${e.externalPositionId}:${e.closedAt}`),
-        tradeDate,
-        symbol: typeof e.symbol === "string" && e.symbol.trim() ? e.symbol.trim() : "—",
-        type: e.direction === "short" ? "Short" : "Long",
-        reviewed: false,
-        reason: `Partial close${qtyLabel}`,
-        pnl: typeof e.realizedPnl === "number" ? e.realizedPnl : 0,
-        qtyClosed: typeof e.qtyClosed === "number" ? e.qtyClosed : undefined,
-        fees: typeof e.fees === "number" ? e.fees : undefined,
-        commission: typeof e.commission === "number" ? e.commission : undefined,
-        swap: typeof e.swap === "number" ? e.swap : undefined,
-        openAtMs: typeof e.openAtMs === "number" ? e.openAtMs : undefined,
-        closedAtMs: typeof e.closedAt === "number" ? e.closedAt : undefined,
-        openPrice: typeof e.openPrice === "number" ? e.openPrice : undefined,
-        closePrice: typeof e.closePrice === "number" ? e.closePrice : undefined,
-        externalPositionId:
-          typeof e.externalPositionId === "string" ? e.externalPositionId : undefined,
-        openOrderId: typeof e.openOrderId === "string" ? e.openOrderId : undefined,
-        closeOrderId: typeof e.externalOrderId === "string" ? e.externalOrderId : undefined,
-        openTradeId: typeof e.openTradeId === "string" ? e.openTradeId : undefined,
-        closeTradeId: typeof e.closeTradeId === "string" ? e.closeTradeId : undefined,
-      };
-    });
-  }, [isLive, liveCalendarEvents, reviewTrades]);
+      const rows = Array.isArray(liveCalendarEvents)
+        ? (liveCalendarEvents as unknown as any[])
+        : [];
+      return rows.map((e) => {
+        const closedAtMs = typeof e.closedAt === "number" ? e.closedAt : 0;
+        const tradeDate = toDateKey(closedAtMs);
+        const qtyClosed =
+          typeof e.qtyClosed === "number" &&
+            Number.isFinite(e.qtyClosed) &&
+            e.qtyClosed !== 0
+            ? e.qtyClosed
+            : null;
+        const qtyLabel = qtyClosed !== null ? ` • ${Math.abs(qtyClosed)}` : "";
+        return {
+          id: String(
+            e.externalEventId ?? `${e.externalPositionId}:${e.closedAt}`,
+          ),
+          tradeDate,
+          symbol:
+            typeof e.symbol === "string" && e.symbol.trim()
+              ? e.symbol.trim()
+              : "—",
+          type: e.direction === "short" ? "Short" : "Long",
+          reviewed: false,
+          reason: `Partial close${qtyLabel}`,
+          pnl: typeof e.realizedPnl === "number" ? e.realizedPnl : 0,
+          qtyClosed: typeof e.qtyClosed === "number" ? e.qtyClosed : undefined,
+          fees: typeof e.fees === "number" ? e.fees : undefined,
+          commission:
+            typeof e.commission === "number" ? e.commission : undefined,
+          swap: typeof e.swap === "number" ? e.swap : undefined,
+          openAtMs: typeof e.openAtMs === "number" ? e.openAtMs : undefined,
+          closedAtMs: typeof e.closedAt === "number" ? e.closedAt : undefined,
+          openPrice: typeof e.openPrice === "number" ? e.openPrice : undefined,
+          closePrice:
+            typeof e.closePrice === "number" ? e.closePrice : undefined,
+          externalPositionId:
+            typeof e.externalPositionId === "string"
+              ? e.externalPositionId
+              : undefined,
+          openOrderId:
+            typeof e.openOrderId === "string" ? e.openOrderId : undefined,
+          closeOrderId:
+            typeof e.externalOrderId === "string"
+              ? e.externalOrderId
+              : undefined,
+          openTradeId:
+            typeof e.openTradeId === "string" ? e.openTradeId : undefined,
+          closeTradeId:
+            typeof e.closeTradeId === "string" ? e.closeTradeId : undefined,
+        };
+      });
+    }, [isLive, liveCalendarEvents, reviewTrades]);
 
   const handleSelectDate = (d: Date | undefined) => {
     if (!d) {
@@ -757,22 +807,22 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div className="relative animate-in fade-in space-y-8 text-foreground selection:bg-orange-500/30 duration-500">
+    <div className="animate-in fade-in text-foreground relative space-y-8 duration-500 selection:bg-orange-500/30">
       {!isDismissed && !onboarding.isComplete ? (
-        <div className="rounded-2xl border border-orange-500/20 bg-white/80 px-4 py-2 text-foreground backdrop-blur-md dark:bg-black/45 dark:text-white">
+        <div className="text-foreground rounded-2xl border border-orange-500/20 bg-white/80 px-4 py-2 backdrop-blur-md dark:bg-black/45 dark:text-white">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-xs font-semibold text-foreground dark:text-white">
+              <div className="text-foreground text-xs font-semibold dark:text-white">
                 Finish setup
               </div>
-              <div className="text-[11px] text-muted-foreground dark:text-white/60 tabular-nums">
+              <div className="text-muted-foreground text-[11px] tabular-nums dark:text-white/60">
                 {onboarding.completedSteps}/{onboarding.totalSteps} completed
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/40 bg-white/70 text-foreground/70 hover:bg-white hover:text-foreground dark:border-white/10 dark:bg-black/40 dark:text-white/70 dark:hover:bg-white/5 dark:hover:text-white"
+                className="border-border/40 text-foreground/70 hover:text-foreground inline-flex h-7 w-7 items-center justify-center rounded-full border bg-white/70 hover:bg-white dark:border-white/10 dark:bg-black/40 dark:text-white/70 dark:hover:bg-white/5 dark:hover:text-white"
                 onClick={handleDismiss}
                 aria-label="Dismiss setup prompt"
               >
@@ -800,7 +850,11 @@ export default function AdminDashboardPage() {
         coverUrl={viewerProfile?.coverUrl ?? null}
         avatarUrl={viewerProfile?.avatarUrl ?? null}
         avatarAlt={viewerProfile?.name ?? "User"}
-        avatarFallback={(viewerProfile?.name ?? viewerProfile?.email ?? "U").slice(0, 1)}
+        avatarFallback={(
+          viewerProfile?.name ??
+          viewerProfile?.email ??
+          "U"
+        ).slice(0, 1)}
         badgeLabel="Dashboard"
         title={
           viewerProfile?.name?.trim()
@@ -810,30 +864,25 @@ export default function AdminDashboardPage() {
         handle={`@${slugifyUsername(
           viewerProfile?.publicUsername ??
           viewerProfile?.name ??
-          (viewerProfile?.email?.split("@")[0] ?? "me"),
-        ) || "me"}`}
+          viewerProfile?.email?.split("@")[0] ??
+          "me",
+        ) || "me"
+          }`}
         bio={
           viewerProfile?.bio?.trim()
             ? viewerProfile.bio
             : "Your performance, insights, and reviews — synced with your trading calendar."
         }
         topRightExtra={null}
-        actions={
-          <Button
-            className="gap-2 border-0 bg-orange-600 text-white hover:bg-orange-700"
-            onClick={() => void handleSyncAccount()}
-            disabled={syncingNow}
-          >
-            <Activity className="h-4 w-4" />
-            {syncingNow ? "Syncing..." : "Sync Account"}
-          </Button>
-        }
+        actions={<></>}
       />
 
       {isOrgMode ? (
         <Card className="border-border/40 bg-card/60 dark:bg-black/20">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Organization performance</CardTitle>
+            <CardTitle className="text-base">
+              Organization performance
+            </CardTitle>
             <CardDescription className="text-muted-foreground dark:text-white/60">
               {isLive
                 ? "Group totals across members in this organization."
@@ -842,23 +891,29 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             {orgAggregateSummary === undefined ? (
-              <div className="text-muted-foreground text-sm">Loading organization metrics…</div>
+              <div className="text-muted-foreground text-sm">
+                Loading organization metrics…
+              </div>
             ) : orgAggregateSummary === null ? (
               <div className="text-muted-foreground text-sm">
                 You don’t have access to organization totals.
               </div>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-border/40 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
-                  <div className="text-muted-foreground text-xs">Total PnL (group)</div>
+                <div className="border-border/40 rounded-xl border bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
+                  <div className="text-muted-foreground text-xs">
+                    Total PnL (group)
+                  </div>
                   <div className="mt-1 text-2xl font-semibold">
                     {Number.isFinite(orgAggregateSummary.totalPnl)
                       ? orgAggregateSummary.totalPnl.toFixed(2)
                       : "—"}
                   </div>
                 </div>
-                <div className="rounded-xl border border-border/40 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
-                  <div className="text-muted-foreground text-xs">Open trades (group)</div>
+                <div className="border-border/40 rounded-xl border bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
+                  <div className="text-muted-foreground text-xs">
+                    Open trades (group)
+                  </div>
                   <div className="mt-1 text-2xl font-semibold">
                     {Number.isFinite(orgAggregateSummary.openTrades)
                       ? orgAggregateSummary.openTrades
@@ -866,9 +921,11 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
                 {orgAggregateSummary.isTruncated ? (
-                  <div className="sm:col-span-2 text-muted-foreground text-xs">
-                    Showing totals for {orgAggregateSummary.memberCountConsidered} of{" "}
-                    {orgAggregateSummary.memberCountTotal} members (truncated for performance).
+                  <div className="text-muted-foreground text-xs sm:col-span-2">
+                    Showing totals for{" "}
+                    {orgAggregateSummary.memberCountConsidered} of{" "}
+                    {orgAggregateSummary.memberCountTotal} members (truncated
+                    for performance).
                   </div>
                 ) : null}
               </div>
@@ -879,8 +936,6 @@ export default function AdminDashboardPage() {
 
       {/* Setup prompt moved into header (top-right). */}
 
-
-
       {/* Date filter (moved down; syncs with TradingCalendarPanel) */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
         <div className="flex flex-wrap items-center gap-2">
@@ -889,20 +944,20 @@ export default function AdminDashboardPage() {
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                className="gap-2 border-border/60 dark:bg-transparent text-foreground hover:bg-foreground/5 hover:text-foreground"
+                className="border-border/60 text-foreground hover:bg-foreground/5 hover:text-foreground gap-2 dark:bg-transparent"
               >
                 <Calendar className="h-4 w-4" />
                 <span>{selectedDateLabel}</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto border-border/40 bg-white/95 p-0 text-foreground dark:bg-black/70 dark:text-white">
+            <PopoverContent className="border-border/40 text-foreground w-auto bg-white/95 p-0 dark:bg-black/70 dark:text-white">
               <DayCalendar
                 mode="single"
                 selected={selectedDateObj}
                 onSelect={handleSelectDate}
                 initialFocus
               />
-              <div className="flex items-center justify-between border-t border-border/40 p-2 dark:border-white/10">
+              <div className="border-border/40 flex items-center justify-between border-t p-2 dark:border-white/10">
                 <Button
                   variant="ghost"
                   className="text-muted-foreground hover:bg-foreground/5 hover:text-foreground dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white"
@@ -927,7 +982,10 @@ export default function AdminDashboardPage() {
               Filtering
             </Badge>
           ) : (
-            <Badge variant="outline" className="border-border/60 text-muted-foreground dark:text-white/70">
+            <Badge
+              variant="outline"
+              className="border-border/60 text-muted-foreground dark:text-white/70"
+            >
               All data
             </Badge>
           )}
@@ -945,7 +1003,7 @@ export default function AdminDashboardPage() {
           />
         </div>
         <div className="space-y-8 lg:col-span-1">
-          <Card className="min-h-[530px] h-full border-l-4 border-border/40 border-l-orange-500 bg-card/70 shadow-lg shadow-orange-500/5 backdrop-blur-md transition-colors hover:bg-card/80 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
+          <Card className="border-border/40 bg-card/70 hover:bg-card/80 h-full min-h-[530px] border-l-4 border-l-orange-500 shadow-lg shadow-orange-500/5 backdrop-blur-md transition-colors dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -954,7 +1012,7 @@ export default function AdminDashboardPage() {
                 </CardTitle>
                 <Badge
                   variant="secondary"
-                  className="bg-orange-500/10 ml-auto text-orange-700 hover:bg-orange-500/20 dark:text-orange-300"
+                  className="ml-auto bg-orange-500/10 text-orange-700 hover:bg-orange-500/20 dark:text-orange-300"
                 >
                   {selectedTradeDate ? "Filtered" : "All"}
                 </Badge>
@@ -963,12 +1021,13 @@ export default function AdminDashboardPage() {
                   description="Shows trades filtered by the selected calendar date with review status."
                 />
               </div>
-
             </CardHeader>
             <CardContent className="flex h-full flex-col gap-3">
               <div className="flex-1 space-y-2 overflow-y-auto pr-1">
                 {(selectedTradeDate
-                  ? reviewTrades.filter((trade) => trade.tradeDate === selectedTradeDate)
+                  ? reviewTrades.filter(
+                    (trade) => trade.tradeDate === selectedTradeDate,
+                  )
                   : reviewTrades
                 ).map((trade) => (
                   <Popover
@@ -1014,7 +1073,9 @@ export default function AdminDashboardPage() {
                         <div
                           className={cn(
                             "text-sm font-semibold",
-                            trade.pnl >= 0 ? "text-emerald-500" : "text-red-500",
+                            trade.pnl >= 0
+                              ? "text-emerald-500"
+                              : "text-red-500",
                           )}
                         >
                           {trade.pnl >= 0 ? "+" : ""}
@@ -1022,20 +1083,22 @@ export default function AdminDashboardPage() {
                         </div>
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[320px] border-border/40 bg-white/95 p-3 text-foreground backdrop-blur dark:border-white/10 dark:bg-black/80 dark:text-white">
+                    <PopoverContent className="border-border/40 text-foreground w-[320px] bg-white/95 p-3 backdrop-blur dark:border-white/10 dark:bg-black/80 dark:text-white">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="text-sm font-semibold">
                             {trade.symbol} • {trade.type}
                           </div>
-                          <div className="mt-0.5 text-xs text-muted-foreground dark:text-white/60">
+                          <div className="text-muted-foreground mt-0.5 text-xs dark:text-white/60">
                             {trade.tradeDate} • {trade.reason}
                           </div>
                         </div>
                         <div
                           className={cn(
                             "shrink-0 text-sm font-semibold tabular-nums",
-                            trade.pnl >= 0 ? "text-emerald-300" : "text-rose-300",
+                            trade.pnl >= 0
+                              ? "text-emerald-300"
+                              : "text-rose-300",
                           )}
                         >
                           {trade.pnl >= 0 ? "+" : ""}
@@ -1078,7 +1141,7 @@ export default function AdminDashboardPage() {
               </div>
               <Button
                 variant="outline"
-                className="w-full border-border/60 bg-transparent text-xs text-foreground hover:bg-foreground/5 hover:text-foreground dark:border-white/15 dark:text-white dark:hover:bg-white/10 dark:hover:text-white"
+                className="border-border/60 text-foreground hover:bg-foreground/5 hover:text-foreground w-full bg-transparent text-xs dark:border-white/15 dark:text-white dark:hover:bg-white/10 dark:hover:text-white"
                 asChild
               >
                 <Link href="/admin/tradeideas?status=closed">
@@ -1091,8 +1154,8 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="p-2 gap-2 relative overflow-hidden border-l-4 border-border/40 border-l-emerald-500 bg-card/70 backdrop-blur-md transition-colors hover:bg-card/80 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
-          <CardHeader className=" p-0 flex flex-row items-center justify-between space-y-0 pb-1.5">
+        <Card className="border-border/40 bg-card/70 hover:bg-card/80 relative gap-2 overflow-hidden border-l-4 border-l-emerald-500 p-2 backdrop-blur-md transition-colors dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1.5">
             <CardTitle className="text-muted-foreground text-[11px] font-medium">
               Account Balance
             </CardTitle>
@@ -1107,7 +1170,7 @@ export default function AdminDashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="p-2 pt-0 sm:p-3 sm:pt-0">
-            <div className="text-base font-bold leading-none tabular-nums sm:text-lg">
+            <div className="text-base leading-none font-bold tabular-nums sm:text-lg">
               ${dashboardStats.balance.toLocaleString()}
             </div>
             <p className="text-muted-foreground mt-0.5 hidden text-[11px] leading-tight sm:block">
@@ -1119,8 +1182,8 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="p-2 gap-2 border-l-4 border-border/40 border-l-orange-500 bg-card/70 backdrop-blur-md transition-colors hover:bg-card/80 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
-          <CardHeader className="p-0 flex flex-row items-center justify-between space-y-0 pb-1.5">
+        <Card className="border-border/40 bg-card/70 hover:bg-card/80 gap-2 border-l-4 border-l-orange-500 p-2 backdrop-blur-md transition-colors dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1.5">
             <CardTitle className="text-muted-foreground text-[11px] font-medium">
               Win Rate
             </CardTitle>
@@ -1133,7 +1196,7 @@ export default function AdminDashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="p-2 pt-0 sm:p-3 sm:pt-0">
-            <div className="text-base font-bold leading-none tabular-nums sm:text-lg">
+            <div className="text-base leading-none font-bold tabular-nums sm:text-lg">
               {dashboardStats.winRate}%
             </div>
             <Progress
@@ -1143,7 +1206,7 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="p-2 gap-2 border-l-4 border-border/40 border-l-orange-500 bg-card/70 backdrop-blur-md transition-colors hover:bg-card/80 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
+        <Card className="border-border/40 bg-card/70 hover:bg-card/80 gap-2 border-l-4 border-l-orange-500 p-2 backdrop-blur-md transition-colors dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1.5">
             <CardTitle className="text-muted-foreground text-[11px] font-medium">
               Profit Factor
@@ -1157,7 +1220,7 @@ export default function AdminDashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="p-2 pt-0 sm:p-3 sm:pt-0">
-            <div className="text-base font-bold leading-none tabular-nums sm:text-lg">
+            <div className="text-base leading-none font-bold tabular-nums sm:text-lg">
               {dashboardStats.profitFactor}
             </div>
             <p className="text-muted-foreground mt-0.5 hidden text-[11px] leading-tight sm:block">
@@ -1169,7 +1232,7 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="p-2 gap-2 border-l-4 border-border/40 border-l-purple-500 bg-card/70 backdrop-blur-md transition-colors hover:bg-card/80 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
+        <Card className="border-border/40 bg-card/70 hover:bg-card/80 gap-2 border-l-4 border-l-purple-500 p-2 backdrop-blur-md transition-colors dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-1.5">
             <CardTitle className="text-muted-foreground text-[11px] font-medium">
               Journal Streak
@@ -1183,7 +1246,7 @@ export default function AdminDashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="p-2 pt-0 sm:p-3 sm:pt-0">
-            <div className="text-base font-bold leading-none tabular-nums sm:text-lg">
+            <div className="text-base leading-none font-bold tabular-nums sm:text-lg">
               {dashboardStats.streak} Days
             </div>
             <p className="text-muted-foreground mt-0.5 hidden text-[11px] leading-tight sm:block">
@@ -1193,10 +1256,6 @@ export default function AdminDashboardPage() {
         </Card>
       </div>
 
-
-
-
-
       {/* Main Content Area */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Left Column: Charts & Insights (2/3 width) */}
@@ -1205,7 +1264,7 @@ export default function AdminDashboardPage() {
           {/* KPI Grid */}
 
           {/* Equity Curve Placeholder */}
-          <Card className="border-border/40 bg-card/70 backdrop-blur-md transition-colors hover:bg-card/80 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
+          <Card className="border-border/40 bg-card/70 hover:bg-card/80 backdrop-blur-md transition-colors dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
             <CardHeader>
               <CardTitle>Performance Analytics</CardTitle>
               <CardDescription>
@@ -1214,8 +1273,14 @@ export default function AdminDashboardPage() {
             </CardHeader>
             <CardContent>
               {performanceSeries.length ? (
-                <ChartContainer config={performanceChartConfig} className="h-[300px] w-full">
-                  <LineChart data={performanceSeries} margin={{ left: 12, right: 12 }}>
+                <ChartContainer
+                  config={performanceChartConfig}
+                  className="h-[300px] w-full"
+                >
+                  <LineChart
+                    data={performanceSeries}
+                    margin={{ left: 12, right: 12 }}
+                  >
                     <CartesianGrid vertical={false} />
                     <XAxis
                       dataKey="label"
@@ -1237,13 +1302,19 @@ export default function AdminDashboardPage() {
                       content={
                         <ChartTooltipContent
                           formatter={(value, name) => {
-                            const n = typeof value === "number" ? value : Number(value);
-                            const label = name === "equity" ? "Equity" : String(name);
+                            const n =
+                              typeof value === "number" ? value : Number(value);
+                            const label =
+                              name === "equity" ? "Equity" : String(name);
                             return (
                               <div className="flex w-full items-center justify-between gap-3">
-                                <span className="text-muted-foreground">{label}</span>
+                                <span className="text-muted-foreground">
+                                  {label}
+                                </span>
                                 <span className="font-medium tabular-nums">
-                                  {Number.isFinite(n) ? `$${n.toFixed(2)}` : "—"}
+                                  {Number.isFinite(n)
+                                    ? `$${n.toFixed(2)}`
+                                    : "—"}
                                 </span>
                               </div>
                             );
@@ -1262,15 +1333,16 @@ export default function AdminDashboardPage() {
                   </LineChart>
                 </ChartContainer>
               ) : (
-                <div className="flex h-[300px] w-full items-center justify-center rounded-lg border border-dashed border-border/40 bg-linear-to-b from-orange-500/10 to-transparent px-6 text-center text-sm text-muted-foreground dark:border-white/10 dark:text-white/70">
-                  No trades yet. As you start trading, we’ll plot your equity curve here.
+                <div className="border-border/40 text-muted-foreground flex h-[300px] w-full items-center justify-center rounded-lg border border-dashed bg-linear-to-b from-orange-500/10 to-transparent px-6 text-center text-sm dark:border-white/10 dark:text-white/70">
+                  No trades yet. As you start trading, we’ll plot your equity
+                  curve here.
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* AI Insights */}
-          <Card className="border-border/40 bg-card/70 backdrop-blur-md transition-colors hover:bg-card/80 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
+          <Card className="border-border/40 bg-card/70 hover:bg-card/80 backdrop-blur-md transition-colors dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Brain className="h-5 w-5 text-orange-300" />
@@ -1288,19 +1360,21 @@ export default function AdminDashboardPage() {
                   return (
                     <div
                       key={insight.id}
-                      className="flex items-start gap-4 rounded-lg border border-border/40 bg-card/60 p-4 transition-colors hover:bg-card/70 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6"
+                      className="border-border/40 bg-card/60 hover:bg-card/70 flex items-start gap-4 rounded-lg border p-4 transition-colors dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6"
                     >
                       <div
                         className={cn(
-                          "rounded-full border border-border/40 bg-white/70 p-2 shadow-sm dark:border-white/10 dark:bg-black/30",
+                          "border-border/40 rounded-full border bg-white/70 p-2 shadow-sm dark:border-white/10 dark:bg-black/30",
                           meta.color,
                         )}
                       >
                         <Icon className="h-5 w-5" />
                       </div>
                       <div>
-                        <h4 className="text-sm font-semibold">{insight.title}</h4>
-                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground dark:text-white/70">
+                        <h4 className="text-sm font-semibold">
+                          {insight.title}
+                        </h4>
+                        <p className="text-muted-foreground mt-1 text-sm leading-relaxed dark:text-white/70">
                           {insight.description}
                         </p>
                       </div>
@@ -1308,7 +1382,7 @@ export default function AdminDashboardPage() {
                   );
                 })
               ) : (
-                <div className="rounded-lg border border-border/40 bg-card/60 p-4 text-sm text-muted-foreground dark:border-white/10 dark:bg-black/30 dark:text-white/70">
+                <div className="border-border/40 bg-card/60 text-muted-foreground rounded-lg border p-4 text-sm dark:border-white/10 dark:bg-black/30 dark:text-white/70">
                   As you start trading AI will start giving AI suggestions.
                 </div>
               )}
@@ -1318,9 +1392,8 @@ export default function AdminDashboardPage() {
 
         {/* Right Column: Actions & Recent (1/3 width) */}
         <div className="space-y-8">
-
           {/* Trading Plan Summary */}
-          <Card className="border-border/40 bg-card/70 backdrop-blur-md transition-colors hover:bg-card/80 dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
+          <Card className="border-border/40 bg-card/70 hover:bg-card/80 backdrop-blur-md transition-colors dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-base">
@@ -1331,51 +1404,56 @@ export default function AdminDashboardPage() {
                   variant="secondary"
                   className="bg-orange-500/10 text-orange-700 hover:bg-orange-500/20 dark:text-orange-300"
                 >
-                  {(tradingPlanSummary?.kpis.adherencePct ?? tradingPlanKpis.adherencePct)}% adherence
+                  {tradingPlanSummary?.kpis.adherencePct ??
+                    tradingPlanKpis.adherencePct}
+                  % adherence
                 </Badge>
               </div>
               <CardDescription className="text-foreground/60">
-                Monitor rules, risk, and consistency (separate from platform dashboard).
+                Monitor rules, risk, and consistency (separate from platform
+                dashboard).
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="rounded-lg border border-border/40 bg-background/70 p-3">
+              <div className="border-border/40 bg-background/70 rounded-lg border p-3">
                 {tradingPlanSummary ? (
                   <>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-foreground/60">Plan</span>
-                      <span className="font-semibold text-foreground/90">
+                      <span className="text-foreground/90 font-semibold">
                         {tradingPlanSummary.version}
                       </span>
                     </div>
-                    <div className="mt-2 text-sm font-semibold text-foreground">
+                    <div className="text-foreground mt-2 text-sm font-semibold">
                       {tradingPlanSummary.name}
                     </div>
-                    <div className="mt-2 grid grid-cols-3 gap-2 text-[11px] text-foreground/60">
-                      <div className="rounded-md border border-border/40 bg-card/60 p-2 dark:border-white/10 dark:bg-white/3">
-                        <div className="text-foreground/60">Violations (7d)</div>
-                        <div className="mt-1 font-semibold text-foreground/90 tabular-nums">
+                    <div className="text-foreground/60 mt-2 grid grid-cols-3 gap-2 text-[11px]">
+                      <div className="border-border/40 bg-card/60 rounded-md border p-2 dark:border-white/10 dark:bg-white/3">
+                        <div className="text-foreground/60">
+                          Violations (7d)
+                        </div>
+                        <div className="text-foreground/90 mt-1 font-semibold tabular-nums">
                           {tradingPlanSummary.kpis.violations7d}
                         </div>
                       </div>
-                      <div className="rounded-md border border-border/40 bg-card/60 p-2 dark:border-white/10 dark:bg-white/3">
+                      <div className="border-border/40 bg-card/60 rounded-md border p-2 dark:border-white/10 dark:bg-white/3">
                         <div className="text-foreground/60">Avg risk</div>
-                        <div className="mt-1 font-semibold text-foreground/90 tabular-nums">
+                        <div className="text-foreground/90 mt-1 font-semibold tabular-nums">
                           {tradingPlanSummary.kpis.avgRiskPerTradePct7d}%
                         </div>
                       </div>
-                      <div className="rounded-md border border-border/40 bg-card/60 p-2 dark:border-white/10 dark:bg-white/3">
+                      <div className="border-border/40 bg-card/60 rounded-md border p-2 dark:border-white/10 dark:bg-white/3">
                         <div className="text-foreground/60">Journal</div>
-                        <div className="mt-1 font-semibold text-foreground/90 tabular-nums">
+                        <div className="text-foreground/90 mt-1 font-semibold tabular-nums">
                           {tradingPlanSummary.kpis.journalCompliancePct}%
                         </div>
                       </div>
                     </div>
                   </>
                 ) : (
-                  <div className="text-sm text-foreground/70">
-                    You don’t have a trading plan yet. Create your first plan to start tracking
-                    consistency.
+                  <div className="text-foreground/70 text-sm">
+                    You don’t have a trading plan yet. Create your first plan to
+                    start tracking consistency.
                   </div>
                 )}
               </div>
@@ -1385,7 +1463,9 @@ export default function AdminDashboardPage() {
                 className="w-full border-0 bg-orange-600 text-white hover:bg-orange-700"
               >
                 <Link href="/admin/tradingplan">
-                  {tradingPlanSummary ? "Open Trading Plan" : "Create Trading Plan"}
+                  {tradingPlanSummary
+                    ? "Open Trading Plan"
+                    : "Create Trading Plan"}
                   <ArrowUpRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
