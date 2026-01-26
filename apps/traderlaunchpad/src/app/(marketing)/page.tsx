@@ -1,4 +1,17 @@
 import {
+  AppleLogo,
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  Card,
+  ContainerScroll,
+  FlipWords,
+  GooglePlayLogo,
+  OrbitingCircles,
+  ShineBorder,
+  TextGenerateEffect,
+} from "@acme/ui";
+import {
   ArrowRight,
   BarChart3,
   Globe,
@@ -9,21 +22,12 @@ import {
   Webhook,
 } from "lucide-react";
 import {
-  AppleLogo,
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Card,
-  ContainerScroll,
-  FlipWords,
-  GooglePlayLogo,
-  OrbitingCircles,
-  TextGenerateEffect,
-} from "@acme/ui";
-import { demoBrokers, demoPropFirms, demoPublicProfiles } from "@acme/demo-data";
+  demoBrokers,
+  demoPropFirms,
+  demoPublicProfiles,
+} from "@acme/demo-data";
 
 import { BrokersPlatformsHoverAnimation } from "../../components/landing/BrokersPlatformsHoverAnimation";
-import { Button } from "@acme/ui/moving-border";
 import { DarkOnly } from "~/components/theme/DarkOnly";
 import { IphoneInteractiveHint } from "../../components/landing/IphoneInteractiveHint";
 import { IphoneNotificationDemo } from "../../components/landing/IphoneNotificationDemo";
@@ -34,6 +38,7 @@ import { PricingSection } from "../../components/landing/PricingSection";
 import React from "react";
 import { SpinningSphere } from "~/components/landing/SpinningSphere";
 import { StrategyBuilderAnimation } from "../../components/landing/StrategyBuilderAnimation";
+import { HeroCtaInstallBlock } from "../../components/landing/HeroCtaInstallBlock";
 import { ThemeAwareSafariPreview } from "../../components/landing/ThemeAwareSafariPreview";
 import { auth } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
@@ -81,9 +86,8 @@ export default async function HomePage() {
   const _topFirms = [...firms].sort((a, b) => b.rating - a.rating).slice(0, 10);
 
   return (
-    <div className="relative min-h-screen text-foreground selection:bg-orange-500/30">
+    <div className="text-foreground relative min-h-screen selection:bg-orange-500/30">
       <main className="relative z-10 pt-5">
-
         {/* Hero Section */}
         <section className="relative container mx-auto max-w-7xl px-4 text-center">
           {isMobileUa ? (
@@ -92,7 +96,33 @@ export default async function HomePage() {
               <div className="mx-auto w-fit rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-1.5 text-xs font-medium text-black backdrop-blur-sm dark:text-orange-200">
                 Free Trading Journal and AI Powered Analytics
               </div>
-              <h1 className="mx-auto max-w-5xl text-5xl font-bold tracking-tight leading-[0.95] md:text-7xl lg:text-8xl">
+              <div className="mb-12 flex flex-wrap items-center justify-center gap-3 text-xs font-semibold">
+                <Link
+                  href="#"
+                  className="border-foreground/15 bg-foreground/5 text-foreground/80 hover:bg-foreground/10 hover:text-foreground inline-flex items-center gap-2 rounded-xl border px-4 py-2 backdrop-blur-sm transition"
+                >
+                  <AppleLogo size={26} color="currentColor" />
+                  <div className="flex flex-col">
+                    <span className="text-foreground/50 text-[10px] font-medium tracking-[0.2em]">
+                      AVAILABLE ON
+                    </span>
+                    <span className="text-lg font-semibold">iOS App Store</span>
+                  </div>
+                </Link>
+                <Link
+                  href="#"
+                  className="border-foreground/15 bg-foreground/5 text-foreground/80 hover:bg-foreground/10 hover:text-foreground inline-flex items-center gap-2 rounded-xl border px-4 py-2 backdrop-blur-sm transition"
+                >
+                  <GooglePlayLogo size={26} color="currentColor" />
+                  <div className="flex flex-col">
+                    <span className="text-foreground/50 text-[10px] font-medium tracking-[0.2em]">
+                      GET IT ON
+                    </span>
+                    <span className="text-lg font-semibold">Google Play</span>
+                  </div>
+                </Link>
+              </div>
+              <h1 className="mx-auto max-w-5xl text-5xl leading-[0.95] font-bold tracking-tight md:text-7xl lg:text-8xl">
                 <span className="block leading-none">
                   {/* <GlassTitle
                     text="Mission Control"
@@ -101,55 +131,86 @@ export default async function HomePage() {
                   Mission Control
                 </span>
                 <div className="mx-auto mt-3 mb-3 flex items-center justify-center gap-4 md:mt-4 md:mb-4">
-                  <div className="h-px w-12 bg-linear-to-r from-transparent to-foreground/30 md:w-24" />
-                  <span className="relative font-mono text-xs font-medium tracking-[0.5em] text-foreground/50 md:text-sm">
+                  <div className="to-foreground/30 h-px w-12 bg-linear-to-r from-transparent md:w-24" />
+                  <span className="text-foreground/50 relative font-mono text-xs font-medium tracking-[0.5em] md:text-sm">
                     FOR
                   </span>
-                  <div className="h-px w-12 bg-linear-to-l from-transparent to-foreground/30 md:w-24" />
+                  <div className="to-foreground/30 h-px w-12 bg-linear-to-l from-transparent md:w-24" />
                 </div>
                 <span className="block leading-none">Trading Communities</span>
               </h1>
 
-              <p className="mx-auto mt-6 max-w-2xl text-center text-lg font-medium text-muted-foreground md:text-xl">
+              <p className="text-muted-foreground mx-auto mt-6 max-w-2xl text-center text-lg font-medium md:text-xl">
                 Turn trades into a plan—AI insights, reminders, and
                 broker-connected analytics so you trade with confidence.
               </p>
 
               <div className="mt-12 mb-6 flex justify-center">
                 <Link href={primaryCtaHref} className="inline-block">
-                  <Button
-                    as="div"
-                    borderRadius="1.75rem"
-                    containerClassName="h-14 w-auto min-w-[200px]"
-                    className="bg-white text-black text-lg font-bold border-neutral-200 dark:border-slate-800 transition-transform hover:scale-105 cursor-pointer"
-                  >
-                    <span className="flex w-full items-center justify-between gap-4 px-2">
+                  <span className="relative inline-flex h-14 min-w-[200px] items-center justify-center rounded-[1.75rem] border border-neutral-200 bg-white text-lg font-bold text-black transition-transform hover:scale-105 dark:border-slate-800">
+                    <ShineBorder
+                      borderWidth={2}
+                      duration={12}
+                      shineColor={["#f97316", "#fb923c", "#f97316"]}
+                      className="rounded-[inherit]"
+                    />
+                    <span className="relative z-10 flex w-full items-center justify-between gap-4 px-2">
                       <span className="w-full">{primaryCtaLabel}</span>
                       <span className="flex min-h-8 min-w-8 items-center justify-center rounded-full bg-black text-white">
                         <ArrowRight className="h-4 w-4" />
                       </span>
                     </span>
-                  </Button>
+                  </span>
                 </Link>
+                <div className="mb-12 flex flex-wrap items-center justify-center gap-3 text-xs font-semibold">
+                  <Link
+                    href="#"
+                    className="w-48 border-foreground/15 bg-foreground/5 text-foreground/80 hover:bg-foreground/10 hover:text-foreground inline-flex items-center gap-2 rounded-xl border px-4 py-2 backdrop-blur-sm transition"
+                  >
+                    <AppleLogo size={26} color="currentColor" />
+                    <div className="flex flex-col justify-center items-center">
+                      <span className="text-foreground/50 text-[10px] font-medium tracking-[0.2em]">
+                        AVAILABLE ON
+                      </span>
+                      <span className="text-lg font-semibold">
+                        iOS App Store
+                      </span>
+                    </div>
+                  </Link>
+                  <Link
+                    href="#"
+                    className="w-48 border-foreground/15 bg-foreground/5 text-foreground/80 hover:bg-foreground/10 hover:text-foreground inline-flex items-center gap-2 rounded-xl border px-4 py-2 backdrop-blur-sm transition"
+                  >
+                    <GooglePlayLogo size={26} color="currentColor" />
+                    <div className="flex w-full flex-col justify-center items-center">
+                      <span className="text-foreground/50 text-[10px] font-medium tracking-[0.2em]">
+                        GET IT ON
+                      </span>
+                      <span className="text-lg font-semibold">
+                        Google Play
+                      </span>
+                    </div>
+                  </Link>
+                </div>
               </div>
 
               <div className="mb-12 flex flex-wrap items-center justify-center gap-3 text-xs font-semibold">
                 <Link
                   href="#"
-                  className="inline-flex items-center gap-2 rounded-xl border border-foreground/15 bg-foreground/5 px-4 py-2 text-foreground/80 backdrop-blur-sm transition hover:bg-foreground/10 hover:text-foreground"
+                  className="border-foreground/15 bg-foreground/5 text-foreground/80 hover:bg-foreground/10 hover:text-foreground inline-flex items-center gap-2 rounded-xl border px-4 py-2 backdrop-blur-sm transition"
                 >
                   <AppleLogo size={16} color="currentColor" />
-                  <span className="text-[10px] font-medium tracking-[0.2em] text-foreground/50">
+                  <span className="text-foreground/50 text-[10px] font-medium tracking-[0.2em]">
                     AVAILABLE ON
                   </span>
                   <span className="text-sm font-semibold">iOS App Store</span>
                 </Link>
                 <Link
                   href="#"
-                  className="inline-flex items-center gap-2 rounded-xl border border-foreground/15 bg-foreground/5 px-4 py-2 text-foreground/80 backdrop-blur-sm transition hover:bg-foreground/10 hover:text-foreground"
+                  className="border-foreground/15 bg-foreground/5 text-foreground/80 hover:bg-foreground/10 hover:text-foreground inline-flex items-center gap-2 rounded-xl border px-4 py-2 backdrop-blur-sm transition"
                 >
                   <GooglePlayLogo size={16} color="currentColor" />
-                  <span className="text-[10px] font-medium tracking-[0.2em] text-foreground/50">
+                  <span className="text-foreground/50 text-[10px] font-medium tracking-[0.2em]">
                     GET IT ON
                   </span>
                   <span className="text-sm font-semibold">Google Play</span>
@@ -180,10 +241,19 @@ export default async function HomePage() {
               <ContainerScroll
                 titleComponent={
                   <>
-                    <div className="mx-auto w-fit rounded-full border border-orange-500/30 bg-orange-500/10 mb-10 px-4 py-1.5 text-xs font-medium text-black backdrop-blur-sm dark:text-orange-200">
-                      Free Trading Journal and AI Powered Analytics
+                    <div>
+                      <div className="relative mx-auto mb-2 w-fit rounded-full bg-orange-500/10 px-4 py-1.5 text-xs font-medium text-black backdrop-blur-sm dark:text-orange-200">
+                        <ShineBorder
+                          borderWidth={1}
+                          duration={12}
+                          shineColor={["#f97316", "#fb923c", "#f97316"]}
+                          className="rounded-full"
+                        />
+                        Free Trading Journal and AI Powered Analytics
+                      </div>
+
                     </div>
-                    <h1 className="mx-auto max-w-5xl text-5xl font-bold tracking-tight leading-[0.95] md:text-7xl lg:text-7xl">
+                    <h1 className="mx-auto max-w-5xl text-5xl leading-[0.95] font-bold tracking-tight md:text-7xl lg:text-7xl">
                       <span className="block leading-none">
                         {/* <GlassTitle
                           text="Mission Control"
@@ -192,11 +262,11 @@ export default async function HomePage() {
                         Mission Control
                       </span>
                       <div className="mx-auto mt-3 mb-3 flex items-center justify-center gap-4 md:mt-4 md:mb-4">
-                        <div className="h-px w-12 bg-linear-to-r from-transparent to-foreground/30 md:w-24" />
-                        <span className="relative font-mono text-xs font-medium tracking-[0.5em] text-foreground/50 md:text-sm">
+                        <div className="to-foreground/30 h-px w-12 bg-linear-to-r from-transparent md:w-24" />
+                        <span className="text-foreground/50 relative font-mono text-xs font-medium tracking-[0.5em] md:text-sm">
                           FOR
                         </span>
-                        <div className="h-px w-12 bg-linear-to-l from-transparent to-foreground/30 md:w-24" />
+                        <div className="to-foreground/30 h-px w-12 bg-linear-to-l from-transparent md:w-24" />
                       </div>
                       <span className="block leading-none">
                         <FlipWords
@@ -221,46 +291,10 @@ export default async function HomePage() {
                       duration={0.6}
                     />
 
-                    <div className="mt-12 mb-6 flex justify-center">
-                      <Link href={primaryCtaHref} className="inline-block">
-                        <Button
-                          as="div"
-                          borderRadius="1.75rem"
-                          containerClassName="h-14 w-auto min-w-[200px]"
-                          className="bg-white text-black text-lg font-bold border-neutral-200 dark:border-slate-800 transition-transform hover:scale-105 cursor-pointer"
-                        >
-                          <span className="flex w-full items-center justify-between gap-4 px-2">
-                            <span className="w-full">{primaryCtaLabel}</span>
-                            <span className="flex min-h-8 min-w-8 items-center justify-center rounded-full bg-black text-white">
-                              <ArrowRight className="h-4 w-4" />
-                            </span>
-                          </span>
-                        </Button>
-                      </Link>
-                    </div>
-
-                    <div className="mb-12 flex flex-wrap items-center justify-center gap-3 text-xs font-semibold">
-                      <Link
-                        href="#"
-                        className="inline-flex items-center gap-2 rounded-xl border border-foreground/15 bg-foreground/5 px-4 py-2 text-foreground/80 backdrop-blur-sm transition hover:bg-foreground/10 hover:text-foreground"
-                      >
-                        <AppleLogo size={16} color="currentColor" />
-                        <span className="text-[10px] font-medium tracking-[0.2em] text-foreground/50">
-                          AVAILABLE ON
-                        </span>
-                        <span className="text-sm font-semibold">iOS App Store</span>
-                      </Link>
-                      <Link
-                        href="#"
-                        className="inline-flex items-center gap-2 rounded-xl border border-foreground/15 bg-foreground/5 px-4 py-2 text-foreground/80 backdrop-blur-sm transition hover:bg-foreground/10 hover:text-foreground"
-                      >
-                        <GooglePlayLogo size={16} color="currentColor" />
-                        <span className="text-[10px] font-medium tracking-[0.2em] text-foreground/50">
-                          GET IT ON
-                        </span>
-                        <span className="text-sm font-semibold">Google Play</span>
-                      </Link>
-                    </div>
+                    <HeroCtaInstallBlock
+                      primaryCtaHref={primaryCtaHref}
+                      primaryCtaLabel={primaryCtaLabel}
+                    />
                   </>
                 }
               >
@@ -286,8 +320,8 @@ export default async function HomePage() {
         </section>
 
         {/* Logo Ticker */}
-        <section className="relative container mx-auto mt-20 pt-10 max-w-7xl px-4 md:mt-32">
-          <p className="mb-8 text-center text-sm font-medium text-muted-foreground">
+        <section className="relative container mx-auto mt-20 max-w-7xl px-4 pt-10 md:mt-32">
+          <p className="text-muted-foreground mb-8 text-center text-sm font-medium">
             Members of the fleet
           </p>
           {isMobileUa ? (
@@ -296,16 +330,16 @@ export default async function HomePage() {
                 <Link
                   key={p.id}
                   href={`/u/${encodeURIComponent(p.username)}`}
-                  className="flex items-center gap-3 rounded-full border border-foreground/10 bg-foreground/5 px-3 py-2 text-sm font-medium text-foreground/90 backdrop-blur-md"
+                  className="border-foreground/10 bg-foreground/5 text-foreground/90 flex items-center gap-3 rounded-full border px-3 py-2 text-sm font-medium backdrop-blur-md"
                 >
-                  <Avatar className="h-7 w-7 border border-foreground/10">
+                  <Avatar className="border-foreground/10 h-7 w-7 border">
                     <AvatarImage src={p.avatarUrl} alt={p.username} />
-                    <AvatarFallback className="bg-foreground/10 text-[11px] text-foreground/80">
+                    <AvatarFallback className="bg-foreground/10 text-foreground/80 text-[11px]">
                       {p.username.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <span className="font-semibold">{p.username}</span>
-                  <span className="hidden text-[11px] text-foreground/55 md:inline">
+                  <span className="text-foreground/55 hidden text-[11px] md:inline">
                     {p.headline ?? "Public journal"}
                   </span>
                 </Link>
@@ -314,23 +348,23 @@ export default async function HomePage() {
           ) : (
             <Marquee
               pauseOnHover
-              className="mx-auto max-w-5xl opacity-50 grayscale transition-all duration-500 hover:opacity-100 hover:grayscale-0 [--duration:48s] [--gap:4rem]"
+              className="mx-auto max-w-5xl opacity-50 grayscale transition-all duration-500 [--duration:48s] [--gap:4rem] hover:opacity-100 hover:grayscale-0"
               repeat={3}
             >
               {publicProfiles.map((p) => (
                 <Link
                   key={p.id}
                   href={`/u/${encodeURIComponent(p.username)}`}
-                  className="flex items-center gap-3 rounded-full border border-foreground/10 bg-foreground/5 px-3 py-2 text-sm font-medium text-foreground/90 backdrop-blur-md"
+                  className="border-foreground/10 bg-foreground/5 text-foreground/90 flex items-center gap-3 rounded-full border px-3 py-2 text-sm font-medium backdrop-blur-md"
                 >
-                  <Avatar className="h-7 w-7 border border-foreground/10">
+                  <Avatar className="border-foreground/10 h-7 w-7 border">
                     <AvatarImage src={p.avatarUrl} alt={p.username} />
-                    <AvatarFallback className="bg-foreground/10 text-[11px] text-foreground/80">
+                    <AvatarFallback className="bg-foreground/10 text-foreground/80 text-[11px]">
                       {p.username.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <span className="font-semibold">{p.username}</span>
-                  <span className="hidden text-[11px] text-foreground/55 md:inline">
+                  <span className="text-foreground/55 hidden text-[11px] md:inline">
                     {p.headline ?? "Public journal"}
                   </span>
                 </Link>
@@ -349,17 +383,17 @@ export default async function HomePage() {
 
         <section
           id="features"
-          className="relative container mx-auto mt-24 mb-24 max-w-7xl px-4 scroll-mt-24 md:mt-32"
+          className="relative container mx-auto mt-24 mb-24 max-w-7xl scroll-mt-24 px-4 md:mt-32"
         >
           {/* Bottom Grid */}
           <div className="grid gap-6 md:grid-cols-3">
             {/* Large Card: Trading Plan Builder */}
-            <Card className="col-span-1 flex flex-col justify-between overflow-hidden rounded-3xl border border-foreground/10 bg-foreground/3 p-8 backdrop-blur-md transition-colors duration-300 hover:border-foreground/20 hover:bg-foreground/6 md:col-span-2">
+            <Card className="border-foreground/10 bg-foreground/3 hover:border-foreground/20 hover:bg-foreground/6 col-span-1 flex flex-col justify-between overflow-hidden rounded-3xl border p-8 backdrop-blur-md transition-colors duration-300 md:col-span-2">
               <div>
-                <h3 className="text-xl font-semibold text-foreground">
+                <h3 className="text-foreground text-xl font-semibold">
                   AI Strategy Builder + Trading Plan
                 </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="text-muted-foreground mt-2 text-sm">
                   Start from proven templates, tune risk rules, and turn your
                   journal data into a plan with clear “when to trade / when to
                   stop” guardrails.
@@ -367,7 +401,7 @@ export default async function HomePage() {
               </div>
 
               {isMobileUa ? (
-                <div className="mt-8 rounded-2xl border border-foreground/10 bg-foreground/5 p-6 text-sm text-foreground/70 backdrop-blur-sm">
+                <div className="border-foreground/10 bg-foreground/5 text-foreground/70 mt-8 rounded-2xl border p-6 text-sm backdrop-blur-sm">
                   Strategy builder preview (mobile-optimized).
                 </div>
               ) : (
@@ -376,39 +410,39 @@ export default async function HomePage() {
             </Card>
 
             {/* Small Card: Broker Coverage */}
-            <Card className="col-span-1 overflow-hidden rounded-3xl border border-foreground/10 bg-foreground/3 p-8 backdrop-blur-md transition-colors duration-300 hover:border-foreground/20 hover:bg-foreground/6">
-              <h3 className="text-xl font-semibold text-foreground">
+            <Card className="border-foreground/10 bg-foreground/3 hover:border-foreground/20 hover:bg-foreground/6 col-span-1 overflow-hidden rounded-3xl border p-8 backdrop-blur-md transition-colors duration-300">
+              <h3 className="text-foreground text-xl font-semibold">
                 Brokers & Platforms
               </h3>
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p className="text-muted-foreground mt-2 text-sm">
                 Plug into your broker to pull trades, track outcomes, and power
                 recommendations.
               </p>
 
               {isMobileUa ? (
-                <div className="mt-6 rounded-2xl border border-foreground/10 bg-foreground/5 p-4 text-xs text-foreground/60 backdrop-blur-sm">
+                <div className="border-foreground/10 bg-foreground/5 text-foreground/60 mt-6 rounded-2xl border p-4 text-xs backdrop-blur-sm">
                   Broker preview (mobile-optimized).
                 </div>
               ) : (
                 <BrokersPlatformsHoverAnimation />
               )}
-              <div className="mt-4 text-xs text-muted-foreground">
+              <div className="text-muted-foreground mt-4 text-xs">
                 + Discord alerts, webhooks, and automation events.
               </div>
             </Card>
 
             {/* Small Card: Integrations */}
-            <Card className="group col-span-1 flex flex-col justify-between overflow-hidden rounded-3xl border border-foreground/10 bg-foreground/3 p-8 backdrop-blur-md transition-colors duration-300 hover:border-foreground/20 hover:bg-foreground/6">
+            <Card className="group border-foreground/10 bg-foreground/3 hover:border-foreground/20 hover:bg-foreground/6 col-span-1 flex flex-col justify-between overflow-hidden rounded-3xl border p-8 backdrop-blur-md transition-colors duration-300">
               <div>
-                <h3 className="text-xl font-semibold text-foreground">
+                <h3 className="text-foreground text-xl font-semibold">
                   Discord + Automations
                 </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="text-muted-foreground mt-2 text-sm">
                   Pipe signals into Discord, trigger webhooks, and connect your
                   stack so your plan stays actionable.
                 </p>
               </div>
-              <div className="relative mt-6 overflow-hidden rounded-2xl border border-foreground/10 bg-foreground/3 p-4">
+              <div className="border-foreground/10 bg-foreground/3 relative mt-6 overflow-hidden rounded-2xl border p-4">
                 {/* orange corner glow + arcs */}
                 <div className="pointer-events-none absolute -bottom-28 -left-28 h-80 w-80 rounded-full bg-orange-600/35 blur-[80px]" />
                 <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-[conic-gradient(from_210deg,rgba(249,115,22,0.55),rgba(249,115,22,0.12)_35%,rgba(249,115,22,0)_65%,rgba(249,115,22,0.25))] opacity-70 blur-[0px]" />
@@ -448,7 +482,7 @@ export default async function HomePage() {
                     <div className="absolute inset-12 rounded-full border border-orange-500/12" />
 
                     {/* Subtle dashed HUD ring */}
-                    <div className="absolute inset-9 rounded-full border border-orange-500/10 border-dashed opacity-60" />
+                    <div className="absolute inset-9 rounded-full border border-dashed border-orange-500/10 opacity-60" />
                   </div>
                 </div>
 
@@ -457,7 +491,9 @@ export default async function HomePage() {
                   {isMobileUa ? (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-orange-600 shadow-[0_0_30px_rgba(249,115,22,0.45)]">
-                        <span className="text-xs font-semibold text-white">TLP</span>
+                        <span className="text-xs font-semibold text-white">
+                          TLP
+                        </span>
                       </div>
                     </div>
                   ) : (
@@ -470,7 +506,12 @@ export default async function HomePage() {
 
                       {/* Orbiting chips */}
                       <div className="absolute inset-0">
-                        <OrbitingCircles radius={112} duration={24} iconSize={44} speed={1}>
+                        <OrbitingCircles
+                          radius={112}
+                          duration={24}
+                          iconSize={44}
+                          speed={1}
+                        >
                           <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-[0_14px_30px_rgba(0,0,0,0.35)] ring-1 ring-black/10">
                             <MessageSquare className="h-5 w-5 text-black/70" />
                           </div>
@@ -511,7 +552,7 @@ export default async function HomePage() {
             <Card className="col-span-1 overflow-hidden rounded-3xl border border-white/10 bg-white/3 p-8 backdrop-blur-md transition-colors duration-300 hover:border-white/20 hover:bg-white/6 md:col-span-2">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                 <div className="mb-6 md:mb-0 md:max-w-xs">
-                  <h3 className="text-xl font-semibold text-foreground">
+                  <h3 className="text-foreground text-xl font-semibold">
                     Journal Analytics that drive decisions
                   </h3>
                   <p className="mt-2 text-sm text-gray-400">
@@ -529,8 +570,6 @@ export default async function HomePage() {
                 <JournalAnalyticsAnimation />
               )}
             </Card>
-
-
           </div>
         </section>
 
@@ -541,7 +580,7 @@ export default async function HomePage() {
             {isMobileUa ? null : (
               <>
                 <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-orange-600/15 blur-[120px]" />
-                <div className="pointer-events-none absolute -bottom-32 -right-24 h-96 w-96 rounded-full bg-orange-500/10 blur-[140px]" />
+                <div className="pointer-events-none absolute -right-24 -bottom-32 h-96 w-96 rounded-full bg-orange-500/10 blur-[140px]" />
               </>
             )}
 
@@ -556,49 +595,48 @@ export default async function HomePage() {
                   AI insights & reminders
                 </div>
 
-                <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+                <h2 className="text-foreground text-3xl font-bold tracking-tight md:text-4xl">
                   Get nudges at the exact moment you need them
                 </h2>
-                <p className="mt-4 max-w-xl text-base text-muted-foreground">
+                <p className="text-muted-foreground mt-4 max-w-xl text-base">
                   Personalized notifications based on your plan: best trading
-                  window, edge days, risk limits, and “stop trading” alerts.
-                  Tap a notification to open details—or “launch” the app view.
+                  window, edge days, risk limits, and “stop trading” alerts. Tap
+                  a notification to open details—or “launch” the app view.
                 </p>
 
                 <div className="mt-7 flex flex-wrap items-center gap-3">
                   <Link href={primaryCtaHref} className="inline-block">
-                    <Button
-                      as="div"
-                      borderRadius="1.75rem"
-                      containerClassName="h-12 w-auto min-w-[160px]"
-                      className="bg-white text-black font-medium border-neutral-200 dark:border-slate-800 cursor-pointer"
-                    >
-                      {primaryCtaLabel} <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
+                    <span className="relative inline-flex h-12 min-w-40 items-center justify-center rounded-[1.75rem] border border-neutral-200 bg-white px-5 font-medium text-black dark:border-slate-800">
+                      <ShineBorder
+                        borderWidth={4}
+                        duration={12}
+                        shineColor={["#f97316", "#fb923c", "#f97316"]}
+                        className="rounded-[inherit]"
+                      />
+                      <span className="relative z-10 flex items-center">
+                        {primaryCtaLabel}{" "}
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </span>
+                    </span>
                   </Link>
                   <Link href="/admin/dashboard" className="inline-block">
-                    <Button
-                      as="div"
-                      borderRadius="1.75rem"
-                      containerClassName="h-12 w-auto min-w-[180px]"
-                      className="bg-transparent text-foreground border-foreground/20 hover:bg-foreground/5 cursor-pointer"
-                    >
+                    <span className="border-foreground/20 text-foreground hover:bg-foreground/5 inline-flex h-12 min-w-[180px] items-center justify-center rounded-[1.75rem] border bg-transparent px-5 font-medium transition">
                       View dashboard demo
-                    </Button>
+                    </span>
                   </Link>
                 </div>
 
                 <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-foreground/10 bg-foreground/5 p-4 text-sm text-foreground/70 backdrop-blur-sm">
-                    <div className="text-xs font-semibold text-foreground/80">
+                  <div className="border-foreground/10 bg-foreground/5 text-foreground/70 rounded-2xl border p-4 text-sm backdrop-blur-sm">
+                    <div className="text-foreground/80 text-xs font-semibold">
                       Plan violations
                     </div>
                     <div className="mt-1 text-[13px] leading-snug">
                       “Violating Trading Plan” alerts when you break your rules.
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-foreground/10 bg-foreground/5 p-4 text-sm text-foreground/70 backdrop-blur-sm">
-                    <div className="text-xs font-semibold text-foreground/80">
+                  <div className="border-foreground/10 bg-foreground/5 text-foreground/70 rounded-2xl border p-4 text-sm backdrop-blur-sm">
+                    <div className="text-foreground/80 text-xs font-semibold">
                       Edge reminders
                     </div>
                     <div className="mt-1 text-[13px] leading-snug">
@@ -610,13 +648,14 @@ export default async function HomePage() {
 
               <div className="relative flex justify-center lg:justify-end">
                 {isMobileUa ? (
-                  <div className="rounded-3xl border border-foreground/10 bg-foreground/5 p-8 text-sm text-foreground/70 backdrop-blur-sm">
-                    iPhone notification demo is disabled on mobile for performance.
+                  <div className="border-foreground/10 bg-foreground/5 text-foreground/70 rounded-3xl border p-8 text-sm backdrop-blur-sm">
+                    iPhone notification demo is disabled on mobile for
+                    performance.
                   </div>
                 ) : (
                   <div className="relative">
                     <IphoneInteractiveHint className="top-14 right-full mr-3 hidden lg:block" />
-                    <div className="pointer-events-none absolute -top-2 left-1/2 z-20 -translate-x-1/2 rounded-full border border-foreground/10 bg-foreground/5 px-3 py-1 text-[11px] font-medium text-foreground/70 backdrop-blur-md">
+                    <div className="border-foreground/10 bg-foreground/5 text-foreground/70 pointer-events-none absolute -top-2 left-1/2 z-20 -translate-x-1/2 rounded-full border px-3 py-1 text-[11px] font-medium backdrop-blur-md">
                       <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-orange-500/80 shadow-[0_0_10px_rgba(249,115,22,0.45)]" />
                       Tap a notification
                     </div>
@@ -628,13 +667,8 @@ export default async function HomePage() {
           </Card>
         </section>
 
-
-
-
         <PricingSection />
-
-
-      </main >
-    </div >
+      </main>
+    </div>
   );
 }

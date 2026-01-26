@@ -1,17 +1,10 @@
 "use client";
 
 import * as React from "react";
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@acme/ui";
+import { Button, Dialog, DialogContent, DialogTrigger } from "@acme/ui";
 
 import { useAddToHomeScreen } from "./useAddToHomeScreen";
+import { InstallHowTo } from "./InstallHowTo";
 
 export type AddToHomeScreenHeaderButtonProps = {
   appName?: string;
@@ -35,9 +28,6 @@ export const AddToHomeScreenHeaderButton = ({
   const [isInstalling, setIsInstalling] = React.useState(false);
 
   if (isStandalone) return null;
-
-  const iosInstructions = `To install ${appName} on iOS, tap the Share button in Safari, then “Add to Home Screen”.`;
-  const desktopInstructions = `To install ${appName}, use your browser’s “Install app” option (or enable install prompts for this site).`;
 
   const handleInstall = async () => {
     if (isInstalling) return;
@@ -67,11 +57,12 @@ export const AddToHomeScreenHeaderButton = ({
             {buttonLabel}
           </Button>
         </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Install {appName}</DialogTitle>
-            <DialogDescription>{iosInstructions}</DialogDescription>
-          </DialogHeader>
+        <DialogContent className="max-w-md">
+          <InstallHowTo
+            appName={appName}
+            isIOS={isIOS}
+            canPromptInstall={canPromptInstall}
+          />
         </DialogContent>
       </Dialog>
     );
@@ -91,11 +82,12 @@ export const AddToHomeScreenHeaderButton = ({
       </Button>
 
       {!canPromptInstall && (
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Install {appName}</DialogTitle>
-            <DialogDescription>{desktopInstructions}</DialogDescription>
-          </DialogHeader>
+        <DialogContent className="max-w-md">
+          <InstallHowTo
+            appName={appName}
+            isIOS={isIOS}
+            canPromptInstall={canPromptInstall}
+          />
         </DialogContent>
       )}
     </Dialog>

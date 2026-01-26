@@ -14,7 +14,7 @@ type AppleIconProps = {
 };
 
 const AppleIcon = ({
-  size = undefined,
+  size = 26,
   color = "#000000",
   strokeWidth = 2,
   background = "transparent",

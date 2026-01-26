@@ -46,6 +46,7 @@ export * from "./features-section";
 export * from "./orbiting-circles";
 export * from "./marquee";
 export * from "./image-crop";
+export * from "./shine-border";
 
 // UI micro-interactions (avoid name collisions with shadcn `Button`/`Card`)
 export { Button as MovingBorderButton, MovingBorder } from "./moving-border";
@@ -61,3 +62,4 @@ export * from "./dock";
 export * from "./warp-background";
 export { default as AppleLogo } from "./icons/apple-logo";
 export { default as GooglePlayLogo } from "./icons/google-logo";
+export { default as AndroidIcon } from "./icons/android-icon";
