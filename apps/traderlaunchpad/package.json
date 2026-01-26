@@ -54,6 +54,7 @@
     "date-fns": "4.1.0",
     "framer-motion": "^12.12.2",
     "jose": "5.9.6",
+    "launchthat-plugin-canvas": "workspace:*",
     "launchthat-plugin-core-tenant": "workspace:*",
     "launchthat-plugin-discord": "workspace:*",
     "launchthat-plugin-email": "workspace:*",

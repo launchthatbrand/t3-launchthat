@@ -11,10 +11,20 @@
 import { discordJson, discordMultipart } from "launchthat-plugin-discord/runtime/discordApi";
 
 import { PNG } from "pngjs";
+import {
+  drawDashedHLine,
+  drawLine,
+  drawText5x7,
+  drawTextLayerWithCanvas,
+  fillCircle,
+  fillRect,
+  hexToRgb,
+  ensureCanvasFonts,
+  tryGetCanvas,
+} from "launchthat-plugin-canvas";
+import type { TextOp } from "launchthat-plugin-canvas";
 import { env } from "../../../src/env";
 import { resolveOrgBotToken } from "launchthat-plugin-discord/runtime/credentials";
-import * as fs from "node:fs";
-import * as path from "node:path";
 
 // Avoid typed imports here (can cause TS deep instantiation errors).
 const components: any = require("../../_generated/api").components;
@@ -135,216 +145,7 @@ const movingAverage = (bars: Bar[], period: number): { t: number; value: number 
   }
   return out;
 };
-
-const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
-  const h = hex.replace("#", "").trim();
-  if (h.length === 3) {
-    const r1 = h.charAt(0) || "0";
-    const g1 = h.charAt(1) || "0";
-    const b1 = h.charAt(2) || "0";
-    const r = parseInt(r1 + r1, 16);
-    const g = parseInt(g1 + g1, 16);
-    const b = parseInt(b1 + b1, 16);
-    return { r, g, b };
-  }
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return { r, g, b };
-};
-
-const setPixel = (
-  img: PNG,
-  x: number,
-  y: number,
-  rgba: { r: number; g: number; b: number; a: number },
-) => {
-  if (x < 0 || y < 0 || x >= img.width || y >= img.height) return;
-  const idx = (img.width * y + x) << 2;
-  img.data[idx] = rgba.r;
-  img.data[idx + 1] = rgba.g;
-  img.data[idx + 2] = rgba.b;
-  img.data[idx + 3] = rgba.a;
-};
-
-const fillRect = (
-  img: PNG,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  rgba: { r: number; g: number; b: number; a: number },
-) => {
-  const x0 = Math.max(0, x);
-  const y0 = Math.max(0, y);
-  const x1 = Math.min(img.width, x + w);
-  const y1 = Math.min(img.height, y + h);
-  for (let yy = y0; yy < y1; yy++) {
-    for (let xx = x0; xx < x1; xx++) setPixel(img, xx, yy, rgba);
-  }
-};
-
-const drawLine = (
-  img: PNG,
-  x0: number,
-  y0: number,
-  x1: number,
-  y1: number,
-  rgba: { r: number; g: number; b: number; a: number },
-) => {
-  // Bresenham
-  let x = x0;
-  let y = y0;
-  const dx = Math.abs(x1 - x0);
-  const dy = -Math.abs(y1 - y0);
-  const sx = x0 < x1 ? 1 : -1;
-  const sy = y0 < y1 ? 1 : -1;
-  let err = dx + dy;
-  while (true) {
-    setPixel(img, x, y, rgba);
-    if (x === x1 && y === y1) break;
-    const e2 = 2 * err;
-    if (e2 >= dy) {
-      err += dy;
-      x += sx;
-    }
-    if (e2 <= dx) {
-      err += dx;
-      y += sy;
-    }
-  }
-};
-
-const drawDashedHLine = (args: {
-  img: PNG;
-  x0: number;
-  x1: number;
-  y: number;
-  dashPx: number;
-  gapPx: number;
-  rgba: { r: number; g: number; b: number; a: number };
-}) => {
-  const { img, x0, x1, y, rgba } = args;
-  const dashPx = Math.max(1, Math.floor(args.dashPx));
-  const gapPx = Math.max(0, Math.floor(args.gapPx));
-  const left = Math.min(x0, x1);
-  const right = Math.max(x0, x1);
-  let x = left;
-  while (x <= right) {
-    const segEnd = Math.min(right, x + dashPx);
-    drawLine(img, x, y, segEnd, y, rgba);
-    x = segEnd + gapPx;
-  }
-};
-
-const fillCircle = (
-  img: PNG,
-  cx: number,
-  cy: number,
-  r: number,
-  rgba: { r: number; g: number; b: number; a: number },
-) => {
-  const rr = r * r;
-  for (let y = -r; y <= r; y++) {
-    const yy = cy + y;
-    const xxSpan = Math.floor(Math.sqrt(Math.max(0, rr - y * y)));
-    for (let x = -xxSpan; x <= xxSpan; x++) {
-      setPixel(img, cx + x, yy, rgba);
-    }
-  }
-};
-
-// Minimal bitmap font (5x7) for axis labels (digits + a few symbols).
-// This keeps the PNG generator dependency-free (no canvas).
-const FONT_5x7: Record<string, string[]> = {
-  // Letters (uppercase)
-  A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
-  B: ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
-  C: ["01110", "10001", "10000", "10000", "10000", "10001", "01110"],
-  D: ["11110", "10001", "10001", "10001", "10001", "10001", "11110"],
-  E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
-  F: ["11111", "10000", "10000", "11110", "10000", "10000", "10000"],
-  G: ["01110", "10001", "10000", "10111", "10001", "10001", "01110"],
-  H: ["10001", "10001", "10001", "11111", "10001", "10001", "10001"],
-  I: ["01110", "00100", "00100", "00100", "00100", "00100", "01110"],
-  J: ["00111", "00010", "00010", "00010", "00010", "10010", "01100"],
-  K: ["10001", "10010", "10100", "11000", "10100", "10010", "10001"],
-  L: ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
-  M: ["10001", "11011", "10101", "10101", "10001", "10001", "10001"],
-  N: ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
-  O: ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
-  P: ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
-  Q: ["01110", "10001", "10001", "10001", "10101", "10010", "01101"],
-  R: ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
-  S: ["01111", "10000", "10000", "01110", "00001", "00001", "11110"],
-  T: ["11111", "00100", "00100", "00100", "00100", "00100", "00100"],
-  U: ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
-  V: ["10001", "10001", "10001", "10001", "10001", "01010", "00100"],
-  W: ["10001", "10001", "10001", "10101", "10101", "10101", "01010"],
-  X: ["10001", "10001", "01010", "00100", "01010", "10001", "10001"],
-  Y: ["10001", "10001", "01010", "00100", "00100", "00100", "00100"],
-  Z: ["11111", "00001", "00010", "00100", "01000", "10000", "11111"],
-
-  "0": ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
-  "1": ["00100", "01100", "00100", "00100", "00100", "00100", "01110"],
-  "2": ["01110", "10001", "00001", "00010", "00100", "01000", "11111"],
-  "3": ["01110", "10001", "00001", "00110", "00001", "10001", "01110"],
-  "4": ["00010", "00110", "01010", "10010", "11111", "00010", "00010"],
-  "5": ["11111", "10000", "11110", "00001", "00001", "10001", "01110"],
-  "6": ["00110", "01000", "10000", "11110", "10001", "10001", "01110"],
-  "7": ["11111", "00001", "00010", "00100", "01000", "01000", "01000"],
-  "8": ["01110", "10001", "10001", "01110", "10001", "10001", "01110"],
-  "9": ["01110", "10001", "10001", "01111", "00001", "00010", "01100"],
-  ".": ["00000", "00000", "00000", "00000", "00000", "00110", "00110"],
-  "-": ["00000", "00000", "00000", "11111", "00000", "00000", "00000"],
-  "/": ["00001", "00010", "00100", "01000", "10000", "00000", "00000"],
-  ":": ["00000", "00110", "00110", "00000", "00110", "00110", "00000"],
-  " ": ["00000", "00000", "00000", "00000", "00000", "00000", "00000"],
-};
-const BLANK_GLYPH = ["00000", "00000", "00000", "00000", "00000", "00000", "00000"];
-
-const drawChar5x7 = (
-  img: PNG,
-  ch: string,
-  x: number,
-  y: number,
-  scale: number,
-  rgba: { r: number; g: number; b: number; a: number },
-) => {
-  const glyph = FONT_5x7[ch] ?? BLANK_GLYPH;
-  const s = Math.max(1, Math.floor(scale));
-  for (let row = 0; row < glyph.length; row++) {
-    const line = glyph[row] ?? "";
-    for (let col = 0; col < line.length; col++) {
-      if (line.charAt(col) !== "1") continue;
-      fillRect(img, x + col * s, y + row * s, s, s, rgba);
-    }
-  }
-};
-
-// Bitmap text function retained only as a last-resort fallback when canvas is unavailable.
-// (Normally we use @napi-rs/canvas for anti-aliased text.)
-const drawText5x7 = (args: {
-  img: PNG;
-  text: string;
-  x: number;
-  y: number;
-  scale: number;
-  rgba: { r: number; g: number; b: number; a: number };
-  align?: "left" | "right";
-}) => {
-  const { img, text, y, scale, rgba } = args;
-  const s = Math.max(1, Math.floor(scale));
-  const charW = 5 * s;
-  const gap = 1 * s;
-  const width = text.length > 0 ? text.length * charW + (text.length - 1) * gap : 0;
-  const xStart = args.align === "right" ? Math.round(args.x - width) : Math.round(args.x);
-  let x = xStart;
-  for (const ch of text) {
-    drawChar5x7(img, ch, x, Math.round(y), s, rgba);
-    x += charW + gap;
-  }
-};
+// Rendering primitives + text fallback helpers are provided by `launchthat-plugin-canvas`.
 
 const formatPriceLabel = (n: number): string => {
   // TradingView-ish labels (no commas)
@@ -360,361 +161,7 @@ const formatDayLabel = (tMs: number, fromMs: number, toMs: number): string => {
   const endMonth = new Date(toMs).getUTCMonth() + 1;
   return startMonth === endMonth ? String(day) : `${month}/${day}`;
 };
-
-// Better text rendering (anti-aliased) via @napi-rs/canvas.
-// NOTE: `@napi-rs/canvas` must be listed in `convex.json` under `node.externalPackages`
-// so Convex doesn't try to bundle its native `.node` binary.
-let didLogCanvasLoad = false;
-let didLogCanvasAlphaZero = false;
-let ensureCanvasFontsPromise: Promise<boolean> | null = null;
-let snapshotFontBytes: Buffer | null = null;
-
-const parseFamilies = (raw: unknown): string[] => {
-  if (Array.isArray(raw)) return raw.filter((x): x is string => typeof x === "string");
-  if (raw && typeof raw === "object" && Buffer.isBuffer(raw)) {
-    try {
-      const asJson = JSON.parse(raw.toString("utf8")) as unknown;
-      return Array.isArray(asJson) ? asJson.filter((x): x is string => typeof x === "string") : [];
-    } catch {
-      return [];
-    }
-  }
-  if (raw && typeof raw === "object" && raw instanceof Uint8Array) {
-    try {
-      const asJson = JSON.parse(Buffer.from(raw).toString("utf8")) as unknown;
-      return Array.isArray(asJson) ? asJson.filter((x): x is string => typeof x === "string") : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
-};
-
-const downloadSnapshotFont = async (): Promise<Buffer | null> => {
-  if (snapshotFontBytes) return snapshotFontBytes;
-  const urls: string[] = [
-    // Roboto Regular (hinted TTF)
-    // NOTE: github.com/google/fonts doesn't expose Roboto TTFs directly anymore; use roboto-2 repo.
-    "https://raw.githubusercontent.com/googlefonts/roboto-2/main/src/hinted/Roboto-Regular.ttf",
-    // Alternate mirror
-    "https://raw.githubusercontent.com/openmaptiles/fonts/master/roboto/Roboto-Regular.ttf",
-  ];
-
-  for (const url of urls) {
-    try {
-      const res = await fetch(url);
-      if (!res.ok) {
-        console.log("[snapshot_png][canvas] font_download_failed", { url, status: res.status });
-        continue;
-      }
-      const ab = await res.arrayBuffer();
-      // Safety: don't download giant files.
-      if (ab.byteLength <= 0 || ab.byteLength > 2_500_000) {
-        console.log("[snapshot_png][canvas] font_download_bad_size", { url, bytes: ab.byteLength });
-        continue;
-      }
-      snapshotFontBytes = Buffer.from(ab);
-      console.log("[snapshot_png][canvas] font_download_ok", { url, bytes: snapshotFontBytes.byteLength });
-      return snapshotFontBytes;
-    } catch (err) {
-      console.log("[snapshot_png][canvas] font_download_error", {
-        url,
-        error: err instanceof Error ? { name: err.name, message: err.message } : String(err),
-      });
-    }
-  }
-
-  return null;
-};
-
-const ensureCanvasFonts = async (canvasApi: any): Promise<boolean> => {
-  if (ensureCanvasFontsPromise) return await ensureCanvasFontsPromise;
-
-  ensureCanvasFontsPromise = (async () => {
-    const gf: any = canvasApi?.GlobalFonts;
-    if (!gf) {
-      console.log("[snapshot_png][canvas] no_GlobalFonts");
-      return false;
-    }
-
-    const safeGetFamilies = (): string[] => {
-      try {
-        const f = gf.getFamilies?.();
-        return parseFamilies(f);
-      } catch {
-        return [];
-      }
-    };
-
-    const before = safeGetFamilies();
-
-    try {
-      gf.loadSystemFonts?.();
-    } catch (err) {
-      console.log("[snapshot_png][canvas] loadSystemFonts_error", {
-        error: err instanceof Error ? { name: err.name, message: err.message } : String(err),
-      });
-    }
-
-    let families = safeGetFamilies();
-
-    // If Convex runtime has fonts on disk but no fontconfig discovery,
-    // try registering common Linux font paths manually.
-    if (families.length === 0) {
-      const candidates: string[] = [
-        // Debian/Ubuntu common
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-        "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
-        // Noto locations (varies)
-        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
-        "/usr/share/fonts/noto/NotoSans-Regular.ttf",
-      ];
-
-      for (const p of candidates) {
-        try {
-          if (!fs.existsSync(p)) continue;
-          gf.registerFromPath?.(p, "SnapshotFont");
-          break;
-        } catch (err) {
-          console.log("[snapshot_png][canvas] registerFromPath_error", {
-            path: p,
-            error: err instanceof Error ? { name: err.name, message: err.message } : String(err),
-          });
-        }
-      }
-
-      families = safeGetFamilies();
-    }
-
-    // Convex containers often have zero fonts. If still empty, download a font and register it.
-    // Prefer registerFromPath to avoid GlobalFonts.register(Buffer) lifecycle pitfalls.
-    let didRegisterDownloaded = false;
-    if (families.length === 0) {
-      try {
-        const bytes = await downloadSnapshotFont();
-        if (bytes) {
-          const tmpPath = path.join("/tmp", "snapshot-font.ttf");
-          try {
-            fs.writeFileSync(tmpPath, bytes);
-            gf.registerFromPath?.(tmpPath, "SnapshotFont");
-            didRegisterDownloaded = true;
-          } catch (err) {
-            console.log("[snapshot_png][canvas] write_or_register_tmp_error", {
-              tmpPath,
-              error: err instanceof Error ? { name: err.name, message: err.message } : String(err),
-            });
-            // As a backup, try the Buffer API if available.
-            try {
-              gf.register?.(bytes);
-              didRegisterDownloaded = true;
-            } catch (err2) {
-              console.log("[snapshot_png][canvas] register_buffer_error", {
-                error: err2 instanceof Error ? { name: err2.name, message: err2.message } : String(err2),
-              });
-            }
-          }
-        }
-      } catch (err) {
-        console.log("[snapshot_png][canvas] font_download_or_register_error", {
-          error: err instanceof Error ? { name: err.name, message: err.message } : String(err),
-        });
-      }
-
-      families = safeGetFamilies();
-    }
-
-    // Sanity check text measurement.
-    let measureWidth = -1;
-    try {
-      const c = canvasApi.createCanvas(10, 10);
-      const ctx = c.getContext("2d");
-      ctx.font = "700 14px SnapshotFont, sans-serif";
-      measureWidth = Number(ctx.measureText("BTCUSD").width) || 0;
-    } catch (err) {
-      console.log("[snapshot_png][canvas] measureText_error", {
-        error: err instanceof Error ? { name: err.name, message: err.message } : String(err),
-      });
-    }
-
-    console.log("[snapshot_png][canvas] fonts_status", {
-      familiesBefore: before.slice(0, 10),
-      familiesAfter: families.slice(0, 10),
-      familyCount: families.length,
-      measureWidth,
-      didRegisterDownloaded,
-    });
-
-    return families.length > 0 && measureWidth > 0;
-  })();
-
-  const ok = await ensureCanvasFontsPromise;
-  // Allow retry if we still couldn't load/register a font.
-  if (!ok) ensureCanvasFontsPromise = null;
-  return ok;
-};
-
-const tryGetCanvas = (): any => {
-  try {
-    const mod = require("@napi-rs/canvas");
-    if (!didLogCanvasLoad) {
-      didLogCanvasLoad = true;
-      console.log("[snapshot_png][canvas] loaded", {
-        platform: process.platform,
-        arch: process.arch,
-        node: process.version,
-        hasCreateCanvas: typeof mod?.createCanvas === "function",
-        hasGlobalFonts: typeof mod?.GlobalFonts === "object",
-      });
-    }
-    return mod;
-  } catch (err) {
-    if (!didLogCanvasLoad) {
-      didLogCanvasLoad = true;
-      console.log("[snapshot_png][canvas] failed_to_load", {
-        platform: process.platform,
-        arch: process.arch,
-        node: process.version,
-        error: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : String(err),
-      });
-    }
-    return null;
-  }
-};
-
-interface TextOp {
-  text: string;
-  x: number;
-  y: number;
-  align: "left" | "right";
-  rgba: { r: number; g: number; b: number; a: number };
-  font: { sizePx: number; weight: number };
-  shadow?: { dx: number; dy: number; rgba: { r: number; g: number; b: number; a: number }; blurPx: number };
-}
-
-const rgbaToCss = (c: { r: number; g: number; b: number; a: number }) =>
-  `rgba(${c.r},${c.g},${c.b},${Math.max(0, Math.min(1, c.a / 255))})`;
-
-const drawTextLayerWithCanvas = (img: PNG, ops: TextOp[]) => {
-  try {
-    const canvasApi: any = tryGetCanvas();
-    if (!canvasApi) return false;
-    if (!Array.isArray(ops) || ops.length === 0) return true;
-
-    const canvas = canvasApi.createCanvas(img.width, img.height);
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, img.width, img.height);
-    ctx.textBaseline = "top";
-
-    // Use common system fonts available on Linux; fall back to generic sans.
-    const fontStack =
-      'SnapshotFont, DejaVu Sans, Arial, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, sans-serif';
-
-    let firstMetrics:
-      | {
-          text: string;
-          font: string;
-          measuredWidth: number;
-          x: number;
-          y: number;
-        }
-      | null = null;
-
-    for (const op of ops) {
-      const text = op.text;
-      if (!text) continue;
-
-      const size = Math.max(10, Math.min(64, Math.floor(op.font.sizePx)));
-      const weight = Math.max(100, Math.min(900, Math.floor(op.font.weight)));
-      // @napi-rs/canvas is stricter than browsers about font parsing and available fonts.
-      // If we measure 0 width, retry with generic sans-serif to force a fallback.
-      ctx.font = `${weight} ${size}px ${fontStack}`;
-      ctx.fillStyle = rgbaToCss(op.rgba);
-
-      if (op.shadow) {
-        ctx.shadowColor = rgbaToCss(op.shadow.rgba);
-        ctx.shadowBlur = Math.max(0, Math.min(40, op.shadow.blurPx));
-        ctx.shadowOffsetX = Math.max(-20, Math.min(20, op.shadow.dx));
-        ctx.shadowOffsetY = Math.max(-20, Math.min(20, op.shadow.dy));
-      } else {
-        ctx.shadowColor = "rgba(0,0,0,0)";
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
-      }
-
-      let m = ctx.measureText(text);
-      if (!Number.isFinite(m.width) || m.width <= 0) {
-        ctx.font = `${weight} ${size}px sans-serif`;
-        m = ctx.measureText(text);
-      }
-
-      if (!firstMetrics) {
-        firstMetrics = {
-          text,
-          font: String(ctx.font ?? ""),
-          measuredWidth: Number(m.width) || 0,
-          x: op.x,
-          y: op.y,
-        };
-      }
-      const x = op.align === "right" ? op.x - m.width : op.x;
-      ctx.fillText(text, x, op.y);
-    }
-
-    const overlay = ctx.getImageData(0, 0, img.width, img.height).data;
-
-    // If no alpha was drawn at all, treat as failure and fall back.
-    let alphaSum = 0;
-    for (let i = 3; i < overlay.length; i += 4) alphaSum += overlay[i] ?? 0;
-    if (alphaSum === 0) {
-      if (!didLogCanvasAlphaZero) {
-        didLogCanvasAlphaZero = true;
-        const first = ops.find((o) => Boolean(o.text)) ?? null;
-        console.log("[snapshot_png][canvas] alpha_zero_fallback", {
-          opsCount: ops.length,
-          firstMetrics,
-          globalFontsFamilies:
-            canvasApi?.GlobalFonts?.getFamilies && typeof canvasApi.GlobalFonts.getFamilies === "function"
-              ? canvasApi.GlobalFonts.getFamilies()
-              : null,
-          firstOp: first
-            ? {
-                text: first.text,
-                x: first.x,
-                y: first.y,
-                align: first.align,
-                rgba: first.rgba,
-                font: first.font,
-                shadow: first.shadow ?? null,
-              }
-            : null,
-        });
-      }
-      return false;
-    }
-
-    for (let i = 0; i < overlay.length; i += 4) {
-      const a = (overlay[i + 3] ?? 0) / 255;
-      if (a <= 0) continue;
-      const baseR = img.data[i] ?? 0;
-      const baseG = img.data[i + 1] ?? 0;
-      const baseB = img.data[i + 2] ?? 0;
-      img.data[i] = Math.round((overlay[i] ?? 0) * a + baseR * (1 - a));
-      img.data[i + 1] = Math.round((overlay[i + 1] ?? 0) * a + baseG * (1 - a));
-      img.data[i + 2] = Math.round((overlay[i + 2] ?? 0) * a + baseB * (1 - a));
-      img.data[i + 3] = 255;
-    }
-
-    return true;
-  } catch (err) {
-    console.log("[snapshot_png][canvas] render_error_fallback", {
-      error: err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : String(err),
-    });
-    return false;
-  }
-};
+// Canvas font loading and AA text rendering come from `launchthat-plugin-canvas`.
 
 const computeConsensus = (clusters: {
   direction: "long" | "short" | "mixed";
@@ -893,15 +340,62 @@ const renderSnapshotPng = (args: {
     });
   }
 
-  queueText({
-    text: consensusText,
-    x: width - s(28),
-    y: s(12),
-    rgba: consensusColor,
-    font: { sizePx: s(26), weight: 900 },
-    shadow: { dx: 0, dy: s(2), blurPx: s(6), rgba: { r: 0, g: 0, b: 0, a: 170 } },
-    align: "right",
-  });
+  // Shadcn-ish badge bubble: "Market sentiment : SELL"
+  {
+    const badgeFontSize = s(16);
+    const badgePadX = s(14);
+    const badgePadY = s(8);
+    const badgeTextPrefix = "Market sentiment : ";
+    const badgeTextValue = consensusText;
+    const estCharW = Math.max(1, Math.round(badgeFontSize * 0.58));
+    const badgeTextW = (badgeTextPrefix.length + badgeTextValue.length) * estCharW;
+    const badgeW = badgeTextW + badgePadX * 2;
+    const badgeH = badgeFontSize + badgePadY * 2;
+    const badgeR = Math.floor(badgeH / 2);
+    const badgeX = width - s(28) - badgeW;
+    const badgeY = Math.round(headerH / 2 - badgeH / 2);
+
+    // Border + fill (rounded "pill")
+    const border = { r: 255, g: 255, b: 255, a: 44 };
+    const bg = { r: 2, g: 6, b: 23, a: 210 }; // slate-950-ish
+    // Outer pill
+    fillRect(img, badgeX + badgeR, badgeY, badgeW - badgeR * 2, badgeH, border);
+    fillCircle(img, badgeX + badgeR, badgeY + badgeR, badgeR, border);
+    fillCircle(img, badgeX + badgeW - badgeR, badgeY + badgeR, badgeR, border);
+    // Inner pill (inset)
+    const inset = Math.max(1, Math.floor(scale));
+    const innerX = badgeX + inset;
+    const innerY = badgeY + inset;
+    const innerW = badgeW - inset * 2;
+    const innerH = badgeH - inset * 2;
+    const innerR = Math.max(1, Math.floor(innerH / 2));
+    fillRect(img, innerX + innerR, innerY, innerW - innerR * 2, innerH, bg);
+    fillCircle(img, innerX + innerR, innerY + innerR, innerR, bg);
+    fillCircle(img, innerX + innerW - innerR, innerY + innerR, innerR, bg);
+
+    const textY = innerY + Math.round((innerH - badgeFontSize) / 2);
+    const textX = innerX + badgePadX;
+
+    // Prefix in neutral text, value in consensus color.
+    queueText({
+      text: badgeTextPrefix,
+      x: textX,
+      y: textY,
+      rgba: { r: 226, g: 232, b: 240, a: 255 },
+      font: { sizePx: badgeFontSize, weight: 700 },
+      shadow: { dx: 0, dy: s(1), blurPx: s(3), rgba: { r: 0, g: 0, b: 0, a: 150 } },
+      align: "left",
+    });
+    queueText({
+      text: badgeTextValue,
+      x: textX + badgeTextPrefix.length * estCharW,
+      y: textY,
+      rgba: consensusColor,
+      font: { sizePx: badgeFontSize, weight: 900 },
+      shadow: { dx: 0, dy: s(1), blurPx: s(3), rgba: { r: 0, g: 0, b: 0, a: 150 } },
+      align: "left",
+    });
+  }
 
   // Axes labels (aligned to current grid lines)
   for (let i = 0; i <= gridRows; i++) {
@@ -935,7 +429,7 @@ const renderSnapshotPng = (args: {
   }
 
   // Current price guide (red dashed line, ~50% opacity)
-  const currentPrice = bars.length > 0 ? bars[bars.length - 1]!.c : NaN;
+  const currentPrice = bars.length > 0 ? (bars[bars.length - 1]?.c ?? NaN) : NaN;
   if (Number.isFinite(currentPrice)) {
     const y = Math.round(yForPrice(currentPrice));
     const red = { r: 239, g: 68, b: 68, a: 128 };
@@ -1082,7 +576,7 @@ export const buildSnapshotPreview = async (ctx: any, args: any) => {
 
   // Warm up canvas fonts (Convex runtime may have zero system fonts).
   // This can fetch/register a font once; do it before rendering.
-  const canvasApi: any = tryGetCanvas();
+  const canvasApi: any = tryGetCanvas(console);
   if (canvasApi) {
     await ensureCanvasFonts(canvasApi);
   }
