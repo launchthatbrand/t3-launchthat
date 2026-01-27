@@ -41,6 +41,44 @@ interface ComponentOrganizationMediaRow {
   updatedAt: number;
 }
 
+const getUserEntitlementLimits = async (
+  ctx: QueryCtx | MutationCtx,
+  userId: string,
+): Promise<Record<string, unknown> | null> => {
+  const normalizedUserId = String(userId ?? "").trim();
+  if (!normalizedUserId) return null;
+
+  const row = await ctx.db
+    .query("userEntitlements")
+    .withIndex("by_user", (q) => q.eq("userId", normalizedUserId))
+    .unique();
+
+  if (!row || !row.limits || typeof row.limits !== "object") return null;
+  return row.limits as Record<string, unknown>;
+};
+
+const enforceOrganizationLimit = async (
+  ctx: QueryCtx | MutationCtx,
+  userId: string,
+): Promise<void> => {
+  const limits = await getUserEntitlementLimits(ctx, userId);
+  const maxOrganizations = typeof limits?.maxOrganizations === "number" ? limits.maxOrganizations : null;
+  if (maxOrganizations === null || !Number.isFinite(maxOrganizations)) return;
+
+  const memberships = (await ctx.runQuery(
+    components.launchthat_core_tenant.queries.listOrganizationsByUserId,
+    { userId },
+  )) as unknown as ComponentMembershipRow[];
+
+  const activeCount = Array.isArray(memberships)
+    ? memberships.filter((m) => Boolean(m?.isActive)).length
+    : 0;
+
+  if (activeCount >= maxOrganizations) {
+    throw new ConvexError("Organization limit reached for your plan.");
+  }
+};
+
 const domainStatusValidator = v.union(
   v.literal("unconfigured"),
   v.literal("pending"),
@@ -302,6 +340,7 @@ export const createOrganizationAsViewer = mutation({
     if (!userId) {
       throw new ConvexError("Unauthorized");
     }
+    await enforceOrganizationLimit(ctx, userId);
     const id = await ctx.runMutation(
       components.launchthat_core_tenant.mutations.createOrganization,
       { userId, name: args.name, slug: args.slug },
@@ -314,6 +353,7 @@ export const createOrganization = mutation({
   args: { userId: v.string(), name: v.string(), slug: v.optional(v.string()) },
   returns: v.string(),
   handler: async (ctx, args) => {
+    await enforceOrganizationLimit(ctx, args.userId);
     const id = await ctx.runMutation(
       components.launchthat_core_tenant.mutations.createOrganization,
       { userId: args.userId, name: args.name, slug: args.slug },

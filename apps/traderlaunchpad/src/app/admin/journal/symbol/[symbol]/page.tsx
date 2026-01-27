@@ -3,16 +3,22 @@
 import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useConvexAuth, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { ArrowLeft, ArrowUpRight, Search } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { Skeleton } from "@acme/ui/skeleton";
 import { api } from "@convex-config/_generated/api";
 
 import { PublicSymbolPricePanel } from "~/components/price/PublicSymbolPricePanel";
 import { useTenant } from "~/context/TenantContext";
+import {
+  FeatureAccessAlert,
+  isFeatureEnabled,
+  useGlobalPermissions,
+} from "~/components/access/FeatureAccessGate";
 
 const normalizeSymbol = (value: string) => value.trim().toUpperCase();
 
@@ -59,8 +65,9 @@ export default function AdminJournalSymbolPage() {
   const isOrgMode = Boolean(tenant && tenant.slug !== "platform");
   const organizationId = tenant?._id ?? "";
 
-  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  const shouldQuery = isAuthenticated && !authLoading && Boolean(organizationId);
+  const { permissions, isLoading, isAuthenticated } = useGlobalPermissions();
+  const canAccess = Boolean(permissions && isFeatureEnabled(permissions, "openPositions"));
+  const shouldQuery = isAuthenticated && !isLoading && canAccess && Boolean(organizationId);
 
   const rawSymbol =
     typeof (params as Record<string, unknown>).symbol === "string"
@@ -104,6 +111,32 @@ export default function AdminJournalSymbolPage() {
       totalPnl,
     };
   }, [isOrgMode, withTrades]);
+
+  if (!canAccess && !isLoading) {
+    return (
+      <div className="container py-8">
+        <FeatureAccessAlert description="You do not have access to Open Positions." />
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container py-8 space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <Skeleton className="h-48 w-full" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-8">
@@ -173,7 +206,12 @@ export default function AdminJournalSymbolPage() {
           <CardContent className="p-0">
             {isOrgMode ? (
               orgRows === undefined ? (
-                <div className="p-6 text-sm text-white/60">Loading…</div>
+                <div className="space-y-3 p-6">
+                  <Skeleton className="h-6 w-40" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
               ) : withTrades.length === 0 ? (
                 <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-white/10">
                   <Search className="h-5 w-5 text-white/40" />
@@ -239,7 +277,12 @@ export default function AdminJournalSymbolPage() {
                 </div>
               )
             ) : myRows === undefined ? (
-              <div className="p-6 text-sm text-white/60">Loading…</div>
+              <div className="space-y-3 p-6">
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
             ) : (Array.isArray(myRows) ? myRows : []).length === 0 ? (
               <div className="flex h-48 flex-col items-center justify-center rounded-lg border border-dashed border-white/10">
                 <Search className="h-5 w-5 text-white/40" />

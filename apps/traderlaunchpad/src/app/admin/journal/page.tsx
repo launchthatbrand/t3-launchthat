@@ -7,7 +7,7 @@ import { ArrowUpRight, Brain, Calendar, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
 import { demoCalendarDailyStats, demoDashboardStats, demoReviewTrades } from "@acme/demo-data";
-import { useConvexAuth, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 
 import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
 import { Badge } from "@acme/ui/badge";
@@ -16,6 +16,7 @@ import { Checkbox } from "@acme/ui/checkbox";
 import type { ColumnDefinition } from "@acme/ui/entity-list/types";
 import { Calendar as DayCalendar } from "@acme/ui/calendar";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
+import { Skeleton } from "@acme/ui/skeleton";
 import Link from "next/link";
 import React from "react";
 import { TradingCalendarWithDrilldown } from "~/components/dashboard/TradingCalendarWithDrilldown";
@@ -30,6 +31,11 @@ import { useDataMode } from "~/components/dataMode/DataModeProvider";
 import { useRouter } from "next/navigation";
 import { useTenant } from "~/context/TenantContext";
 import { useTradingCalendarStore } from "~/stores/tradingCalendarStore";
+import {
+  FeatureAccessAlert,
+  isFeatureEnabled,
+  useGlobalPermissions,
+} from "~/components/access/FeatureAccessGate";
 
 interface LiveReviewRow {
   tradeIdeaGroupId: string;
@@ -169,8 +175,9 @@ export default function AdminJournalDashboardPage() {
 
   const dataMode = useDataMode();
   const activeAccount = useActiveAccount();
-  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  const shouldQuery = isAuthenticated && !authLoading;
+  const { permissions, isLoading, isAuthenticated } = useGlobalPermissions();
+  const canAccess = Boolean(permissions && isFeatureEnabled(permissions, "openPositions"));
+  const shouldQuery = isAuthenticated && !isLoading && canAccess;
 
   const liveRowsRaw = useQuery(
     api.traderlaunchpad.queries.listMyNextTradeIdeasToReview,
@@ -520,6 +527,33 @@ export default function AdminJournalDashboardPage() {
   }, [dataMode.effectiveMode, liveCalendarEvents, selectedTradeDate]);
 
   const router = useRouter();
+
+  if (!canAccess && !isLoading) {
+    return (
+      <FeatureAccessAlert description="You do not have access to Open Positions." />
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Skeleton className="h-80 w-full" />
+          <Skeleton className="h-80 w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative animate-in fade-in space-y-8 text-foreground selection:bg-orange-500/30 duration-500">

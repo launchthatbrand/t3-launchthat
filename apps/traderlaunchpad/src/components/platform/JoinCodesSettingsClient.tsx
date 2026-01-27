@@ -21,6 +21,14 @@ import { api } from "@convex-config/_generated/api";
 type JoinCodeRow = {
   _id: string;
   label?: string;
+  role?: "user" | "staff" | "admin";
+  tier?: "free" | "standard" | "pro";
+  permissions?: {
+    globalEnabled?: boolean;
+    tradeIdeasEnabled?: boolean;
+    openPositionsEnabled?: boolean;
+    ordersEnabled?: boolean;
+  };
   maxUses?: number;
   uses: number;
   expiresAt?: number;
@@ -49,6 +57,14 @@ export const JoinCodesSettingsClient = () => {
   const deleteCode = useMutation(api.platform.joinCodes.deletePlatformJoinCode);
 
   const [label, setLabel] = React.useState("");
+  const [role, setRole] = React.useState<"user" | "staff" | "admin">("user");
+  const [tier, setTier] = React.useState<"free" | "standard" | "pro">("free");
+  const [permissions, setPermissions] = React.useState({
+    globalEnabled: false,
+    tradeIdeasEnabled: false,
+    openPositionsEnabled: false,
+    ordersEnabled: false,
+  });
   const [maxUses, setMaxUses] = React.useState<string>("");
   const [expiresInDays, setExpiresInDays] = React.useState<string>("");
   const [saving, setSaving] = React.useState(false);
@@ -99,6 +115,9 @@ export const JoinCodesSettingsClient = () => {
 
       const created = await createCode({
         label: label.trim() ? label.trim() : undefined,
+        role,
+        tier,
+        permissions,
         maxUses: typeof maxUsesValue === "number" && maxUsesValue > 0 ? maxUsesValue : undefined,
         expiresAt,
       });
@@ -106,6 +125,14 @@ export const JoinCodesSettingsClient = () => {
       const code = typeof created?.code === "string" ? created.code : "";
       setLastCode(code);
       setLabel("");
+      setRole("user");
+      setTier("free");
+      setPermissions({
+        globalEnabled: false,
+        tradeIdeasEnabled: false,
+        openPositionsEnabled: false,
+        ordersEnabled: false,
+      });
       setMaxUses("");
       setExpiresInDays("");
       toast.success("Join code created.");
@@ -153,6 +180,95 @@ export const JoinCodesSettingsClient = () => {
                 inputMode="numeric"
               />
             </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <div className="flex flex-wrap gap-2">
+                {(["user", "staff", "admin"] as const).map((value) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    variant={role === value ? "default" : "outline"}
+                    onClick={() => setRole(value)}
+                  >
+                    {value}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Tier</Label>
+              <div className="flex flex-wrap gap-2">
+                {(["free", "standard", "pro"] as const).map((value) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    variant={tier === value ? "default" : "outline"}
+                    onClick={() => setTier(value)}
+                  >
+                    {value}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <Label className="text-sm">Global permissions</Label>
+              <div className="mt-2 grid grid-cols-1 gap-2 text-sm">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={permissions.globalEnabled}
+                    onChange={(event) =>
+                      setPermissions((prev) => ({
+                        ...prev,
+                        globalEnabled: event.target.checked,
+                      }))
+                    }
+                  />
+                  <span>Global access</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={permissions.tradeIdeasEnabled}
+                    onChange={(event) =>
+                      setPermissions((prev) => ({
+                        ...prev,
+                        tradeIdeasEnabled: event.target.checked,
+                      }))
+                    }
+                  />
+                  <span>Trade ideas</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={permissions.openPositionsEnabled}
+                    onChange={(event) =>
+                      setPermissions((prev) => ({
+                        ...prev,
+                        openPositionsEnabled: event.target.checked,
+                      }))
+                    }
+                  />
+                  <span>Open positions</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={permissions.ordersEnabled}
+                    onChange={(event) =>
+                      setPermissions((prev) => ({
+                        ...prev,
+                        ordersEnabled: event.target.checked,
+                      }))
+                    }
+                  />
+                  <span>Orders</span>
+                </label>
+              </div>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Button
@@ -197,6 +313,8 @@ export const JoinCodesSettingsClient = () => {
                     {typeof code.expiresAt === "number"
                       ? ` · Expires ${format(code.expiresAt, "MMM d, yyyy")}`
                       : ""}
+                  {code.role ? ` · Role ${code.role}` : ""}
+                  {code.tier ? ` · Tier ${code.tier}` : ""}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

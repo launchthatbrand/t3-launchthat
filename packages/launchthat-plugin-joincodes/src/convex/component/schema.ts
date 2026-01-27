@@ -7,6 +7,16 @@ export default defineSchema({
     organizationId: v.optional(v.string()),
     codeHash: v.string(),
     label: v.optional(v.string()),
+    role: v.optional(v.union(v.literal("user"), v.literal("staff"), v.literal("admin"))),
+    tier: v.optional(v.union(v.literal("free"), v.literal("standard"), v.literal("pro"))),
+    permissions: v.optional(
+      v.object({
+        globalEnabled: v.optional(v.boolean()),
+        tradeIdeasEnabled: v.optional(v.boolean()),
+        openPositionsEnabled: v.optional(v.boolean()),
+        ordersEnabled: v.optional(v.boolean()),
+      }),
+    ),
     maxUses: v.optional(v.number()),
     uses: v.number(),
     expiresAt: v.optional(v.number()),

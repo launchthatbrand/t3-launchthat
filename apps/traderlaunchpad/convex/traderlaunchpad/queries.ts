@@ -11,7 +11,7 @@ import { components } from "../_generated/api";
 import { internal } from "../_generated/api";
 import { paginationOptsValidator } from "convex/server";
 import { internalQuery, query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { clusterCommunityPositions, type CommunityPosition } from "launchthat-plugin-traderlaunchpad/runtime/discordSnapshot";
 
 const coreTenantQueries = components.launchthat_core_tenant.queries as any;
@@ -66,6 +66,38 @@ const resolveMembershipForOrg = async (ctx: any, organizationId: string, userId:
   return { role };
 };
 
+const isEnabledForType = (
+  perms: {
+    globalEnabled?: boolean;
+    tradeIdeasEnabled?: boolean;
+    openPositionsEnabled?: boolean;
+    ordersEnabled?: boolean;
+  },
+  type: "tradeIdeas" | "openPositions" | "orders",
+): boolean => {
+  if (Boolean(perms?.globalEnabled)) return true;
+  if (type === "tradeIdeas") return Boolean(perms?.tradeIdeasEnabled);
+  if (type === "openPositions") return Boolean(perms?.openPositionsEnabled);
+  return Boolean(perms?.ordersEnabled);
+};
+
+const requireGlobalPermission = async (
+  ctx: any,
+  type: "tradeIdeas" | "openPositions" | "orders",
+): Promise<string> => {
+  const userId = await resolveViewerUserId(ctx);
+  const perms = await ctx.runQuery(permissionsModule.getPermissions, {
+    userId,
+    scopeType: "global",
+  });
+
+  if (!isEnabledForType(perms ?? {}, type)) {
+    throw new ConvexError("Forbidden: You do not have access to this feature.");
+  }
+
+  return userId;
+};
+
 export const listMySymbolTrades = query({
   args: {
     symbol: v.string(),
@@ -84,7 +116,7 @@ export const listMySymbolTrades = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "openPositions");
 
     const symbol = String(args.symbol ?? "").trim().toUpperCase();
     if (!symbol) return [];
@@ -119,7 +151,7 @@ export const getMyGlobalPermissions = query({
     ordersEnabled: v.boolean(),
   }),
   handler: async (ctx) => {
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
     const row = await ctx.runQuery(permissionsModule.getPermissions, {
       userId,
       scopeType: "global",
@@ -146,7 +178,7 @@ export const listMyOrgPermissions = query({
     }),
   ),
   handler: async (ctx) => {
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
     const memberships = (await ctx.runQuery(coreTenantQueries.listOrganizationsByUserId, {
       userId,
     })) as unknown as any[];
@@ -217,7 +249,7 @@ export const getOrgOpenPositionsForSymbol = query({
     const organizationId = String(args.organizationId ?? "").trim();
     if (!organizationId) throw new Error("Missing organizationId");
 
-    const viewerUserId = await resolveViewerUserId(ctx);
+    const viewerUserId = await requireGlobalPermission(ctx, "openPositions");
     const membership = await resolveMembershipForOrg(ctx, organizationId, viewerUserId);
     if (!membership) {
       // Platform tests and platform tooling may need to aggregate any org without membership.
@@ -317,7 +349,7 @@ export const listMyCalendarDailyStats = query({
   ),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "orders");
     return await ctx.runQuery(tradeIdeasAnalytics.listCalendarDailyStats, {
       organizationId,
       userId,
@@ -360,7 +392,7 @@ export const listMyCalendarRealizationEvents = query({
   ),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "orders");
     const rows = await ctx.runQuery(tradeIdeasAnalytics.listCalendarRealizationEvents, {
       organizationId,
       userId,
@@ -428,7 +460,7 @@ export const listMyTradeIdeaRealizationEvents = query({
   ),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
 
     const tradeIdeaGroupId = String(args.tradeIdeaGroupId ?? "").trim();
     if (!tradeIdeaGroupId) return [];
@@ -497,7 +529,7 @@ export const runMyAnalyticsReport = query({
   returns: v.any(),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
     return await ctx.runQuery(analyticsQueries.runAnalyticsReport, {
       organizationId,
       userId,
@@ -522,7 +554,7 @@ export const listMyAnalyticsReports = query({
   ),
   handler: async (ctx) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
     const rows = await ctx.runQuery(analyticsQueries.listMyAnalyticsReports, {
       organizationId,
       userId,
@@ -546,7 +578,7 @@ export const getMyAnalyticsReport = query({
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
     return await ctx.runQuery(analyticsQueries.getMyAnalyticsReport, {
       organizationId,
       userId,
@@ -584,7 +616,7 @@ export const listOrgUsers = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const viewerUserId = await resolveViewerUserId(ctx);
+    const viewerUserId = await requireGlobalPermission(ctx, "openPositions");
     const organizationId = args.organizationId.trim();
     const membership = await resolveMembershipForOrg(ctx, organizationId, viewerUserId);
     if (!membership) return [];
@@ -696,7 +728,7 @@ export const listMySymbolStats = query({
   ),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
 
     const limit = Math.max(10, Math.min(Number(args.limit ?? 500), 2000));
     const rows = await ctx.runQuery(tradeIdeasNotes.listRecentClosedWithReviewStatus, {
@@ -1567,7 +1599,7 @@ export const getMyTradeLockerConnection = query({
   ),
   handler: async (ctx) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
 
     const connection = await ctx.runQuery(connectionsQueries.getMyConnection, {
       organizationId,
@@ -1642,7 +1674,7 @@ export const getMyConnectionAccountById = query({
   ),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "orders");
 
     const connection = await ctx.runQuery(connectionsQueries.getMyConnection, {
       organizationId,
@@ -1681,7 +1713,7 @@ export const getMyJournalProfile = query({
   }),
   handler: async (ctx) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "orders");
 
     const profile = await ctx.runQuery(journalQueries.getProfileForUser, {
       organizationId,
@@ -1701,7 +1733,7 @@ export const listMyTradeLockerOrders = query({
   returns: v.array(tradeOrderView),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "orders");
     return await ctx.runQuery(rawQueries.listOrdersForUser, {
       organizationId,
       userId,
@@ -1717,7 +1749,7 @@ export const listMyTradeLockerOrdersHistory = query({
   returns: v.array(tradeOrderHistoryView),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "orders");
     return await ctx.runQuery(rawQueries.listOrdersHistoryForUser, {
       organizationId,
       userId,
@@ -1734,7 +1766,7 @@ export const listMyTradeLockerOrdersForInstrument = query({
   returns: v.array(tradeOrderView),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "orders");
     return await ctx.runQuery(rawQueries.listOrdersForUserByInstrumentId, {
       organizationId,
       userId,
@@ -1752,7 +1784,7 @@ export const listMyTradeLockerOrdersHistoryForInstrument = query({
   returns: v.array(tradeOrderHistoryView),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "openPositions");
     return await ctx.runQuery(
       rawQueries.listOrdersHistoryForUserByInstrumentId,
       {
@@ -1773,7 +1805,7 @@ export const listMyTradeLockerExecutionsForInstrument = query({
   returns: v.array(tradeExecutionView),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "orders");
     return await ctx.runQuery(rawQueries.listExecutionsForUserByInstrumentId, {
       organizationId,
       userId,
@@ -1790,7 +1822,7 @@ export const listMyTradeLockerPositions = query({
   returns: v.array(tradePositionView),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "orders");
     return await ctx.runQuery(rawQueries.listPositionsForUser, {
       organizationId,
       userId,
@@ -1847,7 +1879,7 @@ export const getMyTradeLockerOrderDetail = query({
   ),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "orders");
     return await ctx.runQuery(rawQueries.getOrderById, {
       organizationId,
       userId,
@@ -1964,7 +1996,7 @@ export const listMyTradeIdeasByStatus = query({
     continueCursor: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
     return await ctx.runQuery(tradeIdeasQueries.listByStatus, {
       userId,
       status: args.status,
@@ -1979,6 +2011,7 @@ export const getMyTradeIdeaById = query({
   },
   returns: v.union(v.any(), v.null()),
   handler: async (ctx, args) => {
+    await requireGlobalPermission(ctx, "tradeIdeas");
     try {
       return await ctx.runQuery(tradeIdeasQueries.getById, {
         tradeIdeaGroupId: args.tradeIdeaGroupId as any,
@@ -2015,6 +2048,7 @@ export const getMyTradeIdeaBars = query({
     error: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
+    await requireGlobalPermission(ctx, "tradeIdeas");
     const tradeIdeaGroupId = String(args.tradeIdeaGroupId ?? "").trim();
     const resolution = String(args.resolution ?? "").trim();
     const lookbackDays = Math.max(1, Math.min(30, Math.floor(args.lookbackDays ?? 7)));
@@ -2058,7 +2092,7 @@ export const getMyTradeIdeaBars = query({
       };
     }
 
-    const viewerUserId = await resolveViewerUserId(ctx);
+    const viewerUserId = await requireGlobalPermission(ctx, "tradeIdeas");
     if (String(group.userId ?? "") !== viewerUserId) {
       await ctx.runQuery(internal.platform.testsAuth.assertPlatformAdmin, {});
     }
@@ -2164,7 +2198,7 @@ export const listMyTradeIdeaEvents = query({
   },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
     return await ctx.runQuery(tradeIdeasQueries.listEventsForGroup, {
       userId,
       tradeIdeaGroupId: args.tradeIdeaGroupId as any,
@@ -2196,7 +2230,7 @@ export const getMyTradeIdeaNoteForGroup = query({
     v.null(),
   ),
   handler: async (ctx, args) => {
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
     return await ctx.runQuery(tradeIdeasNotes.getNoteForGroup, {
       userId,
       tradeIdeaGroupId: args.tradeIdeaGroupId as any,
@@ -2224,7 +2258,7 @@ export const listMyNextTradeIdeasToReview = query({
     }),
   ),
   handler: async (ctx, args) => {
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
     const rows = await ctx.runQuery(tradeIdeasNotes.listNextToReview, {
       userId,
       limit: args.limit,

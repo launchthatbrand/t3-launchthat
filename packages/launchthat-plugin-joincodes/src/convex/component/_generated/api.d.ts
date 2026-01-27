@@ -45,7 +45,15 @@ export type Mounts = {
         label?: string;
         maxUses?: number;
         organizationId?: string;
+        permissions?: {
+          globalEnabled?: boolean;
+          openPositionsEnabled?: boolean;
+          ordersEnabled?: boolean;
+          tradeIdeasEnabled?: boolean;
+        };
+        role?: "user" | "staff" | "admin";
         scope: "platform" | "organization";
+        tier?: "free" | "standard" | "pro";
       },
       { code: string; codeHash: string; joinCodeId: string }
     >;
@@ -71,7 +79,15 @@ export type Mounts = {
         label?: string;
         maxUses?: number;
         organizationId?: string;
+        permissions?: {
+          globalEnabled?: boolean;
+          openPositionsEnabled?: boolean;
+          ordersEnabled?: boolean;
+          tradeIdeasEnabled?: boolean;
+        };
+        role?: "user" | "staff" | "admin";
         scope: "platform" | "organization";
+        tier?: "free" | "standard" | "pro";
         uses: number;
       } | null
     >;

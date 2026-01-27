@@ -9,7 +9,7 @@ import { resolveOrganizationId, resolveViewerUserId } from "./lib/resolve";
 
 import { components } from "../_generated/api";
 import { mutation } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 const tradeIdeasNotesMutations = components.launchthat_traderlaunchpad.tradeIdeas
   .notes as any;
@@ -24,6 +24,7 @@ const connectionsMutations = components.launchthat_traderlaunchpad.connections.m
 const coreTenantQueries = components.launchthat_core_tenant.queries as any;
 const coreTenantMutations = components.launchthat_core_tenant.mutations as any;
 const joinCodesMutations = components.launchthat_joincodes.mutations as any;
+const permissionsMutations = components.launchthat_traderlaunchpad.permissions as any;
 const analyticsMutations = components.launchthat_traderlaunchpad.analytics.mutations as any;
 
 const resolveMembershipForOrg = async (ctx: any, organizationId: string, userId: string) => {
@@ -44,6 +45,38 @@ const resolveMembershipForOrg = async (ctx: any, organizationId: string, userId:
 
   const role = String((match as any)?.role ?? "");
   return { role };
+};
+
+const isEnabledForType = (
+  perms: {
+    globalEnabled?: boolean;
+    tradeIdeasEnabled?: boolean;
+    openPositionsEnabled?: boolean;
+    ordersEnabled?: boolean;
+  },
+  type: "tradeIdeas" | "openPositions" | "orders",
+): boolean => {
+  if (Boolean(perms?.globalEnabled)) return true;
+  if (type === "tradeIdeas") return Boolean(perms?.tradeIdeasEnabled);
+  if (type === "openPositions") return Boolean(perms?.openPositionsEnabled);
+  return Boolean(perms?.ordersEnabled);
+};
+
+const requireGlobalPermission = async (
+  ctx: any,
+  type: "tradeIdeas" | "openPositions" | "orders",
+): Promise<string> => {
+  const userId = await resolveViewerUserId(ctx);
+  const perms = await ctx.runQuery(permissionsModule.getPermissions, {
+    userId,
+    scopeType: "global",
+  });
+
+  if (!isEnabledForType(perms ?? {}, type)) {
+    throw new ConvexError("Forbidden: You do not have access to this feature.");
+  }
+
+  return userId;
 };
 
 const randomToken = (): string => {
@@ -68,7 +101,7 @@ export const upsertMyTradeIdeaNoteForGroup = mutation({
   returns: v.object({ noteId: v.string() }),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
 
     const noteId = await ctx.runMutation(tradeIdeasNotesMutations.upsertNoteForGroup, {
       organizationId,
@@ -95,7 +128,7 @@ export const upsertMyTradeIdeaSettings = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
     await ctx.runMutation(tradeIdeasIdeasMutations.upsertMyTradeIdeaSettings, {
       organizationId,
       userId,
@@ -118,7 +151,7 @@ export const upsertMyShareVisibilitySettings = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
     await ctx.runMutation(sharingModule.upsertMyShareVisibilitySettings, {
       organizationId,
       userId,
@@ -144,7 +177,7 @@ export const upsertMyVisibilitySettings = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
     await ctx.runMutation(visibilityModule.upsertMyVisibilitySettings, {
       organizationId,
       userId,
@@ -168,7 +201,7 @@ export const upsertMyGlobalPermissions = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
     await ctx.runMutation(permissionsModule.upsertPermissions, {
       userId,
       scopeType: "global",
@@ -194,7 +227,7 @@ export const upsertMyOrgPermissions = mutation({
     const organizationId = String(args.organizationId ?? "").trim();
     if (!organizationId) throw new Error("Missing organizationId");
 
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
     const membership = await resolveMembershipForOrg(ctx, organizationId, userId);
     if (!membership) throw new Error("Not a member of this organization");
 
@@ -224,7 +257,7 @@ export const setMyTradeIdeaSharing = mutation({
   }),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
-    const userId = await resolveViewerUserId(ctx);
+    const userId = await requireGlobalPermission(ctx, "tradeIdeas");
     const res = await ctx.runMutation(tradeIdeasIdeasMutations.setTradeIdeaSharing, {
       organizationId,
       userId,
@@ -478,6 +511,16 @@ export const createOrgJoinCode = mutation({
   args: {
     organizationId: v.string(),
     label: v.optional(v.string()),
+    role: v.optional(v.union(v.literal("user"), v.literal("staff"), v.literal("admin"))),
+    tier: v.optional(v.union(v.literal("free"), v.literal("standard"), v.literal("pro"))),
+    permissions: v.optional(
+      v.object({
+        globalEnabled: v.optional(v.boolean()),
+        tradeIdeasEnabled: v.optional(v.boolean()),
+        openPositionsEnabled: v.optional(v.boolean()),
+        ordersEnabled: v.optional(v.boolean()),
+      }),
+    ),
     maxUses: v.optional(v.number()),
     expiresAt: v.optional(v.number()),
   },
@@ -495,6 +538,9 @@ export const createOrgJoinCode = mutation({
       scope: "organization",
       organizationId,
       label: args.label,
+      role: args.role,
+      tier: args.tier,
+      permissions: args.permissions,
       maxUses: args.maxUses,
       expiresAt: args.expiresAt,
       createdByUserId: userId,
@@ -537,6 +583,54 @@ export const redeemOrgJoinCode = mutation({
       if (visibility === "private" && !joinCodesEnabled) {
         return { organizationId: "" };
       }
+    }
+
+    const role = String((redemption as any)?.role ?? "").trim();
+    const tier = String((redemption as any)?.tier ?? "").trim();
+    const permissions = (redemption as any)?.permissions as
+      | {
+          globalEnabled?: boolean;
+          tradeIdeasEnabled?: boolean;
+          openPositionsEnabled?: boolean;
+          ordersEnabled?: boolean;
+        }
+      | undefined;
+
+    if (role === "user" || role === "staff" || role === "admin") {
+      await ctx.db.patch(userId as any, {
+        role,
+        updatedAt: Date.now(),
+      });
+    }
+
+    if (tier === "free" || tier === "standard" || tier === "pro") {
+      const normalizedTier: "free" | "standard" | "pro" = tier;
+      const existing = await ctx.db
+        .query("userEntitlements")
+        .withIndex("by_user", (q: any) => q.eq("userId", userId))
+        .first();
+      const payload = {
+        userId,
+        tier: normalizedTier,
+        updatedAt: Date.now(),
+      };
+      if (existing) {
+        await ctx.db.patch(existing._id, payload);
+      } else {
+        await ctx.db.insert("userEntitlements", payload);
+      }
+    }
+
+    if (permissions) {
+      await ctx.runMutation(permissionsMutations.upsertPermissions, {
+        userId,
+        scopeType: "global",
+        scopeId: undefined,
+        globalEnabled: Boolean(permissions.globalEnabled),
+        tradeIdeasEnabled: Boolean(permissions.tradeIdeasEnabled),
+        openPositionsEnabled: Boolean(permissions.openPositionsEnabled),
+        ordersEnabled: Boolean(permissions.ordersEnabled),
+      });
     }
 
     await ctx.runMutation(coreTenantMutations.ensureMembership, {

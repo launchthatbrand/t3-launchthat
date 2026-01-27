@@ -3,17 +3,23 @@
 import { ArrowUpRight } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@acme/ui/card";
 import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
-import { useConvexAuth, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
+import { Skeleton } from "@acme/ui/skeleton";
 import Link from "next/link";
 import React from "react";
 import { api } from "@convex-config/_generated/api";
 import { cn } from "@acme/ui";
 import { useDataMode } from "~/components/dataMode/DataModeProvider";
 import { useRouter } from "next/navigation";
+import {
+  FeatureAccessAlert,
+  isFeatureEnabled,
+  useGlobalPermissions,
+} from "~/components/access/FeatureAccessGate";
 
 interface TradeIdeaCardRow extends Record<string, unknown> {
   id: string;
@@ -41,8 +47,9 @@ export default function AdminTradeIdeasPage() {
   const router = useRouter();
   const dataMode = useDataMode();
   const isLive = dataMode.effectiveMode === "live";
-  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  const shouldQuery = isAuthenticated && !authLoading;
+  const { permissions, isLoading, isAuthenticated } = useGlobalPermissions();
+  const canAccess = Boolean(permissions && isFeatureEnabled(permissions, "tradeIdeas"));
+  const shouldQuery = isAuthenticated && !isLoading && canAccess;
 
   const liveIdeas = useQuery(
     api.traderlaunchpad.queries.listMyTradeIdeas,
@@ -167,8 +174,30 @@ export default function AdminTradeIdeasPage() {
     [router],
   );
 
+  if (!canAccess && !isLoading) {
+    return (
+      <FeatureAccessAlert description="You do not have access to Trade Ideas." />
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <Skeleton key={`tradeideas-skeleton-${index}`} className="h-40 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative animate-in fade-in space-y-8 text-foreground selection:bg-orange-500/30 duration-500">
+      <div className="relative animate-in fade-in space-y-8 text-foreground selection:bg-orange-500/30 duration-500">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Trade Ideas</h1>
@@ -279,6 +308,6 @@ export default function AdminTradeIdeasPage() {
           </Card>
         )}
       />
-    </div>
+      </div>
   );
 }

@@ -3,12 +3,13 @@
 import Link from "next/link";
 import * as React from "react";
 import { useParams } from "next/navigation";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 
 import { api } from "@convex-config/_generated/api";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { Skeleton } from "@acme/ui/skeleton";
 import { NotesSection } from "~/components/admin/NotesSection";
 import { ArrowLeft, ArrowUpRight, Calendar, Clock } from "lucide-react";
 import { cn } from "@acme/ui";
@@ -25,6 +26,11 @@ import {
 
 import type { TradingTimeframe } from "~/components/charts/TradingChartMock";
 import { TradingChartReal } from "~/components/charts/TradingChartReal";
+import {
+  FeatureAccessAlert,
+  isFeatureEnabled,
+  useGlobalPermissions,
+} from "~/components/access/FeatureAccessGate";
 
 const toDateLabel = (tsMs: number): string => {
   const d = new Date(tsMs);
@@ -220,8 +226,9 @@ export default function AdminTradeIdeaDetailPage() {
       : "";
   const tradeIdeaId = rawId ? decodeURIComponent(rawId) : "";
 
-  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  const shouldQuery = isAuthenticated && !authLoading && Boolean(tradeIdeaId);
+  const { permissions, isLoading, isAuthenticated } = useGlobalPermissions();
+  const canAccess = Boolean(permissions && isFeatureEnabled(permissions, "tradeIdeas"));
+  const shouldQuery = isAuthenticated && !isLoading && canAccess && Boolean(tradeIdeaId);
 
   const setSharing = useMutation(api.traderlaunchpad.mutations.setMyTradeIdeaSharing);
   const createShortlink = useMutation(api.shortlinks.mutations.createShortlink);
@@ -382,8 +389,48 @@ export default function AdminTradeIdeaDetailPage() {
     return `${publicUrl}?code=${encodeURIComponent(token)}`;
   }, [detail?.shareToken, detail?.visibility, publicUrl]);
 
+  if (!canAccess && !isLoading) {
+    return (
+      <FeatureAccessAlert description="You do not have access to Trade Ideas." />
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container py-8 space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+        <Skeleton className="h-80 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
   if (detail === undefined) {
-    return <div className="container py-8 text-sm text-white/60">Loading…</div>;
+    return (
+      <div className="container py-8 space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+        <Skeleton className="h-80 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
   }
 
   if (!detail) {

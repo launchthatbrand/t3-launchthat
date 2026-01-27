@@ -15,6 +15,7 @@ import { resolveOrganizationId } from "./lib/resolve";
 
 const tradeIdeasIdeas = (components.launchthat_traderlaunchpad.tradeIdeas as any).ideas as any;
 const publicOrders = (components.launchthat_traderlaunchpad as any).publicOrders as any;
+const permissionsModule = components.launchthat_traderlaunchpad.permissions as any;
 
 // Public query: resolves a shared trade idea by shareToken (no auth required).
 export const getSharedTradeIdeaByToken = query({
@@ -34,6 +35,33 @@ const slugifyUsername = (value: string): string =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/-+/g, "-")
     .replace(/(^-|-$)/g, "");
+
+const isEnabledForType = (
+  perms: {
+    globalEnabled?: boolean;
+    tradeIdeasEnabled?: boolean;
+    openPositionsEnabled?: boolean;
+    ordersEnabled?: boolean;
+  },
+  type: "tradeIdeas" | "openPositions" | "orders",
+): boolean => {
+  if (Boolean(perms?.globalEnabled)) return true;
+  if (type === "tradeIdeas") return Boolean(perms?.tradeIdeasEnabled);
+  if (type === "openPositions") return Boolean(perms?.openPositionsEnabled);
+  return Boolean(perms?.ordersEnabled);
+};
+
+const hasGlobalPermissionForType = async (
+  ctx: any,
+  userId: string,
+  type: "tradeIdeas" | "openPositions" | "orders",
+): Promise<boolean> => {
+  const perms = await ctx.runQuery(permissionsModule.getPermissions, {
+    userId,
+    scopeType: "global",
+  });
+  return isEnabledForType(perms ?? {}, type);
+};
 
 // Public query: resolves a trade idea by id, allowing access if:
 // - idea is public, OR
@@ -72,6 +100,9 @@ export const getPublicTradeIdea = query({
 
     const tradeIdeaId = String(args.tradeIdeaId ?? "").trim();
     if (!tradeIdeaId) return null;
+
+    const canShare = await hasGlobalPermissionForType(ctx, clerkId, "tradeIdeas");
+    if (!canShare) return null;
 
     return await ctx.runQuery(tradeIdeasIdeas.getPublicTradeIdeaById, {
       organizationId: orgId,
@@ -114,6 +145,9 @@ export const listPublicTradeIdeas = query({
         : null;
     if (!clerkId) return [];
 
+    const canShare = await hasGlobalPermissionForType(ctx, clerkId, "tradeIdeas");
+    if (!canShare) return [];
+
     return await ctx.runQuery(tradeIdeasIdeas.listPublicTradeIdeasForUser, {
       organizationId: orgId,
       expectedUserId: clerkId,
@@ -152,6 +186,9 @@ export const listPublicOrders = query({
         ? String((user as any).clerkId).trim()
         : null;
     if (!clerkId) return [];
+
+    const canShare = await hasGlobalPermissionForType(ctx, clerkId, "orders");
+    if (!canShare) return [];
 
     return await ctx.runQuery(publicOrders.listPublicOrdersForUser, {
       organizationId: orgId,

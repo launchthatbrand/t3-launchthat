@@ -24,11 +24,12 @@ import {
   TableHeader,
   TableRow,
 } from "@acme/ui/table";
-import { useConvexAuth, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Input } from "@acme/ui/input";
+import { Skeleton } from "@acme/ui/skeleton";
 import Link from "next/link";
 import React from "react";
 import { api } from "@convex-config/_generated/api";
@@ -37,6 +38,11 @@ import { demoAdminOrders } from "@acme/demo-data";
 import { useDataMode } from "~/components/dataMode/DataModeProvider";
 import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
 import { useRouter } from "next/navigation";
+import {
+  FeatureAccessAlert,
+  isFeatureEnabled,
+  useGlobalPermissions,
+} from "~/components/access/FeatureAccessGate";
 
 interface OrderRow {
   id: string;
@@ -86,26 +92,29 @@ const formatDateTime = (tsMs: number | null): { date: string; time: string } => 
 
 export default function AdminOrdersPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const { permissions, isLoading, isAuthenticated } = useGlobalPermissions();
   const dataMode = useDataMode();
   const [tab, setTab] = React.useState<"filled" | "pending" | "positions">(
     "filled",
   );
-  const shouldQuery = isAuthenticated && !authLoading;
+  const canOrders = Boolean(permissions && isFeatureEnabled(permissions, "orders"));
+  const canOpenPositions = Boolean(permissions && isFeatureEnabled(permissions, "openPositions"));
+  const shouldQueryOrders = isAuthenticated && !isLoading && canOrders;
+  const shouldQueryPositions = isAuthenticated && !isLoading && canOpenPositions;
 
   const livePendingRaw = useQuery(
     api.traderlaunchpad.queries.listMyTradeLockerOrders,
-    shouldQuery && dataMode.effectiveMode === "live" ? { limit: 200 } : "skip",
+    shouldQueryOrders && dataMode.effectiveMode === "live" ? { limit: 200 } : "skip",
   ) as unknown[] | undefined;
 
   const liveFilledRaw = useQuery(
     api.traderlaunchpad.queries.listMyTradeLockerOrdersHistory,
-    shouldQuery && dataMode.effectiveMode === "live" ? { limit: 500 } : "skip",
+    shouldQueryOrders && dataMode.effectiveMode === "live" ? { limit: 500 } : "skip",
   ) as unknown[] | undefined;
 
   const livePositionsRaw = useQuery(
     api.traderlaunchpad.queries.listMyTradeLockerPositions,
-    shouldQuery && dataMode.effectiveMode === "live" ? { limit: 200 } : "skip",
+    shouldQueryPositions && dataMode.effectiveMode === "live" ? { limit: 200 } : "skip",
   ) as unknown[] | undefined;
 
   const tradableInstrumentIdsForLookup = React.useMemo(() => {
@@ -133,14 +142,48 @@ export default function AdminOrdersPage() {
     return Array.from(new Set(ids)).sort();
   }, [dataMode.effectiveMode, liveFilledRaw, livePendingRaw, livePositionsRaw]);
 
+  const shouldQuerySymbols =
+    isAuthenticated && !isLoading && (canOrders || canOpenPositions);
+
   const pricedataSymbolsRaw = useQuery(
     api.traderlaunchpad.queries.getMyPriceDataSymbolsByTradableInstrumentIds,
-    shouldQuery &&
+    shouldQuerySymbols &&
       dataMode.effectiveMode === "live" &&
       tradableInstrumentIdsForLookup.length > 0
       ? { tradableInstrumentIds: tradableInstrumentIdsForLookup }
       : "skip",
   ) as { tradableInstrumentId: string; symbol: string }[] | undefined;
+
+  if (!canOrders && !isLoading) {
+    return <FeatureAccessAlert description="You do not have access to Orders." />;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Card>
+          <CardHeader className="border-b border-white/10 p-4">
+            <Skeleton className="h-10 w-full" />
+          </CardHeader>
+          <CardContent className="space-y-3 p-4">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <Skeleton key={`orders-skeleton-${index}`} className="h-10 w-full" />
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const symbolByTradableInstrumentId = React.useMemo(() => {
     const map = new Map<string, string>();
@@ -399,6 +442,11 @@ export default function AdminOrdersPage() {
         </CardHeader>
         <CardContent className="p-0">
           {tab === "positions" ? (
+            !canOpenPositions ? (
+              <div className="p-4">
+                <FeatureAccessAlert description="You do not have access to Open Positions." />
+              </div>
+            ) : (
             <Table>
               <TableHeader>
                 <TableRow className="border-white/10 bg-black/30 hover:bg-black/30">
@@ -455,6 +503,7 @@ export default function AdminOrdersPage() {
                 ))}
               </TableBody>
             </Table>
+            )
           ) : (
             <Table>
               <TableHeader>

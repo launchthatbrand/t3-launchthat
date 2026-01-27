@@ -53,6 +53,9 @@ export default defineSchema({
     name: v.optional(v.string()),
     image: v.optional(v.string()),
     bio: v.optional(v.string()),
+    role: v.optional(
+      v.union(v.literal("user"), v.literal("staff"), v.literal("admin")),
+    ),
 
     // User-scoped media (stored in `userMedia`).
     avatarMediaId: v.optional(v.id("userMedia")),
@@ -86,6 +89,13 @@ export default defineSchema({
     .index("by_clerk_id", ["clerkId"])
     .index("by_public_username", ["publicUsername"])
     .index("by_organization", ["organizationId"]),
+
+  userEntitlements: defineTable({
+    userId: v.string(),
+    tier: v.union(v.literal("free"), v.literal("standard"), v.literal("pro")),
+    limits: v.optional(v.any()),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
 
   userMedia: defineTable({
     uploadedByUserId: v.string(),

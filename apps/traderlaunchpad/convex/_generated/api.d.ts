@@ -39,6 +39,7 @@ import type * as platform_tests from "../platform/tests.js";
 import type * as platform_testsAuth from "../platform/testsAuth.js";
 import type * as platform_testsDebug from "../platform/testsDebug.js";
 import type * as platform_testsQueries from "../platform/testsQueries.js";
+import type * as platform_userAccess from "../platform/userAccess.js";
 import type * as publicProfiles_types from "../publicProfiles/types.js";
 import type * as publicProfiles from "../publicProfiles.js";
 import type * as pushSubscriptions_actions from "../pushSubscriptions/actions.js";
@@ -104,6 +105,7 @@ declare const fullApi: ApiFromModules<{
   "platform/testsAuth": typeof platform_testsAuth;
   "platform/testsDebug": typeof platform_testsDebug;
   "platform/testsQueries": typeof platform_testsQueries;
+  "platform/userAccess": typeof platform_userAccess;
   "publicProfiles/types": typeof publicProfiles_types;
   publicProfiles: typeof publicProfiles;
   "pushSubscriptions/actions": typeof pushSubscriptions_actions;
@@ -1169,7 +1171,15 @@ export declare const components: {
           label?: string;
           maxUses?: number;
           organizationId?: string;
+          permissions?: {
+            globalEnabled?: boolean;
+            openPositionsEnabled?: boolean;
+            ordersEnabled?: boolean;
+            tradeIdeasEnabled?: boolean;
+          };
+          role?: "user" | "staff" | "admin";
           scope: "platform" | "organization";
+          tier?: "free" | "standard" | "pro";
         },
         { code: string; codeHash: string; joinCodeId: string }
       >;
@@ -1195,7 +1205,15 @@ export declare const components: {
           label?: string;
           maxUses?: number;
           organizationId?: string;
+          permissions?: {
+            globalEnabled?: boolean;
+            openPositionsEnabled?: boolean;
+            ordersEnabled?: boolean;
+            tradeIdeasEnabled?: boolean;
+          };
+          role?: "user" | "staff" | "admin";
           scope: "platform" | "organization";
+          tier?: "free" | "standard" | "pro";
           uses: number;
         } | null
       >;

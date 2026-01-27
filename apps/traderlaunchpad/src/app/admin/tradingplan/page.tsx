@@ -28,6 +28,7 @@ import { Label } from "@acme/ui/label";
 import Link from "next/link";
 import { Progress } from "@acme/ui/progress";
 import React from "react";
+import { Skeleton } from "@acme/ui/skeleton";
 import { api } from "@convex-config/_generated/api";
 import { cn } from "@acme/ui";
 import { useDataMode } from "~/components/dataMode/DataModeProvider";
@@ -352,8 +353,25 @@ function PersonalTradingPlanPage() {
   const plan = effectivePlan;
   if (!plan) {
     return (
-      <div className="mx-auto max-w-4xl space-y-4 text-foreground">
-        <div className="text-sm text-foreground/60">Loading…</div>
+      <div className="mx-auto space-y-4 text-foreground">
+        <div className="space-y-3">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        <Card className="border-white/10 bg-white/3 backdrop-blur-md">
+          <CardHeader className="border-b border-white/10">
+            <Skeleton className="h-4 w-40" />
+          </CardHeader>
+          <CardContent className="space-y-4 p-6">
+            <Skeleton className="h-6 w-full" />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
