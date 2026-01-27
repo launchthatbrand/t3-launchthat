@@ -13,7 +13,7 @@ export const getConnectionSecrets = query({
   },
   returns: v.union(
     v.object({
-      connectionId: v.id("tradelockerConnections"),
+      connectionId: v.id("brokerConnections"),
       organizationId: v.string(),
       userId: v.string(),
       environment: v.union(v.literal("demo"), v.literal("live")),
@@ -35,7 +35,7 @@ export const getConnectionSecrets = query({
   ),
   handler: async (ctx, args) => {
     const doc = await ctx.db
-      .query("tradelockerConnections")
+      .query("brokerConnections")
       .withIndex("by_organizationId_and_userId", (q: any) =>
         q.eq("organizationId", args.organizationId).eq("userId", args.userId),
       )
@@ -70,7 +70,7 @@ export const listConnectionsDueForPoll = query({
   },
   returns: v.array(
     v.object({
-      _id: v.id("tradelockerConnections"),
+      _id: v.id("brokerConnections"),
       _creationTime: v.number(),
       organizationId: v.string(),
       userId: v.string(),
@@ -102,7 +102,7 @@ export const listConnectionsDueForPoll = query({
       );
       const activeSince = now - activeWindowMs;
       candidates = await ctx.db
-        .query("tradelockerConnections")
+        .query("brokerConnections")
         .withIndex("by_status_and_lastBrokerActivityAt", (q: any) =>
           q.eq("status", "connected").gte("lastBrokerActivityAt", activeSince),
         )
@@ -110,7 +110,7 @@ export const listConnectionsDueForPoll = query({
         .take(overfetch);
     } else {
       candidates = await ctx.db
-        .query("tradelockerConnections")
+        .query("brokerConnections")
         .withIndex("by_status_and_lastSyncAt", (q: any) =>
           q.eq("status", "connected").lte("lastSyncAt", dueBefore),
         )

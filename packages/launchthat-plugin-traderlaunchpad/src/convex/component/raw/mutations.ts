@@ -6,7 +6,7 @@ export const upsertTradeOrder = mutation({
   args: {
     organizationId: v.string(),
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     externalOrderId: v.string(),
     symbol: v.optional(v.string()),
     instrumentId: v.optional(v.string()),
@@ -65,7 +65,7 @@ export const upsertTradeExecution = mutation({
   args: {
     organizationId: v.string(),
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     externalExecutionId: v.string(),
     externalOrderId: v.optional(v.string()),
     externalPositionId: v.optional(v.string()),
@@ -274,7 +274,7 @@ export const upsertTradeOrderHistory = mutation({
   args: {
     organizationId: v.string(),
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     externalOrderId: v.string(),
     symbol: v.optional(v.string()),
     instrumentId: v.optional(v.string()),
@@ -333,7 +333,7 @@ export const upsertTradePosition = mutation({
   args: {
     organizationId: v.string(),
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     externalPositionId: v.string(),
     symbol: v.optional(v.string()),
     instrumentId: v.optional(v.string()),
@@ -397,7 +397,7 @@ export const upsertTradeRealizationEvent = mutation({
   args: {
     organizationId: v.string(),
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     accountId: v.string(),
     externalEventId: v.string(),
     externalOrderId: v.optional(v.string()),
@@ -503,7 +503,7 @@ export const upsertTradeAccountState = mutation({
   args: {
     organizationId: v.string(),
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     accountId: v.string(),
     raw: v.any(),
   },

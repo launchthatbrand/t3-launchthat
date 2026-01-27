@@ -22,10 +22,10 @@ export const upsertConnection = mutation({
     ),
     lastError: v.optional(v.string()),
   },
-  returns: v.id("tradelockerConnections"),
+  returns: v.id("brokerConnections"),
   handler: async (ctx, args) => {
     const existing = await ctx.db
-      .query("tradelockerConnections")
+      .query("brokerConnections")
       .withIndex("by_organizationId_and_userId", (q: any) =>
         q.eq("organizationId", args.organizationId).eq("userId", args.userId),
       )
@@ -34,6 +34,10 @@ export const upsertConnection = mutation({
     const now = Date.now();
     if (existing) {
       await ctx.db.patch(existing._id, {
+        provider:
+          typeof (existing as any).provider === "string"
+            ? (existing as any).provider
+            : "tradelocker",
         environment: args.environment,
         server: args.server,
         jwtHost: args.jwtHost,
@@ -53,9 +57,10 @@ export const upsertConnection = mutation({
       return existing._id;
     }
 
-    return await ctx.db.insert("tradelockerConnections", {
+    return await ctx.db.insert("brokerConnections", {
       organizationId: args.organizationId,
       userId: args.userId,
+      provider: "tradelocker",
       environment: args.environment,
       server: args.server,
       jwtHost: args.jwtHost,
@@ -76,7 +81,7 @@ export const upsertConnection = mutation({
 
 export const updateConnectionSyncState = mutation({
   args: {
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     lastSyncAt: v.optional(v.number()),
     lastBrokerActivityAt: v.optional(v.number()),
     hasOpenTrade: v.optional(v.boolean()),
@@ -115,7 +120,7 @@ export const deleteConnection = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const existing = await ctx.db
-      .query("tradelockerConnections")
+      .query("brokerConnections")
       .withIndex("by_organizationId_and_userId", (q: any) =>
         q.eq("organizationId", args.organizationId).eq("userId", args.userId),
       )
@@ -130,14 +135,14 @@ export const upsertConnectionAccount = mutation({
   args: {
     organizationId: v.string(),
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     accountId: v.string(),
     accNum: v.number(),
     name: v.optional(v.string()),
     currency: v.optional(v.string()),
     status: v.optional(v.string()),
   },
-  returns: v.id("tradelockerConnectionAccounts"),
+  returns: v.id("brokerConnectionAccounts"),
   handler: async (ctx, args) => {
     const conn = await ctx.db.get(args.connectionId);
     if (!conn) throw new Error("Connection not found");
@@ -147,7 +152,7 @@ export const upsertConnectionAccount = mutation({
 
     const now = Date.now();
     const existing = await ctx.db
-      .query("tradelockerConnectionAccounts")
+      .query("brokerConnectionAccounts")
       .withIndex("by_connectionId", (q: any) => q.eq("connectionId", args.connectionId))
       .filter((q: any) =>
         q.and(
@@ -167,7 +172,7 @@ export const upsertConnectionAccount = mutation({
       return existing._id;
     }
 
-    return await ctx.db.insert("tradelockerConnectionAccounts", {
+    return await ctx.db.insert("brokerConnectionAccounts", {
       organizationId: args.organizationId,
       userId: args.userId,
       connectionId: args.connectionId,
@@ -186,7 +191,7 @@ export const setConnectionSelectedAccount = mutation({
   args: {
     organizationId: v.string(),
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     selectedAccountId: v.string(),
     selectedAccNum: v.number(),
   },
@@ -210,7 +215,7 @@ export const updateConnectionAccountDebug = mutation({
   args: {
     organizationId: v.string(),
     userId: v.string(),
-    accountRowId: v.id("tradelockerConnectionAccounts"),
+    accountRowId: v.id("brokerConnectionAccounts"),
     lastConfigOk: v.boolean(),
     customerAccess: v.optional(
       v.object({
@@ -246,12 +251,12 @@ export const updateConnectionAccountDebug = mutation({
 
 export const claimSyncLeases = mutation({
   args: {
-    connectionIds: v.array(v.id("tradelockerConnections")),
+    connectionIds: v.array(v.id("brokerConnections")),
     now: v.number(),
     leaseMs: v.number(),
     leaseOwner: v.string(),
   },
-  returns: v.array(v.id("tradelockerConnections")),
+  returns: v.array(v.id("brokerConnections")),
   handler: async (ctx, args) => {
     const now = args.now;
     const leaseMs = Math.max(1_000, Math.min(30 * 60 * 1000, args.leaseMs));

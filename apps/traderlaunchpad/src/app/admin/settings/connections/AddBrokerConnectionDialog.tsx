@@ -14,6 +14,7 @@ import { Button } from "@acme/ui/button";
 import React from "react";
 import { TradeLockerConnectFlow } from "~/components/settings/tradelocker/TradeLockerConnectFlow";
 import { cn } from "~/lib/utils";
+import { usePathname } from "next/navigation";
 
 type ProviderKey = "tradelocker" | "mt4" | "mt5" | "binance";
 
@@ -55,6 +56,10 @@ export function AddBrokerConnectionDialog(props: {
   initialProvider?: ProviderKey;
   triggerClassName?: string;
 }) {
+  const pathname = usePathname();
+  const mode: "user" | "platform" = pathname.startsWith("/platform/connections")
+    ? "platform"
+    : "user";
   const [open, setOpen] = React.useState(false);
   const [selectedProvider, setSelectedProvider] = React.useState<ProviderKey | null>(
     null,
@@ -206,6 +211,7 @@ export function AddBrokerConnectionDialog(props: {
                     onSuccess={() => {
                       setOpen(false);
                     }}
+                    mode={mode}
                   />
                 </>
               ) : (

@@ -15,7 +15,9 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "with-env": "dotenv -e ../../.env --",
-    "btools": "npx @agentdeskai/browser-tools-server@latest"
+    "btools": "npx @agentdeskai/browser-tools-server@latest",
+    "clickhouse:migrate": "dotenv -e .env -- node scripts/clickhouse/migrate.mjs",
+    "clickhouse:query": "dotenv -e .env -- node scripts/clickhouse/query.mjs"
   },
   "dependencies": {
     "@acme/api": "workspace:*",

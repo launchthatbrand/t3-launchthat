@@ -12,7 +12,7 @@ const randomToken = (): string => {
 export const upsertTradeIdeaGroup = mutation({
   args: {
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     accountId: v.string(),
     positionId: v.string(),
     instrumentId: v.optional(v.string()),
@@ -105,7 +105,7 @@ const notional = (e: any): number => {
 export const rebuildTradeIdeasForInstrument = mutation({
   args: {
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     accountId: v.string(),
     instrumentId: v.string(),
   },
@@ -344,7 +344,7 @@ export const rebuildTradeIdeaForPosition = mutation({
   args: {
     organizationId: v.string(),
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     accountId: v.string(),
     positionId: v.string(),
     isOpen: v.boolean(),

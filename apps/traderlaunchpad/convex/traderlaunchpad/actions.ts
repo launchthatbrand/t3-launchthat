@@ -170,7 +170,7 @@ export const startTradeLockerConnect = action({
     debugReturnTokens: v.optional(v.boolean()),
   },
   returns: v.object({
-    // NOTE: this id belongs to the *component* table `tradelockerConnectDrafts`,
+    // NOTE: this id belongs to the *component* table `brokerConnectDrafts`,
     // so it must be treated as an opaque string at the app boundary.
     draftId: v.string(),
     accounts: v.array(v.any()),
@@ -291,7 +291,7 @@ export const startTradeLockerConnect = action({
 
 export const connectTradeLocker = action({
   args: {
-    // NOTE: this id belongs to the *component* table `tradelockerConnectDrafts`,
+    // NOTE: this id belongs to the *component* table `brokerConnectDrafts`,
     // so it must be treated as an opaque string at the app boundary.
     draftId: v.string(),
     selectedAccountId: v.string(),

@@ -14,9 +14,9 @@ export const createConnectDraft = mutation({
     refreshTokenExpiresAt: v.optional(v.number()),
     expiresAt: v.number(),
   },
-  returns: v.id("tradelockerConnectDrafts"),
+  returns: v.id("brokerConnectDrafts"),
   handler: async (ctx, args) => {
-    return await ctx.db.insert("tradelockerConnectDrafts", {
+    return await ctx.db.insert("brokerConnectDrafts", {
       organizationId: args.organizationId,
       userId: args.userId,
       environment: args.environment,
@@ -34,7 +34,7 @@ export const createConnectDraft = mutation({
 
 export const consumeConnectDraft = mutation({
   args: {
-    draftId: v.id("tradelockerConnectDrafts"),
+    draftId: v.id("brokerConnectDrafts"),
     organizationId: v.string(),
     userId: v.string(),
   },

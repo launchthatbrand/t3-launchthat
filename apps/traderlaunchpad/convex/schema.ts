@@ -184,5 +184,6 @@ export default defineSchema({
     .index("by_org", ["organizationId"])
     .index("by_token", ["token"])
     .index("by_expiresAt", ["expiresAt"]),
+
 });
 

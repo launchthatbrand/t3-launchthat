@@ -1250,7 +1250,7 @@ export const probeTradeEndpointForAccount = action({
   args: {
     organizationId: v.string(),
     userId: v.string(),
-    // Values from a `tradelockerConnectionAccounts` row.
+    // Values from a `brokerConnectionAccounts` row.
     accountId: v.string(),
     accNum: v.number(),
     endpoint: v.union(
@@ -1532,7 +1532,7 @@ export const probeBackendPathForAccount = action({
   args: {
     organizationId: v.string(),
     userId: v.string(),
-    // Values from a `tradelockerConnectionAccounts` row.
+    // Values from a `brokerConnectionAccounts` row.
     accountId: v.string(),
     accNum: v.number(),
     // Path under `${baseUrl}`. Example: `/user/me` or `/user/me/accounts?includeBalance=true`.
@@ -3463,7 +3463,7 @@ export const syncTradeLockerConnection = action({
     }
 
     // IMPORTANT: `getConnectionSecrets` intentionally does not return the component doc `_id`,
-    // but downstream mutations require `connectionId` (a component `Id<"tradelockerConnections">`).
+    // but downstream mutations require `connectionId` (a component `Id<"brokerConnections">`).
     const connection = await ctx.runQuery(
       api.connections.queries.getMyConnection as any,
       { organizationId: args.organizationId, userId: args.userId },

@@ -72,7 +72,7 @@ export default defineSchema({
     .index("by_org_and_user", ["organizationId", "userId"])
     .index("by_org_and_isPublic", ["organizationId", "isPublic"]),
 
-  tradelockerConnectDrafts: defineTable({
+  brokerConnectDrafts: defineTable({
     organizationId: v.string(),
     userId: v.string(),
     environment: v.union(v.literal("demo"), v.literal("live")),
@@ -92,9 +92,11 @@ export default defineSchema({
     ])
     .index("by_expiresAt", ["expiresAt"]),
 
-  tradelockerConnections: defineTable({
+  brokerConnections: defineTable({
     organizationId: v.string(),
     userId: v.string(),
+    // Future: unify other broker/provider types behind this table.
+    provider: v.optional(v.string()),
     environment: v.union(v.literal("demo"), v.literal("live")),
     server: v.string(),
     jwtHost: v.optional(v.string()),
@@ -131,13 +133,52 @@ export default defineSchema({
       "lastBrokerActivityAt",
     ]),
 
-  // Multiple TradeLocker accounts under a single user connection.
+  /**
+   * Platform-level broker connections (e.g. TradingView for price data ingestion).
+   * This is scoped to the platform (not per-user).
+   */
+  platformBrokerConnections: defineTable({
+    provider: v.string(), // e.g. "tradingview"
+    label: v.string(),
+    username: v.optional(v.string()),
+    status: v.union(v.literal("active"), v.literal("disabled")),
+    isDefault: v.boolean(),
+
+    // Encrypted secrets (provider-specific).
+    secrets: v.any(),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_provider_and_updatedAt", ["provider", "updatedAt"])
+    .index("by_provider_and_isDefault", ["provider", "isDefault"])
+    .index("by_provider_and_status", ["provider", "status"]),
+
+  /**
+   * Platform-level connect drafts (multi-step connect flows).
+   * For now used by TradeLocker platform connections.
+   */
+  platformBrokerConnectDrafts: defineTable({
+    provider: v.string(), // e.g. "tradelocker"
+    environment: v.union(v.literal("demo"), v.literal("live")),
+    server: v.string(),
+    jwtHost: v.optional(v.string()),
+    accessTokenEncrypted: v.string(),
+    refreshTokenEncrypted: v.string(),
+    accessTokenExpiresAt: v.optional(v.number()),
+    refreshTokenExpiresAt: v.optional(v.number()),
+    expiresAt: v.number(),
+    createdAt: v.number(),
+  }).index("by_expiresAt", ["expiresAt"]),
+
+  // Multiple broker accounts under a single user connection.
   // We store the "customerAccess" snapshot from /trade/config so the UI can show
   // which accounts are blocked from instruments/trade data.
-  tradelockerConnectionAccounts: defineTable({
+  brokerConnectionAccounts: defineTable({
     organizationId: v.string(),
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
 
     accountId: v.string(),
     accNum: v.number(),
@@ -171,9 +212,43 @@ export default defineSchema({
     ])
     .index("by_org_user_and_accNum", ["organizationId", "userId", "accNum"]),
 
+  /**
+   * Platform-level broker accounts under a platform connection.
+   * Mirrors `brokerConnectionAccounts` but is scoped to `platformBrokerConnections`.
+   */
+  platformBrokerConnectionAccounts: defineTable({
+    connectionId: v.id("platformBrokerConnections"),
+
+    accountId: v.string(),
+    accNum: v.number(),
+    name: v.optional(v.string()),
+    currency: v.optional(v.string()),
+    status: v.optional(v.string()),
+
+    customerAccess: v.optional(
+      v.object({
+        orders: v.boolean(),
+        ordersHistory: v.boolean(),
+        filledOrders: v.boolean(),
+        positions: v.boolean(),
+        symbolInfo: v.boolean(),
+        marketDepth: v.boolean(),
+      }),
+    ),
+    lastConfigOk: v.optional(v.boolean()),
+    lastConfigCheckedAt: v.optional(v.number()),
+    lastConfigError: v.optional(v.string()),
+    lastConfigRaw: v.optional(v.any()),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_connectionId", ["connectionId"])
+    .index("by_connectionId_and_accNum", ["connectionId", "accNum"]),
+
   tradeOrders: defineTable({
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     externalOrderId: v.string(),
     symbol: v.optional(v.string()),
     instrumentId: v.optional(v.string()),
@@ -193,7 +268,7 @@ export default defineSchema({
 
   tradeExecutions: defineTable({
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     externalExecutionId: v.string(),
     externalOrderId: v.optional(v.string()),
     externalPositionId: v.optional(v.string()),
@@ -218,7 +293,7 @@ export default defineSchema({
 
   tradeOrdersHistory: defineTable({
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     externalOrderId: v.string(),
     symbol: v.optional(v.string()),
     instrumentId: v.optional(v.string()),
@@ -236,7 +311,7 @@ export default defineSchema({
   tradePositions: defineTable({
     organizationId: v.optional(v.string()),
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     externalPositionId: v.string(),
     symbol: v.optional(v.string()),
     instrumentId: v.optional(v.string()),
@@ -256,7 +331,7 @@ export default defineSchema({
   tradeRealizationEvents: defineTable({
     organizationId: v.string(),
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     accountId: v.string(),
 
     // Stable unique key for idempotent upserts.
@@ -325,7 +400,7 @@ export default defineSchema({
   tradeAccountStates: defineTable({
     organizationId: v.string(),
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     accountId: v.string(),
     raw: v.any(),
     updatedAt: v.number(),
@@ -410,7 +485,7 @@ export default defineSchema({
 
   tradeIdeaGroups: defineTable({
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     accountId: v.string(),
     // New hedging-safe grouping key. Optional temporarily to avoid breaking legacy rows.
     positionId: v.optional(v.string()),
@@ -467,7 +542,7 @@ export default defineSchema({
 
   tradeIdeaEvents: defineTable({
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
     tradeIdeaGroupId: v.id("tradeIdeaGroups"),
     externalExecutionId: v.string(),
     externalOrderId: v.optional(v.string()),

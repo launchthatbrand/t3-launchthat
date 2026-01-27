@@ -9,10 +9,11 @@ export const getMyConnection = query({
   },
   returns: v.union(
     v.object({
-      _id: v.id("tradelockerConnections"),
+      _id: v.id("brokerConnections"),
       _creationTime: v.number(),
       organizationId: v.string(),
       userId: v.string(),
+      provider: v.optional(v.string()),
       environment: v.union(v.literal("demo"), v.literal("live")),
       server: v.string(),
       jwtHost: v.optional(v.string()),
@@ -36,7 +37,7 @@ export const getMyConnection = query({
   ),
   handler: async (ctx, args) => {
     const doc = await ctx.db
-      .query("tradelockerConnections")
+      .query("brokerConnections")
       .withIndex("by_organizationId_and_userId", (q: any) =>
         q.eq("organizationId", args.organizationId).eq("userId", args.userId),
       )
@@ -47,6 +48,7 @@ export const getMyConnection = query({
       _creationTime: doc._creationTime,
       organizationId: doc.organizationId,
       userId: doc.userId,
+      provider: (doc as any).provider,
       environment: doc.environment,
       server: doc.server,
       jwtHost: doc.jwtHost,
@@ -67,14 +69,15 @@ export const getMyConnection = query({
 
 export const getConnectionById = query({
   args: {
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
   },
   returns: v.union(
     v.object({
-      _id: v.id("tradelockerConnections"),
+      _id: v.id("brokerConnections"),
       _creationTime: v.number(),
       organizationId: v.string(),
       userId: v.string(),
+      provider: v.optional(v.string()),
       environment: v.union(v.literal("demo"), v.literal("live")),
       server: v.string(),
       jwtHost: v.optional(v.string()),
@@ -104,6 +107,7 @@ export const getConnectionById = query({
       _creationTime: doc._creationTime,
       organizationId: doc.organizationId,
       userId: doc.userId,
+      provider: (doc as any).provider,
       environment: doc.environment,
       server: doc.server,
       jwtHost: doc.jwtHost,
@@ -126,15 +130,15 @@ export const listMyConnectionAccounts = query({
   args: {
     organizationId: v.string(),
     userId: v.string(),
-    connectionId: v.id("tradelockerConnections"),
+    connectionId: v.id("brokerConnections"),
   },
   returns: v.array(
     v.object({
-      _id: v.id("tradelockerConnectionAccounts"),
+      _id: v.id("brokerConnectionAccounts"),
       _creationTime: v.number(),
       organizationId: v.string(),
       userId: v.string(),
-      connectionId: v.id("tradelockerConnections"),
+      connectionId: v.id("brokerConnections"),
       accountId: v.string(),
       accNum: v.number(),
       name: v.optional(v.string()),
@@ -160,7 +164,7 @@ export const listMyConnectionAccounts = query({
   ),
   handler: async (ctx, args) => {
     const rows = await ctx.db
-      .query("tradelockerConnectionAccounts")
+      .query("brokerConnectionAccounts")
       .withIndex("by_connectionId", (q: any) => q.eq("connectionId", args.connectionId))
       .collect();
 

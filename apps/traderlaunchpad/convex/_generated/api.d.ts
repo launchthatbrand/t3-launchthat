@@ -31,6 +31,8 @@ import type * as notifications_queries from "../notifications/queries.js";
 import type * as notifications_test from "../notifications/test.js";
 import type * as onboarding_mutations from "../onboarding/mutations.js";
 import type * as onboarding_queries from "../onboarding/queries.js";
+import type * as platform_brokerConnections from "../platform/brokerConnections.js";
+import type * as platform_brokerConnectionsActions from "../platform/brokerConnectionsActions.js";
 import type * as platform_crm from "../platform/crm.js";
 import type * as platform_joinCodes from "../platform/joinCodes.js";
 import type * as platform_queries from "../platform/queries.js";
@@ -41,6 +43,8 @@ import type * as platform_tests from "../platform/tests.js";
 import type * as platform_testsAuth from "../platform/testsAuth.js";
 import type * as platform_testsDebug from "../platform/testsDebug.js";
 import type * as platform_testsQueries from "../platform/testsQueries.js";
+import type * as platform_tradingviewConnections from "../platform/tradingviewConnections.js";
+import type * as platform_tradingviewConnectionsActions from "../platform/tradingviewConnectionsActions.js";
 import type * as platform_userAccess from "../platform/userAccess.js";
 import type * as publicProfiles_types from "../publicProfiles/types.js";
 import type * as publicProfiles from "../publicProfiles.js";
@@ -99,6 +103,8 @@ declare const fullApi: ApiFromModules<{
   "notifications/test": typeof notifications_test;
   "onboarding/mutations": typeof onboarding_mutations;
   "onboarding/queries": typeof onboarding_queries;
+  "platform/brokerConnections": typeof platform_brokerConnections;
+  "platform/brokerConnectionsActions": typeof platform_brokerConnectionsActions;
   "platform/crm": typeof platform_crm;
   "platform/joinCodes": typeof platform_joinCodes;
   "platform/queries": typeof platform_queries;
@@ -109,6 +115,8 @@ declare const fullApi: ApiFromModules<{
   "platform/testsAuth": typeof platform_testsAuth;
   "platform/testsDebug": typeof platform_testsDebug;
   "platform/testsQueries": typeof platform_testsQueries;
+  "platform/tradingviewConnections": typeof platform_tradingviewConnections;
+  "platform/tradingviewConnectionsActions": typeof platform_tradingviewConnectionsActions;
   "platform/userAccess": typeof platform_userAccess;
   "publicProfiles/types": typeof publicProfiles_types;
   publicProfiles: typeof publicProfiles;
@@ -1729,6 +1737,206 @@ export declare const components: {
           string
         >;
       };
+      platform: {
+        consumeTradeLockerConnectDraft: FunctionReference<
+          "mutation",
+          "internal",
+          { draftId: string },
+          {
+            accessTokenEncrypted: string;
+            accessTokenExpiresAt?: number;
+            environment: "demo" | "live";
+            jwtHost?: string;
+            refreshTokenEncrypted: string;
+            refreshTokenExpiresAt?: number;
+            server: string;
+          } | null
+        >;
+        createTradeLockerConnectDraft: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accessTokenEncrypted: string;
+            accessTokenExpiresAt?: number;
+            environment: "demo" | "live";
+            expiresAt: number;
+            jwtHost?: string;
+            refreshTokenEncrypted: string;
+            refreshTokenExpiresAt?: number;
+            server: string;
+          },
+          string
+        >;
+        deleteConnection: FunctionReference<
+          "mutation",
+          "internal",
+          { connectionId: string },
+          null
+        >;
+        getConnection: FunctionReference<
+          "query",
+          "internal",
+          { connectionId: string },
+          {
+            _creationTime: number;
+            _id: string;
+            createdAt: number;
+            isDefault: boolean;
+            label: string;
+            lastUsedAt?: number;
+            provider: string;
+            status: "active" | "disabled";
+            updatedAt: number;
+            username?: string;
+          } | null
+        >;
+        getConnectionAccount: FunctionReference<
+          "query",
+          "internal",
+          { accountRowId: string },
+          {
+            _creationTime: number;
+            _id: string;
+            accNum: number;
+            accountId: string;
+            connectionId: string;
+            createdAt: number;
+            currency?: string;
+            customerAccess?: {
+              filledOrders: boolean;
+              marketDepth: boolean;
+              orders: boolean;
+              ordersHistory: boolean;
+              positions: boolean;
+              symbolInfo: boolean;
+            };
+            lastConfigCheckedAt?: number;
+            lastConfigError?: string;
+            lastConfigOk?: boolean;
+            lastConfigRaw?: any;
+            name?: string;
+            status?: string;
+            updatedAt: number;
+          } | null
+        >;
+        getConnectionSecrets: FunctionReference<
+          "query",
+          "internal",
+          { connectionId: string },
+          {
+            connectionId: string;
+            isDefault: boolean;
+            provider: string;
+            secrets: any;
+            status: "active" | "disabled";
+            updatedAt: number;
+          } | null
+        >;
+        listConnectionAccounts: FunctionReference<
+          "query",
+          "internal",
+          { connectionId: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            accNum: number;
+            accountId: string;
+            connectionId: string;
+            createdAt: number;
+            currency?: string;
+            customerAccess?: {
+              filledOrders: boolean;
+              marketDepth: boolean;
+              orders: boolean;
+              ordersHistory: boolean;
+              positions: boolean;
+              symbolInfo: boolean;
+            };
+            lastConfigCheckedAt?: number;
+            lastConfigError?: string;
+            lastConfigOk?: boolean;
+            lastConfigRaw?: any;
+            name?: string;
+            status?: string;
+            updatedAt: number;
+          }>
+        >;
+        listConnections: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; provider?: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            createdAt: number;
+            isDefault: boolean;
+            label: string;
+            lastUsedAt?: number;
+            provider: string;
+            status: "active" | "disabled";
+            updatedAt: number;
+            username?: string;
+          }>
+        >;
+        setConnectionStatus: FunctionReference<
+          "mutation",
+          "internal",
+          { connectionId: string; status: "active" | "disabled" },
+          null
+        >;
+        setDefaultConnection: FunctionReference<
+          "mutation",
+          "internal",
+          { connectionId: string },
+          null
+        >;
+        updateConnectionAccountDebug: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accountRowId: string;
+            customerAccess?: {
+              filledOrders: boolean;
+              marketDepth: boolean;
+              orders: boolean;
+              ordersHistory: boolean;
+              positions: boolean;
+              symbolInfo: boolean;
+            };
+            lastConfigError?: string;
+            lastConfigOk: boolean;
+            lastConfigRaw?: any;
+          },
+          null
+        >;
+        upsertTradeLockerConnectionWithSecrets: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accessTokenEncrypted: string;
+            accessTokenExpiresAt?: number;
+            accounts: Array<{
+              accNum: number;
+              accountId: string;
+              currency?: string;
+              name?: string;
+              status?: string;
+            }>;
+            connectionId?: string;
+            environment: "demo" | "live";
+            jwtHost?: string;
+            label: string;
+            makeDefault?: boolean;
+            refreshTokenEncrypted: string;
+            refreshTokenExpiresAt?: number;
+            selectedAccNum: number;
+            selectedAccountId: string;
+            server: string;
+            status: "active" | "disabled";
+          },
+          { connectionId: string }
+        >;
+      };
       queries: {
         getConnectionById: FunctionReference<
           "query",
@@ -1745,6 +1953,7 @@ export declare const components: {
             lastError?: string;
             lastSyncAt: number;
             organizationId: string;
+            provider?: string;
             selectedAccNum: number;
             selectedAccountId: string;
             server: string;
@@ -1770,6 +1979,7 @@ export declare const components: {
             lastError?: string;
             lastSyncAt: number;
             organizationId: string;
+            provider?: string;
             selectedAccNum: number;
             selectedAccountId: string;
             server: string;

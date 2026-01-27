@@ -58,9 +58,19 @@ const toAccountOptions = (rows: Array<unknown>): Array<AccountOption> => {
 export function TradeLockerConnectFlow(props: {
   onCancel?: () => void;
   onSuccess?: () => void;
+  mode?: "user" | "platform";
 }) {
-  const startConnect = useAction(api.traderlaunchpad.actions.startTradeLockerConnect);
-  const finishConnect = useAction(api.traderlaunchpad.actions.connectTradeLocker);
+  const mode = props.mode ?? "user";
+  const startConnect = useAction(
+    mode === "platform"
+      ? api.platform.brokerConnectionsActions.startPlatformTradeLockerConnect
+      : api.traderlaunchpad.actions.startTradeLockerConnect,
+  );
+  const finishConnect = useAction(
+    mode === "platform"
+      ? api.platform.brokerConnectionsActions.connectPlatformTradeLocker
+      : api.traderlaunchpad.actions.connectTradeLocker,
+  );
 
   const isDev = process.env.NODE_ENV !== "production";
 
@@ -73,6 +83,7 @@ export function TradeLockerConnectFlow(props: {
   const [password, setPassword] = React.useState("");
 
   const [draftId, setDraftId] = React.useState<string | null>(null);
+  const [accountsRaw, setAccountsRaw] = React.useState<Array<unknown>>([]);
   const [accountOptions, setAccountOptions] = React.useState<Array<AccountOption>>(
     [],
   );
@@ -85,6 +96,7 @@ export function TradeLockerConnectFlow(props: {
 
   const reset = () => {
     setDraftId(null);
+    setAccountsRaw([]);
     setAccountOptions([]);
     setSelectedAccountId("");
     setSelectedAccNum("");
@@ -107,7 +119,9 @@ export function TradeLockerConnectFlow(props: {
       const res = resUnknown as StartConnectResult;
 
       setDraftId(res.draftId);
-      setAccountOptions(toAccountOptions(Array.isArray(res.accounts) ? res.accounts : []));
+      const raw = Array.isArray(res.accounts) ? res.accounts : [];
+      setAccountsRaw(raw);
+      setAccountOptions(toAccountOptions(raw));
       if (isDev && res.debugTokens?.accessToken && res.debugTokens?.refreshToken) {
         setDebugTokens({
           accessToken: res.debugTokens.accessToken,
@@ -140,14 +154,23 @@ export function TradeLockerConnectFlow(props: {
     setConnecting(true);
     setError(null);
     try {
-      await finishConnect({
-        draftId,
-        selectedAccountId,
-        selectedAccNum: accNum,
-        selectedAccountName: selectedMeta?.name,
-        selectedAccountCurrency: selectedMeta?.currency,
-        selectedAccountStatus: selectedMeta?.status,
-      });
+      if (mode === "platform") {
+        await finishConnect({
+          draftId,
+          selectedAccountId,
+          selectedAccNum: accNum,
+          accounts: accountsRaw,
+        });
+      } else {
+        await finishConnect({
+          draftId,
+          selectedAccountId,
+          selectedAccNum: accNum,
+          selectedAccountName: selectedMeta?.name,
+          selectedAccountCurrency: selectedMeta?.currency,
+          selectedAccountStatus: selectedMeta?.status,
+        });
+      }
       props.onSuccess?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

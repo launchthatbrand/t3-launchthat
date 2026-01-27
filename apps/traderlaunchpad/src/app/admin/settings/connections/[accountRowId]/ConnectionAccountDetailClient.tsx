@@ -9,6 +9,7 @@ import React from "react";
 import { RefreshCw } from "lucide-react";
 import { TradeLockerApiDebugPanel } from "~/components/settings/tradelocker/TradeLockerApiDebugPanel";
 import { api } from "@convex-config/_generated/api";
+import { usePathname } from "next/navigation";
 
 type UnknownRecord = Record<string, unknown>;
 interface ConnectionAccountResult {
@@ -30,17 +31,27 @@ const toNumber = (value: unknown): number | null => {
 };
 
 export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
+    const pathname = usePathname();
+    const isPlatform = pathname.startsWith("/platform/connections");
     const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
     const shouldQuery = isAuthenticated && !authLoading;
     const dataRaw: unknown = useQuery(
-        api.traderlaunchpad.queries.getMyConnectionAccountById,
+        isPlatform
+            ? api.platform.brokerConnections.getPlatformConnectionAccountById
+            : api.traderlaunchpad.queries.getMyConnectionAccountById,
         shouldQuery ? { accountRowId: props.accountRowId } : "skip",
     );
 
-    const disconnect = useAction(api.traderlaunchpad.actions.disconnectTradeLocker);
+    const disconnect = useAction(
+        isPlatform
+            ? api.platform.brokerConnectionsActions.disconnectPlatformTradeLocker
+            : api.traderlaunchpad.actions.disconnectTradeLocker,
+    );
     const syncNow = useAction(api.traderlaunchpad.actions.syncMyTradeLockerNow);
     const refreshAccountConfig = useAction(
-        api.traderlaunchpad.actions.refreshMyTradeLockerAccountConfig,
+        isPlatform
+            ? api.platform.brokerConnectionsActions.refreshPlatformTradeLockerAccountConfig
+            : api.traderlaunchpad.actions.refreshMyTradeLockerAccountConfig,
     );
 
     const [busy, setBusy] = React.useState<string | null>(null);
@@ -111,6 +122,9 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
         setBusy("sync");
         setError(null);
         try {
+            if (isPlatform) {
+                throw new Error("Sync now is not available for platform connections.");
+            }
             await syncNow({});
         } catch (e) {
             setError(e instanceof Error ? e.message : String(e));
@@ -210,15 +224,17 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
                             <RefreshCw className="mr-2 h-4 w-4" />
                             {busy === "refresh" ? "Refreshing…" : "Refresh status"}
                         </Button>
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            className="h-9"
-                            onClick={handleSyncNow}
-                            disabled={busy !== null}
-                        >
-                            {busy === "sync" ? "Syncing…" : "Sync now"}
-                        </Button>
+                        {!isPlatform ? (
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                className="h-9"
+                                onClick={handleSyncNow}
+                                disabled={busy !== null}
+                            >
+                                {busy === "sync" ? "Syncing…" : "Sync now"}
+                            </Button>
+                        ) : null}
                         <Button
                             type="button"
                             variant="outline"
@@ -247,7 +263,7 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
                 </CardContent>
             </Card>
 
-            {provider === "tradelocker" ? (
+            {!isPlatform && provider === "tradelocker" ? (
                 <TradeLockerApiDebugPanel accountRowId={props.accountRowId} />
             ) : null}
         </div>

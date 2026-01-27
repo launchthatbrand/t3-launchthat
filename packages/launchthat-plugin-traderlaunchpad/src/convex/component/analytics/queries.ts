@@ -492,7 +492,7 @@ export const getSharedAnalyticsReport = query({
  * for a set of userIds.
  *
  * Definitions:
- * - connectedAt: earliest `tradelockerConnections.createdAt` for the user (any status)
+ * - connectedAt: earliest `brokerConnections.createdAt` for the user (any status)
  * - syncedAt: earliest `tradeOrders.updatedAt` for the user (proxy for first broker sync)
  */
 export const getOnboardingSignalsForUserIds = query({
@@ -520,7 +520,7 @@ export const getOnboardingSignalsForUserIds = query({
 
     // Earliest connections by createdAt.
     let scannedConnections = 0;
-    const cq = ctx.db.query("tradelockerConnections").withIndex("by_createdAt").order("asc");
+    const cq = ctx.db.query("brokerConnections").withIndex("by_createdAt").order("asc");
     for await (const row of cq) {
       scannedConnections += 1;
       if (scannedConnections > maxRows) break;
@@ -600,7 +600,7 @@ export const getUserOnboardingFunnelCounts = query({
     // Connected users (use an index that starts with status).
     const connectedUserIds = new Set<string>();
     const connections = await ctx.db
-      .query("tradelockerConnections")
+      .query("brokerConnections")
       .withIndex("by_status_and_lastSyncAt", (q: any) =>
         q.eq("status", "connected").gte("lastSyncAt", 0),
       )

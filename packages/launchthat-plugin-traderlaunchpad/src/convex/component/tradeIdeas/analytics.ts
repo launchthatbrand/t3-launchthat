@@ -12,7 +12,7 @@ const tradeIdeaView = v.object({
   _id: v.id("tradeIdeaGroups"),
   _creationTime: v.number(),
   userId: v.string(),
-  connectionId: v.id("tradelockerConnections"),
+  connectionId: v.id("brokerConnections"),
   accountId: v.string(),
   positionId: v.optional(v.string()),
   instrumentId: v.optional(v.string()),

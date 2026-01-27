@@ -30,23 +30,28 @@ interface Props {
 
 export function ConnectionsShell(props: Props) {
   const pathname = usePathname();
-  const baseHref = pathname.startsWith("/admin/connections")
-    ? "/admin/connections"
-    : "/admin/settings/connections";
+  const baseHref = pathname.startsWith("/platform/connections")
+    ? "/platform/connections"
+    : pathname.startsWith("/admin/connections")
+      ? "/admin/connections"
+      : "/admin/settings/connections";
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const shouldQuery = isAuthenticated && !authLoading;
+  const isPlatform = pathname.startsWith("/platform/connections");
   const entitlements = useQuery(
     api.accessPolicy.getMyEntitlements,
-    shouldQuery ? {} : "skip",
+    shouldQuery && !isPlatform ? {} : "skip",
   ) as
     | {
         isSignedIn: boolean;
         features: { journal: boolean };
       }
     | undefined;
-  const canUseJournal = Boolean(entitlements?.features?.journal);
+  const canUseJournal = isPlatform ? true : Boolean(entitlements?.features?.journal);
   const dataRaw: unknown = useQuery(
-    api.traderlaunchpad.queries.getMyTradeLockerConnection,
+    isPlatform
+      ? api.platform.brokerConnections.getPlatformTradeLockerConnection
+      : api.traderlaunchpad.queries.getMyTradeLockerConnection,
     shouldQuery && canUseJournal ? {} : "skip",
   );
 
