@@ -24,7 +24,6 @@ const connectionsMutations = components.launchthat_traderlaunchpad.connections.m
 const coreTenantQueries = components.launchthat_core_tenant.queries as any;
 const coreTenantMutations = components.launchthat_core_tenant.mutations as any;
 const joinCodesMutations = components.launchthat_joincodes.mutations as any;
-const permissionsMutations = components.launchthat_traderlaunchpad.permissions as any;
 const analyticsMutations = components.launchthat_traderlaunchpad.analytics.mutations as any;
 
 const resolveMembershipForOrg = async (ctx: any, organizationId: string, userId: string) => {
@@ -612,7 +611,7 @@ export const redeemOrgJoinCode = mutation({
 
     const role = String((redemption as any)?.role ?? "").trim();
     const tier = String((redemption as any)?.tier ?? "").trim();
-    const permissions = (redemption as any)?.permissions as
+    const legacyPermissions = (redemption as any)?.permissions as
       | {
           globalEnabled?: boolean;
           tradeIdeasEnabled?: boolean;
@@ -636,12 +635,33 @@ export const redeemOrgJoinCode = mutation({
       }
     }
 
-    if (tier === "free" || tier === "standard" || tier === "pro") {
-      const normalizedTier: "free" | "standard" | "pro" = tier;
+    const legacyLimits =
+      legacyPermissions && typeof legacyPermissions === "object"
+        ? {
+            features: {
+              journal: Boolean((legacyPermissions.globalEnabled ?? false) || (legacyPermissions.openPositionsEnabled ?? false)),
+              tradeIdeas: Boolean((legacyPermissions.globalEnabled ?? false) || (legacyPermissions.tradeIdeasEnabled ?? false)),
+              analytics: Boolean(legacyPermissions.globalEnabled ?? false),
+              orders: Boolean((legacyPermissions.globalEnabled ?? false) || (legacyPermissions.ordersEnabled ?? false)),
+            },
+          }
+        : undefined;
+
+    const incomingLimits = grants?.limits !== undefined ? grants.limits : legacyLimits;
+    const incomingTier: "free" | "standard" | "pro" | null =
+      tier === "free" || tier === "standard" || tier === "pro" ? tier : null;
+
+    if (incomingTier || incomingLimits !== undefined) {
       const existing = await ctx.db
         .query("userEntitlements")
         .withIndex("by_user", (q: any) => q.eq("userId", userId))
         .first();
+      const existingTierRaw = (existing as any)?.tier;
+      const existingTier: "free" | "standard" | "pro" =
+        existingTierRaw === "free" || existingTierRaw === "standard" || existingTierRaw === "pro"
+          ? existingTierRaw
+          : "free";
+
       const payload: {
         userId: string;
         tier: "free" | "standard" | "pro";
@@ -649,10 +669,11 @@ export const redeemOrgJoinCode = mutation({
         updatedAt: number;
       } = {
         userId,
-        tier: normalizedTier,
-        ...(grants?.limits !== undefined ? { limits: grants.limits } : {}),
+        tier: incomingTier ?? existingTier,
+        ...(incomingLimits !== undefined ? { limits: incomingLimits } : {}),
         updatedAt: Date.now(),
       };
+
       if (existing) {
         await ctx.db.patch(existing._id, payload);
       } else {
@@ -662,7 +683,7 @@ export const redeemOrgJoinCode = mutation({
 
     // NOTE: join codes previously wrote to the legacy permissions module.
     // Entitlements are now app-owned (`userEntitlements.limits`), so join codes
-    // should only apply `tier` + optional `grants.limits`.
+    // should only apply `tier` + optional `grants.limits` (with a legacy fallback).
 
     await ctx.runMutation(coreTenantMutations.ensureMembership, {
       userId,
@@ -696,7 +717,7 @@ export const redeemPlatformJoinCode = mutation({
 
     const role = String((redemption as any)?.role ?? "").trim();
     const tier = String((redemption as any)?.tier ?? "").trim();
-    const permissions = (redemption as any)?.permissions as
+    const legacyPermissions = (redemption as any)?.permissions as
       | {
           globalEnabled?: boolean;
           tradeIdeasEnabled?: boolean;
@@ -720,12 +741,33 @@ export const redeemPlatformJoinCode = mutation({
       }
     }
 
-    if (tier === "free" || tier === "standard" || tier === "pro") {
-      const normalizedTier: "free" | "standard" | "pro" = tier;
+    const legacyLimits =
+      legacyPermissions && typeof legacyPermissions === "object"
+        ? {
+            features: {
+              journal: Boolean((legacyPermissions.globalEnabled ?? false) || (legacyPermissions.openPositionsEnabled ?? false)),
+              tradeIdeas: Boolean((legacyPermissions.globalEnabled ?? false) || (legacyPermissions.tradeIdeasEnabled ?? false)),
+              analytics: Boolean(legacyPermissions.globalEnabled ?? false),
+              orders: Boolean((legacyPermissions.globalEnabled ?? false) || (legacyPermissions.ordersEnabled ?? false)),
+            },
+          }
+        : undefined;
+
+    const incomingLimits = grants?.limits !== undefined ? grants.limits : legacyLimits;
+    const incomingTier: "free" | "standard" | "pro" | null =
+      tier === "free" || tier === "standard" || tier === "pro" ? tier : null;
+
+    if (incomingTier || incomingLimits !== undefined) {
       const existing = await ctx.db
         .query("userEntitlements")
         .withIndex("by_user", (q: any) => q.eq("userId", userId))
         .first();
+      const existingTierRaw = (existing as any)?.tier;
+      const existingTier: "free" | "standard" | "pro" =
+        existingTierRaw === "free" || existingTierRaw === "standard" || existingTierRaw === "pro"
+          ? existingTierRaw
+          : "free";
+
       const payload: {
         userId: string;
         tier: "free" | "standard" | "pro";
@@ -733,10 +775,11 @@ export const redeemPlatformJoinCode = mutation({
         updatedAt: number;
       } = {
         userId,
-        tier: normalizedTier,
-        ...(grants?.limits !== undefined ? { limits: grants.limits } : {}),
+        tier: incomingTier ?? existingTier,
+        ...(incomingLimits !== undefined ? { limits: incomingLimits } : {}),
         updatedAt: Date.now(),
       };
+
       if (existing) {
         await ctx.db.patch(existing._id, payload);
       } else {
@@ -746,7 +789,7 @@ export const redeemPlatformJoinCode = mutation({
 
     // NOTE: join codes previously wrote to the legacy permissions module.
     // Entitlements are now app-owned (`userEntitlements.limits`), so join codes
-    // should only apply `tier` + optional `grants.limits`.
+    // should only apply `tier` + optional `grants.limits` (with a legacy fallback).
 
     return { ok: true };
   },
