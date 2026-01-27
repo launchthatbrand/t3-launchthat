@@ -42,6 +42,7 @@ export type Mounts = {
         code?: string;
         createdByUserId: string;
         expiresAt?: number;
+        grants?: any;
         label?: string;
         maxUses?: number;
         organizationId?: string;
@@ -75,6 +76,7 @@ export type Mounts = {
       { code: string; redeemedByUserId: string },
       {
         expiresAt?: number;
+        grants?: any;
         joinCodeId: string;
         label?: string;
         maxUses?: number;
@@ -103,6 +105,7 @@ export type Mounts = {
         createdAt: number;
         createdByUserId: string;
         expiresAt?: number;
+        grants?: any;
         isActive: boolean;
         label?: string;
         maxUses?: number;

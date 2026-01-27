@@ -44,6 +44,7 @@ import { api } from "@convex-config/_generated/api";
 import { cn } from "@acme/ui";
 import { useActiveAccount } from "~/components/accounts/ActiveAccountProvider";
 import { useDataMode } from "~/components/dataMode/DataModeProvider";
+import { FeatureAccessAlert } from "~/components/access/FeatureAccessGate";
 
 interface ReportSpecV1 {
   version: 1;
@@ -140,6 +141,19 @@ export default function AdminAnalyticsPage() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const shouldQuery = isAuthenticated && !authLoading;
 
+  const entitlements = useQuery(
+    api.accessPolicy.getMyEntitlements,
+    shouldQuery ? {} : "skip",
+  ) as
+    | {
+        isSignedIn: boolean;
+        features: { analytics: boolean };
+      }
+    | undefined;
+
+  const canAnalytics = Boolean(entitlements?.features?.analytics);
+  const shouldQueryAnalytics = shouldQuery && canAnalytics;
+
   const defaultTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
   const [spec, setSpec] = React.useState<ReportSpecV1>(() => ({
@@ -171,14 +185,14 @@ export default function AdminAnalyticsPage() {
 
   const liveResult = useQuery(
     api.traderlaunchpad.queries.runMyAnalyticsReport,
-    shouldQuery && isLive
+    shouldQueryAnalytics && isLive
       ? { accountId: activeAccount.selected?.accountId, spec }
       : "skip",
   ) as unknown as ReportResult | undefined;
 
   const savedReports = useQuery(
     api.traderlaunchpad.queries.listMyAnalyticsReports,
-    shouldQuery ? {} : "skip",
+    shouldQueryAnalytics ? {} : "skip",
   ) as
     | {
       reportId: string;
@@ -193,7 +207,7 @@ export default function AdminAnalyticsPage() {
 
   const selectedSavedReport = useQuery(
     api.traderlaunchpad.queries.getMyAnalyticsReport,
-    shouldQuery && selectedSavedReportId ? { reportId: selectedSavedReportId } : "skip",
+    shouldQueryAnalytics && selectedSavedReportId ? { reportId: selectedSavedReportId } : "skip",
   ) as unknown as
     | {
       reportId: string;
@@ -248,7 +262,7 @@ export default function AdminAnalyticsPage() {
 
   const shortlinkSettings = useQuery(
     api.shortlinks.queries.getPublicShortlinkSettings,
-    shouldQuery ? {} : "skip",
+    shouldQueryAnalytics ? {} : "skip",
   ) as { domain: string; enabled: boolean; codeLength: number } | undefined;
 
   const createShortlink = useMutation(api.shortlinks.mutations.createShortlink);
@@ -256,7 +270,7 @@ export default function AdminAnalyticsPage() {
 
   const visibilityDefaults = useQuery(
     api.traderlaunchpad.queries.getMyVisibilitySettings,
-    shouldQuery ? {} : "skip",
+    shouldQueryAnalytics ? {} : "skip",
   ) as
     | {
         globalPublic: boolean;
@@ -338,25 +352,33 @@ export default function AdminAnalyticsPage() {
       }
     };
 
-    if (shouldQuery) void run();
+    if (shouldQueryAnalytics) void run();
     return () => {
       cancelled = true;
     };
-  }, [createShortlink, selectedSavedReport, selectedSavedReportId, shareUsername, shortlinkSettings?.domain, shortlinkSettings?.enabled, shouldQuery]);
+  }, [
+    createShortlink,
+    selectedSavedReport,
+    selectedSavedReportId,
+    shareUsername,
+    shortlinkSettings?.domain,
+    shortlinkSettings?.enabled,
+    shouldQueryAnalytics,
+  ]);
 
   const compareAReport = useQuery(
     api.traderlaunchpad.queries.getMyAnalyticsReport,
-    shouldQuery && compareEnabled && compareAId ? { reportId: compareAId } : "skip",
+    shouldQueryAnalytics && compareEnabled && compareAId ? { reportId: compareAId } : "skip",
   ) as unknown as { spec?: ReportSpecV1; name?: string; accountId?: string } | null | undefined;
 
   const compareBReport = useQuery(
     api.traderlaunchpad.queries.getMyAnalyticsReport,
-    shouldQuery && compareEnabled && compareBId ? { reportId: compareBId } : "skip",
+    shouldQueryAnalytics && compareEnabled && compareBId ? { reportId: compareBId } : "skip",
   ) as unknown as { spec?: ReportSpecV1; name?: string; accountId?: string } | null | undefined;
 
   const compareAResult = useQuery(
     api.traderlaunchpad.queries.runMyAnalyticsReport,
-    shouldQuery && compareEnabled && isLive && compareAReport?.spec
+    shouldQueryAnalytics && compareEnabled && isLive && compareAReport?.spec
       ? {
         accountId: compareAReport.accountId ?? activeAccount.selected?.accountId,
         spec: compareAReport.spec,
@@ -366,7 +388,7 @@ export default function AdminAnalyticsPage() {
 
   const compareBResult = useQuery(
     api.traderlaunchpad.queries.runMyAnalyticsReport,
-    shouldQuery && compareEnabled && isLive && compareBReport?.spec
+    shouldQueryAnalytics && compareEnabled && isLive && compareBReport?.spec
       ? {
         accountId: compareBReport.accountId ?? activeAccount.selected?.accountId,
         spec: compareBReport.spec,
@@ -402,6 +424,14 @@ export default function AdminAnalyticsPage() {
   }, []);
 
   const result = isLive ? liveResult : demoResult;
+
+  if (shouldQuery && entitlements === undefined) {
+    return <div className="text-muted-foreground text-sm">Loading…</div>;
+  }
+
+  if (shouldQuery && !canAnalytics) {
+    return <FeatureAccessAlert description="You do not have access to Analytics." />;
+  }
 
   return (
     <div className="animate-in fade-in space-y-8 duration-500">

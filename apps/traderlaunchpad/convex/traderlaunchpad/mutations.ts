@@ -620,6 +620,11 @@ export const redeemOrgJoinCode = mutation({
           ordersEnabled?: boolean;
         }
       | undefined;
+    const grants = (redemption as any)?.grants as
+      | {
+          limits?: unknown;
+        }
+      | undefined;
 
     if (role === "user" || role === "staff" || role === "admin") {
       const userDocId = await resolveUserDocIdByClerkId(ctx, userId);
@@ -637,9 +642,15 @@ export const redeemOrgJoinCode = mutation({
         .query("userEntitlements")
         .withIndex("by_user", (q: any) => q.eq("userId", userId))
         .first();
-      const payload = {
+      const payload: {
+        userId: string;
+        tier: "free" | "standard" | "pro";
+        limits?: any;
+        updatedAt: number;
+      } = {
         userId,
         tier: normalizedTier,
+        ...(grants?.limits !== undefined ? { limits: grants.limits } : {}),
         updatedAt: Date.now(),
       };
       if (existing) {
@@ -649,17 +660,9 @@ export const redeemOrgJoinCode = mutation({
       }
     }
 
-    if (permissions) {
-      await ctx.runMutation(permissionsMutations.upsertPermissions, {
-        userId,
-        scopeType: "global",
-        scopeId: undefined,
-        globalEnabled: Boolean(permissions.globalEnabled),
-        tradeIdeasEnabled: Boolean(permissions.tradeIdeasEnabled),
-        openPositionsEnabled: Boolean(permissions.openPositionsEnabled),
-        ordersEnabled: Boolean(permissions.ordersEnabled),
-      });
-    }
+    // NOTE: join codes previously wrote to the legacy permissions module.
+    // Entitlements are now app-owned (`userEntitlements.limits`), so join codes
+    // should only apply `tier` + optional `grants.limits`.
 
     await ctx.runMutation(coreTenantMutations.ensureMembership, {
       userId,
@@ -701,6 +704,11 @@ export const redeemPlatformJoinCode = mutation({
           ordersEnabled?: boolean;
         }
       | undefined;
+    const grants = (redemption as any)?.grants as
+      | {
+          limits?: unknown;
+        }
+      | undefined;
 
     if (role === "user" || role === "staff" || role === "admin") {
       const userDocId = await resolveUserDocIdByClerkId(ctx, userId);
@@ -718,9 +726,15 @@ export const redeemPlatformJoinCode = mutation({
         .query("userEntitlements")
         .withIndex("by_user", (q: any) => q.eq("userId", userId))
         .first();
-      const payload = {
+      const payload: {
+        userId: string;
+        tier: "free" | "standard" | "pro";
+        limits?: any;
+        updatedAt: number;
+      } = {
         userId,
         tier: normalizedTier,
+        ...(grants?.limits !== undefined ? { limits: grants.limits } : {}),
         updatedAt: Date.now(),
       };
       if (existing) {
@@ -730,17 +744,9 @@ export const redeemPlatformJoinCode = mutation({
       }
     }
 
-    if (permissions) {
-      await ctx.runMutation(permissionsMutations.upsertPermissions, {
-        userId,
-        scopeType: "global",
-        scopeId: undefined,
-        globalEnabled: Boolean(permissions.globalEnabled),
-        tradeIdeasEnabled: Boolean(permissions.tradeIdeasEnabled),
-        openPositionsEnabled: Boolean(permissions.openPositionsEnabled),
-        ordersEnabled: Boolean(permissions.ordersEnabled),
-      });
-    }
+    // NOTE: join codes previously wrote to the legacy permissions module.
+    // Entitlements are now app-owned (`userEntitlements.limits`), so join codes
+    // should only apply `tier` + optional `grants.limits`.
 
     return { ok: true };
   },

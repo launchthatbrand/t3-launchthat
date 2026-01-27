@@ -30,6 +30,18 @@ export function DataModeProvider(props: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const shouldQuery = isAuthenticated && !authLoading;
 
+  const entitlements = useQuery(
+    api.accessPolicy.getMyEntitlements,
+    shouldQuery ? {} : "skip",
+  ) as
+    | {
+        isSignedIn: boolean;
+        features: { journal: boolean };
+      }
+    | undefined;
+
+  const canUseJournal = Boolean(entitlements?.features?.journal);
+
   const viewerSettings = useQuery(
     api.viewer.queries.getViewerSettings,
     shouldQuery ? {} : "skip",
@@ -39,7 +51,7 @@ export function DataModeProvider(props: { children: React.ReactNode }) {
 
   const connectionData = useQuery(
     api.traderlaunchpad.queries.getMyTradeLockerConnection,
-    shouldQuery ? {} : "skip",
+    shouldQuery && canUseJournal ? {} : "skip",
   ) as unknown;
 
   const setDataModeMutation = useMutation(api.viewer.mutations.setDataMode);

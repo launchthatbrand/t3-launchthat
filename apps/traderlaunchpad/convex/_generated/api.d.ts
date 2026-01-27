@@ -1172,6 +1172,7 @@ export declare const components: {
           code?: string;
           createdByUserId: string;
           expiresAt?: number;
+          grants?: any;
           label?: string;
           maxUses?: number;
           organizationId?: string;
@@ -1205,6 +1206,7 @@ export declare const components: {
         { code: string; redeemedByUserId: string },
         {
           expiresAt?: number;
+          grants?: any;
           joinCodeId: string;
           label?: string;
           maxUses?: number;
@@ -1233,6 +1235,7 @@ export declare const components: {
           createdAt: number;
           createdByUserId: string;
           expiresAt?: number;
+          grants?: any;
           isActive: boolean;
           label?: string;
           maxUses?: number;

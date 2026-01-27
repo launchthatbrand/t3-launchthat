@@ -75,7 +75,9 @@ export const AnimatedThemeToggler = ({
       )}
       {...props}
     >
-      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      {/* Render both icons to avoid SSR/CSR hydration mismatches when system theme differs. */}
+      <Sun className="absolute h-4 w-4 scale-0 rotate-90 transition-all duration-300 dark:scale-100 dark:rotate-0" />
+      <Moon className="absolute h-4 w-4 scale-100 rotate-0 transition-all duration-300 dark:scale-0 dark:-rotate-90" />
       <span className="sr-only">Toggle theme</span>
     </button>
   )

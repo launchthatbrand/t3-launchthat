@@ -25,6 +25,17 @@ type JoinCodeRow = {
   label?: string;
   role?: "user" | "staff" | "admin";
   tier?: "free" | "standard" | "pro";
+  grants?: {
+    limits?: {
+      maxOrganizations?: number;
+      features?: {
+        journal?: boolean;
+        tradeIdeas?: boolean;
+        analytics?: boolean;
+        orders?: boolean;
+      };
+    };
+  };
   permissions?: {
     globalEnabled?: boolean;
     tradeIdeasEnabled?: boolean;
@@ -61,11 +72,22 @@ export const JoinCodesSettingsClient = () => {
   const [label, setLabel] = React.useState("");
   const [role, setRole] = React.useState<"user" | "staff" | "admin">("user");
   const [tier, setTier] = React.useState<"free" | "standard" | "pro">("free");
-  const [permissions, setPermissions] = React.useState({
-    globalEnabled: false,
-    tradeIdeasEnabled: false,
-    openPositionsEnabled: false,
-    ordersEnabled: false,
+  const [limitsDraft, setLimitsDraft] = React.useState<{
+    maxOrganizations: string;
+    features: {
+      journal: boolean;
+      tradeIdeas: boolean;
+      analytics: boolean;
+      orders: boolean;
+    };
+  }>({
+    maxOrganizations: "",
+    features: {
+      journal: true,
+      tradeIdeas: true,
+      analytics: true,
+      orders: true,
+    },
   });
   const [maxUses, setMaxUses] = React.useState<string>("");
   const [expiresInDays, setExpiresInDays] = React.useState<string>("");
@@ -134,7 +156,14 @@ export const JoinCodesSettingsClient = () => {
         label: label.trim() ? label.trim() : undefined,
         role,
         tier,
-        permissions,
+        grants: {
+          limits: {
+            maxOrganizations: limitsDraft.maxOrganizations
+              ? Number(limitsDraft.maxOrganizations)
+              : undefined,
+            features: limitsDraft.features,
+          },
+        },
         maxUses: typeof maxUsesValue === "number" && maxUsesValue > 0 ? maxUsesValue : undefined,
         expiresAt,
       });
@@ -144,11 +173,14 @@ export const JoinCodesSettingsClient = () => {
       setLabel("");
       setRole("user");
       setTier("free");
-      setPermissions({
-        globalEnabled: false,
-        tradeIdeasEnabled: false,
-        openPositionsEnabled: false,
-        ordersEnabled: false,
+      setLimitsDraft({
+        maxOrganizations: "",
+        features: {
+          journal: true,
+          tradeIdeas: true,
+          analytics: true,
+          orders: true,
+        },
       });
       setMaxUses("");
       setExpiresInDays("");
@@ -230,29 +262,29 @@ export const JoinCodesSettingsClient = () => {
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="rounded-lg border bg-muted/30 p-3">
-              <Label className="text-sm">Global permissions</Label>
+              <Label className="text-sm">Entitlements</Label>
               <div className="mt-2 grid grid-cols-1 gap-2 text-sm">
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={permissions.globalEnabled}
+                    checked={limitsDraft.features.journal}
                     onChange={(event) =>
-                      setPermissions((prev) => ({
+                      setLimitsDraft((prev) => ({
                         ...prev,
-                        globalEnabled: event.target.checked,
+                        features: { ...prev.features, journal: event.target.checked },
                       }))
                     }
                   />
-                  <span>Global access</span>
+                  <span>Journal</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={permissions.tradeIdeasEnabled}
+                    checked={limitsDraft.features.tradeIdeas}
                     onChange={(event) =>
-                      setPermissions((prev) => ({
+                      setLimitsDraft((prev) => ({
                         ...prev,
-                        tradeIdeasEnabled: event.target.checked,
+                        features: { ...prev.features, tradeIdeas: event.target.checked },
                       }))
                     }
                   />
@@ -261,29 +293,48 @@ export const JoinCodesSettingsClient = () => {
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={permissions.openPositionsEnabled}
+                    checked={limitsDraft.features.analytics}
                     onChange={(event) =>
-                      setPermissions((prev) => ({
+                      setLimitsDraft((prev) => ({
                         ...prev,
-                        openPositionsEnabled: event.target.checked,
+                        features: { ...prev.features, analytics: event.target.checked },
                       }))
                     }
                   />
-                  <span>Open positions</span>
+                  <span>Analytics</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={permissions.ordersEnabled}
+                    checked={limitsDraft.features.orders}
                     onChange={(event) =>
-                      setPermissions((prev) => ({
+                      setLimitsDraft((prev) => ({
                         ...prev,
-                        ordersEnabled: event.target.checked,
+                        features: { ...prev.features, orders: event.target.checked },
                       }))
                     }
                   />
                   <span>Orders</span>
                 </label>
+              </div>
+            </div>
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <Label className="text-sm">Limits</Label>
+              <div className="mt-2 space-y-2">
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Max organizations</Label>
+                  <Input
+                    value={limitsDraft.maxOrganizations}
+                    onChange={(event) =>
+                      setLimitsDraft((prev) => ({
+                        ...prev,
+                        maxOrganizations: event.target.value,
+                      }))
+                    }
+                    placeholder="e.g. 10"
+                    inputMode="numeric"
+                  />
+                </div>
               </div>
             </div>
           </div>

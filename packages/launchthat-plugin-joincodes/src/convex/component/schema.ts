@@ -18,6 +18,13 @@ export default defineSchema({
         ordersEnabled: v.optional(v.boolean()),
       }),
     ),
+    /**
+     * App-specific grants/payload for join codes.
+     *
+     * This plugin intentionally stays generic; different apps can store the
+     * entitlement/limits/config they want to apply when a code is redeemed.
+     */
+    grants: v.optional(v.any()),
     maxUses: v.optional(v.number()),
     uses: v.number(),
     expiresAt: v.optional(v.number()),

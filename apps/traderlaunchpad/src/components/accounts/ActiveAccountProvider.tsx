@@ -50,10 +50,22 @@ export function ActiveAccountProvider(props: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const shouldQuery = isAuthenticated && !authLoading && isLive;
 
+  const entitlements = useQuery(
+    api.accessPolicy.getMyEntitlements,
+    shouldQuery ? {} : "skip",
+  ) as
+    | {
+        isSignedIn: boolean;
+        features: { journal: boolean };
+      }
+    | undefined;
+
+  const canUseJournal = Boolean(entitlements?.features?.journal);
+
   // Today this returns the TradeLocker connection + its connectionAccount rows.
   const connectionBundle = useQuery(
     api.traderlaunchpad.queries.getMyTradeLockerConnection,
-    shouldQuery ? {} : "skip",
+    shouldQuery && canUseJournal ? {} : "skip",
   ) as unknown;
 
   const setSelectedAccount = useMutation(
