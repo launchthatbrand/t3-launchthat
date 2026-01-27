@@ -1,7 +1,7 @@
-import { v } from "convex/values";
+import { hashJoinCode, randomJoinCode } from "./lib/hash";
 
 import { mutation } from "./_generated/server";
-import { hashJoinCode, randomJoinCode } from "./lib/hash";
+import { v } from "convex/values";
 
 const scopeValidator = v.union(v.literal("platform"), v.literal("organization"));
 

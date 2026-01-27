@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function SignUpPage() {

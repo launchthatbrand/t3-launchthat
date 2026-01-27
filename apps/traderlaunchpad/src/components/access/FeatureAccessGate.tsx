@@ -27,10 +27,28 @@ export const useGlobalPermissions = () => {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const shouldQuery = isAuthenticated && !authLoading;
 
-  const permissions = useQuery(
-    api.traderlaunchpad.queries.getMyGlobalPermissions,
+  const entitlements = useQuery(
+    api.accessPolicy.getMyEntitlements,
     shouldQuery ? {} : "skip",
-  ) as GlobalPermissions | undefined;
+  ) as
+    | {
+        isSignedIn: boolean;
+        features: { journal: boolean; tradeIdeas: boolean; analytics: boolean; orders: boolean };
+      }
+    | undefined;
+
+  const permissions: GlobalPermissions | undefined = entitlements
+    ? {
+        // Back-compat “master enable” semantics.
+        globalEnabled:
+          Boolean(entitlements.features.journal) &&
+          Boolean(entitlements.features.tradeIdeas) &&
+          Boolean(entitlements.features.orders),
+        tradeIdeasEnabled: Boolean(entitlements.features.tradeIdeas),
+        openPositionsEnabled: Boolean(entitlements.features.journal),
+        ordersEnabled: Boolean(entitlements.features.orders),
+      }
+    : undefined;
 
   const isLoading = authLoading || (shouldQuery && permissions === undefined);
 

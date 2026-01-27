@@ -58,6 +58,18 @@ export const getUserPublicProfileByUsername = query({
     }
     if (!user) return null;
 
+    // Public profile visibility is user-controlled.
+    const ownerUserId = String(user._id ?? "").trim();
+    if (!ownerUserId) return null;
+    const visibility = await ctx.db
+      .query("userVisibilitySettings")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .withIndex("by_user", (q: any) => q.eq("userId", ownerUserId))
+      .first();
+    if (!visibility || !Boolean((visibility as any).publicProfileEnabled)) {
+      return null;
+    }
+
     const resolvedPublicUsername =
       typeof user.publicUsername === "string" && user.publicUsername.trim()
         ? user.publicUsername.trim().toLowerCase()

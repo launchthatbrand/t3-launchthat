@@ -15,7 +15,6 @@ import { resolveOrganizationId } from "./lib/resolve";
 
 const tradeIdeasIdeas = (components.launchthat_traderlaunchpad.tradeIdeas as any).ideas as any;
 const publicOrders = (components.launchthat_traderlaunchpad as any).publicOrders as any;
-const permissionsModule = components.launchthat_traderlaunchpad.permissions as any;
 
 // Public query: resolves a shared trade idea by shareToken (no auth required).
 export const getSharedTradeIdeaByToken = query({
@@ -36,31 +35,47 @@ const slugifyUsername = (value: string): string =>
     .replace(/-+/g, "-")
     .replace(/(^-|-$)/g, "");
 
-const isEnabledForType = (
-  perms: {
-    globalEnabled?: boolean;
-    tradeIdeasEnabled?: boolean;
-    openPositionsEnabled?: boolean;
-    ordersEnabled?: boolean;
-  },
-  type: "tradeIdeas" | "openPositions" | "orders",
-): boolean => {
-  if (Boolean(perms?.globalEnabled)) return true;
-  if (type === "tradeIdeas") return Boolean(perms?.tradeIdeasEnabled);
-  if (type === "openPositions") return Boolean(perms?.openPositionsEnabled);
-  return Boolean(perms?.ordersEnabled);
-};
+const defaultVisibility = () => ({
+  publicProfileEnabled: false,
+  tradeIdeasIndexEnabled: false,
+  tradeIdeaDetailEnabled: false,
+  ordersIndexEnabled: false,
+  orderDetailEnabled: false,
+  analyticsReportsIndexEnabled: false,
+  analyticsReportDetailEnabled: false,
+});
 
-const hasGlobalPermissionForType = async (
-  ctx: any,
-  userId: string,
-  type: "tradeIdeas" | "openPositions" | "orders",
-): Promise<boolean> => {
-  const perms = await ctx.runQuery(permissionsModule.getPermissions, {
-    userId,
-    scopeType: "global",
-  });
-  return isEnabledForType(perms ?? {}, type);
+const getUserVisibility = async (ctx: any, ownerUserId: string) => {
+  const d = defaultVisibility();
+  const userId = String(ownerUserId ?? "").trim();
+  if (!userId) return d;
+
+  const row = await ctx.db
+    .query("userVisibilitySettings")
+    .withIndex("by_user", (q: any) => q.eq("userId", userId))
+    .first();
+
+  if (!row) return d;
+  return {
+    publicProfileEnabled:
+      typeof row.publicProfileEnabled === "boolean" ? row.publicProfileEnabled : d.publicProfileEnabled,
+    tradeIdeasIndexEnabled:
+      typeof row.tradeIdeasIndexEnabled === "boolean" ? row.tradeIdeasIndexEnabled : d.tradeIdeasIndexEnabled,
+    tradeIdeaDetailEnabled:
+      typeof row.tradeIdeaDetailEnabled === "boolean" ? row.tradeIdeaDetailEnabled : d.tradeIdeaDetailEnabled,
+    ordersIndexEnabled:
+      typeof row.ordersIndexEnabled === "boolean" ? row.ordersIndexEnabled : d.ordersIndexEnabled,
+    orderDetailEnabled:
+      typeof row.orderDetailEnabled === "boolean" ? row.orderDetailEnabled : d.orderDetailEnabled,
+    analyticsReportsIndexEnabled:
+      typeof row.analyticsReportsIndexEnabled === "boolean"
+        ? row.analyticsReportsIndexEnabled
+        : d.analyticsReportsIndexEnabled,
+    analyticsReportDetailEnabled:
+      typeof row.analyticsReportDetailEnabled === "boolean"
+        ? row.analyticsReportDetailEnabled
+        : d.analyticsReportDetailEnabled,
+  };
 };
 
 // Public query: resolves a trade idea by id, allowing access if:
@@ -92,21 +107,19 @@ export const getPublicTradeIdea = query({
     }
     if (!user) return null;
 
-    const clerkId =
-      typeof (user as any).clerkId === "string" && String((user as any).clerkId).trim()
-        ? String((user as any).clerkId).trim()
-        : null;
-    if (!clerkId) return null;
+    const ownerUserId = String((user as any)._id ?? "").trim();
+    if (!ownerUserId) return null;
 
     const tradeIdeaId = String(args.tradeIdeaId ?? "").trim();
     if (!tradeIdeaId) return null;
 
-    const canShare = await hasGlobalPermissionForType(ctx, clerkId, "tradeIdeas");
-    if (!canShare) return null;
+    const visibility = await getUserVisibility(ctx, ownerUserId);
+    // Allow individual trade idea pages only if explicitly enabled OR a share code is provided.
+    if (!visibility.tradeIdeaDetailEnabled && !args.code) return null;
 
     return await ctx.runQuery(tradeIdeasIdeas.getPublicTradeIdeaById, {
       organizationId: orgId,
-      expectedUserId: clerkId,
+      expectedUserId: ownerUserId,
       tradeIdeaId: tradeIdeaId as any,
       code: args.code,
     });
@@ -139,18 +152,15 @@ export const listPublicTradeIdeas = query({
     }
     if (!user) return [];
 
-    const clerkId =
-      typeof (user as any).clerkId === "string" && String((user as any).clerkId).trim()
-        ? String((user as any).clerkId).trim()
-        : null;
-    if (!clerkId) return [];
+    const ownerUserId = String((user as any)._id ?? "").trim();
+    if (!ownerUserId) return [];
 
-    const canShare = await hasGlobalPermissionForType(ctx, clerkId, "tradeIdeas");
-    if (!canShare) return [];
+    const visibility = await getUserVisibility(ctx, ownerUserId);
+    if (!visibility.tradeIdeasIndexEnabled) return [];
 
     return await ctx.runQuery(tradeIdeasIdeas.listPublicTradeIdeasForUser, {
       organizationId: orgId,
-      expectedUserId: clerkId,
+      expectedUserId: ownerUserId,
       limit: args.limit,
     });
   },
@@ -181,18 +191,15 @@ export const listPublicOrders = query({
     }
     if (!user) return [];
 
-    const clerkId =
-      typeof (user as any).clerkId === "string" && String((user as any).clerkId).trim()
-        ? String((user as any).clerkId).trim()
-        : null;
-    if (!clerkId) return [];
+    const ownerUserId = String((user as any)._id ?? "").trim();
+    if (!ownerUserId) return [];
 
-    const canShare = await hasGlobalPermissionForType(ctx, clerkId, "orders");
-    if (!canShare) return [];
+    const visibility = await getUserVisibility(ctx, ownerUserId);
+    if (!visibility.ordersIndexEnabled) return [];
 
     return await ctx.runQuery(publicOrders.listPublicOrdersForUser, {
       organizationId: orgId,
-      userId: clerkId,
+      userId: ownerUserId,
       limit: args.limit,
     });
   },

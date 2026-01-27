@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import {
-  AlertCircle,
   CheckCircle2,
   CreditCard,
   ShieldCheck,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@acme/ui/button";
+import { Badge } from "@acme/ui/badge";
 import {
   Card,
   CardContent,
@@ -72,17 +72,8 @@ export default function PlatformUserGeneralPage() {
       }
     | null
     | undefined;
-  const permissions = useQuery(
-    api.platform.userAccess.getUserGlobalPermissions,
-    userDocId ? { userId: userDocId } : "skip",
-  ) as
-    | {
-        globalEnabled: boolean;
-        tradeIdeasEnabled: boolean;
-        openPositionsEnabled: boolean;
-        ordersEnabled: boolean;
-      }
-    | undefined;
+  // Entitlements are stored in app-owned tables (`userEntitlements`).
+  // Public visibility is managed by the user on `/admin/settings/visibility`.
 
   const contactSummary = useQuery(
     api.platform.crm.getUserContactSummary,
@@ -102,17 +93,20 @@ export default function PlatformUserGeneralPage() {
 
   const setUserRole = useMutation(api.platform.userAccess.setUserRole);
   const setUserEntitlement = useMutation(api.platform.userAccess.setUserEntitlement);
-  const setUserGlobalPermissions = useMutation(
-    api.platform.userAccess.setUserGlobalPermissions,
-  );
 
   const [roleDraft, setRoleDraft] = React.useState<"user" | "staff" | "admin">("user");
   const [tierDraft, setTierDraft] = React.useState<"free" | "standard" | "pro">("free");
-  const [permissionsDraft, setPermissionsDraft] = React.useState({
-    globalEnabled: false,
-    tradeIdeasEnabled: false,
-    openPositionsEnabled: false,
-    ordersEnabled: false,
+  const [limitsDraft, setLimitsDraft] = React.useState<{
+    maxOrganizations: string;
+    features: {
+      journal: boolean;
+      tradeIdeas: boolean;
+      analytics: boolean;
+      orders: boolean;
+    };
+  }>({
+    maxOrganizations: "",
+    features: { journal: true, tradeIdeas: true, analytics: true, orders: true },
   });
   const [saving, setSaving] = React.useState(false);
 
@@ -125,14 +119,29 @@ export default function PlatformUserGeneralPage() {
   }, [entitlement?.tier]);
 
   React.useEffect(() => {
-    if (!permissions) return;
-    setPermissionsDraft({
-      globalEnabled: Boolean(permissions.globalEnabled),
-      tradeIdeasEnabled: Boolean(permissions.tradeIdeasEnabled),
-      openPositionsEnabled: Boolean(permissions.openPositionsEnabled),
-      ordersEnabled: Boolean(permissions.ordersEnabled),
+    const raw = entitlement?.limits;
+    if (!raw || typeof raw !== "object") return;
+    const record = raw as Record<string, unknown>;
+    const maxOrganizations =
+      typeof record.maxOrganizations === "number" && Number.isFinite(record.maxOrganizations)
+        ? String(record.maxOrganizations)
+        : "";
+    const featuresRaw = record.features;
+    const features =
+      featuresRaw && typeof featuresRaw === "object"
+        ? (featuresRaw as Record<string, unknown>)
+        : {};
+
+    setLimitsDraft({
+      maxOrganizations,
+      features: {
+        journal: features.journal !== false,
+        tradeIdeas: features.tradeIdeas !== false,
+        analytics: features.analytics !== false,
+        orders: features.orders !== false,
+      },
     });
-  }, [permissions]);
+  }, [entitlement?.limits]);
 
   return (
     <div className="space-y-8">
@@ -203,7 +212,10 @@ export default function PlatformUserGeneralPage() {
           <CardContent className="space-y-4 pt-6">
             <div className="space-y-2">
               <Label>Platform role</Label>
-              <Select value={roleDraft} onValueChange={(v) => setRoleDraft(v as any)}>
+              <Select
+                value={roleDraft}
+                onValueChange={(v) => setRoleDraft(v as "user" | "staff" | "admin")}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
@@ -217,7 +229,10 @@ export default function PlatformUserGeneralPage() {
 
             <div className="space-y-2">
               <Label>Entitlement tier</Label>
-              <Select value={tierDraft} onValueChange={(v) => setTierDraft(v as any)}>
+              <Select
+                value={tierDraft}
+                onValueChange={(v) => setTierDraft(v as "free" | "standard" | "pro")}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select tier" />
                 </SelectTrigger>
@@ -232,59 +247,104 @@ export default function PlatformUserGeneralPage() {
             <Separator />
 
             <div className="space-y-3">
-              <div className="text-sm font-semibold">Global permissions</div>
-              <div className="bg-card flex items-center justify-between rounded-lg border p-4">
-                <div className="space-y-1">
-                  <div className="text-sm font-semibold">Master enable</div>
-                  <div className="text-muted-foreground text-sm">
-                    Turns on all global features.
-                  </div>
-                </div>
-                <Switch
-                  checked={permissionsDraft.globalEnabled}
-                  onCheckedChange={(v) =>
-                    setPermissionsDraft((prev) => ({ ...prev, globalEnabled: v }))
-                  }
-                />
-              </div>
+              <div className="text-sm font-semibold">Entitlements</div>
 
-              {(
-                [
-                  {
-                    key: "tradeIdeasEnabled" as const,
-                    label: "Trade ideas",
-                    description: "Access trade ideas and analytics.",
-                  },
-                  {
-                    key: "openPositionsEnabled" as const,
-                    label: "Open positions",
-                    description: "Access open positions and journal data.",
-                  },
-                  {
-                    key: "ordersEnabled" as const,
-                    label: "Orders",
-                    description: "Access order history and positions.",
-                  },
-                ] as const
-              ).map((item) => (
-                <div
-                  key={item.key}
-                  className="bg-card flex items-center justify-between rounded-lg border p-4"
-                >
+              <div className="bg-card space-y-3 rounded-lg border p-4">
+                <div className="flex items-center justify-between gap-4">
                   <div className="space-y-1">
-                    <div className="text-sm font-semibold">{item.label}</div>
+                    <div className="text-sm font-semibold">Journal</div>
                     <div className="text-muted-foreground text-sm">
-                      {item.description}
+                      Allow access to `/admin/journal` and broker-backed journal data.
                     </div>
                   </div>
                   <Switch
-                    checked={permissionsDraft[item.key]}
+                    checked={limitsDraft.features.journal}
                     onCheckedChange={(v) =>
-                      setPermissionsDraft((prev) => ({ ...prev, [item.key]: v }))
+                      setLimitsDraft((prev) => ({
+                        ...prev,
+                        features: { ...prev.features, journal: v },
+                      }))
                     }
                   />
                 </div>
-              ))}
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="text-sm font-semibold">Trade ideas</div>
+                    <div className="text-muted-foreground text-sm">
+                      Allow access to `/admin/tradeideas`.
+                    </div>
+                  </div>
+                  <Switch
+                    checked={limitsDraft.features.tradeIdeas}
+                    onCheckedChange={(v) =>
+                      setLimitsDraft((prev) => ({
+                        ...prev,
+                        features: { ...prev.features, tradeIdeas: v },
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="text-sm font-semibold">Analytics</div>
+                    <div className="text-muted-foreground text-sm">
+                      Allow access to `/admin/analytics`.
+                    </div>
+                  </div>
+                  <Switch
+                    checked={limitsDraft.features.analytics}
+                    onCheckedChange={(v) =>
+                      setLimitsDraft((prev) => ({
+                        ...prev,
+                        features: { ...prev.features, analytics: v },
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="text-sm font-semibold">Orders</div>
+                    <div className="text-muted-foreground text-sm">
+                      Allow access to `/admin/orders`.
+                    </div>
+                  </div>
+                  <Switch
+                    checked={limitsDraft.features.orders}
+                    onCheckedChange={(v) =>
+                      setLimitsDraft((prev) => ({
+                        ...prev,
+                        features: { ...prev.features, orders: v },
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="bg-card space-y-2 rounded-lg border p-4">
+                <div className="text-sm font-semibold">Limits</div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Max organizations</Label>
+                    <Input
+                      inputMode="numeric"
+                      placeholder="e.g. 10"
+                      value={limitsDraft.maxOrganizations}
+                      onChange={(e) =>
+                        setLimitsDraft((prev) => ({
+                          ...prev,
+                          maxOrganizations: e.target.value,
+                        }))
+                      }
+                    />
+                    <div className="text-muted-foreground text-xs">
+                      Leave blank for unlimited.
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-2 pt-2">
@@ -299,10 +359,12 @@ export default function PlatformUserGeneralPage() {
                     await setUserEntitlement({
                       userId: userDocId,
                       tier: tierDraft,
-                    });
-                    await setUserGlobalPermissions({
-                      userId: userDocId,
-                      permissions: permissionsDraft,
+                      limits: {
+                        maxOrganizations: limitsDraft.maxOrganizations
+                          ? Number(limitsDraft.maxOrganizations)
+                          : undefined,
+                        features: limitsDraft.features,
+                      },
                     });
                     toast.success("User access updated.");
                   } catch (error) {

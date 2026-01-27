@@ -1,6 +1,5 @@
-import { v } from "convex/values";
-
 import { query } from "./_generated/server";
+import { v } from "convex/values";
 
 export const listJoinCodes = query({
   args: {
@@ -45,17 +44,17 @@ export const listJoinCodes = query({
     const rows =
       scope === "organization"
         ? await ctx.db
-        .query("joinCodes")
-        .withIndex("by_scope_org", (q) =>
-          q.eq("scope", "organization").eq("organizationId", orgId),
-        )
-        .order("desc")
+          .query("joinCodes")
+          .withIndex("by_scope_org", (q) =>
+            q.eq("scope", "organization").eq("organizationId", orgId),
+          )
+          .order("desc")
           .collect()
         : await ctx.db
-            .query("joinCodes")
-            .withIndex("by_scope", (q) => q.eq("scope", "platform"))
-            .order("desc")
-            .collect();
+          .query("joinCodes")
+          .withIndex("by_scope", (q) => q.eq("scope", "platform"))
+          .order("desc")
+          .collect();
 
     return (Array.isArray(rows) ? rows : []).map((row) => ({
       _id: row._id,

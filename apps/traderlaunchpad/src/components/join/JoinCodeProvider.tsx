@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useConvexAuth, useMutation } from "convex/react";
 
-import { toast } from "@acme/ui/toast";
+import { useConvexAuth, useMutation } from "convex/react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+
 import { api } from "@convex-config/_generated/api";
+import { toast } from "@acme/ui/toast";
 import { useHostContext } from "~/context/HostContext";
 
 type JoinCodeProviderProps = {

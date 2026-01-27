@@ -97,6 +97,60 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 
+  /**
+   * User-controlled public visibility preferences for `/u/:username/*` pages.
+   *
+   * Notes:
+   * - This is intentionally separate from platform entitlements (paid access).
+   * - These flags are used for anonymous/public access decisions, including index vs detail pages.
+   */
+  userVisibilitySettings: defineTable({
+    userId: v.string(),
+
+    publicProfileEnabled: v.boolean(),
+    tradeIdeasIndexEnabled: v.boolean(),
+    tradeIdeaDetailEnabled: v.boolean(),
+    ordersIndexEnabled: v.boolean(),
+    orderDetailEnabled: v.boolean(),
+    analyticsReportsIndexEnabled: v.boolean(),
+    analyticsReportDetailEnabled: v.boolean(),
+
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  /**
+   * User-controlled consent for organizations to use/aggregate the user's data.
+   * (E.g. org dashboards, community aggregates, Discord summaries.)
+   */
+  orgConsentSettings: defineTable({
+    organizationId: v.string(),
+    userId: v.string(),
+
+    tradeIdeasEnabled: v.boolean(),
+    openPositionsEnabled: v.boolean(),
+    ordersEnabled: v.boolean(),
+
+    updatedAt: v.number(),
+  })
+    .index("by_org_and_user", ["organizationId", "userId"])
+    .index("by_user_and_org", ["userId", "organizationId"]),
+
+  /**
+   * Feature flags for staged rollouts / kill switches.
+   *
+   * These are additive on top of entitlements:
+   * - entitlements decide whether a user is allowed to use a feature at all
+   * - flags decide whether the feature is currently rolled out to the user segment
+   */
+  flags: defineTable({
+    key: v.string(),
+    enabled: v.boolean(),
+    rolloutPercent: v.optional(v.number()), // 0-100
+    allowUserIds: v.optional(v.array(v.string())),
+    denyUserIds: v.optional(v.array(v.string())),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
   userMedia: defineTable({
     uploadedByUserId: v.string(),
     storageId: v.id("_storage"),

@@ -5,7 +5,7 @@
   @typescript-eslint/no-unsafe-return
 */
 
-import { resolveOrganizationId, resolveViewerUserId } from "./lib/resolve";
+import { resolveOrganizationId, resolveViewerIsAdmin, resolveViewerUserId } from "./lib/resolve";
 
 import { components } from "../_generated/api";
 import { mutation } from "../_generated/server";
@@ -62,19 +62,22 @@ const resolveUserDocIdByClerkId = async (
   return user ? String(user._id) : null;
 };
 
-const isEnabledForType = (
-  perms: {
-    globalEnabled?: boolean;
-    tradeIdeasEnabled?: boolean;
-    openPositionsEnabled?: boolean;
-    ordersEnabled?: boolean;
-  },
+const isEntitledForType = (
+  limits: unknown,
   type: "tradeIdeas" | "openPositions" | "orders",
 ): boolean => {
-  if (Boolean(perms?.globalEnabled)) return true;
-  if (type === "tradeIdeas") return Boolean(perms?.tradeIdeasEnabled);
-  if (type === "openPositions") return Boolean(perms?.openPositionsEnabled);
-  return Boolean(perms?.ordersEnabled);
+  // Default to enabled to avoid accidental lockouts; platform admin can explicitly disable.
+  const raw = limits && typeof limits === "object" ? (limits as Record<string, unknown>) : {};
+  const featuresRaw =
+    raw.features && typeof raw.features === "object" ? (raw.features as Record<string, unknown>) : {};
+
+  const tradeIdeas = featuresRaw.tradeIdeas !== false;
+  const journal = featuresRaw.journal !== false;
+  const orders = featuresRaw.orders !== false;
+
+  if (type === "tradeIdeas") return tradeIdeas;
+  if (type === "openPositions") return journal;
+  return orders;
 };
 
 const requireGlobalPermission = async (
@@ -82,12 +85,19 @@ const requireGlobalPermission = async (
   type: "tradeIdeas" | "openPositions" | "orders",
 ): Promise<string> => {
   const userId = await resolveViewerUserId(ctx);
-  const perms = await ctx.runQuery(permissionsModule.getPermissions, {
-    userId,
-    scopeType: "global",
-  });
 
-  if (!isEnabledForType(perms ?? {}, type)) {
+  // Admins bypass feature-permission gating.
+  if (await resolveViewerIsAdmin(ctx)) {
+    return userId;
+  }
+
+  const row = await ctx.db
+    .query("userEntitlements")
+    .withIndex("by_user", (q: any) => q.eq("userId", userId))
+    .first();
+  const limits = (row as any)?.limits;
+
+  if (!isEntitledForType(limits, type)) {
     throw new ConvexError("Forbidden: You do not have access to this feature.");
   }
 

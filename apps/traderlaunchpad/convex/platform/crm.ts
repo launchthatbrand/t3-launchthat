@@ -7,10 +7,10 @@
   @typescript-eslint/no-unsafe-argument
 */
 
-import { v } from "convex/values";
+import { mutation, query } from "../_generated/server";
 
 import { components } from "../_generated/api";
-import { mutation, query } from "../_generated/server";
+import { v } from "convex/values";
 
 const crmQueries = components.launchthat_crm.queries as any;
 const crmContactsQueries = components.launchthat_crm.contacts.queries as any;

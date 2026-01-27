@@ -2,16 +2,6 @@
 
 import * as React from "react";
 
-import { usePathname } from "next/navigation";
-import { useHostContext } from "~/context/HostContext";
-import { useTenant } from "~/context/TenantContext";
-import { useClerk, useSession } from "@clerk/nextjs";
-import { LogOut, Settings, User } from "lucide-react";
-import { isPlatformHost } from "~/lib/host-mode";
-
-import { Button } from "@acme/ui/button";
-import { Switch } from "@acme/ui/switch";
-import { useDataMode } from "~/components/dataMode/DataModeProvider";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import {
   DropdownMenu,
@@ -21,6 +11,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
+import { LogOut, Settings, User } from "lucide-react";
+import { useClerk, useSession } from "@clerk/nextjs";
+
+import { Button } from "@acme/ui/button";
+import { Switch } from "@acme/ui/switch";
+import { isPlatformHost } from "~/lib/host-mode";
+import { useDataMode } from "~/components/dataMode/DataModeProvider";
+import { useHostContext } from "~/context/HostContext";
+import { usePathname } from "next/navigation";
+import { useTenant } from "~/context/TenantContext";
 
 export function TraderLaunchpadNavUser(props: { afterSignOutUrl?: string }) {
   const { isAuthHost, hostname, rootDomain } = useHostContext();

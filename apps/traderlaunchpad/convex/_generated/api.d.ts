@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as accessPolicy from "../accessPolicy.js";
 import type * as auth_exchange from "../auth/exchange.js";
 import type * as auth_sessions from "../auth/sessions.js";
 import type * as coreTenant_mutations from "../coreTenant/mutations.js";
@@ -24,6 +25,7 @@ import type * as email_mutations from "../email/mutations.js";
 import type * as email_queries from "../email/queries.js";
 import type * as feedback_mutations from "../feedback/mutations.js";
 import type * as feedback_queries from "../feedback/queries.js";
+import type * as flags from "../flags.js";
 import type * as notifications_mutations from "../notifications/mutations.js";
 import type * as notifications_queries from "../notifications/queries.js";
 import type * as notifications_test from "../notifications/test.js";
@@ -74,6 +76,7 @@ import type {
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  accessPolicy: typeof accessPolicy;
   "auth/exchange": typeof auth_exchange;
   "auth/sessions": typeof auth_sessions;
   "coreTenant/mutations": typeof coreTenant_mutations;
@@ -90,6 +93,7 @@ declare const fullApi: ApiFromModules<{
   "email/queries": typeof email_queries;
   "feedback/mutations": typeof feedback_mutations;
   "feedback/queries": typeof feedback_queries;
+  flags: typeof flags;
   "notifications/mutations": typeof notifications_mutations;
   "notifications/queries": typeof notifications_queries;
   "notifications/test": typeof notifications_test;
