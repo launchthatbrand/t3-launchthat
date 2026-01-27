@@ -26,6 +26,7 @@ import { useConvexAuth } from "convex/react";
 import { ConvexUserEnsurer } from "~/app/ConvexUserEnsurer";
 import { TenantConvexProvider } from "launchthat-plugin-core-tenant/next/components/tenant-convex-provider";
 import { PushNotificationsClient } from "~/components/pwa/PushNotificationsClient";
+import { JoinCodeProvider } from "~/components/join/JoinCodeProvider";
 
 const convexUrl = String(env.NEXT_PUBLIC_CONVEX_URL ?? "");
 if (!convexUrl) {
@@ -56,12 +57,14 @@ export function Providers({ children, tenant, host }: ProvidersProps) {
           <TenantProvider value={tenant}>
             <HostProvider host={host}>
               <ConvexUserEnsurer />
-              <PushNotificationsClient />
-              <DataModeProvider>
-                <ActiveAccountProvider>
-                  <TraderLaunchpadOnboardingGate>{children}</TraderLaunchpadOnboardingGate>
-                </ActiveAccountProvider>
-              </DataModeProvider>
+              <JoinCodeProvider>
+                <PushNotificationsClient />
+                <DataModeProvider>
+                  <ActiveAccountProvider>
+                    <TraderLaunchpadOnboardingGate>{children}</TraderLaunchpadOnboardingGate>
+                  </ActiveAccountProvider>
+                </DataModeProvider>
+              </JoinCodeProvider>
             </HostProvider>
           </TenantProvider>
         </ConvexProviderWithClerk>
@@ -70,12 +73,14 @@ export function Providers({ children, tenant, host }: ProvidersProps) {
       <TenantProvider value={tenant}>
         <HostProvider host={host}>
           <TenantConvexProvider convexUrl={convexUrl} nodeEnv={env.NODE_ENV}>
-            <PushNotificationsClient />
-            <DataModeProvider>
-              <ActiveAccountProvider>
-                <TraderLaunchpadOnboardingGate>{children}</TraderLaunchpadOnboardingGate>
-              </ActiveAccountProvider>
-            </DataModeProvider>
+            <JoinCodeProvider>
+              <PushNotificationsClient />
+              <DataModeProvider>
+                <ActiveAccountProvider>
+                  <TraderLaunchpadOnboardingGate>{children}</TraderLaunchpadOnboardingGate>
+                </ActiveAccountProvider>
+              </DataModeProvider>
+            </JoinCodeProvider>
           </TenantConvexProvider>
         </HostProvider>
       </TenantProvider>

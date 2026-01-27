@@ -55,6 +55,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
 import { Progress } from "@acme/ui/progress";
 
 import type { TradingCalendarWithDrilldownTradeRow } from "~/components/dashboard/TradingCalendarWithDrilldown";
+import {
+  FeatureAccessAlert,
+  isFeatureEnabled,
+  useGlobalPermissions,
+} from "~/components/access/FeatureAccessGate";
 import { useActiveAccount } from "~/components/accounts/ActiveAccountProvider";
 import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
 import { TradingCalendarWithDrilldown } from "~/components/dashboard/TradingCalendarWithDrilldown";
@@ -271,9 +276,18 @@ export default function AdminDashboardPage() {
   const isLive = dataMode.effectiveMode === "live";
   const activeAccount = useActiveAccount();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const { permissions, isLoading: permissionsLoading } = useGlobalPermissions();
   const shouldQuery = isAuthenticated && !authLoading;
   const tenant = useTenant();
   const isOrgMode = Boolean(tenant && tenant.slug !== "platform");
+  const canTradeIdeas =
+    !permissionsLoading &&
+    Boolean(permissions) &&
+    isFeatureEnabled(permissions, "tradeIdeas");
+  const canOrders =
+    !permissionsLoading &&
+    Boolean(permissions) &&
+    isFeatureEnabled(permissions, "orders");
 
   const viewerProfile = useQuery(
     api.viewer.queries.getViewerProfile,
@@ -300,7 +314,7 @@ export default function AdminDashboardPage() {
 
   const analyticsSummary = useQuery(
     api.traderlaunchpad.queries.getMyTradeIdeaAnalyticsSummary,
-    shouldQuery && isLive
+    shouldQuery && isLive && canTradeIdeas
       ? { limit: 200, accountId: activeAccount.selected?.accountId }
       : "skip",
   ) as
@@ -319,7 +333,7 @@ export default function AdminDashboardPage() {
 
   const recentClosed = useQuery(
     api.traderlaunchpad.queries.listMyRecentClosedTradeIdeas,
-    shouldQuery && isLive
+    shouldQuery && isLive && canTradeIdeas
       ? { limit: 200, accountId: activeAccount.selected?.accountId }
       : "skip",
   ) as
@@ -335,7 +349,7 @@ export default function AdminDashboardPage() {
 
   const liveCalendarDailyStats = useQuery(
     api.traderlaunchpad.queries.listMyCalendarDailyStats,
-    shouldQuery && isLive
+    shouldQuery && isLive && canOrders
       ? { daysBack: 90, accountId: activeAccount.selected?.accountId }
       : "skip",
   ) as
@@ -350,7 +364,7 @@ export default function AdminDashboardPage() {
 
   const liveCalendarEvents = useQuery(
     api.traderlaunchpad.queries.listMyCalendarRealizationEvents,
-    shouldQuery && isLive
+    shouldQuery && isLive && canOrders
       ? { daysBack: 90, accountId: activeAccount.selected?.accountId }
       : "skip",
   ) as
@@ -994,13 +1008,22 @@ export default function AdminDashboardPage() {
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="space-y-8 lg:col-span-2">
-          <TradingCalendarWithDrilldown
-            dailyStats={calendarDailyStats}
-            trades={calendarTrades}
-            selectedDate={selectedTradeDate}
-            onSelectDateAction={setSelectedTradeDate}
-            getTradeHrefAction={getCalendarTradeHref}
-          />
+          {isLive && permissionsLoading ? (
+            <div className="text-muted-foreground text-sm">Checking access…</div>
+          ) : isLive && !canOrders ? (
+            <FeatureAccessAlert
+              title="Access restricted"
+              description="You do not have access to orders data."
+            />
+          ) : (
+            <TradingCalendarWithDrilldown
+              dailyStats={calendarDailyStats}
+              trades={calendarTrades}
+              selectedDate={selectedTradeDate}
+              onSelectDateAction={setSelectedTradeDate}
+              getTradeHrefAction={getCalendarTradeHref}
+            />
+          )}
         </div>
         <div className="space-y-8 lg:col-span-1">
           <Card className="border-border/40 bg-card/70 hover:bg-card/80 h-full min-h-[530px] border-l-4 border-l-orange-500 shadow-lg shadow-orange-500/5 backdrop-blur-md transition-colors dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
@@ -1023,13 +1046,23 @@ export default function AdminDashboardPage() {
               </div>
             </CardHeader>
             <CardContent className="flex h-full flex-col gap-3">
-              <div className="flex-1 space-y-2 overflow-y-auto pr-1">
-                {(selectedTradeDate
-                  ? reviewTrades.filter(
-                    (trade) => trade.tradeDate === selectedTradeDate,
-                  )
-                  : reviewTrades
-                ).map((trade) => (
+              {isLive && permissionsLoading ? (
+                <div className="text-muted-foreground text-sm">
+                  Checking access…
+                </div>
+              ) : isLive && !canTradeIdeas ? (
+                <FeatureAccessAlert
+                  title="Access restricted"
+                  description="You do not have access to trade ideas."
+                />
+              ) : (
+                <div className="flex-1 space-y-2 overflow-y-auto pr-1">
+                  {(selectedTradeDate
+                    ? reviewTrades.filter(
+                      (trade) => trade.tradeDate === selectedTradeDate,
+                    )
+                    : reviewTrades
+                  ).map((trade) => (
                   <Popover
                     key={trade.id}
                     open={openTradeId === trade.id}
@@ -1136,9 +1169,10 @@ export default function AdminDashboardPage() {
                         </Button>
                       </div>
                     </PopoverContent>
-                  </Popover>
-                ))}
-              </div>
+                    </Popover>
+                  ))}
+                </div>
+              )}
               <Button
                 variant="outline"
                 className="border-border/60 text-foreground hover:bg-foreground/5 hover:text-foreground w-full bg-transparent text-xs dark:border-white/15 dark:text-white dark:hover:bg-white/10 dark:hover:text-white"
@@ -1272,7 +1306,16 @@ export default function AdminDashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {performanceSeries.length ? (
+              {isLive && permissionsLoading ? (
+                <div className="text-muted-foreground text-sm">
+                  Checking access…
+                </div>
+              ) : isLive && !canTradeIdeas ? (
+                <FeatureAccessAlert
+                  title="Access restricted"
+                  description="You do not have access to trade ideas."
+                />
+              ) : performanceSeries.length ? (
                 <ChartContainer
                   config={performanceChartConfig}
                   className="h-[300px] w-full"

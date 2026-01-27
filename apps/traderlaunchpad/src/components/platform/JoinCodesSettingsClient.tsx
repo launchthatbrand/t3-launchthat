@@ -74,7 +74,7 @@ export const JoinCodesSettingsClient = () => {
 
   const getJoinLink = React.useCallback((code: string) => {
     if (typeof window === "undefined") return "";
-    return `${window.location.origin}/sign-up?code=${encodeURIComponent(code)}`;
+    return `${window.location.origin}/sign-in?join=${encodeURIComponent(code)}`;
   }, []);
 
   const handleCopy = React.useCallback(async (value: string, labelText = "Link") => {
