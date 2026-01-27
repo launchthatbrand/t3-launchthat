@@ -44,6 +44,7 @@ export const listPlatformJoinCodes = query({
       scope: v.union(v.literal("platform"), v.literal("organization")),
       organizationId: v.optional(v.string()),
       label: v.optional(v.string()),
+      code: v.optional(v.string()),
       role: v.optional(v.union(v.literal("user"), v.literal("staff"), v.literal("admin"))),
       tier: v.optional(v.union(v.literal("free"), v.literal("standard"), v.literal("pro"))),
       permissions: v.optional(
@@ -65,9 +66,52 @@ export const listPlatformJoinCodes = query({
   ),
   handler: async (ctx) => {
     await requirePlatformAdmin(ctx);
-    return await ctx.runQuery(joinCodesQueries.listJoinCodes, {
+    const rows = await ctx.runQuery(joinCodesQueries.listJoinCodes, {
       scope: "platform",
     });
+    return (Array.isArray(rows) ? rows : []).map((row: any) => ({
+      _id: String(row?._id ?? ""),
+      scope: row?.scope === "organization" ? ("organization" as const) : ("platform" as const),
+      organizationId:
+        typeof row?.organizationId === "string" ? row.organizationId : undefined,
+      label: typeof row?.label === "string" ? row.label : undefined,
+      code: typeof row?.code === "string" ? row.code : undefined,
+      role:
+        row?.role === "admin" || row?.role === "staff" || row?.role === "user"
+          ? row.role
+          : undefined,
+      tier:
+        row?.tier === "pro" || row?.tier === "standard" || row?.tier === "free"
+          ? row.tier
+          : undefined,
+      permissions: row?.permissions
+        ? {
+            globalEnabled:
+              typeof row.permissions.globalEnabled === "boolean"
+                ? row.permissions.globalEnabled
+                : undefined,
+            tradeIdeasEnabled:
+              typeof row.permissions.tradeIdeasEnabled === "boolean"
+                ? row.permissions.tradeIdeasEnabled
+                : undefined,
+            openPositionsEnabled:
+              typeof row.permissions.openPositionsEnabled === "boolean"
+                ? row.permissions.openPositionsEnabled
+                : undefined,
+            ordersEnabled:
+              typeof row.permissions.ordersEnabled === "boolean"
+                ? row.permissions.ordersEnabled
+                : undefined,
+          }
+        : undefined,
+      maxUses: typeof row?.maxUses === "number" ? row.maxUses : undefined,
+      uses: typeof row?.uses === "number" ? row.uses : 0,
+      expiresAt: typeof row?.expiresAt === "number" ? row.expiresAt : undefined,
+      isActive: Boolean(row?.isActive),
+      createdByUserId: String(row?.createdByUserId ?? ""),
+      createdAt: typeof row?.createdAt === "number" ? row.createdAt : 0,
+      updatedAt: typeof row?.updatedAt === "number" ? row.updatedAt : 0,
+    }));
   },
 });
 

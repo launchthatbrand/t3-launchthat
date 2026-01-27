@@ -10,6 +10,7 @@
 import { v } from "convex/values";
 
 import { query, mutation } from "../_generated/server";
+import { components } from "../_generated/api";
 
 const requirePlatformAdmin = async (ctx: any) => {
   const identity = await ctx.auth.getUserIdentity();
@@ -43,6 +44,14 @@ const tierValidator = v.union(
   v.literal("standard"),
   v.literal("pro"),
 );
+const permissionsValidator = v.object({
+  globalEnabled: v.boolean(),
+  tradeIdeasEnabled: v.boolean(),
+  openPositionsEnabled: v.boolean(),
+  ordersEnabled: v.boolean(),
+});
+
+const permissionsModule = components.launchthat_traderlaunchpad.permissions as any;
 
 export const getUserRole = query({
   args: { userId: v.string() },
@@ -63,6 +72,7 @@ export const setUserRole = mutation({
     await requirePlatformAdmin(ctx);
     await ctx.db.patch(args.userId as any, {
       role: args.role,
+      isAdmin: args.role === "admin",
       updatedAt: Date.now(),
     });
     return null;
@@ -86,7 +96,13 @@ export const getUserEntitlement = query({
       .query("userEntitlements")
       .withIndex("by_user", (q: any) => q.eq("userId", args.userId))
       .first();
-    return row ? (row as any) : null;
+    if (!row) return null;
+    return {
+      userId: String((row as any).userId),
+      tier: (row as any).tier,
+      limits: (row as any).limits,
+      updatedAt: Number((row as any).updatedAt ?? 0),
+    };
   },
 });
 
@@ -114,6 +130,45 @@ export const setUserEntitlement = mutation({
       return null;
     }
     await ctx.db.insert("userEntitlements", payload);
+    return null;
+  },
+});
+
+export const getUserGlobalPermissions = query({
+  args: { userId: v.string() },
+  returns: permissionsValidator,
+  handler: async (ctx, args) => {
+    await requirePlatformAdmin(ctx);
+    const row = await ctx.runQuery(permissionsModule.getPermissions, {
+      userId: args.userId,
+      scopeType: "global",
+    });
+    return {
+      globalEnabled: Boolean((row as any)?.globalEnabled),
+      tradeIdeasEnabled: Boolean((row as any)?.tradeIdeasEnabled),
+      openPositionsEnabled: Boolean((row as any)?.openPositionsEnabled),
+      ordersEnabled: Boolean((row as any)?.ordersEnabled),
+    };
+  },
+});
+
+export const setUserGlobalPermissions = mutation({
+  args: {
+    userId: v.string(),
+    permissions: permissionsValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await requirePlatformAdmin(ctx);
+    await ctx.runMutation(permissionsModule.upsertPermissions, {
+      userId: args.userId,
+      scopeType: "global",
+      scopeId: undefined,
+      globalEnabled: args.permissions.globalEnabled,
+      tradeIdeasEnabled: args.permissions.tradeIdeasEnabled,
+      openPositionsEnabled: args.permissions.openPositionsEnabled,
+      ordersEnabled: args.permissions.ordersEnabled,
+    });
     return null;
   },
 });

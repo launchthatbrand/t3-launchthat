@@ -53,6 +53,7 @@ export const createJoinCode = mutation({
     const joinCodeId = await ctx.db.insert("joinCodes", {
       scope: args.scope,
       organizationId: args.organizationId,
+      code: rawCode,
       codeHash,
       label: typeof args.label === "string" && args.label.trim() ? args.label.trim() : undefined,
       role: args.role,

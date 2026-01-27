@@ -99,6 +99,7 @@ export type Mounts = {
       { organizationId?: string; scope: "platform" | "organization" },
       Array<{
         _id: string;
+        code?: string;
         createdAt: number;
         createdByUserId: string;
         expiresAt?: number;
@@ -106,7 +107,15 @@ export type Mounts = {
         label?: string;
         maxUses?: number;
         organizationId?: string;
+        permissions?: {
+          globalEnabled?: boolean;
+          openPositionsEnabled?: boolean;
+          ordersEnabled?: boolean;
+          tradeIdeasEnabled?: boolean;
+        };
+        role?: "user" | "staff" | "admin";
         scope: "platform" | "organization";
+        tier?: "free" | "standard" | "pro";
         updatedAt: number;
         uses: number;
       }>

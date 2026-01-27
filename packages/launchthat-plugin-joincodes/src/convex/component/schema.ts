@@ -5,6 +5,7 @@ export default defineSchema({
   joinCodes: defineTable({
     scope: v.union(v.literal("platform"), v.literal("organization")),
     organizationId: v.optional(v.string()),
+    code: v.optional(v.string()),
     codeHash: v.string(),
     label: v.optional(v.string()),
     role: v.optional(v.union(v.literal("user"), v.literal("staff"), v.literal("admin"))),

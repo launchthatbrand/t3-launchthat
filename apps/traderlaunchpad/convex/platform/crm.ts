@@ -15,6 +15,7 @@ import { mutation, query } from "../_generated/server";
 const crmQueries = components.launchthat_crm.queries as any;
 const crmContactsQueries = components.launchthat_crm.contacts.queries as any;
 const crmContactsMutations = components.launchthat_crm.contacts.mutations as any;
+const crmMarketingTagsQueries = components.launchthat_crm.marketingTags.queries as any;
 
 const requirePlatformAdmin = async (ctx: any) => {
   const identity = await ctx.auth.getUserIdentity();
@@ -161,6 +162,52 @@ export const getContactMeta = query({
     return await ctx.runQuery(crmContactsQueries.getContactMeta, {
       contactId: args.contactId as any,
     });
+  },
+});
+
+export const getUserContactSummary = query({
+  args: {
+    userId: v.string(),
+  },
+  returns: v.object({
+    contactId: v.union(v.string(), v.null()),
+    tags: v.array(
+      v.object({
+        id: v.string(),
+        name: v.string(),
+        slug: v.optional(v.string()),
+        color: v.optional(v.string()),
+        category: v.optional(v.string()),
+      }),
+    ),
+  }),
+  handler: async (ctx, args) => {
+    await requirePlatformAdmin(ctx);
+    const contactId = await ctx.runQuery(
+      crmMarketingTagsQueries.getContactIdForUser,
+      { userId: args.userId },
+    );
+    if (!contactId) {
+      return { contactId: null, tags: [] };
+    }
+
+    const rows = await ctx.runQuery(
+      crmMarketingTagsQueries.getContactMarketingTags,
+      { contactId },
+    );
+
+    const tags = (Array.isArray(rows) ? rows : []).map((row: any) => {
+      const tag = row?.marketingTag ?? {};
+      return {
+        id: String(tag?._id ?? ""),
+        name: String(tag?.name ?? "Tag"),
+        slug: typeof tag?.slug === "string" ? tag.slug : undefined,
+        color: typeof tag?.color === "string" ? tag.color : undefined,
+        category: typeof tag?.category === "string" ? tag.category : undefined,
+      };
+    });
+
+    return { contactId: String(contactId), tags };
   },
 });
 

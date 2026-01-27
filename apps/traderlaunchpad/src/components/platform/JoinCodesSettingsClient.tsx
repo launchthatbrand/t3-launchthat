@@ -15,11 +15,13 @@ import {
   Label,
   toast,
 } from "@acme/ui";
+import { Copy } from "lucide-react";
 
 import { api } from "@convex-config/_generated/api";
 
 type JoinCodeRow = {
   _id: string;
+  code?: string;
   label?: string;
   role?: "user" | "staff" | "admin";
   tier?: "free" | "standard" | "pro";
@@ -69,6 +71,21 @@ export const JoinCodesSettingsClient = () => {
   const [expiresInDays, setExpiresInDays] = React.useState<string>("");
   const [saving, setSaving] = React.useState(false);
   const [lastCode, setLastCode] = React.useState("");
+
+  const getJoinLink = React.useCallback((code: string) => {
+    if (typeof window === "undefined") return "";
+    return `${window.location.origin}/sign-up?code=${encodeURIComponent(code)}`;
+  }, []);
+
+  const handleCopy = React.useCallback(async (value: string, labelText = "Link") => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`${labelText} copied.`);
+    } catch {
+      toast.error("Failed to copy.");
+    }
+  }, []);
 
   if (!shouldQuery) {
     return (
@@ -280,9 +297,19 @@ export const JoinCodesSettingsClient = () => {
               Create join code
             </Button>
             {lastCode ? (
-              <div className="rounded-lg border bg-muted/30 px-3 py-2 text-sm">
-                New code:{" "}
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm">
+                <span className="text-muted-foreground">New code:</span>
                 <span className="font-semibold text-foreground">{lastCode}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1"
+                  onClick={() => void handleCopy(getJoinLink(lastCode), "Invite link")}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  Copy link
+                </Button>
               </div>
             ) : null}
           </div>
@@ -316,6 +343,30 @@ export const JoinCodesSettingsClient = () => {
                   {code.role ? ` · Role ${code.role}` : ""}
                   {code.tier ? ` · Tier ${code.tier}` : ""}
                   </div>
+                  {code.code ? (
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground/80">Invite link:</span>
+                      <span className="font-mono text-foreground/80">
+                        {getJoinLink(code.code)}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1"
+                        onClick={() =>
+                          void handleCopy(getJoinLink(code.code), "Invite link")
+                        }
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                        Copy
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">
+                      Invite link hidden (code not stored).
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button

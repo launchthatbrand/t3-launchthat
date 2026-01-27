@@ -1,8 +1,9 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -23,6 +24,14 @@ import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import { Separator } from "@acme/ui/separator";
 import { Switch } from "@acme/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@acme/ui/select";
+import { toast } from "@acme/ui";
 
 import { api } from "@convex-config/_generated/api";
 
@@ -45,12 +54,85 @@ export default function PlatformUserGeneralPage() {
     }
   }, [user?.createdAt]);
 
-  const [isDisabled, setIsDisabled] = React.useState(false);
-  const [isAdmin, setIsAdmin] = React.useState(false);
+  const userDocId = user?.userDocId ? String(user.userDocId) : "";
+
+  const role = useQuery(
+    api.platform.userAccess.getUserRole,
+    userDocId ? { userId: userDocId } : "skip",
+  ) as "user" | "staff" | "admin" | null | undefined;
+  const entitlement = useQuery(
+    api.platform.userAccess.getUserEntitlement,
+    userDocId ? { userId: userDocId } : "skip",
+  ) as
+    | {
+        userId: string;
+        tier: "free" | "standard" | "pro";
+        limits?: unknown;
+        updatedAt: number;
+      }
+    | null
+    | undefined;
+  const permissions = useQuery(
+    api.platform.userAccess.getUserGlobalPermissions,
+    userDocId ? { userId: userDocId } : "skip",
+  ) as
+    | {
+        globalEnabled: boolean;
+        tradeIdeasEnabled: boolean;
+        openPositionsEnabled: boolean;
+        ordersEnabled: boolean;
+      }
+    | undefined;
+
+  const contactSummary = useQuery(
+    api.platform.crm.getUserContactSummary,
+    userDocId ? { userId: userDocId } : "skip",
+  ) as
+    | {
+        contactId: string | null;
+        tags: {
+          id: string;
+          name: string;
+          slug?: string;
+          color?: string;
+          category?: string;
+        }[];
+      }
+    | undefined;
+
+  const setUserRole = useMutation(api.platform.userAccess.setUserRole);
+  const setUserEntitlement = useMutation(api.platform.userAccess.setUserEntitlement);
+  const setUserGlobalPermissions = useMutation(
+    api.platform.userAccess.setUserGlobalPermissions,
+  );
+
+  const [roleDraft, setRoleDraft] = React.useState<"user" | "staff" | "admin">("user");
+  const [tierDraft, setTierDraft] = React.useState<"free" | "standard" | "pro">("free");
+  const [permissionsDraft, setPermissionsDraft] = React.useState({
+    globalEnabled: false,
+    tradeIdeasEnabled: false,
+    openPositionsEnabled: false,
+    ordersEnabled: false,
+  });
+  const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
-    if (user) setIsAdmin(Boolean(user.isAdmin));
-  }, [user]);
+    if (role) setRoleDraft(role);
+  }, [role]);
+
+  React.useEffect(() => {
+    if (entitlement?.tier) setTierDraft(entitlement.tier);
+  }, [entitlement?.tier]);
+
+  React.useEffect(() => {
+    if (!permissions) return;
+    setPermissionsDraft({
+      globalEnabled: Boolean(permissions.globalEnabled),
+      tradeIdeasEnabled: Boolean(permissions.tradeIdeasEnabled),
+      openPositionsEnabled: Boolean(permissions.openPositionsEnabled),
+      ordersEnabled: Boolean(permissions.ordersEnabled),
+    });
+  }, [permissions]);
 
   return (
     <div className="space-y-8">
@@ -59,7 +141,7 @@ export default function PlatformUserGeneralPage() {
           <CardHeader className="border-b">
             <CardTitle className="flex items-center gap-2 text-base">
               <UserRound className="h-4 w-4 text-blue-500" />
-              Profile (mock)
+              Profile
             </CardTitle>
             <CardDescription>
               View core identity info and platform-level flags.
@@ -92,30 +174,21 @@ export default function PlatformUserGeneralPage() {
                 <div className="text-muted-foreground text-xs">Entitlement</div>
                 <div className="mt-1 flex items-center gap-2 text-lg font-semibold">
                   <CreditCard className="h-4 w-4 text-emerald-500" />
-                  Pro (mock)
+                  {entitlement?.tier ?? "Free"}
                 </div>
               </div>
               <div className="bg-muted/20 rounded-lg border p-4">
                 <div className="text-muted-foreground text-xs">Status</div>
                 <div className="mt-1 flex items-center gap-2 text-lg font-semibold">
-                  {isDisabled ? (
-                    <>
-                      <AlertCircle className="h-4 w-4 text-red-500" />
-                      Disabled
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                      Active
-                    </>
-                  )}
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  Active
                 </div>
               </div>
               <div className="bg-muted/20 rounded-lg border p-4">
                 <div className="text-muted-foreground text-xs">Role</div>
                 <div className="mt-1 flex items-center gap-2 text-lg font-semibold">
                   <ShieldCheck className="h-4 w-4 text-purple-500" />
-                  {user?.isAdmin ? "Platform admin" : "User"}
+                  {role ?? "User"}
                 </div>
               </div>
             </div>
@@ -124,47 +197,125 @@ export default function PlatformUserGeneralPage() {
 
         <Card className="overflow-hidden">
           <CardHeader className="border-b">
-            <CardTitle className="text-base">Admin controls (mock)</CardTitle>
-            <CardDescription>
-              These will later map to secure, audited mutations.
-            </CardDescription>
+            <CardTitle className="text-base">Admin controls</CardTitle>
+            <CardDescription>Update role, tier, and global permissions.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pt-6">
-            <div className="bg-card flex items-center justify-between rounded-lg border p-4">
-              <div className="space-y-1">
-                <div className="text-sm font-semibold">Disable account</div>
-                <div className="text-muted-foreground text-sm">
-                  Block sign-in and API access.
-                </div>
-              </div>
-              <Switch checked={isDisabled} onCheckedChange={setIsDisabled} />
+            <div className="space-y-2">
+              <Label>Platform role</Label>
+              <Select value={roleDraft} onValueChange={(v) => setRoleDraft(v as any)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="bg-card flex items-center justify-between rounded-lg border p-4">
-              <div className="space-y-1">
-                <div className="text-sm font-semibold">Platform admin</div>
-                <div className="text-muted-foreground text-sm">
-                  Grant access to /platform pages.
+            <div className="space-y-2">
+              <Label>Entitlement tier</Label>
+              <Select value={tierDraft} onValueChange={(v) => setTierDraft(v as any)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select tier" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">Free</SelectItem>
+                  <SelectItem value="standard">Standard</SelectItem>
+                  <SelectItem value="pro">Pro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <div className="text-sm font-semibold">Global permissions</div>
+              <div className="bg-card flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-1">
+                  <div className="text-sm font-semibold">Master enable</div>
+                  <div className="text-muted-foreground text-sm">
+                    Turns on all global features.
+                  </div>
                 </div>
+                <Switch
+                  checked={permissionsDraft.globalEnabled}
+                  onCheckedChange={(v) =>
+                    setPermissionsDraft((prev) => ({ ...prev, globalEnabled: v }))
+                  }
+                />
               </div>
-              <Switch checked={isAdmin} onCheckedChange={setIsAdmin} />
+
+              {(
+                [
+                  {
+                    key: "tradeIdeasEnabled" as const,
+                    label: "Trade ideas",
+                    description: "Access trade ideas and analytics.",
+                  },
+                  {
+                    key: "openPositionsEnabled" as const,
+                    label: "Open positions",
+                    description: "Access open positions and journal data.",
+                  },
+                  {
+                    key: "ordersEnabled" as const,
+                    label: "Orders",
+                    description: "Access order history and positions.",
+                  },
+                ] as const
+              ).map((item) => (
+                <div
+                  key={item.key}
+                  className="bg-card flex items-center justify-between rounded-lg border p-4"
+                >
+                  <div className="space-y-1">
+                    <div className="text-sm font-semibold">{item.label}</div>
+                    <div className="text-muted-foreground text-sm">
+                      {item.description}
+                    </div>
+                  </div>
+                  <Switch
+                    checked={permissionsDraft[item.key]}
+                    onCheckedChange={(v) =>
+                      setPermissionsDraft((prev) => ({ ...prev, [item.key]: v }))
+                    }
+                  />
+                </div>
+              ))}
             </div>
 
             <div className="grid grid-cols-1 gap-2 pt-2">
-              <Button className="border-0 bg-blue-600 text-white hover:bg-blue-700">
-                Save changes (mock)
-              </Button>
               <Button
-                variant="outline"
-                className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                className="border-0 bg-blue-600 text-white hover:bg-blue-700"
+                disabled={saving || !userDocId}
+                onClick={async () => {
+                  if (!userDocId) return;
+                  setSaving(true);
+                  try {
+                    await setUserRole({ userId: userDocId, role: roleDraft });
+                    await setUserEntitlement({
+                      userId: userDocId,
+                      tier: tierDraft,
+                    });
+                    await setUserGlobalPermissions({
+                      userId: userDocId,
+                      permissions: permissionsDraft,
+                    });
+                    toast.success("User access updated.");
+                  } catch (error) {
+                    toast.error(
+                      error instanceof Error ? error.message : "Failed to update user access.",
+                    );
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
               >
-                Force sign-out (mock)
+                {saving ? "Saving..." : "Save changes"}
               </Button>
-            </div>
-
-            <div className="text-muted-foreground pt-2 text-xs">
-              Backend later: audit logs, reason required, reversible actions,
-              and role enforcement.
             </div>
           </CardContent>
         </Card>
@@ -173,7 +324,7 @@ export default function PlatformUserGeneralPage() {
       <Card>
         <CardHeader className="border-b">
           <CardTitle className="text-base">Notes</CardTitle>
-          <CardDescription>Internal-only annotations (mock).</CardDescription>
+          <CardDescription>Internal-only annotations.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 pt-6">
           <div className="text-muted-foreground text-sm">
@@ -183,6 +334,53 @@ export default function PlatformUserGeneralPage() {
           <div className="flex justify-end">
             <Button variant="outline">Add note (mock)</Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="border-b">
+          <CardTitle className="text-base">CRM contact</CardTitle>
+          <CardDescription>Linked contact record and tags.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-6">
+          {contactSummary?.contactId ? (
+            <>
+              <div className="flex items-center justify-between gap-3 rounded-lg border p-4">
+                <div>
+                  <div className="text-sm font-semibold">Linked contact</div>
+                  <div className="text-muted-foreground text-xs">
+                    {contactSummary.contactId}
+                  </div>
+                </div>
+                <Button asChild variant="outline">
+                  <Link href={`/platform/crm/contacts/${contactSummary.contactId}`}>
+                    View contact
+                  </Link>
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-sm font-semibold">Tags</div>
+                {contactSummary.tags.length === 0 ? (
+                  <div className="text-muted-foreground text-sm">
+                    No tags assigned.
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {contactSummary.tags.map((tag) => (
+                      <Badge key={tag.id} variant="outline">
+                        {tag.name}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="text-muted-foreground text-sm">
+              No contact record linked to this user yet.
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

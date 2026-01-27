@@ -47,6 +47,21 @@ const resolveMembershipForOrg = async (ctx: any, organizationId: string, userId:
   return { role };
 };
 
+const resolveUserDocIdByClerkId = async (
+  ctx: any,
+  clerkId: string,
+): Promise<string | null> => {
+  const normalized = String(clerkId ?? "").trim();
+  if (!normalized) return null;
+
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", normalized))
+    .first();
+
+  return user ? String(user._id) : null;
+};
+
 const isEnabledForType = (
   perms: {
     globalEnabled?: boolean;
@@ -597,10 +612,13 @@ export const redeemOrgJoinCode = mutation({
       | undefined;
 
     if (role === "user" || role === "staff" || role === "admin") {
-      await ctx.db.patch(userId as any, {
-        role,
-        updatedAt: Date.now(),
-      });
+      const userDocId = await resolveUserDocIdByClerkId(ctx, userId);
+      if (userDocId) {
+        await ctx.db.patch(userDocId as any, {
+          role,
+          updatedAt: Date.now(),
+        });
+      }
     }
 
     if (tier === "free" || tier === "standard" || tier === "pro") {
@@ -641,6 +659,80 @@ export const redeemOrgJoinCode = mutation({
     });
 
     return { organizationId };
+  },
+});
+
+export const redeemPlatformJoinCode = mutation({
+  args: {
+    code: v.string(),
+  },
+  returns: v.object({ ok: v.boolean() }),
+  handler: async (ctx, args) => {
+    const userId = await resolveViewerUserId(ctx);
+    const code = String(args.code ?? "").trim();
+    if (!code) return { ok: false };
+
+    const redemption = await ctx.runMutation(joinCodesMutations.redeemJoinCode, {
+      code,
+      redeemedByUserId: userId,
+    });
+    if (!redemption) return { ok: false };
+
+    const scope = String((redemption as any)?.scope ?? "");
+    if (scope !== "platform") return { ok: false };
+
+    const role = String((redemption as any)?.role ?? "").trim();
+    const tier = String((redemption as any)?.tier ?? "").trim();
+    const permissions = (redemption as any)?.permissions as
+      | {
+          globalEnabled?: boolean;
+          tradeIdeasEnabled?: boolean;
+          openPositionsEnabled?: boolean;
+          ordersEnabled?: boolean;
+        }
+      | undefined;
+
+    if (role === "user" || role === "staff" || role === "admin") {
+      const userDocId = await resolveUserDocIdByClerkId(ctx, userId);
+      if (userDocId) {
+        await ctx.db.patch(userDocId as any, {
+          role,
+          updatedAt: Date.now(),
+        });
+      }
+    }
+
+    if (tier === "free" || tier === "standard" || tier === "pro") {
+      const normalizedTier: "free" | "standard" | "pro" = tier;
+      const existing = await ctx.db
+        .query("userEntitlements")
+        .withIndex("by_user", (q: any) => q.eq("userId", userId))
+        .first();
+      const payload = {
+        userId,
+        tier: normalizedTier,
+        updatedAt: Date.now(),
+      };
+      if (existing) {
+        await ctx.db.patch(existing._id, payload);
+      } else {
+        await ctx.db.insert("userEntitlements", payload);
+      }
+    }
+
+    if (permissions) {
+      await ctx.runMutation(permissionsMutations.upsertPermissions, {
+        userId,
+        scopeType: "global",
+        scopeId: undefined,
+        globalEnabled: Boolean(permissions.globalEnabled),
+        tradeIdeasEnabled: Boolean(permissions.tradeIdeasEnabled),
+        openPositionsEnabled: Boolean(permissions.openPositionsEnabled),
+        ordersEnabled: Boolean(permissions.ordersEnabled),
+      });
+    }
+
+    return { ok: true };
   },
 });
 

@@ -13,6 +13,17 @@ export const listJoinCodes = query({
       scope: v.union(v.literal("platform"), v.literal("organization")),
       organizationId: v.optional(v.string()),
       label: v.optional(v.string()),
+      code: v.optional(v.string()),
+      role: v.optional(v.union(v.literal("user"), v.literal("staff"), v.literal("admin"))),
+      tier: v.optional(v.union(v.literal("free"), v.literal("standard"), v.literal("pro"))),
+      permissions: v.optional(
+        v.object({
+          globalEnabled: v.optional(v.boolean()),
+          tradeIdeasEnabled: v.optional(v.boolean()),
+          openPositionsEnabled: v.optional(v.boolean()),
+          ordersEnabled: v.optional(v.boolean()),
+        }),
+      ),
       maxUses: v.optional(v.number()),
       uses: v.number(),
       expiresAt: v.optional(v.number()),
@@ -31,20 +42,37 @@ export const listJoinCodes = query({
       return [];
     }
 
-    if (scope === "organization") {
-      return await ctx.db
+    const rows =
+      scope === "organization"
+        ? await ctx.db
         .query("joinCodes")
         .withIndex("by_scope_org", (q) =>
           q.eq("scope", "organization").eq("organizationId", orgId),
         )
         .order("desc")
-        .collect();
-    }
+          .collect()
+        : await ctx.db
+            .query("joinCodes")
+            .withIndex("by_scope", (q) => q.eq("scope", "platform"))
+            .order("desc")
+            .collect();
 
-    return await ctx.db
-      .query("joinCodes")
-      .withIndex("by_scope", (q) => q.eq("scope", "platform"))
-      .order("desc")
-      .collect();
+    return (Array.isArray(rows) ? rows : []).map((row) => ({
+      _id: row._id,
+      scope: row.scope,
+      organizationId: row.organizationId,
+      label: row.label,
+      code: row.code,
+      role: row.role,
+      tier: row.tier,
+      permissions: row.permissions,
+      maxUses: row.maxUses,
+      uses: row.uses,
+      expiresAt: row.expiresAt,
+      isActive: row.isActive,
+      createdByUserId: row.createdByUserId,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }));
   },
 });
