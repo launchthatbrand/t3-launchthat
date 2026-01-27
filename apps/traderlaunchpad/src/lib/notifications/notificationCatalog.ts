@@ -34,7 +34,7 @@ export const TRADERLAUNCHPAD_NOTIFICATION_EVENTS: TraderLaunchpadNotificationEve
       tabKey: "system",
       defaultTitle: "Test notification",
       defaultContent: "This is a test.",
-      defaultActionUrl: "/admin/tradingplan",
+      defaultActionUrl: "/admin/strategies",
       defaultSinkIds: ["inApp", "email"],
     },
     {
@@ -59,7 +59,7 @@ export const TRADERLAUNCHPAD_NOTIFICATION_EVENTS: TraderLaunchpadNotificationEve
       defaultTitle: "Violating trading plan",
       defaultContent:
         "You just broke one of your trading plan rules. Review the rule and consider stopping for the session.",
-      defaultActionUrl: "/admin/tradingplan",
+      defaultActionUrl: "/admin/strategies",
       defaultSinkIds: ["inApp", "email"],
     },
     {
@@ -72,7 +72,7 @@ export const TRADERLAUNCHPAD_NOTIFICATION_EVENTS: TraderLaunchpadNotificationEve
       defaultTitle: "Stop trading",
       defaultContent:
         "You’ve hit a stop condition. Stop trading for this session and review your plan.",
-      defaultActionUrl: "/admin/tradingplan",
+      defaultActionUrl: "/admin/strategies",
       defaultSinkIds: ["inApp", "email"],
     },
     {
@@ -84,7 +84,7 @@ export const TRADERLAUNCHPAD_NOTIFICATION_EVENTS: TraderLaunchpadNotificationEve
       defaultTitle: "Risk limit reached",
       defaultContent:
         "You’ve reached your configured risk limit. Consider stopping to protect capital and consistency.",
-      defaultActionUrl: "/admin/tradingplan",
+      defaultActionUrl: "/admin/strategies",
       defaultSinkIds: ["inApp", "email"],
     },
 

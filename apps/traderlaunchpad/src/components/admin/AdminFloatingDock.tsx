@@ -29,7 +29,7 @@ const items = [
   },
   {
     label: "Plan",
-    href: "/admin/tradingplan",
+    href: "/admin/strategies",
     icon: <IconTargetArrow className="h-5 w-5 text-white/90" />,
   },
   {

@@ -2393,6 +2393,389 @@ export declare const components: {
         null
       >;
     };
+    strategies: {
+      index: {
+        archiveMyStrategy: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; strategyId: string; userId: string },
+          null
+        >;
+        createMyStrategyFromTemplate: FunctionReference<
+          "mutation",
+          "internal",
+          { name?: string; organizationId: string; userId: string },
+          string
+        >;
+        createOrgStrategyFromTemplate: FunctionReference<
+          "mutation",
+          "internal",
+          { createdByUserId: string; name?: string; organizationId: string },
+          string
+        >;
+        getMyActiveStrategy: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; userId: string },
+          | {
+              _creationTime: number;
+              _id: string;
+              archivedAt?: number;
+              createdAt: number;
+              kind: "plan";
+              name: string;
+              organizationId: string;
+              ownerId: string;
+              ownerType: "user" | "org";
+              spec: {
+                kpis: {
+                  adherencePct: number;
+                  avgRiskPerTradePct7d: number;
+                  journalCompliancePct: number;
+                  sessionDisciplinePct7d: number;
+                  violations7d: number;
+                };
+                markets: Array<string>;
+                risk: {
+                  maxDailyLossPct: number;
+                  maxOpenPositions: number;
+                  maxRiskPerTradePct: number;
+                  maxTradesPerDay: number;
+                  maxWeeklyLossPct: number;
+                };
+                rules: Array<{
+                  category:
+                    | "Entry"
+                    | "Risk"
+                    | "Exit"
+                    | "Process"
+                    | "Psychology";
+                  description: string;
+                  id: string;
+                  severity: "hard" | "soft";
+                  title: string;
+                }>;
+                sessions: Array<{
+                  days: Array<string>;
+                  end: string;
+                  id: string;
+                  label: string;
+                  start: string;
+                  timezone: string;
+                }>;
+                strategySummary: string;
+              };
+              summary: string;
+              updatedAt: number;
+              version: string;
+            }
+          | {
+              _creationTime: number;
+              _id: string;
+              archivedAt?: number;
+              createdAt: number;
+              kind: "dsl";
+              name: string;
+              organizationId: string;
+              ownerId: string;
+              ownerType: "user" | "org";
+              spec: any;
+              summary: string;
+              updatedAt: number;
+              version: string;
+            }
+          | null
+        >;
+        getMyOrgStrategy: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; userId: string },
+          | {
+              _creationTime: number;
+              _id: string;
+              archivedAt?: number;
+              createdAt: number;
+              kind: "plan";
+              name: string;
+              organizationId: string;
+              ownerId: string;
+              ownerType: "user" | "org";
+              spec: {
+                kpis: {
+                  adherencePct: number;
+                  avgRiskPerTradePct7d: number;
+                  journalCompliancePct: number;
+                  sessionDisciplinePct7d: number;
+                  violations7d: number;
+                };
+                markets: Array<string>;
+                risk: {
+                  maxDailyLossPct: number;
+                  maxOpenPositions: number;
+                  maxRiskPerTradePct: number;
+                  maxTradesPerDay: number;
+                  maxWeeklyLossPct: number;
+                };
+                rules: Array<{
+                  category:
+                    | "Entry"
+                    | "Risk"
+                    | "Exit"
+                    | "Process"
+                    | "Psychology";
+                  description: string;
+                  id: string;
+                  severity: "hard" | "soft";
+                  title: string;
+                }>;
+                sessions: Array<{
+                  days: Array<string>;
+                  end: string;
+                  id: string;
+                  label: string;
+                  start: string;
+                  timezone: string;
+                }>;
+                strategySummary: string;
+              };
+              summary: string;
+              updatedAt: number;
+              version: string;
+            }
+          | {
+              _creationTime: number;
+              _id: string;
+              archivedAt?: number;
+              createdAt: number;
+              kind: "dsl";
+              name: string;
+              organizationId: string;
+              ownerId: string;
+              ownerType: "user" | "org";
+              spec: any;
+              summary: string;
+              updatedAt: number;
+              version: string;
+            }
+          | null
+        >;
+        getMyStrategy: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; strategyId: string; userId: string },
+          | {
+              _creationTime: number;
+              _id: string;
+              archivedAt?: number;
+              createdAt: number;
+              kind: "plan";
+              name: string;
+              organizationId: string;
+              ownerId: string;
+              ownerType: "user" | "org";
+              spec: {
+                kpis: {
+                  adherencePct: number;
+                  avgRiskPerTradePct7d: number;
+                  journalCompliancePct: number;
+                  sessionDisciplinePct7d: number;
+                  violations7d: number;
+                };
+                markets: Array<string>;
+                risk: {
+                  maxDailyLossPct: number;
+                  maxOpenPositions: number;
+                  maxRiskPerTradePct: number;
+                  maxTradesPerDay: number;
+                  maxWeeklyLossPct: number;
+                };
+                rules: Array<{
+                  category:
+                    | "Entry"
+                    | "Risk"
+                    | "Exit"
+                    | "Process"
+                    | "Psychology";
+                  description: string;
+                  id: string;
+                  severity: "hard" | "soft";
+                  title: string;
+                }>;
+                sessions: Array<{
+                  days: Array<string>;
+                  end: string;
+                  id: string;
+                  label: string;
+                  start: string;
+                  timezone: string;
+                }>;
+                strategySummary: string;
+              };
+              summary: string;
+              updatedAt: number;
+              version: string;
+            }
+          | {
+              _creationTime: number;
+              _id: string;
+              archivedAt?: number;
+              createdAt: number;
+              kind: "dsl";
+              name: string;
+              organizationId: string;
+              ownerId: string;
+              ownerType: "user" | "org";
+              spec: any;
+              summary: string;
+              updatedAt: number;
+              version: string;
+            }
+          | null
+        >;
+        getOrgStrategy: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; strategyId: string },
+          | {
+              _creationTime: number;
+              _id: string;
+              archivedAt?: number;
+              createdAt: number;
+              kind: "plan";
+              name: string;
+              organizationId: string;
+              ownerId: string;
+              ownerType: "user" | "org";
+              spec: {
+                kpis: {
+                  adherencePct: number;
+                  avgRiskPerTradePct7d: number;
+                  journalCompliancePct: number;
+                  sessionDisciplinePct7d: number;
+                  violations7d: number;
+                };
+                markets: Array<string>;
+                risk: {
+                  maxDailyLossPct: number;
+                  maxOpenPositions: number;
+                  maxRiskPerTradePct: number;
+                  maxTradesPerDay: number;
+                  maxWeeklyLossPct: number;
+                };
+                rules: Array<{
+                  category:
+                    | "Entry"
+                    | "Risk"
+                    | "Exit"
+                    | "Process"
+                    | "Psychology";
+                  description: string;
+                  id: string;
+                  severity: "hard" | "soft";
+                  title: string;
+                }>;
+                sessions: Array<{
+                  days: Array<string>;
+                  end: string;
+                  id: string;
+                  label: string;
+                  start: string;
+                  timezone: string;
+                }>;
+                strategySummary: string;
+              };
+              summary: string;
+              updatedAt: number;
+              version: string;
+            }
+          | {
+              _creationTime: number;
+              _id: string;
+              archivedAt?: number;
+              createdAt: number;
+              kind: "dsl";
+              name: string;
+              organizationId: string;
+              ownerId: string;
+              ownerType: "user" | "org";
+              spec: any;
+              summary: string;
+              updatedAt: number;
+              version: string;
+            }
+          | null
+        >;
+        getOrgStrategyPolicy: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string },
+          {
+            allowedStrategyIds: Array<string>;
+            forcedStrategyId: string | null;
+            updatedAt: number | null;
+            updatedByUserId: string | null;
+          }
+        >;
+        listMyStrategies: FunctionReference<
+          "query",
+          "internal",
+          {
+            includeArchived?: boolean;
+            limit?: number;
+            organizationId: string;
+            userId: string;
+          },
+          Array<{
+            _id: string;
+            archivedAt?: number;
+            createdAt: number;
+            kind: "plan" | "dsl";
+            name: string;
+            ownerType: "user" | "org";
+            updatedAt: number;
+            version: string;
+          }>
+        >;
+        listOrgStrategies: FunctionReference<
+          "query",
+          "internal",
+          { includeArchived?: boolean; limit?: number; organizationId: string },
+          Array<{
+            _id: string;
+            archivedAt?: number;
+            createdAt: number;
+            kind: "plan" | "dsl";
+            name: string;
+            ownerType: "user" | "org";
+            updatedAt: number;
+            version: string;
+          }>
+        >;
+        setMyActiveStrategy: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; strategyId: string; userId: string },
+          null
+        >;
+        setMyOrgStrategy: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; strategyId: string; userId: string },
+          null
+        >;
+        setOrgStrategyPolicy: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            allowedStrategyIds: Array<string>;
+            forcedStrategyId?: string | null;
+            organizationId: string;
+            updatedByUserId: string;
+          },
+          null
+        >;
+      };
+    };
     sync: {
       getInstrumentDetails: FunctionReference<
         "action",
@@ -3534,281 +3917,6 @@ export declare const components: {
             updatedAt: number;
             userId: string;
           }>
-        >;
-      };
-    };
-    tradingPlans: {
-      index: {
-        archiveTradingPlan: FunctionReference<
-          "mutation",
-          "internal",
-          { organizationId: string; planId: string; userId: string },
-          null
-        >;
-        createOrgTradingPlanFromTemplate: FunctionReference<
-          "mutation",
-          "internal",
-          { createdByUserId: string; name?: string; organizationId: string },
-          string
-        >;
-        createTradingPlanFromTemplate: FunctionReference<
-          "mutation",
-          "internal",
-          { name?: string; organizationId: string; userId: string },
-          string
-        >;
-        getActiveTradingPlan: FunctionReference<
-          "query",
-          "internal",
-          { organizationId: string; userId: string },
-          {
-            _creationTime: number;
-            _id: string;
-            archivedAt?: number;
-            createdAt: number;
-            kpis: {
-              adherencePct: number;
-              avgRiskPerTradePct7d: number;
-              journalCompliancePct: number;
-              sessionDisciplinePct7d: number;
-              violations7d: number;
-            };
-            markets: Array<string>;
-            name: string;
-            organizationId: string;
-            risk: {
-              maxDailyLossPct: number;
-              maxOpenPositions: number;
-              maxRiskPerTradePct: number;
-              maxTradesPerDay: number;
-              maxWeeklyLossPct: number;
-            };
-            rules: Array<{
-              category: "Entry" | "Risk" | "Exit" | "Process" | "Psychology";
-              description: string;
-              id: string;
-              severity: "hard" | "soft";
-              title: string;
-            }>;
-            sessions: Array<{
-              days: Array<string>;
-              end: string;
-              id: string;
-              label: string;
-              start: string;
-              timezone: string;
-            }>;
-            strategySummary: string;
-            updatedAt: number;
-            userId: string;
-            version: string;
-          } | null
-        >;
-        getMyOrgTradingPlan: FunctionReference<
-          "query",
-          "internal",
-          { organizationId: string; userId: string },
-          {
-            _creationTime: number;
-            _id: string;
-            archivedAt?: number;
-            createdAt: number;
-            createdByUserId: string;
-            kpis: {
-              adherencePct: number;
-              avgRiskPerTradePct7d: number;
-              journalCompliancePct: number;
-              sessionDisciplinePct7d: number;
-              violations7d: number;
-            };
-            markets: Array<string>;
-            name: string;
-            organizationId: string;
-            risk: {
-              maxDailyLossPct: number;
-              maxOpenPositions: number;
-              maxRiskPerTradePct: number;
-              maxTradesPerDay: number;
-              maxWeeklyLossPct: number;
-            };
-            rules: Array<{
-              category: "Entry" | "Risk" | "Exit" | "Process" | "Psychology";
-              description: string;
-              id: string;
-              severity: "hard" | "soft";
-              title: string;
-            }>;
-            sessions: Array<{
-              days: Array<string>;
-              end: string;
-              id: string;
-              label: string;
-              start: string;
-              timezone: string;
-            }>;
-            strategySummary: string;
-            updatedAt: number;
-            version: string;
-          } | null
-        >;
-        getOrgTradingPlan: FunctionReference<
-          "query",
-          "internal",
-          { organizationId: string; planId: string },
-          {
-            _creationTime: number;
-            _id: string;
-            archivedAt?: number;
-            createdAt: number;
-            createdByUserId: string;
-            kpis: {
-              adherencePct: number;
-              avgRiskPerTradePct7d: number;
-              journalCompliancePct: number;
-              sessionDisciplinePct7d: number;
-              violations7d: number;
-            };
-            markets: Array<string>;
-            name: string;
-            organizationId: string;
-            risk: {
-              maxDailyLossPct: number;
-              maxOpenPositions: number;
-              maxRiskPerTradePct: number;
-              maxTradesPerDay: number;
-              maxWeeklyLossPct: number;
-            };
-            rules: Array<{
-              category: "Entry" | "Risk" | "Exit" | "Process" | "Psychology";
-              description: string;
-              id: string;
-              severity: "hard" | "soft";
-              title: string;
-            }>;
-            sessions: Array<{
-              days: Array<string>;
-              end: string;
-              id: string;
-              label: string;
-              start: string;
-              timezone: string;
-            }>;
-            strategySummary: string;
-            updatedAt: number;
-            version: string;
-          } | null
-        >;
-        getOrgTradingPlanPolicy: FunctionReference<
-          "query",
-          "internal",
-          { organizationId: string },
-          {
-            allowedPlanIds: Array<string>;
-            forcedPlanId: string | null;
-            updatedAt: number | null;
-            updatedByUserId: string | null;
-          }
-        >;
-        getTradingPlan: FunctionReference<
-          "query",
-          "internal",
-          { organizationId: string; planId: string; userId: string },
-          {
-            _creationTime: number;
-            _id: string;
-            archivedAt?: number;
-            createdAt: number;
-            kpis: {
-              adherencePct: number;
-              avgRiskPerTradePct7d: number;
-              journalCompliancePct: number;
-              sessionDisciplinePct7d: number;
-              violations7d: number;
-            };
-            markets: Array<string>;
-            name: string;
-            organizationId: string;
-            risk: {
-              maxDailyLossPct: number;
-              maxOpenPositions: number;
-              maxRiskPerTradePct: number;
-              maxTradesPerDay: number;
-              maxWeeklyLossPct: number;
-            };
-            rules: Array<{
-              category: "Entry" | "Risk" | "Exit" | "Process" | "Psychology";
-              description: string;
-              id: string;
-              severity: "hard" | "soft";
-              title: string;
-            }>;
-            sessions: Array<{
-              days: Array<string>;
-              end: string;
-              id: string;
-              label: string;
-              start: string;
-              timezone: string;
-            }>;
-            strategySummary: string;
-            updatedAt: number;
-            userId: string;
-            version: string;
-          } | null
-        >;
-        listOrgTradingPlans: FunctionReference<
-          "query",
-          "internal",
-          { includeArchived?: boolean; limit?: number; organizationId: string },
-          Array<{
-            _id: string;
-            archivedAt?: number;
-            createdAt: number;
-            name: string;
-            updatedAt: number;
-            version: string;
-          }>
-        >;
-        listTradingPlans: FunctionReference<
-          "query",
-          "internal",
-          {
-            includeArchived?: boolean;
-            limit?: number;
-            organizationId: string;
-            userId: string;
-          },
-          Array<{
-            _id: string;
-            archivedAt?: number;
-            createdAt: number;
-            name: string;
-            updatedAt: number;
-            version: string;
-          }>
-        >;
-        setActiveTradingPlan: FunctionReference<
-          "mutation",
-          "internal",
-          { organizationId: string; planId: string; userId: string },
-          null
-        >;
-        setMyOrgTradingPlan: FunctionReference<
-          "mutation",
-          "internal",
-          { organizationId: string; planId: string; userId: string },
-          null
-        >;
-        setOrgTradingPlanPolicy: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            allowedPlanIds: Array<string>;
-            forcedPlanId?: string | null;
-            organizationId: string;
-            updatedByUserId: string;
-          },
-          null
         >;
       };
     };

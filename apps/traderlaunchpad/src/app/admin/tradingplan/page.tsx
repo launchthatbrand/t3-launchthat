@@ -33,6 +33,7 @@ import { api } from "@convex-config/_generated/api";
 import { cn } from "@acme/ui";
 import { useDataMode } from "~/components/dataMode/DataModeProvider";
 import { useTenant } from "~/context/TenantContext";
+import { usePathname, useRouter } from "next/navigation";
 
 interface TradingPlanRule {
   id: string;
@@ -182,6 +183,14 @@ const toneForCategory: Record<
 };
 
 export default function AdminTradingPlanPage() {
+  const pathname = usePathname();
+  const router = useRouter();
+  React.useEffect(() => {
+    if (pathname === "/admin/tradingplan") {
+      router.replace("/admin/strategies");
+    }
+  }, [pathname, router]);
+
   const tenant = useTenant();
   const isOrgMode = Boolean(tenant && tenant.slug !== "platform");
 
@@ -199,12 +208,12 @@ function PersonalTradingPlanPage() {
   const shouldQuery = isAuthenticated && !authLoading;
 
   const plans = useQuery(
-    api.traderlaunchpad.queries.listMyTradingPlans,
+    api.traderlaunchpad.queries.listMyStrategies,
     shouldQuery && isLive ? {} : "skip",
   ) as TradingPlanListRow[] | undefined;
 
   const activePlan = useQuery(
-    api.traderlaunchpad.queries.getMyActiveTradingPlan,
+    api.traderlaunchpad.queries.getMyActiveStrategy,
     shouldQuery && isLive ? {} : "skip",
   ) as TradingPlan | null | undefined;
 
@@ -222,8 +231,8 @@ function PersonalTradingPlanPage() {
     }[]
     | undefined;
 
-  const createPlan = useMutation(api.traderlaunchpad.mutations.createMyTradingPlanFromTemplate);
-  const setActive = useMutation(api.traderlaunchpad.mutations.setMyActiveTradingPlan);
+  const createPlan = useMutation(api.traderlaunchpad.mutations.createMyStrategyFromTemplate);
+  const setActive = useMutation(api.traderlaunchpad.mutations.setMyActiveStrategy);
 
   const [createOpen, setCreateOpen] = React.useState(false);
   const [newPlanName, setNewPlanName] = React.useState("");
@@ -258,7 +267,7 @@ function PersonalTradingPlanPage() {
 
   const handleSelectPlan = async (planId: string) => {
     if (!isLive) return;
-    await setActive({ planId });
+    await setActive({ strategyId: planId });
   };
 
   const stats = React.useMemo(() => {
@@ -304,7 +313,7 @@ function PersonalTradingPlanPage() {
       <div className="relative animate-in fade-in space-y-6 text-foreground selection:bg-orange-500/30 duration-500">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div className="min-w-0">
-            <h1 className="text-3xl font-bold tracking-tight">Trading Plan</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Strategies</h1>
             <p className="mt-1 text-foreground/60">
               You don’t have a trading plan yet. Create your first plan to start tracking consistency.
             </p>
@@ -381,7 +390,7 @@ function PersonalTradingPlanPage() {
       {/* Page header (separate from main platform dashboard) */}
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div className="min-w-0">
-          <h1 className="text-3xl font-bold tracking-tight">Trading Plan</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Strategies</h1>
           <p className="mt-1 text-foreground/60">
             Monitor your rules, risk, and consistency — separate from the platform dashboard.
           </p>
@@ -849,14 +858,14 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
   const isOrgAdmin = myRole === "owner" || myRole === "admin";
 
   const orgPlans = useQuery(
-    api.traderlaunchpad.queries.listOrgTradingPlans,
+    api.traderlaunchpad.queries.listOrgStrategies,
     shouldQuery && isLive
       ? { organizationId: props.organizationId, includeArchived: false, limit: 50 }
       : "skip",
   ) as TradingPlanListRow[] | undefined;
 
   const orgPolicy = useQuery(
-    api.traderlaunchpad.queries.getOrgTradingPlanPolicy,
+    api.traderlaunchpad.queries.getOrgStrategyPolicy,
     shouldQuery && isLive ? { organizationId: props.organizationId } : "skip",
   ) as
     | {
@@ -868,7 +877,7 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
     | undefined;
 
   const myOrgPlan = useQuery(
-    api.traderlaunchpad.queries.getMyOrgTradingPlan,
+    api.traderlaunchpad.queries.getMyOrgStrategy,
     shouldQuery && isLive ? { organizationId: props.organizationId } : "skip",
   ) as TradingPlan | null | undefined;
 
@@ -937,9 +946,9 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
     isViewer: boolean;
   }
 
-  const createOrgPlan = useMutation(api.traderlaunchpad.mutations.createOrgTradingPlanFromTemplate);
-  const setOrgPolicy = useMutation(api.traderlaunchpad.mutations.setOrgTradingPlanPolicy);
-  const setMyOrgPlan = useMutation(api.traderlaunchpad.mutations.setMyOrgTradingPlan);
+  const createOrgPlan = useMutation(api.traderlaunchpad.mutations.createOrgStrategyFromTemplate);
+  const setOrgPolicy = useMutation(api.traderlaunchpad.mutations.setOrgStrategyPolicy);
+  const setMyOrgPlan = useMutation(api.traderlaunchpad.mutations.setMyOrgStrategy);
 
   const [createOpen, setCreateOpen] = React.useState(false);
   const [newPlanName, setNewPlanName] = React.useState("");
@@ -962,12 +971,17 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
     },
   ];
 
-  const demoPolicy = {
+  const demoPolicy: {
+    allowedPlanIds: string[];
+    forcedPlanId: string | null;
+    updatedAt: number;
+    updatedByUserId: string;
+  } = {
     allowedPlanIds: ["demo-org-plan-1", "demo-org-plan-2"],
     forcedPlanId: "demo-org-plan-1",
     updatedAt: Date.now() - 1000 * 60 * 60 * 4,
     updatedByUserId: "demo-admin",
-  } as const;
+  };
 
   const demoMyOrgPlan: TradingPlan = { ...DEMO_PLAN, _id: "demo-org-plan-1" };
 
@@ -1010,8 +1024,8 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
     try {
       await setOrgPolicy({
         organizationId: props.organizationId,
-        allowedPlanIds: nextIds,
-        forcedPlanId: nextForced,
+        allowedStrategyIds: nextIds,
+        forcedStrategyId: nextForced,
       });
     } finally {
       setSaving(false);
@@ -1033,8 +1047,8 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
     try {
       await setOrgPolicy({
         organizationId: props.organizationId,
-        allowedPlanIds: nextAllowed,
-        forcedPlanId: planIdOrNull,
+        allowedStrategyIds: nextAllowed,
+        forcedStrategyId: planIdOrNull,
       });
     } finally {
       setSaving(false);
@@ -1064,7 +1078,7 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
     if (saving) return;
     setSaving(true);
     try {
-      await setMyOrgPlan({ organizationId: props.organizationId, planId });
+      await setMyOrgPlan({ organizationId: props.organizationId, strategyId: planId });
     } finally {
       setSaving(false);
     }
@@ -1075,9 +1089,9 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
       <div className="container py-10">
         <Card className="border-white/10 bg-background/3">
           <CardHeader>
-            <CardTitle>Organization trading plans</CardTitle>
+            <CardTitle>Organization strategies</CardTitle>
             <CardDescription className="text-foreground/60">
-              Sign in to view organization trading plans.
+              Sign in to view organization strategies.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -1089,7 +1103,7 @@ function OrgTradingPlanPage(props: { organizationId: string }) {
     <div className="container py-10">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Organization trading plans</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Organization strategies</h1>
           <p className="mt-1 text-sm text-foreground/60">
             Admins can approve 1–2 plans for members. Org analytics on this page only considers
             members assigned to approved plan(s).

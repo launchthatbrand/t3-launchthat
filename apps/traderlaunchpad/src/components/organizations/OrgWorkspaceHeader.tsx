@@ -14,7 +14,7 @@ const SHOULD_SHOW_ON = new Set<string>([
   "/admin/dashboard",
   "/admin/journal",
   "/admin/tradeideas",
-  "/admin/tradingplan",
+  "/admin/strategies",
 ]);
 
 export function OrgWorkspaceHeader(props: { className?: string }) {

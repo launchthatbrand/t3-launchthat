@@ -3,150 +3,63 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  tradingPlans: defineTable({
+  strategies: defineTable({
     organizationId: v.string(),
-    userId: v.string(),
+
+    // Ownership (unifies prior user-owned + org-owned plans).
+    ownerType: v.union(v.literal("user"), v.literal("org")),
+    ownerId: v.string(),
+
+    // Strategy evolution (Phase 1 uses "plan"; "dsl" reserved for later).
+    kind: v.union(v.literal("plan"), v.literal("dsl")),
 
     name: v.string(),
     version: v.string(),
+    summary: v.string(),
 
-    strategySummary: v.string(),
-    markets: v.array(v.string()),
-    sessions: v.array(
-      v.object({
-        id: v.string(),
-        label: v.string(),
-        timezone: v.string(),
-        days: v.array(v.string()),
-        start: v.string(),
-        end: v.string(),
-      }),
-    ),
-    risk: v.object({
-      maxRiskPerTradePct: v.number(),
-      maxDailyLossPct: v.number(),
-      maxWeeklyLossPct: v.number(),
-      maxOpenPositions: v.number(),
-      maxTradesPerDay: v.number(),
-    }),
-    rules: v.array(
-      v.object({
-        id: v.string(),
-        title: v.string(),
-        description: v.string(),
-        category: v.union(
-          v.literal("Entry"),
-          v.literal("Risk"),
-          v.literal("Exit"),
-          v.literal("Process"),
-          v.literal("Psychology"),
-        ),
-        severity: v.union(v.literal("hard"), v.literal("soft")),
-      }),
-    ),
-    kpis: v.object({
-      adherencePct: v.number(),
-      sessionDisciplinePct7d: v.number(),
-      avgRiskPerTradePct7d: v.number(),
-      journalCompliancePct: v.number(),
-      violations7d: v.number(),
-    }),
+    // For kind="plan" this stores the current plan shape. For kind="dsl" it is reserved for later.
+    spec: v.any(),
 
+    createdByUserId: v.string(),
     archivedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_org_and_user_and_updatedAt", [
+    .index("by_org_and_ownerType_and_ownerId_and_updatedAt", [
       "organizationId",
-      "userId",
+      "ownerType",
+      "ownerId",
       "updatedAt",
     ])
-    .index("by_org_and_user_and_createdAt", [
+    .index("by_org_and_ownerType_and_updatedAt", [
       "organizationId",
-      "userId",
-      "createdAt",
+      "ownerType",
+      "updatedAt",
     ]),
 
-  tradingPlanSelections: defineTable({
+  strategySelections: defineTable({
     organizationId: v.string(),
     userId: v.string(),
-    activePlanId: v.id("tradingPlans"),
+    activeStrategyId: v.id("strategies"),
     updatedAt: v.number(),
   }).index("by_org_and_user", ["organizationId", "userId"]),
 
-  orgTradingPlans: defineTable({
+  orgStrategyPolicies: defineTable({
     organizationId: v.string(),
-    createdByUserId: v.string(),
-
-    name: v.string(),
-    version: v.string(),
-
-    strategySummary: v.string(),
-    markets: v.array(v.string()),
-    sessions: v.array(
-      v.object({
-        id: v.string(),
-        label: v.string(),
-        timezone: v.string(),
-        days: v.array(v.string()),
-        start: v.string(),
-        end: v.string(),
-      }),
-    ),
-    risk: v.object({
-      maxRiskPerTradePct: v.number(),
-      maxDailyLossPct: v.number(),
-      maxWeeklyLossPct: v.number(),
-      maxOpenPositions: v.number(),
-      maxTradesPerDay: v.number(),
-    }),
-    rules: v.array(
-      v.object({
-        id: v.string(),
-        title: v.string(),
-        description: v.string(),
-        category: v.union(
-          v.literal("Entry"),
-          v.literal("Risk"),
-          v.literal("Exit"),
-          v.literal("Process"),
-          v.literal("Psychology"),
-        ),
-        severity: v.union(v.literal("hard"), v.literal("soft")),
-      }),
-    ),
-    kpis: v.object({
-      adherencePct: v.number(),
-      sessionDisciplinePct7d: v.number(),
-      avgRiskPerTradePct7d: v.number(),
-      journalCompliancePct: v.number(),
-      violations7d: v.number(),
-    }),
-
-    archivedAt: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_org_and_updatedAt", ["organizationId", "updatedAt"])
-    .index("by_org_and_createdAt", ["organizationId", "createdAt"])
-    .index("by_org_and_createdByUserId", ["organizationId", "createdByUserId"]),
-
-  orgTradingPlanPolicies: defineTable({
-    organizationId: v.string(),
-    allowedPlanIds: v.array(v.id("orgTradingPlans")),
-    forcedPlanId: v.optional(v.id("orgTradingPlans")),
+    allowedStrategyIds: v.array(v.id("strategies")),
+    forcedStrategyId: v.optional(v.id("strategies")),
     updatedAt: v.number(),
     updatedByUserId: v.string(),
   }).index("by_org", ["organizationId"]),
 
-  orgTradingPlanAssignments: defineTable({
+  orgStrategyAssignments: defineTable({
     organizationId: v.string(),
     userId: v.string(),
-    activePlanId: v.id("orgTradingPlans"),
+    activeStrategyId: v.id("strategies"),
     updatedAt: v.number(),
   })
     .index("by_org_and_user", ["organizationId", "userId"])
-    .index("by_org_and_plan", ["organizationId", "activePlanId"])
+    .index("by_org_and_strategy", ["organizationId", "activeStrategyId"])
     .index("by_org_and_updatedAt", ["organizationId", "updatedAt"]),
 
   journalProfiles: defineTable({

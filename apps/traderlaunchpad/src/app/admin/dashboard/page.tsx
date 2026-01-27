@@ -635,7 +635,7 @@ export default function AdminDashboardPage() {
     // In demo mode, show demo KPIs.
     if (!isLive) return DEMO_TRADING_PLAN_KPIS;
     // In live mode, these KPIs should come from the active trading plan.
-    // If no plan exists, show zeros to match /admin/tradingplan “Create your first plan”.
+    // If no plan exists, show zeros to match /admin/strategies “Create your first strategy”.
     return {
       adherencePct: 0,
       violations7d: 0,
@@ -645,7 +645,7 @@ export default function AdminDashboardPage() {
   }, [isLive]);
 
   const activeTradingPlan = useQuery(
-    api.traderlaunchpad.queries.getMyActiveTradingPlan,
+    api.traderlaunchpad.queries.getMyActiveStrategy,
     shouldQuery && isLive ? {} : "skip",
   ) as ActiveTradingPlanSummary | null | undefined;
 
@@ -1435,13 +1435,13 @@ export default function AdminDashboardPage() {
 
         {/* Right Column: Actions & Recent (1/3 width) */}
         <div className="space-y-8">
-          {/* Trading Plan Summary */}
+          {/* Strategy Summary */}
           <Card className="border-border/40 bg-card/70 hover:bg-card/80 backdrop-blur-md transition-colors dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/6">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Target className="h-4 w-4 text-orange-300" />
-                  Trading Plan
+                  Strategy
                 </CardTitle>
                 <Badge
                   variant="secondary"
@@ -1495,7 +1495,7 @@ export default function AdminDashboardPage() {
                   </>
                 ) : (
                   <div className="text-foreground/70 text-sm">
-                    You don’t have a trading plan yet. Create your first plan to
+                    You don’t have a strategy yet. Create your first one to
                     start tracking consistency.
                   </div>
                 )}
@@ -1505,10 +1505,10 @@ export default function AdminDashboardPage() {
                 asChild
                 className="w-full border-0 bg-orange-600 text-white hover:bg-orange-700"
               >
-                <Link href="/admin/tradingplan">
+                <Link href="/admin/strategies">
                   {tradingPlanSummary
-                    ? "Open Trading Plan"
-                    : "Create Trading Plan"}
+                    ? "Open Strategies"
+                    : "Create Strategy"}
                   <ArrowUpRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>

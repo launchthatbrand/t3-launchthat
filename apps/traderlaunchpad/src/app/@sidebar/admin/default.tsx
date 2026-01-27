@@ -80,8 +80,8 @@ const primaryNavItems: NavItem[] = [
     ),
   },
   {
-    label: "Trading Plan",
-    href: "/admin/tradingplan",
+    label: "Strategies",
+    href: "/admin/strategies",
     icon: (
       <IconTargetArrow
         stroke={1}

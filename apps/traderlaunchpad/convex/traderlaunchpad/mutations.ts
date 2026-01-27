@@ -18,7 +18,7 @@ const tradeIdeasIdeasMutations = (components.launchthat_traderlaunchpad.tradeIde
 const sharingModule = components.launchthat_traderlaunchpad.sharing as any;
 const visibilityModule = components.launchthat_traderlaunchpad.visibility as any;
 const permissionsModule = components.launchthat_traderlaunchpad.permissions as any;
-const tradingPlansMutations = components.launchthat_traderlaunchpad.tradingPlans.index as any;
+const strategiesMutations = components.launchthat_traderlaunchpad.strategies.index as any;
 const connectionsQueries = components.launchthat_traderlaunchpad.connections.queries as any;
 const connectionsMutations = components.launchthat_traderlaunchpad.connections.mutations as any;
 const coreTenantQueries = components.launchthat_core_tenant.queries as any;
@@ -392,38 +392,38 @@ export const markMyTradeIdeaReviewed = mutation({
   },
 });
 
-export const createMyTradingPlanFromTemplate = mutation({
+export const createMyStrategyFromTemplate = mutation({
   args: {
     name: v.optional(v.string()),
   },
-  returns: v.object({ planId: v.string() }),
+  returns: v.object({ strategyId: v.string() }),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
     const userId = await resolveViewerUserId(ctx);
-    const planId = await ctx.runMutation(
-      tradingPlansMutations.createTradingPlanFromTemplate,
+    const strategyId = await ctx.runMutation(
+      strategiesMutations.createMyStrategyFromTemplate,
       {
         organizationId,
         userId,
         name: args.name,
       },
     );
-    return { planId: String(planId) };
+    return { strategyId: String(strategyId) };
   },
 });
 
-export const setMyActiveTradingPlan = mutation({
+export const setMyActiveStrategy = mutation({
   args: {
-    planId: v.string(),
+    strategyId: v.string(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
     const userId = await resolveViewerUserId(ctx);
-    await ctx.runMutation(tradingPlansMutations.setActiveTradingPlan, {
+    await ctx.runMutation(strategiesMutations.setMyActiveStrategy, {
       organizationId,
       userId,
-      planId: args.planId as any,
+      strategyId: args.strategyId as any,
     });
     return null;
   },
@@ -931,35 +931,35 @@ export const acceptOrgUserInvite = mutation({
   },
 });
 
-export const createOrgTradingPlanFromTemplate = mutation({
+export const createOrgStrategyFromTemplate = mutation({
   args: {
     organizationId: v.string(),
     name: v.optional(v.string()),
   },
-  returns: v.object({ planId: v.string() }),
+  returns: v.object({ strategyId: v.string() }),
   handler: async (ctx, args) => {
     const organizationId = args.organizationId.trim();
     const userId = await resolveViewerUserId(ctx);
 
     const membership = await resolveMembershipForOrg(ctx, organizationId, userId);
-    if (!membership) return { planId: "" };
-    if (membership.role !== "owner" && membership.role !== "admin") return { planId: "" };
+    if (!membership) return { strategyId: "" };
+    if (membership.role !== "owner" && membership.role !== "admin") return { strategyId: "" };
 
-    const planId = await ctx.runMutation(tradingPlansMutations.createOrgTradingPlanFromTemplate, {
+    const strategyId = await ctx.runMutation(strategiesMutations.createOrgStrategyFromTemplate, {
       organizationId,
       createdByUserId: userId,
       name: args.name,
     });
 
-    return { planId: String(planId) };
+    return { strategyId: String(strategyId) };
   },
 });
 
-export const setOrgTradingPlanPolicy = mutation({
+export const setOrgStrategyPolicy = mutation({
   args: {
     organizationId: v.string(),
-    allowedPlanIds: v.array(v.string()),
-    forcedPlanId: v.optional(v.union(v.string(), v.null())),
+    allowedStrategyIds: v.array(v.string()),
+    forcedStrategyId: v.optional(v.union(v.string(), v.null())),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -970,31 +970,31 @@ export const setOrgTradingPlanPolicy = mutation({
     if (!membership) return null;
     if (membership.role !== "owner" && membership.role !== "admin") return null;
 
-    const allowedPlanIds = (Array.isArray(args.allowedPlanIds) ? args.allowedPlanIds : [])
+    const allowedStrategyIds = (Array.isArray(args.allowedStrategyIds) ? args.allowedStrategyIds : [])
       .map((s) => String(s).trim())
       .filter(Boolean)
       .slice(0, 2);
 
-    const forcedPlanId =
-      args.forcedPlanId === null || typeof args.forcedPlanId === "undefined"
+    const forcedStrategyId =
+      args.forcedStrategyId === null || typeof args.forcedStrategyId === "undefined"
         ? null
-        : String(args.forcedPlanId).trim() || null;
+        : String(args.forcedStrategyId).trim() || null;
 
-    await ctx.runMutation(tradingPlansMutations.setOrgTradingPlanPolicy, {
+    await ctx.runMutation(strategiesMutations.setOrgStrategyPolicy, {
       organizationId,
       updatedByUserId: userId,
-      allowedPlanIds: allowedPlanIds as any,
-      forcedPlanId: forcedPlanId as any,
+      allowedStrategyIds: allowedStrategyIds as any,
+      forcedStrategyId: forcedStrategyId as any,
     });
 
     return null;
   },
 });
 
-export const setMyOrgTradingPlan = mutation({
+export const setMyOrgStrategy = mutation({
   args: {
     organizationId: v.string(),
-    planId: v.string(),
+    strategyId: v.string(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -1004,10 +1004,10 @@ export const setMyOrgTradingPlan = mutation({
     const membership = await resolveMembershipForOrg(ctx, organizationId, userId);
     if (!membership) return null;
 
-    await ctx.runMutation(tradingPlansMutations.setMyOrgTradingPlan, {
+    await ctx.runMutation(strategiesMutations.setMyOrgStrategy, {
       organizationId,
       userId,
-      planId: args.planId as any,
+      strategyId: args.strategyId as any,
     });
 
     return null;
