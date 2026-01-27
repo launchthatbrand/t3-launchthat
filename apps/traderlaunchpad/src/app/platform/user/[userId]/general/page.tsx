@@ -100,13 +100,13 @@ export default function PlatformUserGeneralPage() {
     maxOrganizations: string;
     features: {
       journal: boolean;
-      tradeIdeas: boolean;
+      strategies: boolean;
       analytics: boolean;
       orders: boolean;
     };
   }>({
     maxOrganizations: "",
-    features: { journal: true, tradeIdeas: true, analytics: true, orders: true },
+    features: { journal: true, strategies: true, analytics: true, orders: true },
   });
   const [saving, setSaving] = React.useState(false);
 
@@ -136,7 +136,7 @@ export default function PlatformUserGeneralPage() {
       maxOrganizations,
       features: {
         journal: features.journal !== false,
-        tradeIdeas: features.tradeIdeas !== false,
+        strategies: features.strategies !== false,
         analytics: features.analytics !== false,
         orders: features.orders !== false,
       },
@@ -270,17 +270,17 @@ export default function PlatformUserGeneralPage() {
 
                 <div className="flex items-center justify-between gap-4">
                   <div className="space-y-1">
-                    <div className="text-sm font-semibold">Trade ideas</div>
+                    <div className="text-sm font-semibold">Strategies</div>
                     <div className="text-muted-foreground text-sm">
-                      Allow access to `/admin/tradeideas`.
+                      Allow access to `/admin/strategies`.
                     </div>
                   </div>
                   <Switch
-                    checked={limitsDraft.features.tradeIdeas}
+                    checked={limitsDraft.features.strategies}
                     onCheckedChange={(v) =>
                       setLimitsDraft((prev) => ({
                         ...prev,
-                        features: { ...prev.features, tradeIdeas: v },
+                        features: { ...prev.features, strategies: v },
                       }))
                     }
                   />

@@ -1,20 +1,20 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@acme/ui/dialog";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { Search } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@acme/ui/dialog";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
-import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
+import { Search } from "lucide-react";
 import { api } from "@convex-config/_generated/api";
-
+import { useRouter } from "next/navigation";
 import { useTenant } from "~/context/TenantContext";
 
 interface OrgUserRow {
@@ -217,7 +217,7 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <div className="animate-in fade-in space-y-8 duration-500">
+    <div className="space-y-8 duration-500">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Users</h1>

@@ -112,7 +112,7 @@ export default function AdminFeedbackPage() {
   );
 
   return (
-    <div className="animate-in fade-in space-y-6 text-foreground duration-500">
+    <div className="space-y-6 text-foreground duration-500">
       <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">

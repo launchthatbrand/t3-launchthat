@@ -27,7 +27,7 @@ export default function AdminSharingClientPage() {
     const [channelMembers, setChannelMembers] = React.useState("#members");
 
     return (
-        <div className="animate-in fade-in space-y-8 duration-500">
+        <div className="space-y-8 duration-500">
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div>
                     <div className="text-muted-foreground text-sm">Sharing</div>

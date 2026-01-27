@@ -9,16 +9,16 @@ import { api } from "@convex-config/_generated/api";
 
 export type GlobalPermissions = {
   globalEnabled: boolean;
-  tradeIdeasEnabled: boolean;
+  strategiesEnabled: boolean;
   openPositionsEnabled: boolean;
   ordersEnabled: boolean;
 };
 
-export type FeatureType = "tradeIdeas" | "openPositions" | "orders";
+export type FeatureType = "strategies" | "openPositions" | "orders";
 
 export const isFeatureEnabled = (perms: GlobalPermissions, feature: FeatureType): boolean => {
   if (perms.globalEnabled) return true;
-  if (feature === "tradeIdeas") return perms.tradeIdeasEnabled;
+  if (feature === "strategies") return perms.strategiesEnabled;
   if (feature === "openPositions") return perms.openPositionsEnabled;
   return perms.ordersEnabled;
 };
@@ -33,7 +33,7 @@ export const useGlobalPermissions = () => {
   ) as
     | {
         isSignedIn: boolean;
-        features: { journal: boolean; tradeIdeas: boolean; analytics: boolean; orders: boolean };
+        features: { journal: boolean; strategies: boolean; analytics: boolean; orders: boolean };
       }
     | undefined;
 
@@ -42,9 +42,9 @@ export const useGlobalPermissions = () => {
         // Back-compat “master enable” semantics.
         globalEnabled:
           Boolean(entitlements.features.journal) &&
-          Boolean(entitlements.features.tradeIdeas) &&
+          Boolean(entitlements.features.strategies) &&
           Boolean(entitlements.features.orders),
-        tradeIdeasEnabled: Boolean(entitlements.features.tradeIdeas),
+        strategiesEnabled: Boolean(entitlements.features.strategies),
         openPositionsEnabled: Boolean(entitlements.features.journal),
         ordersEnabled: Boolean(entitlements.features.orders),
       }

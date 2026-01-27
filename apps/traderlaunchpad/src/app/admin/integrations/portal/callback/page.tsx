@@ -1,13 +1,13 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import Link from "next/link";
+import React from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function PortalOAuthCallbackMockPage() {
   const params = useSearchParams();
@@ -24,7 +24,7 @@ export default function PortalOAuthCallbackMockPage() {
   const ok = !error && Boolean(code);
 
   return (
-    <div className="animate-in fade-in mx-auto max-w-2xl space-y-6 duration-500">
+    <div className="mx-auto max-w-2xl space-y-6 duration-500">
       <Card className="overflow-hidden">
         <CardHeader className="border-b">
           <CardTitle className="flex items-center justify-between gap-3 text-base">

@@ -1,17 +1,17 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
 import { ArrowLeft, CheckCircle2, MessageSquare, Sparkles, Zap } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
+import Link from "next/link";
+import React from "react";
 import { Separator } from "@acme/ui/separator";
 import { Switch } from "@acme/ui/switch";
+import { useParams } from "next/navigation";
 
 export default function PortalRoutingMockPage() {
   const params = useParams<{ connectionId?: string | string[] }>();
@@ -26,7 +26,7 @@ export default function PortalRoutingMockPage() {
   const [dailySummary, setDailySummary] = React.useState(false);
 
   return (
-    <div className="animate-in fade-in mx-auto max-w-5xl space-y-8 duration-500">
+    <div className="mx-auto max-w-5xl space-y-8 duration-500">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div className="space-y-1">
           <div className="text-muted-foreground text-sm">Portal routing</div>

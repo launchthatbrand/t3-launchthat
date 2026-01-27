@@ -20,6 +20,7 @@ import {
   demoReviewTrades,
 } from "@acme/demo-data";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { usePathname, useRouter } from "next/navigation";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
@@ -33,7 +34,6 @@ import { api } from "@convex-config/_generated/api";
 import { cn } from "@acme/ui";
 import { useDataMode } from "~/components/dataMode/DataModeProvider";
 import { useTenant } from "~/context/TenantContext";
-import { usePathname, useRouter } from "next/navigation";
 
 interface TradingPlanRule {
   id: string;
@@ -310,7 +310,7 @@ function PersonalTradingPlanPage() {
 
   if (isLive && shouldQuery && plans && plans.length === 0) {
     return (
-      <div className="relative animate-in fade-in space-y-6 text-foreground selection:bg-orange-500/30 duration-500">
+      <div className="relative space-y-6 text-foreground selection:bg-orange-500/30 duration-500">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div className="min-w-0">
             <h1 className="text-3xl font-bold tracking-tight">Strategies</h1>
@@ -386,7 +386,7 @@ function PersonalTradingPlanPage() {
   }
 
   return (
-    <div className="relative animate-in fade-in space-y-8 text-foreground selection:bg-orange-500/30 duration-500">
+    <div className="relative space-y-8 text-foreground selection:bg-orange-500/30 duration-500">
       {/* Page header (separate from main platform dashboard) */}
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div className="min-w-0">

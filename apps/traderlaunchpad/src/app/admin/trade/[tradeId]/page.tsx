@@ -76,7 +76,7 @@ export default async function AdminTradeDetailPage({
             ];
 
     return (
-        <div className="animate-in fade-in space-y-6 duration-500 pb-10">
+        <div className="space-y-6 duration-500 pb-10">
             {/* Header */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div className="min-w-0">

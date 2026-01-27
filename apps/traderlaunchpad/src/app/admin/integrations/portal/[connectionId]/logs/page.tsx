@@ -1,21 +1,21 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
 import {
+  AlertCircle,
   ArrowLeft,
   CheckCircle2,
   Clock,
   Download,
-  AlertCircle,
   MessageSquare,
 } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
+import Link from "next/link";
+import React from "react";
 import { cn } from "@acme/ui";
+import { useParams } from "next/navigation";
 
 type LogRow = {
   id: string;
@@ -74,7 +74,7 @@ export default function PortalLogsMockPage() {
   const connectionId = Array.isArray(raw) ? raw[0] ?? "" : raw ?? "";
 
   return (
-    <div className="animate-in fade-in mx-auto max-w-5xl space-y-8 duration-500">
+    <div className="mx-auto max-w-5xl space-y-8 duration-500">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div className="space-y-1">
           <div className="text-muted-foreground text-sm">Portal logs</div>

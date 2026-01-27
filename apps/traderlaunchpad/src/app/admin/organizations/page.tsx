@@ -72,7 +72,7 @@ export default function AdminSettingsOrganizationsPage() {
   }, [router]);
 
   return (
-    <div className="relative animate-in fade-in space-y-8 text-foreground selection:bg-orange-500/30 duration-500">
+    <div className="relative space-y-8 text-foreground selection:bg-orange-500/30 duration-500">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Organizations</h1>

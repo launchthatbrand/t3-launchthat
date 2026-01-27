@@ -15,7 +15,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@acme/ui/dropdown-menu";
-import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+import {
+  FeatureAccessAlert,
+  isFeatureEnabled,
+  useGlobalPermissions,
+} from "~/components/access/FeatureAccessGate";
 import {
   Table,
   TableBody,
@@ -24,25 +28,21 @@ import {
   TableHeader,
   TableRow,
 } from "@acme/ui/table";
-import { useQuery } from "convex/react";
+import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
+import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Input } from "@acme/ui/input";
-import { Skeleton } from "@acme/ui/skeleton";
 import Link from "next/link";
 import React from "react";
+import { Skeleton } from "@acme/ui/skeleton";
 import { api } from "@convex-config/_generated/api";
 import { cn } from "@acme/ui";
 import { demoAdminOrders } from "@acme/demo-data";
 import { useDataMode } from "~/components/dataMode/DataModeProvider";
-import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
+import { useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
-import {
-  FeatureAccessAlert,
-  isFeatureEnabled,
-  useGlobalPermissions,
-} from "~/components/access/FeatureAccessGate";
 
 interface OrderRow {
   id: string;
@@ -359,7 +359,7 @@ export default function AdminOrdersPage() {
     tab === "pending" ? pendingOrders : tab === "filled" ? filledOrders : [];
 
   return (
-    <div className="relative animate-in fade-in space-y-8 text-white selection:bg-orange-500/30 duration-500">
+    <div className="relative space-y-8 text-white selection:bg-orange-500/30 duration-500">
       {/* Header */}
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
@@ -447,62 +447,62 @@ export default function AdminOrdersPage() {
                 <FeatureAccessAlert description="You do not have access to Open Positions." />
               </div>
             ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="border-white/10 bg-black/30 hover:bg-black/30">
-                  <TableHead className="w-[140px] text-white/60">
-                    Opened
-                  </TableHead>
-                  <TableHead className="text-white/60">Symbol</TableHead>
-                  <TableHead className="text-white/60">Side</TableHead>
-                  <TableHead className="text-white/60">Qty</TableHead>
-                  <TableHead className="text-white/60">Avg price</TableHead>
-                  <TableHead className="text-white/60">Position ID</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {positions.map((p) => (
-                  <TableRow
-                    key={p.id}
-                    className="border-white/5 hover:bg-white/5"
-                  >
-                    <TableCell className="font-medium">
-                      <div className="flex flex-col">
-                        <span>{p.date}</span>
-                        <span className="text-xs text-white/40">{p.time}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-semibold">{p.symbol}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "border border-white/10 bg-black/20 font-medium",
-                          p.side === "Buy"
-                            ? "bg-emerald-500/10 text-emerald-200"
-                            : "bg-red-500/10 text-red-200",
-                        )}
-                      >
-                        {p.side}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{p.qty}</TableCell>
-                    <TableCell>
-                      {p.avgPrice.toFixed(
-                        p.symbol.includes("JPY") || p.symbol.includes("NAS")
-                          ? 2
-                          : 4,
-                      )}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-white/60">
-                      {p.id}
-                    </TableCell>
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-white/10 bg-black/30 hover:bg-black/30">
+                    <TableHead className="w-[140px] text-white/60">
+                      Opened
+                    </TableHead>
+                    <TableHead className="text-white/60">Symbol</TableHead>
+                    <TableHead className="text-white/60">Side</TableHead>
+                    <TableHead className="text-white/60">Qty</TableHead>
+                    <TableHead className="text-white/60">Avg price</TableHead>
+                    <TableHead className="text-white/60">Position ID</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {positions.map((p) => (
+                    <TableRow
+                      key={p.id}
+                      className="border-white/5 hover:bg-white/5"
+                    >
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col">
+                          <span>{p.date}</span>
+                          <span className="text-xs text-white/40">{p.time}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-semibold">{p.symbol}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "border border-white/10 bg-black/20 font-medium",
+                            p.side === "Buy"
+                              ? "bg-emerald-500/10 text-emerald-200"
+                              : "bg-red-500/10 text-red-200",
+                          )}
+                        >
+                          {p.side}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{p.qty}</TableCell>
+                      <TableCell>
+                        {p.avgPrice.toFixed(
+                          p.symbol.includes("JPY") || p.symbol.includes("NAS")
+                            ? 2
+                            : 4,
+                        )}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-white/60">
+                        {p.id}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )
           ) : (
             <Table>

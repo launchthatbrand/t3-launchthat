@@ -7,7 +7,7 @@ type Tier = "free" | "standard" | "pro";
 
 export type EntitlementFeature =
   | "journal"
-  | "tradeIdeas"
+  | "strategies"
   | "analytics"
   | "orders";
 
@@ -19,7 +19,7 @@ const tierValidator = v.union(
 
 const featureFlagsValidator = v.object({
   journal: v.boolean(),
-  tradeIdeas: v.boolean(),
+  strategies: v.boolean(),
   analytics: v.boolean(),
   orders: v.boolean(),
 });
@@ -37,7 +37,7 @@ const visibilitySettingsValidator = v.object({
 const defaultEntitlementFeatures = (): Record<EntitlementFeature, boolean> => ({
   // Default to enabled to avoid accidental lockouts; platform admin can explicitly disable.
   journal: true,
-  tradeIdeas: true,
+  strategies: true,
   analytics: true,
   orders: true,
 });
@@ -66,7 +66,7 @@ const normalizeEntitlementFeaturesFromLimits = (
   const f = featuresRaw as Record<string, unknown>;
   return {
     journal: f.journal !== false,
-    tradeIdeas: f.tradeIdeas !== false,
+    strategies: f.strategies !== false,
     analytics: f.analytics !== false,
     orders: f.orders !== false,
   };

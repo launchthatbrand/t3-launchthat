@@ -1,11 +1,6 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
 import { ArrowLeft, ExternalLink, Link2, Webhook } from "lucide-react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -13,7 +8,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
 import { Input } from "@acme/ui/input";
+import Link from "next/link";
+import React from "react";
 import { Separator } from "@acme/ui/separator";
 
 export default function AdminPortalWebhooksComparePage() {
@@ -23,7 +23,7 @@ export default function AdminPortalWebhooksComparePage() {
     "https://app.traderlaunchpad.com/api/webhooks/portal/mock";
 
   return (
-    <div className="animate-in fade-in mx-auto max-w-5xl space-y-8 duration-500">
+    <div className="mx-auto max-w-5xl space-y-8 duration-500">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <div className="text-muted-foreground text-sm">

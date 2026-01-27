@@ -1,25 +1,25 @@
 "use client";
 
-import { ArrowUpRight } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@acme/ui/card";
 import type { ColumnDefinition, EntityAction } from "@acme/ui/entity-list/types";
-import { useQuery } from "convex/react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { EntityList } from "@acme/ui/entity-list/EntityList";
-import { Skeleton } from "@acme/ui/skeleton";
-import Link from "next/link";
-import React from "react";
-import { api } from "@convex-config/_generated/api";
-import { cn } from "@acme/ui";
-import { useDataMode } from "~/components/dataMode/DataModeProvider";
-import { useRouter } from "next/navigation";
 import {
   FeatureAccessAlert,
   isFeatureEnabled,
   useGlobalPermissions,
 } from "~/components/access/FeatureAccessGate";
+
+import { ArrowUpRight } from "lucide-react";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { EntityList } from "@acme/ui/entity-list/EntityList";
+import Link from "next/link";
+import React from "react";
+import { Skeleton } from "@acme/ui/skeleton";
+import { api } from "@convex-config/_generated/api";
+import { cn } from "@acme/ui";
+import { useDataMode } from "~/components/dataMode/DataModeProvider";
+import { useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
 
 interface TradeIdeaCardRow extends Record<string, unknown> {
   id: string;
@@ -48,7 +48,7 @@ export default function AdminTradeIdeasPage() {
   const dataMode = useDataMode();
   const isLive = dataMode.effectiveMode === "live";
   const { permissions, isLoading, isAuthenticated } = useGlobalPermissions();
-  const canAccess = Boolean(permissions && isFeatureEnabled(permissions, "tradeIdeas"));
+  const canAccess = Boolean(permissions && isFeatureEnabled(permissions, "strategies"));
   const shouldQuery = isAuthenticated && !isLoading && canAccess;
 
   const liveIdeas = useQuery(
@@ -56,14 +56,14 @@ export default function AdminTradeIdeasPage() {
     shouldQuery && isLive ? { limit: 200 } : "skip",
   ) as
     | {
-        tradeIdeaId: string;
-        symbol: string;
-        bias: "long" | "short" | "neutral";
-        status: "active" | "closed";
-        lastActivityAt: number;
-        realizedPnl: number;
-        positionsCount: number;
-      }[]
+      tradeIdeaId: string;
+      symbol: string;
+      bias: "long" | "short" | "neutral";
+      status: "active" | "closed";
+      lastActivityAt: number;
+      realizedPnl: number;
+      positionsCount: number;
+    }[]
     | undefined;
 
   const ideas: TradeIdeaCardRow[] = React.useMemo(() => {
@@ -197,7 +197,7 @@ export default function AdminTradeIdeasPage() {
   }
 
   return (
-      <div className="relative animate-in fade-in space-y-8 text-foreground selection:bg-orange-500/30 duration-500">
+    <div className="relative space-y-8 text-foreground selection:bg-orange-500/30 duration-500">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Trade Ideas</h1>
@@ -308,6 +308,6 @@ export default function AdminTradeIdeasPage() {
           </Card>
         )}
       />
-      </div>
+    </div>
   );
 }

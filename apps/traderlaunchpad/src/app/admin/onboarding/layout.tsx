@@ -1,27 +1,26 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { CheckCircle2, Circle, ChevronRight } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { CheckCircle2, ChevronRight, Circle } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import Link from "next/link";
 import { Progress } from "@acme/ui/progress";
+import React from "react";
 import { cn } from "@acme/ui";
-
 import { useOnboardingStatus } from "~/lib/onboarding/getOnboardingStatus";
+import { usePathname } from "next/navigation";
 
 const STEPS: Array<{
   key: "connect" | "sync" | "review";
   title: string;
   href: string;
 }> = [
-  { key: "connect", title: "Connect broker", href: "/admin/onboarding/connect" },
-  { key: "sync", title: "Sync trades", href: "/admin/onboarding/sync" },
-  { key: "review", title: "First review", href: "/admin/onboarding/first-review" },
-];
+    { key: "connect", title: "Connect broker", href: "/admin/onboarding/connect" },
+    { key: "sync", title: "Sync trades", href: "/admin/onboarding/sync" },
+    { key: "review", title: "First review", href: "/admin/onboarding/first-review" },
+  ];
 
 const getActiveKey = (pathname: string): "connect" | "sync" | "review" => {
   if (pathname.includes("/admin/onboarding/sync")) return "sync";
@@ -39,7 +38,7 @@ export default function OnboardingLayout(props: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="animate-in fade-in mx-auto w-full max-w-5xl space-y-6 duration-500">
+    <div className="mx-auto w-full max-w-5xl space-y-6 duration-500">
       <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
         <div className="space-y-1">
           <div className="text-muted-foreground text-sm">Getting started</div>

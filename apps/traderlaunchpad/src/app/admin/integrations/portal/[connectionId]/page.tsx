@@ -1,8 +1,5 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
 import {
   ArrowUpRight,
   CheckCircle2,
@@ -11,11 +8,14 @@ import {
   ShieldCheck,
   Trash2,
 } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
+import Link from "next/link";
+import React from "react";
 import { Separator } from "@acme/ui/separator";
+import { useParams } from "next/navigation";
 
 const MOCK = {
   portalOrg: "LaunchThat (Demo Org)",
@@ -33,7 +33,7 @@ export default function PortalConnectionDetailPage() {
   const connectionId = Array.isArray(raw) ? raw[0] ?? "" : raw ?? "";
 
   return (
-    <div className="animate-in fade-in space-y-8 duration-500">
+    <div className="space-y-8 duration-500">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div className="space-y-1">
           <div className="text-muted-foreground text-sm">Portal connection</div>

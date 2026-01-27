@@ -280,10 +280,10 @@ export default function AdminDashboardPage() {
   const shouldQuery = isAuthenticated && !authLoading;
   const tenant = useTenant();
   const isOrgMode = Boolean(tenant && tenant.slug !== "platform");
-  const canTradeIdeas =
+  const canStrategies =
     !permissionsLoading &&
     Boolean(permissions) &&
-    isFeatureEnabled(permissions, "tradeIdeas");
+    isFeatureEnabled(permissions, "strategies");
   const canOrders =
     !permissionsLoading &&
     Boolean(permissions) &&
@@ -314,7 +314,7 @@ export default function AdminDashboardPage() {
 
   const analyticsSummary = useQuery(
     api.traderlaunchpad.queries.getMyTradeIdeaAnalyticsSummary,
-    shouldQuery && isLive && canTradeIdeas
+    shouldQuery && isLive && canStrategies
       ? { limit: 200, accountId: activeAccount.selected?.accountId }
       : "skip",
   ) as
@@ -333,7 +333,7 @@ export default function AdminDashboardPage() {
 
   const recentClosed = useQuery(
     api.traderlaunchpad.queries.listMyRecentClosedTradeIdeas,
-    shouldQuery && isLive && canTradeIdeas
+    shouldQuery && isLive && canStrategies
       ? { limit: 200, accountId: activeAccount.selected?.accountId }
       : "skip",
   ) as
@@ -821,7 +821,7 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div className="animate-in fade-in text-foreground relative space-y-8 duration-500 selection:bg-orange-500/30">
+    <div className="text-foreground relative space-y-8 duration-500 selection:bg-orange-500/30">
       {!isDismissed && !onboarding.isComplete ? (
         <div className="text-foreground rounded-2xl border border-orange-500/20 bg-white/80 px-4 py-2 backdrop-blur-md dark:bg-black/45 dark:text-white">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1050,7 +1050,7 @@ export default function AdminDashboardPage() {
                 <div className="text-muted-foreground text-sm">
                   Checking access…
                 </div>
-              ) : isLive && !canTradeIdeas ? (
+              ) : isLive && !canStrategies ? (
                 <FeatureAccessAlert
                   title="Access restricted"
                   description="You do not have access to trade ideas."
@@ -1063,112 +1063,112 @@ export default function AdminDashboardPage() {
                     )
                     : reviewTrades
                   ).map((trade) => (
-                  <Popover
-                    key={trade.id}
-                    open={openTradeId === trade.id}
-                    onOpenChange={(next) =>
-                      setOpenTradeId(next ? trade.id : null)
-                    }
-                  >
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className="bg-card group flex w-full items-center justify-between rounded-md border p-3 text-left transition-colors hover:border-blue-500/50"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm font-medium">
-                            {trade.symbol}
-                            <span
-                              className={cn(
-                                "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
-                                trade.type === "Long"
-                                  ? "bg-emerald-500/10 text-emerald-500"
-                                  : "bg-red-500/10 text-red-500",
-                              )}
-                            >
-                              {trade.type}
-                            </span>
-                            <span
-                              className={cn(
-                                "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
-                                trade.reviewed
-                                  ? "bg-emerald-500/10 text-emerald-500"
-                                  : "bg-amber-500/10 text-amber-500",
-                              )}
-                            >
-                              {trade.reviewed ? "Reviewed" : "Needs Review"}
-                            </span>
-                          </div>
-                          <div className="text-muted-foreground text-xs">
-                            {trade.date} • {trade.reason}
-                          </div>
-                        </div>
-                        <div
-                          className={cn(
-                            "text-sm font-semibold",
-                            trade.pnl >= 0
-                              ? "text-emerald-500"
-                              : "text-red-500",
-                          )}
+                    <Popover
+                      key={trade.id}
+                      open={openTradeId === trade.id}
+                      onOpenChange={(next) =>
+                        setOpenTradeId(next ? trade.id : null)
+                      }
+                    >
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="bg-card group flex w-full items-center justify-between rounded-md border p-3 text-left transition-colors hover:border-blue-500/50"
                         >
-                          {trade.pnl >= 0 ? "+" : ""}
-                          {trade.pnl}
-                        </div>
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="border-border/40 text-foreground w-[320px] bg-white/95 p-3 backdrop-blur dark:border-white/10 dark:bg-black/80 dark:text-white">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold">
-                            {trade.symbol} • {trade.type}
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-sm font-medium">
+                              {trade.symbol}
+                              <span
+                                className={cn(
+                                  "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
+                                  trade.type === "Long"
+                                    ? "bg-emerald-500/10 text-emerald-500"
+                                    : "bg-red-500/10 text-red-500",
+                                )}
+                              >
+                                {trade.type}
+                              </span>
+                              <span
+                                className={cn(
+                                  "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
+                                  trade.reviewed
+                                    ? "bg-emerald-500/10 text-emerald-500"
+                                    : "bg-amber-500/10 text-amber-500",
+                                )}
+                              >
+                                {trade.reviewed ? "Reviewed" : "Needs Review"}
+                              </span>
+                            </div>
+                            <div className="text-muted-foreground text-xs">
+                              {trade.date} • {trade.reason}
+                            </div>
                           </div>
-                          <div className="text-muted-foreground mt-0.5 text-xs dark:text-white/60">
-                            {trade.tradeDate} • {trade.reason}
-                          </div>
-                        </div>
-                        <div
-                          className={cn(
-                            "shrink-0 text-sm font-semibold tabular-nums",
-                            trade.pnl >= 0
-                              ? "text-emerald-300"
-                              : "text-rose-300",
-                          )}
-                        >
-                          {trade.pnl >= 0 ? "+" : ""}
-                          {trade.pnl}
-                        </div>
-                      </div>
-
-                      <div className="mt-3 flex items-center justify-between">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "border-border/60 text-[10px]",
-                            trade.reviewed
-                              ? "text-emerald-700 dark:text-emerald-200"
-                              : "text-amber-700 dark:text-amber-200",
-                          )}
-                        >
-                          {trade.reviewed ? "Reviewed" : "Needs review"}
-                        </Badge>
-                        <Button
-                          size="sm"
-                          className="h-8 bg-orange-600 px-2 text-xs text-white hover:bg-orange-700"
-                          asChild
-                        >
-                          <Link
-                            href={
-                              isLive
-                                ? `/admin/tradeideas/${encodeURIComponent(trade.id)}`
-                                : `/admin/trade/${trade.id}`
-                            }
+                          <div
+                            className={cn(
+                              "text-sm font-semibold",
+                              trade.pnl >= 0
+                                ? "text-emerald-500"
+                                : "text-red-500",
+                            )}
                           >
-                            View Trade{" "}
-                            <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
-                          </Link>
-                        </Button>
-                      </div>
-                    </PopoverContent>
+                            {trade.pnl >= 0 ? "+" : ""}
+                            {trade.pnl}
+                          </div>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="border-border/40 text-foreground w-[320px] bg-white/95 p-3 backdrop-blur dark:border-white/10 dark:bg-black/80 dark:text-white">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold">
+                              {trade.symbol} • {trade.type}
+                            </div>
+                            <div className="text-muted-foreground mt-0.5 text-xs dark:text-white/60">
+                              {trade.tradeDate} • {trade.reason}
+                            </div>
+                          </div>
+                          <div
+                            className={cn(
+                              "shrink-0 text-sm font-semibold tabular-nums",
+                              trade.pnl >= 0
+                                ? "text-emerald-300"
+                                : "text-rose-300",
+                            )}
+                          >
+                            {trade.pnl >= 0 ? "+" : ""}
+                            {trade.pnl}
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "border-border/60 text-[10px]",
+                              trade.reviewed
+                                ? "text-emerald-700 dark:text-emerald-200"
+                                : "text-amber-700 dark:text-amber-200",
+                            )}
+                          >
+                            {trade.reviewed ? "Reviewed" : "Needs review"}
+                          </Badge>
+                          <Button
+                            size="sm"
+                            className="h-8 bg-orange-600 px-2 text-xs text-white hover:bg-orange-700"
+                            asChild
+                          >
+                            <Link
+                              href={
+                                isLive
+                                  ? `/admin/tradeideas/${encodeURIComponent(trade.id)}`
+                                  : `/admin/trade/${trade.id}`
+                              }
+                            >
+                              View Trade{" "}
+                              <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+                            </Link>
+                          </Button>
+                        </div>
+                      </PopoverContent>
                     </Popover>
                   ))}
                 </div>
@@ -1310,7 +1310,7 @@ export default function AdminDashboardPage() {
                 <div className="text-muted-foreground text-sm">
                   Checking access…
                 </div>
-              ) : isLive && !canTradeIdeas ? (
+              ) : isLive && !canStrategies ? (
                 <FeatureAccessAlert
                   title="Access restricted"
                   description="You do not have access to trade ideas."

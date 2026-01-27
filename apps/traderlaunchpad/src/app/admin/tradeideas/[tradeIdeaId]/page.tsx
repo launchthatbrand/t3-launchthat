@@ -1,21 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import * as React from "react";
-import { useParams } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
 
-import { api } from "@convex-config/_generated/api";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { Skeleton } from "@acme/ui/skeleton";
-import { NotesSection } from "~/components/admin/NotesSection";
 import { ArrowLeft, ArrowUpRight, Calendar, Clock } from "lucide-react";
-import { cn } from "@acme/ui";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
-import { toast } from "@acme/ui";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import {
+  FeatureAccessAlert,
+  isFeatureEnabled,
+  useGlobalPermissions,
+} from "~/components/access/FeatureAccessGate";
 import {
   Select,
   SelectContent,
@@ -23,14 +16,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
+import { useMutation, useQuery } from "convex/react";
 
-import type { TradingTimeframe } from "~/components/charts/TradingChartMock";
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
+import Link from "next/link";
+import { NotesSection } from "~/components/admin/NotesSection";
+import { Skeleton } from "@acme/ui/skeleton";
 import { TradingChartReal } from "~/components/charts/TradingChartReal";
-import {
-  FeatureAccessAlert,
-  isFeatureEnabled,
-  useGlobalPermissions,
-} from "~/components/access/FeatureAccessGate";
+import type { TradingTimeframe } from "~/components/charts/TradingChartMock";
+import { api } from "@convex-config/_generated/api";
+import { cn } from "@acme/ui";
+import { toast } from "@acme/ui";
+import { useParams } from "next/navigation";
 
 const toDateLabel = (tsMs: number): string => {
   const d = new Date(tsMs);
@@ -227,7 +227,7 @@ export default function AdminTradeIdeaDetailPage() {
   const tradeIdeaId = rawId ? decodeURIComponent(rawId) : "";
 
   const { permissions, isLoading, isAuthenticated } = useGlobalPermissions();
-  const canAccess = Boolean(permissions && isFeatureEnabled(permissions, "tradeIdeas"));
+  const canAccess = Boolean(permissions && isFeatureEnabled(permissions, "strategies"));
   const shouldQuery = isAuthenticated && !isLoading && canAccess && Boolean(tradeIdeaId);
 
   const setSharing = useMutation(api.traderlaunchpad.mutations.setMyTradeIdeaSharing);
@@ -438,7 +438,7 @@ export default function AdminTradeIdeaDetailPage() {
   }
 
   return (
-    <div className="animate-in fade-in space-y-6 duration-500 pb-10 text-white">
+    <div className="space-y-6 duration-500 pb-10 text-white">
       {/* Header (match order page style) */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">

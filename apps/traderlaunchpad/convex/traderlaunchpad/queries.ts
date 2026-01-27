@@ -1609,6 +1609,12 @@ export const getMyTradeLockerConnection = query({
     }),
   ),
   handler: async (ctx) => {
+    // This query is used by client providers/components that can run during auth
+    // hydration or after sign-out. Avoid noisy server errors by returning null
+    // when unauthenticated.
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
     const organizationId = resolveOrganizationId();
     // This is a journal/broker connection, so gate by journal (open positions), not trade ideas.
     const userId = await requireGlobalPermission(ctx, "openPositions");

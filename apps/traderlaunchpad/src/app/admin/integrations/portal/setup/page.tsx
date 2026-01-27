@@ -1,7 +1,5 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
 import {
   ArrowRight,
   BadgeCheck,
@@ -13,9 +11,6 @@ import {
   Settings2,
   Shield,
 } from "lucide-react";
-
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import {
   Card,
   CardContent,
@@ -23,6 +18,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@acme/ui/card";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import Link from "next/link";
+import React from "react";
 import { Separator } from "@acme/ui/separator";
 
 type Step = {
@@ -75,7 +75,7 @@ export default function AdminPortalSetupPage() {
   const doneCount = steps.filter((s) => s.status === "done").length;
 
   return (
-    <div className="animate-in fade-in space-y-8 duration-500">
+    <div className="space-y-8 duration-500">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <div className="text-muted-foreground text-sm">

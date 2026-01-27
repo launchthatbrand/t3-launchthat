@@ -35,6 +35,7 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 
 import { Button } from "@acme/ui/button";
 import { Checkbox } from "@acme/ui/checkbox";
+import { FeatureAccessAlert } from "~/components/access/FeatureAccessGate";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import React from "react";
@@ -44,7 +45,6 @@ import { api } from "@convex-config/_generated/api";
 import { cn } from "@acme/ui";
 import { useActiveAccount } from "~/components/accounts/ActiveAccountProvider";
 import { useDataMode } from "~/components/dataMode/DataModeProvider";
-import { FeatureAccessAlert } from "~/components/access/FeatureAccessGate";
 
 interface ReportSpecV1 {
   version: 1;
@@ -146,9 +146,9 @@ export default function AdminAnalyticsPage() {
     shouldQuery ? {} : "skip",
   ) as
     | {
-        isSignedIn: boolean;
-        features: { analytics: boolean };
-      }
+      isSignedIn: boolean;
+      features: { analytics: boolean };
+    }
     | undefined;
 
   const canAnalytics = Boolean(entitlements?.features?.analytics);
@@ -273,9 +273,9 @@ export default function AdminAnalyticsPage() {
     shouldQueryAnalytics ? {} : "skip",
   ) as
     | {
-        globalPublic: boolean;
-        analyticsReportsPublic: boolean;
-      }
+      globalPublic: boolean;
+      analyticsReportsPublic: boolean;
+    }
     | undefined;
 
   React.useEffect(() => {
@@ -434,7 +434,7 @@ export default function AdminAnalyticsPage() {
   }
 
   return (
-    <div className="animate-in fade-in space-y-8 duration-500">
+    <div className="space-y-8 duration-500">
       {/* Header */}
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>

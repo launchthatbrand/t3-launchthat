@@ -30,7 +30,7 @@ type JoinCodeRow = {
       maxOrganizations?: number;
       features?: {
         journal?: boolean;
-        tradeIdeas?: boolean;
+        strategies?: boolean;
         analytics?: boolean;
         orders?: boolean;
       };
@@ -76,7 +76,7 @@ export const JoinCodesSettingsClient = () => {
     maxOrganizations: string;
     features: {
       journal: boolean;
-      tradeIdeas: boolean;
+      strategies: boolean;
       analytics: boolean;
       orders: boolean;
     };
@@ -84,7 +84,7 @@ export const JoinCodesSettingsClient = () => {
     maxOrganizations: "",
     features: {
       journal: true,
-      tradeIdeas: true,
+      strategies: true,
       analytics: true,
       orders: true,
     },
@@ -177,7 +177,7 @@ export const JoinCodesSettingsClient = () => {
         maxOrganizations: "",
         features: {
           journal: true,
-          tradeIdeas: true,
+          strategies: true,
           analytics: true,
           orders: true,
         },
@@ -280,15 +280,15 @@ export const JoinCodesSettingsClient = () => {
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={limitsDraft.features.tradeIdeas}
+                    checked={limitsDraft.features.strategies}
                     onChange={(event) =>
                       setLimitsDraft((prev) => ({
                         ...prev,
-                        features: { ...prev.features, tradeIdeas: event.target.checked },
+                        features: { ...prev.features, strategies: event.target.checked },
                       }))
                     }
                   />
-                  <span>Trade ideas</span>
+                  <span>Strategies</span>
                 </label>
                 <label className="flex items-center gap-2">
                   <input

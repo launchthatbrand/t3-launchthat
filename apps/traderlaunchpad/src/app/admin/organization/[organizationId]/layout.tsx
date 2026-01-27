@@ -8,7 +8,7 @@ export default async function AdminOrganizationLayout(props: {
   const organizationId = params.organizationId;
 
   return (
-    <div className="animate-in fade-in mx-auto space-y-8 duration-500">
+    <div className="mx-auto space-y-8 duration-500">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Organization</h1>
         <p className="text-muted-foreground mt-1">

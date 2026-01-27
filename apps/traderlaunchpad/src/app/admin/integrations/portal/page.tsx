@@ -1,13 +1,13 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
 import { Copy, ExternalLink, Lock, PlugZap, ShieldCheck } from "lucide-react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@acme/ui/card";
 import { Input } from "@acme/ui/input";
+import Link from "next/link";
+import React from "react";
 import { Separator } from "@acme/ui/separator";
 
 const MOCK_CONNECTIONS = [
@@ -51,7 +51,7 @@ export default function AdminPortalIntegrationsPage() {
   };
 
   return (
-    <div className="animate-in fade-in space-y-8 duration-500">
+    <div className="space-y-8 duration-500">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Portal Integration</h1>

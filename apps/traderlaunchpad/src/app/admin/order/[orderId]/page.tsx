@@ -39,7 +39,7 @@ function MockOrderDetail(props: { orderId: string }) {
   };
 
   return (
-    <div className="animate-in fade-in space-y-6 duration-500 pb-10">
+    <div className="space-y-6 duration-500 pb-10">
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
@@ -243,7 +243,7 @@ export default function AdminOrderDetailPage() {
   }
 
   return (
-    <div className="animate-in fade-in space-y-6 duration-500">
+    <div className="space-y-6 duration-500">
       <Card className="overflow-hidden">
         <CardHeader className="border-b">
           <CardTitle className="flex items-center justify-between gap-3 text-base">

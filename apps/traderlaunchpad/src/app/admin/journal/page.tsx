@@ -5,9 +5,13 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight, Brain, Calendar, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import {
+  FeatureAccessAlert,
+  isFeatureEnabled,
+  useGlobalPermissions,
+} from "~/components/access/FeatureAccessGate";
 import { Popover, PopoverContent, PopoverTrigger } from "@acme/ui/popover";
 import { demoCalendarDailyStats, demoDashboardStats, demoReviewTrades } from "@acme/demo-data";
-import { useQuery } from "convex/react";
 
 import { ActiveAccountSelector } from "~/components/accounts/ActiveAccountSelector";
 import { Badge } from "@acme/ui/badge";
@@ -16,9 +20,9 @@ import { Checkbox } from "@acme/ui/checkbox";
 import type { ColumnDefinition } from "@acme/ui/entity-list/types";
 import { Calendar as DayCalendar } from "@acme/ui/calendar";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
-import { Skeleton } from "@acme/ui/skeleton";
 import Link from "next/link";
 import React from "react";
+import { Skeleton } from "@acme/ui/skeleton";
 import { TradingCalendarWithDrilldown } from "~/components/dashboard/TradingCalendarWithDrilldown";
 import type { TradingCalendarWithDrilldownTradeRow } from "~/components/dashboard/TradingCalendarWithDrilldown";
 import { TradingTimingInsights } from "~/components/dashboard/TradingTimingInsights";
@@ -28,14 +32,10 @@ import { createPortal } from "react-dom";
 import { format as formatDate } from "date-fns";
 import { useActiveAccount } from "~/components/accounts/ActiveAccountProvider";
 import { useDataMode } from "~/components/dataMode/DataModeProvider";
+import { useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
 import { useTenant } from "~/context/TenantContext";
 import { useTradingCalendarStore } from "~/stores/tradingCalendarStore";
-import {
-  FeatureAccessAlert,
-  isFeatureEnabled,
-  useGlobalPermissions,
-} from "~/components/access/FeatureAccessGate";
 
 interface LiveReviewRow {
   tradeIdeaGroupId: string;
@@ -556,7 +556,7 @@ export default function AdminJournalDashboardPage() {
   }
 
   return (
-    <div className="relative animate-in fade-in space-y-8 text-foreground selection:bg-orange-500/30 duration-500">
+    <div className="relative space-y-8 text-foreground selection:bg-orange-500/30 duration-500">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Journal</h1>
