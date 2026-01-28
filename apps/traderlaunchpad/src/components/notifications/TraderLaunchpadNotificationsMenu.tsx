@@ -25,6 +25,7 @@ const tabs: NotificationTabDefinition[] = [
   { id: "all", label: "All" },
   { id: "system", label: "System", tabKey: "system" },
   { id: "organizations", label: "Organizations", tabKey: "organization" },
+  { id: "news", label: "News", tabKey: "news" },
 ];
 
 export function TraderLaunchpadNotificationsMenu() {

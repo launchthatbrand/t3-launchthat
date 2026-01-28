@@ -94,6 +94,50 @@ export const createNotification = mutation({
 });
 
 /**
+ * Create a single in-app notification, but dedupe by (userId, orgId, eventKey).
+ *
+ * This is critical for cron/scheduler fanout use-cases where the same "event" can be
+ * observed on multiple runs (e.g. economic calendars, RSS polling).
+ */
+export const createNotificationOnce = mutation({
+  args: {
+    userId: v.string(),
+    orgId: v.string(),
+    eventKey: v.string(),
+    tabKey: v.optional(v.string()),
+    title: v.string(),
+    content: v.optional(v.string()),
+    actionUrl: v.optional(v.string()),
+  },
+  returns: v.union(v.null(), v.id("notifications")),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("notifications")
+      .withIndex("by_user_org_eventKey", (q: any) =>
+        q
+          .eq("userId", args.userId)
+          .eq("orgId", args.orgId)
+          .eq("eventKey", args.eventKey),
+      )
+      .first();
+    if (existing) return null;
+    const createdAt = Date.now();
+    const id = await ctx.db.insert("notifications", {
+      userId: args.userId,
+      orgId: args.orgId,
+      eventKey: args.eventKey,
+      tabKey: (args.tabKey ?? "system").trim() || "system",
+      title: args.title,
+      content: args.content,
+      read: false,
+      actionUrl: args.actionUrl,
+      createdAt,
+    });
+    return id;
+  },
+});
+
+/**
  * Record a notification interaction event (click/open/etc).
  *
  * This mutation is intentionally "dumb" about auth; the mounting app should pass the

@@ -10,6 +10,7 @@ import launchthat_notifications from "../../../packages/launchthat-plugin-notifi
 import launchthat_onboarding from "../../../packages/launchthat-plugin-onboarding/src/convex/component/convex.config";
 import launchthat_clickhouse from "../../../packages/launchthat-plugin-clickhouse/src/convex/component/convex.config";
 import launchthat_pricedata from "../../../packages/launchthat-plugin-pricedata/src/convex/component/convex.config";
+import launchthat_news from "../../../packages/launchthat-plugin-news/src/convex/component/convex.config";
 import launchthat_push from "../../../packages/launchthat-plugin-push/src/convex/component/convex.config";
 import launchthat_shortlinks from "../../../packages/launchthat-plugin-shortlinks/src/convex/component/convex.config";
 import launchthat_traderlaunchpad from "../../../packages/launchthat-plugin-traderlaunchpad/src/convex/component/convex.config";
@@ -28,6 +29,7 @@ app.use(launchthat_joincodes);
 app.use(launchthat_traderlaunchpad);
 app.use(launchthat_clickhouse);
 app.use(launchthat_pricedata);
+app.use(launchthat_news);
 app.use(launchthat_discord);
 app.use(launchthat_onboarding);
 app.use(launchthat_shortlinks);

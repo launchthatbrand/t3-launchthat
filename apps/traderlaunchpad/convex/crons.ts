@@ -20,5 +20,13 @@ crons.interval(
   {},
 );
 
+// Platform news/economic calendar ingestion.
+crons.interval(
+  "run_platform_news_ingest",
+  { minutes: 1 },
+  internal.platform.newsSchedulerInternal.runDueNewsSources,
+  {},
+);
+
 export default crons;
 

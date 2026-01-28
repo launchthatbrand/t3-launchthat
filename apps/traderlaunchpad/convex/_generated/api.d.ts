@@ -39,6 +39,10 @@ import type * as platform_clickhouseData from "../platform/clickhouseData.js";
 import type * as platform_clickhouseDataInternalActions from "../platform/clickhouseDataInternalActions.js";
 import type * as platform_crm from "../platform/crm.js";
 import type * as platform_joinCodes from "../platform/joinCodes.js";
+import type * as platform_newsAdmin from "../platform/newsAdmin.js";
+import type * as platform_newsLogs from "../platform/newsLogs.js";
+import type * as platform_newsSchedulerInternal from "../platform/newsSchedulerInternal.js";
+import type * as platform_newsSymbolUniverseInternalQueries from "../platform/newsSymbolUniverseInternalQueries.js";
 import type * as platform_priceDataAccountPolicies from "../platform/priceDataAccountPolicies.js";
 import type * as platform_priceDataJobs from "../platform/priceDataJobs.js";
 import type * as platform_priceDataJobsInternalActions from "../platform/priceDataJobsInternalActions.js";
@@ -129,6 +133,10 @@ declare const fullApi: ApiFromModules<{
   "platform/clickhouseDataInternalActions": typeof platform_clickhouseDataInternalActions;
   "platform/crm": typeof platform_crm;
   "platform/joinCodes": typeof platform_joinCodes;
+  "platform/newsAdmin": typeof platform_newsAdmin;
+  "platform/newsLogs": typeof platform_newsLogs;
+  "platform/newsSchedulerInternal": typeof platform_newsSchedulerInternal;
+  "platform/newsSymbolUniverseInternalQueries": typeof platform_newsSymbolUniverseInternalQueries;
   "platform/priceDataAccountPolicies": typeof platform_priceDataAccountPolicies;
   "platform/priceDataJobs": typeof platform_priceDataJobs;
   "platform/priceDataJobsInternalActions": typeof platform_priceDataJobsInternalActions;
@@ -937,6 +945,20 @@ export declare const components: {
   launchthat_notifications: {
     mutations: {
       createNotification: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          actionUrl?: string;
+          content?: string;
+          eventKey: string;
+          orgId: string;
+          tabKey?: string;
+          title: string;
+          userId: string;
+        },
+        null | string
+      >;
+      createNotificationOnce: FunctionReference<
         "mutation",
         "internal",
         {
@@ -5300,6 +5322,265 @@ export declare const components: {
             status: number;
             textPreview?: string;
           }
+        >;
+      };
+    };
+  };
+  launchthat_news: {
+    events: {
+      queries: {
+        getEventById: FunctionReference<
+          "query",
+          "internal",
+          { eventId: string },
+          null | {
+            _id: string;
+            canonicalKey: string;
+            country?: string;
+            createdAt: number;
+            currency?: string;
+            eventType: string;
+            impact?: string;
+            meta?: any;
+            publishedAt?: number;
+            startsAt?: number;
+            summary?: string;
+            title: string;
+            updatedAt: number;
+          }
+        >;
+        listEventsForSymbol: FunctionReference<
+          "query",
+          "internal",
+          { fromMs?: number; limit?: number; symbol: string; toMs?: number },
+          Array<{
+            at: number;
+            country?: string;
+            currency?: string;
+            eventId: string;
+            eventType: string;
+            impact?: string;
+            publishedAt?: number;
+            startsAt?: number;
+            summary?: string;
+            symbol: string;
+            title: string;
+          }>
+        >;
+        listEventsGlobal: FunctionReference<
+          "query",
+          "internal",
+          {
+            eventType?: string;
+            fromMs?: number;
+            limit?: number;
+            toMs?: number;
+          },
+          Array<{
+            _id: string;
+            country?: string;
+            createdAt: number;
+            currency?: string;
+            eventType: string;
+            impact?: string;
+            publishedAt?: number;
+            startsAt?: number;
+            summary?: string;
+            title: string;
+            updatedAt: number;
+          }>
+        >;
+        listSourcesForEvent: FunctionReference<
+          "query",
+          "internal",
+          { eventId: string; limit?: number },
+          Array<{
+            createdAt: number;
+            externalId?: string;
+            sourceKey: string;
+            url?: string;
+          }>
+        >;
+        listSymbolsForEvent: FunctionReference<
+          "query",
+          "internal",
+          { eventId: string },
+          Array<{ symbol: string }>
+        >;
+      };
+    };
+    ingest: {
+      actions: {
+        ingestSource: FunctionReference<
+          "action",
+          "internal",
+          { nowMs: number; sourceId: string; supportedSymbols: Array<string> },
+          {
+            createdEventIds: Array<string>;
+            createdEvents: number;
+            createdRaw: number;
+            dedupedEvents: number;
+            error?: string;
+            kind: string;
+            ok: boolean;
+            sourceId: string;
+            sourceKey: string;
+            symbolLinksWritten: number;
+            updatedEvents: number;
+          }
+        >;
+      };
+    };
+    runs: {
+      queries: {
+        listRecentRuns: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; sourceKey?: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            createdEvents?: number;
+            createdRaw?: number;
+            dedupedEvents?: number;
+            endedAt?: number;
+            kind: string;
+            lastError?: string;
+            ok?: boolean;
+            sourceId: string;
+            sourceKey: string;
+            startedAt: number;
+            symbolLinksWritten?: number;
+            updatedEvents?: number;
+          }>
+        >;
+      };
+    };
+    sources: {
+      mutations: {
+        createSource: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            cadenceSeconds?: number;
+            config: any;
+            enabled?: boolean;
+            kind: string;
+            label?: string;
+            overlapSeconds?: number;
+            sourceKey: string;
+          },
+          { sourceId: string }
+        >;
+        deleteSource: FunctionReference<
+          "mutation",
+          "internal",
+          { sourceId: string },
+          { ok: boolean }
+        >;
+        updateSource: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            cadenceSeconds?: number;
+            config?: any;
+            cursor?: any;
+            enabled?: boolean;
+            label?: string;
+            nextRunAt?: number;
+            overlapSeconds?: number;
+            sourceId: string;
+          },
+          { ok: boolean }
+        >;
+      };
+      queries: {
+        listDueSources: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; nowMs: number },
+          Array<{
+            _id: string;
+            cadenceSeconds: number;
+            config: any;
+            cursor?: any;
+            enabled: boolean;
+            kind: string;
+            label?: string;
+            nextRunAt: number;
+            overlapSeconds: number;
+            sourceKey: string;
+          }>
+        >;
+        listSources: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            cadenceSeconds: number;
+            config: any;
+            createdAt: number;
+            cursor?: any;
+            enabled: boolean;
+            kind: string;
+            label?: string;
+            nextRunAt: number;
+            overlapSeconds: number;
+            sourceKey: string;
+            updatedAt: number;
+          }>
+        >;
+      };
+    };
+    subscriptions: {
+      mutations: {
+        upsertSubscription: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            channels?: any;
+            cooldownSeconds?: number;
+            enabled: boolean;
+            minImpact?: string;
+            orgId: string;
+            symbol: string;
+            userId: string;
+          },
+          { ok: boolean }
+        >;
+      };
+      queries: {
+        getSubscriptionForUserOrgSymbol: FunctionReference<
+          "query",
+          "internal",
+          { orgId: string; symbol: string; userId: string },
+          null | {
+            _id: string;
+            channels?: any;
+            cooldownSeconds?: number;
+            createdAt: number;
+            enabled: boolean;
+            lastSentAt?: number;
+            minImpact?: string;
+            updatedAt: number;
+          }
+        >;
+        listEnabledSubscriptionsForSymbol: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; symbol: string },
+          Array<{
+            channels?: any;
+            cooldownSeconds?: number;
+            enabled: boolean;
+            lastSentAt?: number;
+            minImpact?: string;
+            orgId: string;
+            symbol: string;
+            userId: string;
+          }>
         >;
       };
     };

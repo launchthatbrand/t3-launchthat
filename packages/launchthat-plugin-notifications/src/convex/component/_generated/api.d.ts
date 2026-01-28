@@ -49,6 +49,20 @@ export type Mounts = {
       },
       null | string
     >;
+    createNotificationOnce: FunctionReference<
+      "mutation",
+      "public",
+      {
+        actionUrl?: string;
+        content?: string;
+        eventKey: string;
+        orgId: string;
+        tabKey?: string;
+        title: string;
+        userId: string;
+      },
+      null | string
+    >;
     markAllNotificationsAsReadByUserId: FunctionReference<
       "mutation",
       "public",

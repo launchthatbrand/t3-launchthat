@@ -19,6 +19,8 @@ import { v } from "convex/values";
 const componentsUntyped: any = require("../_generated/api").components;
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const internalUntyped: any = require("../_generated/api").internal;
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const apiUntyped: any = require("../_generated/api").api;
 
 const traderlaunchpadConnectionsMutations =
   componentsUntyped.launchthat_traderlaunchpad.connections.mutations;
@@ -1516,6 +1518,163 @@ export const pricedataGetPublicBars = action({
   },
 });
 
+export const pricedataGetMyChartOverlays = action({
+  args: {
+    symbol: v.string(),
+    // Optional override for broker/feed selection on chart pages.
+    sourceKey: v.optional(v.string()),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    hasIdentity: v.boolean(),
+    markers: v.array(
+      v.object({
+        t: v.number(),
+        kind: v.union(v.literal("entry"), v.literal("exit")),
+        side: v.optional(v.union(v.literal("buy"), v.literal("sell"))),
+        label: v.optional(v.string()),
+      }),
+    ),
+    priceLines: v.array(
+      v.object({
+        kind: v.union(v.literal("sl"), v.literal("tp")),
+        price: v.number(),
+        title: v.optional(v.string()),
+      }),
+    ),
+    error: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const ident = await ctx.auth.getUserIdentity();
+    if (!ident) {
+      // Public/marketing chart: fall back to local demo overlays.
+      return { ok: true, hasIdentity: false, markers: [], priceLines: [] };
+    }
+
+    const symbol = normalizeSymbol(args.symbol);
+    const requestedSourceKey =
+      typeof args.sourceKey === "string" ? args.sourceKey.trim() : "";
+
+    const source = requestedSourceKey
+      ? await ctx.runQuery(
+          componentsUntyped.launchthat_pricedata.sources.queries.getSourceByKey,
+          { sourceKey: requestedSourceKey },
+        )
+      : await ctx.runQuery(
+          componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
+          {},
+        );
+    const sourceKey = typeof source?.sourceKey === "string" ? String(source.sourceKey) : "";
+    if (!sourceKey) {
+      return {
+        ok: true,
+        hasIdentity: true,
+        markers: [],
+        priceLines: [],
+        error: "No default price source configured.",
+      };
+    }
+
+    const instrument = await ctx.runQuery(
+      componentsUntyped.launchthat_pricedata.instruments.queries.getInstrumentBySymbol,
+      { sourceKey, symbol },
+    );
+    const tradableInstrumentId =
+      typeof instrument?.tradableInstrumentId === "string"
+        ? String(instrument.tradableInstrumentId)
+        : "";
+    if (!tradableInstrumentId) {
+      return { ok: true, hasIdentity: true, markers: [], priceLines: [] };
+    }
+
+    // Ensure user doc exists for this session (actions can create-or-get).
+    try {
+      await resolveViewerUserId(ctx);
+    } catch {
+      // ignore; overlay requires auth, but we already have identity. Return empty.
+    }
+
+    const getNum = (raw: unknown, keys: string[]): number | null => {
+      if (!raw || typeof raw !== "object") return null;
+      const obj = raw as Record<string, unknown>;
+      for (const k of keys) {
+        const v = obj[k];
+        if (typeof v === "number" && Number.isFinite(v)) return v;
+      }
+      return null;
+    };
+
+    try {
+      const positions: any[] = await ctx.runQuery(
+        apiUntyped.traderlaunchpad.queries.listMyTradeLockerPositions,
+        { limit: 200 },
+      );
+      const list = Array.isArray(positions) ? positions : [];
+      const forInstrument = list.filter((p) => {
+        const pid = String((p as any)?.instrumentId ?? "");
+        const psym = normalizeSymbol(String((p as any)?.symbol ?? ""));
+        return pid === tradableInstrumentId || psym === symbol;
+      });
+
+      const markers: Array<{
+        t: number;
+        kind: "entry" | "exit";
+        side?: "buy" | "sell";
+        label?: string;
+      }> = [];
+      const priceLines: Array<{ kind: "sl" | "tp"; price: number; title?: string }> =
+        [];
+
+      for (const p of forInstrument) {
+        const openedAt =
+          typeof (p as any)?.openedAt === "number" ? Number((p as any).openedAt) : 0;
+        const updatedAt =
+          typeof (p as any)?.updatedAt === "number" ? Number((p as any).updatedAt) : 0;
+        const t = openedAt > 0 ? openedAt : updatedAt;
+        if (Number.isFinite(t) && t > 0) {
+          const sideRaw = String((p as any)?.side ?? "");
+          const side = sideRaw === "sell" ? "sell" : sideRaw === "buy" ? "buy" : undefined;
+          markers.push({
+            t,
+            kind: "entry",
+            side,
+            label: side === "sell" ? "Sell" : side === "buy" ? "Buy" : "Entry",
+          });
+        }
+
+        const raw = (p as any)?.raw;
+        const sl =
+          getNum(raw, ["stopLoss", "stopLossPrice", "sl", "SL"]) ??
+          getNum((raw as any)?.risk, ["stopLoss"]);
+        const tp =
+          getNum(raw, ["takeProfit", "takeProfitPrice", "tp", "TP"]) ??
+          getNum((raw as any)?.risk, ["takeProfit"]);
+        if (typeof sl === "number") priceLines.push({ kind: "sl", price: sl, title: "SL" });
+        if (typeof tp === "number") priceLines.push({ kind: "tp", price: tp, title: "TP" });
+      }
+
+      // Deduplicate price lines by kind (keep the latest).
+      const byKind: Record<string, { kind: "sl" | "tp"; price: number; title?: string }> = {};
+      for (const pl of priceLines) byKind[pl.kind] = pl;
+
+      return {
+        ok: true,
+        hasIdentity: true,
+        markers,
+        priceLines: Object.values(byKind),
+      };
+    } catch (e) {
+      return {
+        ok: true,
+        hasIdentity: true,
+        markers: [],
+        priceLines: [],
+        error: e instanceof Error ? e.message : String(e),
+      };
+    }
+  },
+});
+
 export const pricedataEnsurePublicBarsCached = action({
   args: {
     symbol: v.string(),
@@ -2110,5 +2269,294 @@ export const setMyJournalPublic = action({
     });
 
     return { ok: true };
+  },
+});
+
+export const newsListGlobal = action({
+  args: {
+    fromMs: v.optional(v.number()),
+    toMs: v.optional(v.number()),
+    limit: v.optional(v.number()),
+    eventType: v.optional(v.string()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.string(),
+      eventType: v.string(),
+      title: v.string(),
+      summary: v.optional(v.string()),
+      publishedAt: v.optional(v.number()),
+      startsAt: v.optional(v.number()),
+      impact: v.optional(v.string()),
+      country: v.optional(v.string()),
+      currency: v.optional(v.string()),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const rows: any[] = await ctx.runQuery(
+      componentsUntyped.launchthat_news.events.queries.listEventsGlobal,
+      {
+        fromMs: args.fromMs,
+        toMs: args.toMs,
+        limit: args.limit,
+        eventType: args.eventType,
+      },
+    );
+    const list = Array.isArray(rows) ? rows : [];
+    return list.map((r: any) => ({
+      _id: String(r?._id ?? ""),
+      eventType: String(r?.eventType ?? ""),
+      title: String(r?.title ?? ""),
+      summary: typeof r?.summary === "string" ? r.summary : undefined,
+      publishedAt: typeof r?.publishedAt === "number" ? r.publishedAt : undefined,
+      startsAt: typeof r?.startsAt === "number" ? r.startsAt : undefined,
+      impact: typeof r?.impact === "string" ? r.impact : undefined,
+      country: typeof r?.country === "string" ? r.country : undefined,
+      currency: typeof r?.currency === "string" ? r.currency : undefined,
+      createdAt: Number(r?.createdAt ?? 0),
+      updatedAt: Number(r?.updatedAt ?? 0),
+    }));
+  },
+});
+
+export const newsListForSymbol = action({
+  args: {
+    symbol: v.string(),
+    horizonDays: v.optional(v.number()),
+    lookbackHours: v.optional(v.number()),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    symbol: v.string(),
+    allowed: v.boolean(),
+    upcomingEconomic: v.array(
+      v.object({
+        eventId: v.string(),
+        at: v.number(),
+        title: v.string(),
+        impact: v.optional(v.string()),
+        country: v.optional(v.string()),
+        currency: v.optional(v.string()),
+      }),
+    ),
+    recentHeadlines: v.array(
+      v.object({
+        eventId: v.string(),
+        at: v.number(),
+        title: v.string(),
+        summary: v.optional(v.string()),
+      }),
+    ),
+  }),
+  handler: async (ctx, args) => {
+    const symbol = normalizeSymbol(args.symbol);
+    const horizonDays = Math.max(1, Math.min(30, Math.floor(args.horizonDays ?? 7)));
+    const lookbackHours = Math.max(1, Math.min(168, Math.floor(args.lookbackHours ?? 48)));
+    const now = Date.now();
+
+    const supportedSymbols: string[] = await ctx.runQuery(
+      internalUntyped.platform.newsSymbolUniverseInternalQueries.listSupportedSymbols,
+      { limitPerSource: 5000 },
+    );
+    const allowed = supportedSymbols.includes(symbol);
+    if (!allowed) {
+      return {
+        ok: true,
+        symbol,
+        allowed: false,
+        upcomingEconomic: [],
+        recentHeadlines: [],
+      };
+    }
+
+    const upcoming: any[] = await ctx.runQuery(
+      componentsUntyped.launchthat_news.events.queries.listEventsForSymbol,
+      {
+        symbol,
+        fromMs: now,
+        toMs: now + horizonDays * 24 * 60 * 60 * 1000,
+        limit: 100,
+      },
+    );
+    const recent: any[] = await ctx.runQuery(
+      componentsUntyped.launchthat_news.events.queries.listEventsForSymbol,
+      {
+        symbol,
+        fromMs: now - lookbackHours * 60 * 60 * 1000,
+        toMs: now,
+        limit: 100,
+      },
+    );
+
+    const upcomingEconomic = (Array.isArray(upcoming) ? upcoming : [])
+      .filter((r: any) => String(r?.eventType ?? "") === "economic")
+      .slice(0, 30)
+      .map((r: any) => ({
+        eventId: String(r?.eventId ?? ""),
+        at: Number(r?.at ?? 0),
+        title: String(r?.title ?? ""),
+        impact: typeof r?.impact === "string" ? r.impact : undefined,
+        country: typeof r?.country === "string" ? r.country : undefined,
+        currency: typeof r?.currency === "string" ? r.currency : undefined,
+      }))
+      .filter((r: any) => r.eventId && Number.isFinite(r.at) && r.at > 0);
+
+    const recentHeadlines = (Array.isArray(recent) ? recent : [])
+      .filter((r: any) => String(r?.eventType ?? "") === "headline")
+      .sort((a: any, b: any) => Number(b?.at ?? 0) - Number(a?.at ?? 0))
+      .slice(0, 30)
+      .map((r: any) => ({
+        eventId: String(r?.eventId ?? ""),
+        at: Number(r?.at ?? 0),
+        title: String(r?.title ?? ""),
+        summary: typeof r?.summary === "string" ? r.summary : undefined,
+      }))
+      .filter((r: any) => r.eventId && Number.isFinite(r.at) && r.at > 0);
+
+    return {
+      ok: true,
+      symbol,
+      allowed: true,
+      upcomingEconomic,
+      recentHeadlines,
+    };
+  },
+});
+
+export const newsSetSubscription = action({
+  args: {
+    symbol: v.string(),
+    enabled: v.boolean(),
+    minImpact: v.optional(v.string()),
+    channels: v.optional(v.any()),
+    cooldownSeconds: v.optional(v.number()),
+  },
+  returns: v.object({ ok: v.boolean(), hasIdentity: v.boolean(), symbol: v.string() }),
+  handler: async (ctx, args) => {
+    const symbol = normalizeSymbol(args.symbol);
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return { ok: true, hasIdentity: false, symbol };
+
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+
+    const supportedSymbols: string[] = await ctx.runQuery(
+      internalUntyped.platform.newsSymbolUniverseInternalQueries.listSupportedSymbols,
+      { limitPerSource: 5000 },
+    );
+    if (!supportedSymbols.includes(symbol)) {
+      return { ok: true, hasIdentity: true, symbol };
+    }
+
+    await ctx.runMutation(componentsUntyped.launchthat_news.subscriptions.mutations.upsertSubscription, {
+      userId,
+      orgId: organizationId,
+      symbol,
+      enabled: Boolean(args.enabled),
+      minImpact: typeof args.minImpact === "string" ? args.minImpact : undefined,
+      channels: args.channels,
+      cooldownSeconds:
+        typeof args.cooldownSeconds === "number" && Number.isFinite(args.cooldownSeconds)
+          ? Math.max(0, Math.floor(args.cooldownSeconds))
+          : undefined,
+    });
+
+    return { ok: true, hasIdentity: true, symbol };
+  },
+});
+
+export const newsGetEvent = action({
+  args: { eventId: v.string() },
+  returns: v.object({
+    ok: v.boolean(),
+    event: v.optional(
+      v.object({
+        _id: v.string(),
+        eventType: v.string(),
+        canonicalKey: v.string(),
+        title: v.string(),
+        summary: v.optional(v.string()),
+        publishedAt: v.optional(v.number()),
+        startsAt: v.optional(v.number()),
+        impact: v.optional(v.string()),
+        country: v.optional(v.string()),
+        currency: v.optional(v.string()),
+        meta: v.optional(v.any()),
+        createdAt: v.number(),
+        updatedAt: v.number(),
+      }),
+    ),
+    symbols: v.array(v.string()),
+    sources: v.array(
+      v.object({
+        sourceKey: v.string(),
+        url: v.optional(v.string()),
+        externalId: v.optional(v.string()),
+        createdAt: v.number(),
+      }),
+    ),
+    error: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const eventId = args.eventId.trim();
+    if (!eventId) return { ok: false, symbols: [], sources: [], error: "Missing eventId" };
+
+    try {
+      const event: any = await ctx.runQuery(
+        componentsUntyped.launchthat_news.events.queries.getEventById,
+        { eventId: eventId as any },
+      );
+      if (!event) return { ok: true, symbols: [], sources: [], event: undefined };
+
+      const symbolsRes: any[] = await ctx.runQuery(
+        componentsUntyped.launchthat_news.events.queries.listSymbolsForEvent,
+        { eventId: (event._id as unknown) as any },
+      );
+      const sourcesRes: any[] = await ctx.runQuery(
+        componentsUntyped.launchthat_news.events.queries.listSourcesForEvent,
+        { eventId: (event._id as unknown) as any, limit: 50 },
+      );
+
+      const symbols = (Array.isArray(symbolsRes) ? symbolsRes : [])
+        .map((r: any) => String(r?.symbol ?? "").trim().toUpperCase())
+        .filter(Boolean);
+
+      const sources = (Array.isArray(sourcesRes) ? sourcesRes : []).map((r: any) => ({
+        sourceKey: String(r?.sourceKey ?? ""),
+        url: typeof r?.url === "string" ? r.url : undefined,
+        externalId: typeof r?.externalId === "string" ? r.externalId : undefined,
+        createdAt: Number(r?.createdAt ?? 0),
+      }));
+
+      return {
+        ok: true,
+        event: {
+          _id: String(event._id),
+          eventType: String(event.eventType ?? ""),
+          canonicalKey: String(event.canonicalKey ?? ""),
+          title: String(event.title ?? ""),
+          summary: typeof event.summary === "string" ? event.summary : undefined,
+          publishedAt: typeof event.publishedAt === "number" ? event.publishedAt : undefined,
+          startsAt: typeof event.startsAt === "number" ? event.startsAt : undefined,
+          impact: typeof event.impact === "string" ? event.impact : undefined,
+          country: typeof event.country === "string" ? event.country : undefined,
+          currency: typeof event.currency === "string" ? event.currency : undefined,
+          meta: event.meta,
+          createdAt: Number(event.createdAt ?? 0),
+          updatedAt: Number(event.updatedAt ?? 0),
+        },
+        symbols,
+        sources,
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        symbols: [],
+        sources: [],
+        error: e instanceof Error ? e.message : String(e),
+      };
+    }
   },
 });

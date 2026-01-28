@@ -53,7 +53,7 @@
    NOTE: Must live in utilities layer (and use !important) to override Tailwind utilities like `bg-card`. */
 @layer utilities {
   .light [data-slot="card"] {
-    border-radius: 1.5rem;
+    border-radius: .8rem;
     /* ~ rounded-3xl */
     border-color: rgba(0, 0, 0, 0.08) !important;
     background-color: rgba(255, 255, 255, 0.62) !important;

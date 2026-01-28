@@ -1,4 +1,4 @@
-export type TraderLaunchpadNotificationCategory = "plan" | "insights" | "system";
+export type TraderLaunchpadNotificationCategory = "plan" | "insights" | "system" | "news";
 
 export type TraderLaunchpadNotificationSinkId = "inApp" | "email";
 
@@ -7,7 +7,7 @@ export type TraderLaunchpadNotificationEventDefinition = {
   label: string;
   description?: string;
   category: TraderLaunchpadNotificationCategory;
-  tabKey: "plan" | "insights" | "system";
+  tabKey: "plan" | "insights" | "system" | "news";
 
   /**
    * Defaults for test harness prefill (and future settings UI).
@@ -124,6 +124,19 @@ export const TRADERLAUNCHPAD_NOTIFICATION_EVENTS: TraderLaunchpadNotificationEve
         "Here’s your daily overview: wins, losses, risk stats, and your top focus for tomorrow.",
       defaultActionUrl: "/admin/dashboard",
       defaultSinkIds: ["email"],
+    },
+
+    // News
+    {
+      eventKey: "traderlaunchpad.news.alert",
+      label: "News alerts",
+      description: "Economic calendar events and headlines for subscribed symbols.",
+      category: "news",
+      tabKey: "news",
+      defaultTitle: "News alert",
+      defaultContent: "There is new news for one of your subscribed symbols.",
+      defaultActionUrl: "/news",
+      defaultSinkIds: ["inApp"],
     },
   ];
 

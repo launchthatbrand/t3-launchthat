@@ -1,19 +1,12 @@
 "use client";
 
-import React from "react";
-import { useAction } from "convex/react";
-import { api } from "@convex-config/_generated/api";
+import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { Flag, Loader2, Search } from "lucide-react";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@acme/ui/resizable";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
-import { Button } from "@acme/ui/button";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
-import { Separator } from "@acme/ui/separator";
-import { Badge } from "@acme/ui/badge";
 import {
   Table,
   TableBody,
@@ -22,10 +15,29 @@ import {
   TableHeader,
   TableRow,
 } from "@acme/ui/table";
-import { cn } from "@acme/ui/lib/utils";
-import { PublicSymbolPricePanel } from "~/components/price/PublicSymbolPricePanel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Flag, Search, Loader2 } from "lucide-react";
+import Link from "next/link";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
+import { PublicSymbolPricePanel } from "~/components/price/PublicSymbolPricePanel";
+import React from "react";
+import { Separator } from "@acme/ui/separator";
+import { api } from "@convex-config/_generated/api";
+import { cn } from "@acme/ui/lib/utils";
+import { useAction } from "convex/react";
+import { Skeleton } from "@acme/ui/skeleton";
+
+type SideTab = "watchlist" | "details" | "trade";
+type BottomTab = "positions" | "orders" | "fills" | "alerts";
+interface SourceOption {
+  sourceKey: string;
+  label: string;
+  isDefault?: boolean;
+}
 
 export function PublicSymbolTradingPanel({
   symbol,
@@ -41,10 +53,12 @@ export function PublicSymbolTradingPanel({
   const listSymbolsForSourceKey = useAction(
     api.traderlaunchpad.actions.pricedataListPublicSymbolsForSourceKey,
   );
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  const listNewsForSymbol = useAction(api.traderlaunchpad.actions.newsListForSymbol);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  const setNewsSubscription = useAction(api.traderlaunchpad.actions.newsSetSubscription);
 
-  const [sources, setSources] = React.useState<
-    Array<{ sourceKey: string; label: string; isDefault?: boolean }>
-  >([]);
+  const [sources, setSources] = React.useState<SourceOption[]>([]);
   const [selectedSourceKey, setSelectedSourceKey] = React.useState<string | null>(
     null,
   );
@@ -55,10 +69,101 @@ export function PublicSymbolTradingPanel({
   );
   const [pendingSymbol, setPendingSymbol] = React.useState<string | null>(null);
 
+  const [newsLoading, setNewsLoading] = React.useState(false);
+  const [newsAllowed, setNewsAllowed] = React.useState(true);
+  const [newsUpcomingEconomic, setNewsUpcomingEconomic] = React.useState<
+    { eventId: string; at: number; title: string; impact?: string; currency?: string }[]
+  >([]);
+  const [newsRecentHeadlines, setNewsRecentHeadlines] = React.useState<
+    { eventId: string; at: number; title: string; summary?: string }[]
+  >([]);
+  const [newsSubscribed, setNewsSubscribed] = React.useState(false);
+
   const urlSourceKey = searchParams.get("sourceKey");
+  const urlSideTab = (searchParams.get("sideTab") ?? "") as SideTab;
+  const urlBottomTab = (searchParams.get("bottomTab") ?? "") as BottomTab;
+
+  const [sideTab, setSideTab] = React.useState<SideTab>(
+    urlSideTab === "details" || urlSideTab === "trade" ? urlSideTab : "watchlist",
+  );
+  const [bottomTab, setBottomTab] = React.useState<BottomTab>(
+    urlBottomTab === "orders" || urlBottomTab === "fills" || urlBottomTab === "alerts"
+      ? urlBottomTab
+      : "positions",
+  );
+
   const favoritesStorageKey = selectedSourceKey
     ? `publicTradingPanel:favorites:${selectedSourceKey}`
     : null;
+
+  // Keep URL state in sync (and also adopt URL changes if user uses back/forward).
+  React.useEffect(() => {
+    const nextSide: SideTab =
+      urlSideTab === "details" || urlSideTab === "trade" ? urlSideTab : "watchlist";
+    const nextBottom: BottomTab =
+      urlBottomTab === "orders" || urlBottomTab === "fills" || urlBottomTab === "alerts"
+        ? urlBottomTab
+        : "positions";
+    if (nextSide !== sideTab) setSideTab(nextSide);
+    if (nextBottom !== bottomTab) setBottomTab(nextBottom);
+  }, [bottomTab, sideTab, urlBottomTab, urlSideTab]);
+
+  const replaceUrlParam = React.useCallback(
+    (updates: Record<string, string | null | undefined>) => {
+      const sp = new URLSearchParams(searchParams.toString());
+      for (const [k, v] of Object.entries(updates)) {
+        if (!v) sp.delete(k);
+        else sp.set(k, v);
+      }
+      router.replace(`/symbol/${encodeURIComponent(symbol)}?${sp.toString()}`, {
+        scroll: false,
+      });
+    },
+    [router, searchParams, symbol],
+  );
+
+  React.useEffect(() => {
+    // Ensure URL contains full state defaults for shareability.
+    const needsSide = !searchParams.get("sideTab");
+    const needsBottom = !searchParams.get("bottomTab");
+    if (!needsSide && !needsBottom) return;
+    replaceUrlParam({
+      ...(needsSide ? { sideTab } : {}),
+      ...(needsBottom ? { bottomTab } : {}),
+    });
+  }, [bottomTab, replaceUrlParam, searchParams, sideTab]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      setNewsLoading(true);
+      try {
+        const res = (await listNewsForSymbol({
+          symbol,
+          horizonDays: 7,
+          lookbackHours: 48,
+        })) as any;
+        if (cancelled) return;
+        setNewsAllowed(Boolean(res?.allowed ?? true));
+        setNewsUpcomingEconomic(Array.isArray(res?.upcomingEconomic) ? res.upcomingEconomic : []);
+        setNewsRecentHeadlines(Array.isArray(res?.recentHeadlines) ? res.recentHeadlines : []);
+        setNewsSubscribed(false);
+      } catch {
+        if (cancelled) return;
+        setNewsAllowed(true);
+        setNewsUpcomingEconomic([]);
+        setNewsRecentHeadlines([]);
+        setNewsSubscribed(false);
+      } finally {
+        if (cancelled) return;
+        setNewsLoading(false);
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [listNewsForSymbol, symbol]);
 
   React.useEffect(() => {
     if (!favoritesStorageKey) return;
@@ -67,8 +172,8 @@ export function PublicSymbolTradingPanel({
       const arr = raw ? (JSON.parse(raw) as unknown) : [];
       const list = Array.isArray(arr)
         ? arr
-            .map((s) => (typeof s === "string" ? s.trim().toUpperCase() : ""))
-            .filter(Boolean)
+          .map((s) => (typeof s === "string" ? s.trim().toUpperCase() : ""))
+          .filter(Boolean)
         : [];
       setFavoriteSet(new Set(list));
     } catch {
@@ -101,9 +206,20 @@ export function PublicSymbolTradingPanel({
   React.useEffect(() => {
     let cancelled = false;
     listSources({ limit: 50 })
-      .then((rows) => {
+      .then((rowsUnknown: unknown) => {
         if (cancelled) return;
-        const next = Array.isArray(rows) ? rows : [];
+        const next: SourceOption[] = [];
+        if (Array.isArray(rowsUnknown)) {
+          for (const r of rowsUnknown) {
+            const obj = r as Record<string, unknown>;
+            const sourceKey = typeof obj.sourceKey === "string" ? obj.sourceKey : "";
+            if (!sourceKey) continue;
+            const label = typeof obj.label === "string" ? obj.label : sourceKey;
+            const isDefault = obj.isDefault === true ? true : undefined;
+            next.push({ sourceKey, label, ...(isDefault ? { isDefault } : {}) });
+          }
+        }
+
         setSources(next);
 
         const preferred =
@@ -116,15 +232,11 @@ export function PublicSymbolTradingPanel({
           next[0]?.sourceKey ??
           null;
 
-        const chosen = preferred ?? fallback;
+        const chosen: string | null = preferred ?? fallback;
         setSelectedSourceKey(chosen);
 
         if (!preferred && chosen) {
-          const sp = new URLSearchParams(searchParams.toString());
-          sp.set("sourceKey", chosen);
-          router.replace(`/symbol/${encodeURIComponent(symbol)}?${sp.toString()}`, {
-            scroll: false,
-          });
+          replaceUrlParam({ sourceKey: chosen });
         }
       })
       .catch(() => {
@@ -134,9 +246,7 @@ export function PublicSymbolTradingPanel({
     return () => {
       cancelled = true;
     };
-    // Intentionally exclude router/searchParams from deps to avoid replace loops.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listSources, urlSourceKey]);
+  }, [listSources, urlSourceKey, replaceUrlParam]);
 
   React.useEffect(() => {
     const k = selectedSourceKey;
@@ -146,9 +256,15 @@ export function PublicSymbolTradingPanel({
     }
     let cancelled = false;
     listSymbolsForSourceKey({ sourceKey: k, limit: 5000 })
-      .then((res) => {
+      .then((resUnknown: unknown) => {
         if (cancelled) return;
-        setSymbols(Array.isArray(res?.symbols) ? res.symbols : []);
+        const obj = (resUnknown ?? {}) as Record<string, unknown>;
+        const nextSymbols = Array.isArray(obj.symbols)
+          ? obj.symbols
+            .map((s) => (typeof s === "string" ? s : ""))
+            .filter(Boolean)
+          : [];
+        setSymbols(nextSymbols);
       })
       .catch(() => {
         if (cancelled) return;
@@ -176,13 +292,9 @@ export function PublicSymbolTradingPanel({
       const trimmed = next.trim();
       if (!trimmed) return;
       setSelectedSourceKey(trimmed);
-      const sp = new URLSearchParams(searchParams.toString());
-      sp.set("sourceKey", trimmed);
-      router.replace(`/symbol/${encodeURIComponent(symbol)}?${sp.toString()}`, {
-        scroll: false,
-      });
+      replaceUrlParam({ sourceKey: trimmed });
     },
-    [router, searchParams, symbol],
+    [replaceUrlParam],
   );
 
   React.useEffect(() => {
@@ -194,7 +306,7 @@ export function PublicSymbolTradingPanel({
     <div className={cn("w-full", className)}>
       <ResizablePanelGroup
         direction="vertical"
-        className="h-[72vh] min-h-[640px] overflow-hidden rounded-3xl border border-white/10 bg-black/20"
+        className="h-[72vh] min-h-[640px] overflow-hidden rounded-3xl border border-border/40 bg-card/70 text-foreground backdrop-blur-md"
       >
         <ResizablePanel defaultSize={72} minSize={45}>
           <ResizablePanelGroup direction="horizontal" className="h-full">
@@ -207,7 +319,7 @@ export function PublicSymbolTradingPanel({
                   onSelectedSourceKeyChangeAction={handleSelectSourceKey}
                   externalLoading={Boolean(pendingSymbol && pendingSymbol !== symbol)}
                   fillHeight
-                  className="h-full min-h-0 rounded-2xl border-white/10 bg-white/3 p-4"
+                  className="h-full min-h-0 overflow-hidden rounded-2xl border-border/40 bg-card/70"
                 />
               </div>
             </ResizablePanel>
@@ -216,24 +328,33 @@ export function PublicSymbolTradingPanel({
 
             <ResizablePanel defaultSize={26} minSize={18} maxSize={40}>
               <div className="h-full p-3">
-                <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/3 backdrop-blur-md">
-                  <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-                    <div className="text-sm font-semibold text-white/85">
-                      Panel
+                <Card className="flex h-full flex-col overflow-hidden border-border/40 bg-card/70 backdrop-blur-md">
+                  <CardHeader className="border-b border-border/40 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <CardTitle className="text-sm">Panel</CardTitle>
+                      <Badge variant="secondary" className="text-xs">
+                        Demo
+                      </Badge>
                     </div>
-                    <Badge variant="secondary" className="text-xs">
-                      Demo
-                    </Badge>
-                  </div>
+                  </CardHeader>
 
-                  <Tabs defaultValue="watchlist" className="flex h-full flex-col">
-                    <div className="border-b border-white/10 px-3 py-2">
+                  <Tabs
+                    value={sideTab}
+                    onValueChange={(v) => {
+                      const next =
+                        v === "details" || v === "trade" ? (v as SideTab) : ("watchlist" as SideTab);
+                      setSideTab(next);
+                      replaceUrlParam({ sideTab: next });
+                    }}
+                    className="flex h-full flex-col"
+                  >
+                    <CardContent className="border-b border-border/40 px-3 py-2">
                       <TabsList className="grid w-full grid-cols-3">
                         <TabsTrigger value="watchlist">Watch</TabsTrigger>
                         <TabsTrigger value="details">Details</TabsTrigger>
                         <TabsTrigger value="trade">Trade</TabsTrigger>
                       </TabsList>
-                    </div>
+                    </CardContent>
 
                     <TabsContent
                       value="watchlist"
@@ -241,7 +362,7 @@ export function PublicSymbolTradingPanel({
                     >
                       <div className="space-y-3">
                         <div className="relative">
-                          <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-white/40" />
+                          <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                           <Input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
@@ -252,15 +373,15 @@ export function PublicSymbolTradingPanel({
 
                         {filteredSymbols.fav.length > 0 ? (
                           <div className="space-y-2">
-                            <div className="text-[11px] font-semibold text-white/50">
+                            <div className="text-[11px] font-semibold text-muted-foreground">
                               Favorites
                             </div>
                             {filteredSymbols.fav.map((s) => (
                               <div
                                 key={s}
                                 className={cn(
-                                  "flex w-full items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-left text-sm text-white/80 hover:bg-black/30",
-                                  s === symbol ? "ring-1 ring-white/20" : "",
+                                  "flex w-full items-center justify-between rounded-xl border border-border/40 bg-background/40 px-3 py-2 text-left text-sm text-foreground hover:bg-foreground/5",
+                                  s === symbol ? "ring-1 ring-ring/30" : "",
                                 )}
                                 role="button"
                                 tabIndex={0}
@@ -296,7 +417,7 @@ export function PublicSymbolTradingPanel({
                                 <span className="flex min-w-0 items-center gap-2">
                                   <button
                                     type="button"
-                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-black/30 hover:bg-black/40"
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/40 bg-background/60 text-muted-foreground hover:bg-foreground/5"
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
@@ -304,23 +425,30 @@ export function PublicSymbolTradingPanel({
                                     }}
                                     aria-label="Toggle favorite"
                                   >
-                                    <Flag className="h-4 w-4 text-rose-300" />
+                                    <Flag
+                                      className={cn(
+                                        "h-4 w-4",
+                                        favoriteSet.has(s)
+                                          ? "text-orange-500"
+                                          : "text-muted-foreground/60",
+                                      )}
+                                    />
                                   </button>
                                   <span className="min-w-0 truncate font-mono">
                                     {s}
                                   </span>
                                 </span>
                                 {pendingSymbol === s ? (
-                                  <span className="inline-flex items-center gap-2 text-xs text-white/50">
+                                  <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                     Loading
                                   </span>
                                 ) : s === symbol ? (
-                                  <span className="text-xs text-white/50">
+                                  <span className="text-xs text-muted-foreground">
                                     Viewing
                                   </span>
                                 ) : (
-                                  <span className="text-xs text-white/50">
+                                  <span className="text-xs text-muted-foreground">
                                     Open
                                   </span>
                                 )}
@@ -331,88 +459,88 @@ export function PublicSymbolTradingPanel({
 
                         <div className="space-y-2">
                           {filteredSymbols.fav.length > 0 ? (
-                            <div className="text-[11px] font-semibold text-white/50">
+                            <div className="text-[11px] font-semibold text-muted-foreground">
                               All
                             </div>
                           ) : null}
                           {filteredSymbols.rest.map((s) => (
-                          <div
-                            key={s}
-                            className={cn(
-                              "flex w-full items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-left text-sm text-white/80 hover:bg-black/30",
-                              s === symbol ? "ring-1 ring-white/20" : "",
-                              pendingSymbol === s ? "opacity-80" : "",
-                            )}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => {
-                              if (s === symbol) {
-                                setPendingSymbol(null);
-                                return;
-                              }
-                              setPendingSymbol(s);
-                              const sp = new URLSearchParams(searchParams.toString());
-                              if (selectedSourceKey) sp.set("sourceKey", selectedSourceKey);
-                              router.push(
-                                `/symbol/${encodeURIComponent(s)}?${sp.toString()}`,
-                                { scroll: false },
-                              );
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key !== "Enter" && e.key !== " ") return;
-                              e.preventDefault();
-                              if (s === symbol) {
-                                setPendingSymbol(null);
-                                return;
-                              }
-                              setPendingSymbol(s);
-                              const sp = new URLSearchParams(searchParams.toString());
-                              if (selectedSourceKey) sp.set("sourceKey", selectedSourceKey);
-                              router.push(
-                                `/symbol/${encodeURIComponent(s)}?${sp.toString()}`,
-                                { scroll: false },
-                              );
-                            }}
-                          >
-                            <span className="flex min-w-0 items-center gap-2">
-                              <button
-                                type="button"
-                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-black/30 hover:bg-black/40"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  toggleFavorite(s);
-                                }}
-                                aria-label="Toggle favorite"
-                              >
-                                <Flag
-                                  className={cn(
-                                    "h-4 w-4",
-                                    favoriteSet.has(s)
-                                      ? "text-rose-300"
-                                      : "text-white/30",
-                                  )}
-                                />
-                              </button>
-                              <span className="min-w-0 truncate font-mono">
-                                {s}
+                            <div
+                              key={s}
+                              className={cn(
+                                "flex w-full items-center justify-between rounded-xl border border-border/40 bg-background/40 px-3 py-2 text-left text-sm text-foreground hover:bg-foreground/5",
+                                s === symbol ? "ring-1 ring-ring/30" : "",
+                                pendingSymbol === s ? "opacity-80" : "",
+                              )}
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => {
+                                if (s === symbol) {
+                                  setPendingSymbol(null);
+                                  return;
+                                }
+                                setPendingSymbol(s);
+                                const sp = new URLSearchParams(searchParams.toString());
+                                if (selectedSourceKey) sp.set("sourceKey", selectedSourceKey);
+                                router.push(
+                                  `/symbol/${encodeURIComponent(s)}?${sp.toString()}`,
+                                  { scroll: false },
+                                );
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key !== "Enter" && e.key !== " ") return;
+                                e.preventDefault();
+                                if (s === symbol) {
+                                  setPendingSymbol(null);
+                                  return;
+                                }
+                                setPendingSymbol(s);
+                                const sp = new URLSearchParams(searchParams.toString());
+                                if (selectedSourceKey) sp.set("sourceKey", selectedSourceKey);
+                                router.push(
+                                  `/symbol/${encodeURIComponent(s)}?${sp.toString()}`,
+                                  { scroll: false },
+                                );
+                              }}
+                            >
+                              <span className="flex min-w-0 items-center gap-2">
+                                <button
+                                  type="button"
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/40 bg-background/60 text-muted-foreground hover:bg-foreground/5"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    toggleFavorite(s);
+                                  }}
+                                  aria-label="Toggle favorite"
+                                >
+                                  <Flag
+                                    className={cn(
+                                      "h-4 w-4",
+                                      favoriteSet.has(s)
+                                        ? "text-orange-300"
+                                        : "text-muted-foreground/50",
+                                    )}
+                                  />
+                                </button>
+                                <span className="min-w-0 truncate font-mono">
+                                  {s}
+                                </span>
                               </span>
-                            </span>
-                            {pendingSymbol === s ? (
-                              <span className="inline-flex items-center gap-2 text-xs text-white/50">
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                Loading
-                              </span>
-                            ) : s === symbol ? (
-                              <span className="text-xs text-white/50">
-                                Viewing
-                              </span>
-                            ) : (
-                              <span className="text-xs text-white/50">
-                                Open
-                              </span>
-                            )}
-                          </div>
+                              {pendingSymbol === s ? (
+                                <span className="inline-flex items-center gap-2 text-xs text-white/50">
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  Loading
+                                </span>
+                              ) : s === symbol ? (
+                                <span className="text-xs text-white/50">
+                                  Viewing
+                                </span>
+                              ) : (
+                                <span className="text-xs text-white/50">
+                                  Open
+                                </span>
+                              )}
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -423,30 +551,146 @@ export function PublicSymbolTradingPanel({
                       className="flex-1 overflow-auto p-3"
                     >
                       <div className="space-y-3">
-                        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                          <div className="text-xs font-semibold text-white/70">
+                        <div className="rounded-xl border border-border/40 bg-background/40 p-3">
+                          <div className="text-xs font-semibold text-muted-foreground">
                             Instrument
                           </div>
-                          <div className="mt-1 font-mono text-sm text-white/80">
+                          <div className="mt-1 font-mono text-sm text-foreground">
                             {symbol}
                           </div>
                         </div>
-                        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                          <div className="text-xs font-semibold text-white/70">
+                        <div className="rounded-xl border border-border/40 bg-background/40 p-3">
+                          <div className="text-xs font-semibold text-muted-foreground">
                             Status
                           </div>
-                          <div className="mt-1 text-sm text-white/70">
+                          <div className="mt-1 text-sm text-muted-foreground">
                             Public ClickHouse cache (MVP)
                           </div>
                         </div>
-                        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                          <div className="text-xs font-semibold text-white/70">
+                        <div className="rounded-xl border border-border/40 bg-background/40 p-3">
+                          <div className="text-xs font-semibold text-muted-foreground">
                             Notes
                           </div>
-                          <div className="mt-1 text-sm text-white/60">
+                          <div className="mt-1 text-sm text-muted-foreground">
                             This sidebar becomes accounts, order ticket, DOM,
                             alerts, etc.
                           </div>
+                        </div>
+
+                        <div className="rounded-xl border border-border/40 bg-background/40 p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-xs font-semibold text-muted-foreground">
+                              News
+                            </div>
+                            <Link
+                              href="/news"
+                              className="text-[11px] text-muted-foreground hover:text-foreground"
+                            >
+                              View all
+                            </Link>
+                          </div>
+                          <div className="mt-2 flex items-center justify-between gap-2">
+                            <div className="text-[11px] text-muted-foreground">
+                              Alerts
+                            </div>
+                            <button
+                              type="button"
+                              className={cn(
+                                "inline-flex h-7 items-center rounded-md border px-2 text-[11px]",
+                                newsSubscribed
+                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                                  : "border-border/40 bg-background/60 text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
+                              )}
+                              onClick={() =>
+                                void (async () => {
+                                  const next = !newsSubscribed;
+                                  setNewsSubscribed(next);
+                                  try {
+                                    await setNewsSubscription({
+                                      symbol,
+                                      enabled: next,
+                                      channels: { inApp: true },
+                                      cooldownSeconds: 300,
+                                    });
+                                  } catch {
+                                    // revert on failure
+                                    setNewsSubscribed(!next);
+                                  }
+                                })()
+                              }
+                            >
+                              {newsSubscribed ? "Subscribed" : "Subscribe"}
+                            </button>
+                          </div>
+
+                          {newsLoading ? (
+                            <div className="mt-3 space-y-2">
+                              <Skeleton className="h-4 w-32" />
+                              <Skeleton className="h-14 w-full" />
+                              <Skeleton className="h-14 w-full" />
+                            </div>
+                          ) : !newsAllowed ? (
+                            <div className="mt-2 text-xs text-muted-foreground">
+                              News is limited to symbols supported in price data.
+                            </div>
+                          ) : newsUpcomingEconomic.length === 0 &&
+                            newsRecentHeadlines.length === 0 ? (
+                            <div className="mt-2 text-xs text-muted-foreground">
+                              No events for this symbol yet.
+                            </div>
+                          ) : (
+                            <div className="mt-3 space-y-3">
+                              {newsUpcomingEconomic.length > 0 ? (
+                                <div>
+                                  <div className="text-[11px] font-semibold text-muted-foreground">
+                                    Upcoming
+                                  </div>
+                                  <div className="mt-2 space-y-2">
+                                    {newsUpcomingEconomic.slice(0, 3).map((e) => (
+                                      <div
+                                        key={e.eventId}
+                                        className="rounded-lg border border-border/40 bg-background/50 p-2"
+                                      >
+                                        <div className="text-xs font-medium text-foreground">
+                                          {e.title}
+                                        </div>
+                                        <div className="mt-1 text-[11px] text-muted-foreground">
+                                          {new Date(e.at).toLocaleString()}
+                                          {e.currency ? ` • ${e.currency}` : ""}
+                                          {e.impact ? ` • ${e.impact}` : ""}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : null}
+
+                              {newsRecentHeadlines.length > 0 ? (
+                                <div>
+                                  <div className="text-[11px] font-semibold text-muted-foreground">
+                                    Headlines
+                                  </div>
+                                  <div className="mt-2 space-y-2">
+                                    {newsRecentHeadlines.slice(0, 3).map((e) => (
+                                      <div
+                                        key={e.eventId}
+                                        className="rounded-lg border border-border/40 bg-background/50 p-2"
+                                      >
+                                        <div className="text-xs font-medium text-foreground">
+                                          {e.title}
+                                        </div>
+                                        {e.summary ? (
+                                          <div className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">
+                                            {e.summary}
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </TabsContent>
@@ -456,13 +700,13 @@ export function PublicSymbolTradingPanel({
                       className="flex-1 overflow-auto p-3"
                     >
                       <div className="space-y-3">
-                        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                          <div className="text-xs font-semibold text-white/70">
+                        <div className="rounded-xl border border-border/40 bg-background/40 p-3">
+                          <div className="text-xs font-semibold text-muted-foreground">
                             Order ticket (MVP)
                           </div>
                           <div className="mt-3 grid gap-3">
                             <div className="grid gap-1.5">
-                              <Label className="text-xs text-white/60">
+                              <Label className="text-xs text-muted-foreground">
                                 Size
                               </Label>
                               <Input
@@ -472,7 +716,7 @@ export function PublicSymbolTradingPanel({
                               />
                             </div>
                             <div className="grid gap-1.5">
-                              <Label className="text-xs text-white/60">
+                              <Label className="text-xs text-muted-foreground">
                                 Stop loss
                               </Label>
                               <Input
@@ -482,7 +726,7 @@ export function PublicSymbolTradingPanel({
                               />
                             </div>
                             <div className="grid gap-1.5">
-                              <Label className="text-xs text-white/60">
+                              <Label className="text-xs text-muted-foreground">
                                 Take profit
                               </Label>
                               <Input
@@ -491,7 +735,7 @@ export function PublicSymbolTradingPanel({
                                 className="h-9"
                               />
                             </div>
-                            <Separator className="bg-white/10" />
+                            <Separator className="bg-border/60" />
                             <div className="grid grid-cols-2 gap-2">
                               <Button className="h-9 bg-emerald-600 hover:bg-emerald-700">
                                 Buy
@@ -500,7 +744,7 @@ export function PublicSymbolTradingPanel({
                                 Sell
                               </Button>
                             </div>
-                            <div className="text-xs text-white/50">
+                            <div className="text-xs text-muted-foreground">
                               MVP only — no broker execution yet.
                             </div>
                           </div>
@@ -508,7 +752,7 @@ export function PublicSymbolTradingPanel({
                       </div>
                     </TabsContent>
                   </Tabs>
-                </div>
+                </Card>
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
@@ -518,19 +762,32 @@ export function PublicSymbolTradingPanel({
 
         <ResizablePanel defaultSize={28} minSize={18}>
           <div className="h-full p-3">
-            <div className="h-full overflow-hidden rounded-2xl border border-white/10 bg-white/3 backdrop-blur-md">
-              <Tabs defaultValue="positions" className="flex h-full flex-col">
-                <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-                  <TabsList className="grid w-[420px] grid-cols-4">
-                    <TabsTrigger value="positions">Positions</TabsTrigger>
-                    <TabsTrigger value="orders">Orders</TabsTrigger>
-                    <TabsTrigger value="fills">Fills</TabsTrigger>
-                    <TabsTrigger value="alerts">Alerts</TabsTrigger>
-                  </TabsList>
-                  <div className="text-xs text-white/50">
-                    {symbol} • demo data
+            <Card className="h-full overflow-hidden border-border/40 bg-card/70 backdrop-blur-md">
+              <Tabs
+                value={bottomTab}
+                onValueChange={(v) => {
+                  const next =
+                    v === "orders" || v === "fills" || v === "alerts"
+                      ? (v as BottomTab)
+                      : ("positions" as BottomTab);
+                  setBottomTab(next);
+                  replaceUrlParam({ bottomTab: next });
+                }}
+                className="flex h-full flex-col"
+              >
+                <CardHeader className="border-b border-border/40 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <TabsList className="grid w-[420px] grid-cols-4">
+                      <TabsTrigger value="positions">Positions</TabsTrigger>
+                      <TabsTrigger value="orders">Orders</TabsTrigger>
+                      <TabsTrigger value="fills">Fills</TabsTrigger>
+                      <TabsTrigger value="alerts">Alerts</TabsTrigger>
+                    </TabsList>
+                    <div className="text-xs text-muted-foreground">
+                      {symbol} • demo data
+                    </div>
                   </div>
-                </div>
+                </CardHeader>
 
                 <TabsContent value="positions" className="flex-1 overflow-auto">
                   <Table>
@@ -555,7 +812,7 @@ export function PublicSymbolTradingPanel({
                         <TableCell className="text-right font-mono">
                           89320.5
                         </TableCell>
-                        <TableCell className="text-right font-mono text-emerald-200">
+                        <TableCell className="text-right font-mono text-emerald-500">
                           +12.40
                         </TableCell>
                       </TableRow>
@@ -564,24 +821,24 @@ export function PublicSymbolTradingPanel({
                 </TabsContent>
 
                 <TabsContent value="orders" className="flex-1 overflow-auto p-4">
-                  <div className="text-sm text-white/60">
+                  <div className="text-sm text-muted-foreground">
                     No open orders (MVP).
                   </div>
                 </TabsContent>
 
                 <TabsContent value="fills" className="flex-1 overflow-auto p-4">
-                  <div className="text-sm text-white/60">
+                  <div className="text-sm text-muted-foreground">
                     Fill history will go here (MVP).
                   </div>
                 </TabsContent>
 
                 <TabsContent value="alerts" className="flex-1 overflow-auto p-4">
-                  <div className="text-sm text-white/60">
+                  <div className="text-sm text-muted-foreground">
                     Alerts & notifications will go here (MVP).
                   </div>
                 </TabsContent>
               </Tabs>
-            </div>
+            </Card>
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
