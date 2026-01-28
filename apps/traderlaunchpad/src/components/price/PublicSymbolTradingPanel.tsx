@@ -44,8 +44,8 @@ export function PublicSymbolTradingPanel({
               <div className="h-full p-3">
                 <PublicSymbolPricePanel
                   symbol={symbol}
-                  chartHeight={520}
-                  className="h-full rounded-2xl border-white/10 bg-white/3 p-4"
+                  fillHeight
+                  className="h-full min-h-0 rounded-2xl border-white/10 bg-white/3 p-4"
                 />
               </div>
             </ResizablePanel>

@@ -45,7 +45,10 @@ export const TradingChartReal = (props: Props) => {
   >(null);
   const hasEverFitRef = React.useRef(false);
 
-  const height = clamp(props.height ?? 360, 220, 720);
+  const fixedHeight =
+    typeof props.height === "number" && Number.isFinite(props.height)
+      ? clamp(props.height, 220, 2000)
+      : undefined;
 
   React.useEffect(() => {
     const el = containerRef.current;
@@ -59,8 +62,9 @@ export const TradingChartReal = (props: Props) => {
     const textColor = dark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.72)";
     const gridColor = dark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
 
+    const initialHeight = clamp(fixedHeight ?? el.clientHeight ?? 360, 220, 2000);
     const chart = createChart(el, {
-      height,
+      height: initialHeight,
       width: el.clientWidth,
       layout: {
         background: { type: ColorType.Solid, color: background },
@@ -106,7 +110,8 @@ export const TradingChartReal = (props: Props) => {
 
     const ro = new ResizeObserver(() => {
       const nextWidth = el.clientWidth;
-      chart.applyOptions({ width: nextWidth });
+      const nextHeight = clamp(fixedHeight ?? el.clientHeight ?? 360, 220, 2000);
+      chart.applyOptions({ width: nextWidth, height: nextHeight });
     });
     ro.observe(el);
     resizeObserverRef.current = ro;
@@ -119,11 +124,12 @@ export const TradingChartReal = (props: Props) => {
       chartRef.current = null;
       seriesRef.current = null;
     };
-  }, [height]);
+  }, [fixedHeight]);
 
   React.useEffect(() => {
-    chartRef.current?.applyOptions({ height });
-  }, [height]);
+    if (typeof fixedHeight !== "number") return;
+    chartRef.current?.applyOptions({ height: fixedHeight });
+  }, [fixedHeight]);
 
   React.useEffect(() => {
     const chart = chartRef.current;

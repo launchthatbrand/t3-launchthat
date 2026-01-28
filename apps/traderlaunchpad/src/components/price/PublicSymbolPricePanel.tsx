@@ -54,10 +54,12 @@ const parseBars = (value: unknown): Bar[] => {
 export function PublicSymbolPricePanel({
   symbol,
   chartHeight,
+  fillHeight,
   className,
 }: {
   symbol: string;
   chartHeight?: number;
+  fillHeight?: boolean;
   className?: string;
 }) {
   const getBars = useAction(api.traderlaunchpad.actions.pricedataGetPublicBars);
@@ -218,7 +220,7 @@ export function PublicSymbolPricePanel({
   return (
     <div
       className={cn(
-        "rounded-3xl border border-white/10 bg-white/3 p-6 backdrop-blur-md",
+        "flex flex-col rounded-3xl border border-white/10 bg-white/3 p-6 backdrop-blur-md",
         className,
       )}
     >
@@ -329,11 +331,20 @@ export function PublicSymbolPricePanel({
       ) : null}
 
       {bars.length > 0 ? (
-        <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+        <div
+          className={cn(
+            "mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black/40",
+            fillHeight ? "flex min-h-0 flex-1 flex-col" : undefined,
+          )}
+        >
           <TradingChartReal
             bars={bars}
-            height={typeof chartHeight === "number" ? chartHeight : 360}
-            className="w-full"
+            {...(typeof chartHeight === "number" && !fillHeight
+              ? { height: chartHeight }
+              : fillHeight
+                ? {}
+                : { height: 360 })}
+            className={cn("w-full", fillHeight ? "h-full flex-1" : undefined)}
           />
 
           <div className="flex items-center justify-between gap-2 border-t border-white/10 bg-black/40 p-3 text-xs text-white/70">

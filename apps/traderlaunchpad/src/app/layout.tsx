@@ -212,7 +212,7 @@ export default async function RootLayout(props: {
                 sidebarDefaultOpen={false}
 
               >
-                <div className="container flex-1">
+                <div className="flex-1">
                   {props.children}
                 </div>
               </StandardLayout>

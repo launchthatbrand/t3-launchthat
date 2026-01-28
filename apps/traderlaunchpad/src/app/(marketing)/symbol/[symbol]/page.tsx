@@ -49,13 +49,10 @@ export default async function SymbolDetailPage({
     .slice(0, 12);
 
   return (
-    <AffiliatePageShell
-      title={canonical}
-      subtitle="Symbol overview • Public cache + demo fallbacks"
-    >
-      <PublicSymbolTradingPanel symbol={canonical} />
+    <div className="h-screen">
+      <PublicSymbolTradingPanel symbol={canonical} className="h-screen" />
 
-      <div className="mb-6 flex flex-wrap items-center gap-3">
+      {/* <div className="mb-6 flex flex-wrap items-center gap-3">
         <Button
           asChild
           variant="outline"
@@ -72,9 +69,9 @@ export default async function SymbolDetailPage({
           {traderCount} trader{traderCount === 1 ? "" : "s"} • {tradeCount} trade
           {tradeCount === 1 ? "" : "s"}
         </div>
-      </div>
+      </div> */}
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      {/* <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <div className="rounded-3xl border border-white/10 bg-white/3 p-7 backdrop-blur-md">
             <div className="text-sm font-semibold text-white/80">
@@ -177,8 +174,8 @@ export default async function SymbolDetailPage({
             </div>
           </div>
         </div>
-      </div>
-    </AffiliatePageShell>
+      </div> */}
+    </div>
   );
 }
 
