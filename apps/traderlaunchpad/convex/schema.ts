@@ -309,5 +309,21 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_key", ["key"]),
 
+  /**
+   * Platform-managed settings for deterministic news parsing/tagging.
+   * Single-row pattern keyed by `key` (use "main").
+   */
+  platformNewsParsingSettings: defineTable({
+    key: v.string(),
+    /**
+     * Alias terms -> canonical symbol (must exist in pricedata symbol universe).
+     * Examples: { "BTC": "BTCUSD", "BITCOIN": "BTCUSD", "GOLD": "XAUUSD" }
+     */
+    assetAliasMap: v.record(v.string(), v.string()),
+    disabledAliases: v.optional(v.array(v.string())),
+    updatedAt: v.number(),
+    createdAt: v.number(),
+  }).index("by_key", ["key"]),
+
 });
 

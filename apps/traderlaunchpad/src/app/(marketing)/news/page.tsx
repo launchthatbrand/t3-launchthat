@@ -71,6 +71,11 @@ export default function NewsPage() {
         <div className="text-2xl font-semibold tracking-tight">News</div>
         <div className="mt-1 text-sm text-muted-foreground">
           Economic calendar + headlines for symbols supported in price data.
+          {" "}
+          <Link href="/news/forex/calendar" className="underline underline-offset-4 hover:text-foreground">
+            Forex calendar
+          </Link>
+          .
         </div>
       </div>
 

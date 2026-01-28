@@ -6,7 +6,7 @@
 
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const componentsUntyped: any = require("../_generated/api").components;
@@ -54,12 +54,20 @@ export const runDueNewsSources = internalAction({
     let errors = 0;
     let lastError: string | undefined;
 
+    const settings: {
+      assetAliasMap: Record<string, string>;
+      disabledAliases?: string[];
+      updatedAt: number;
+    } = await ctx.runQuery(api.platform.newsParsingSettings.getNewsParsingSettings, {});
+
     for (const s of Array.isArray(due) ? due : []) {
       try {
         const ingestRes: any = await ctx.runAction(componentsUntyped.launchthat_news.ingest.actions.ingestSource, {
           sourceId: (s as any)._id,
           nowMs: tickAt,
           supportedSymbols,
+          assetAliasMap: settings?.assetAliasMap ?? {},
+          disabledAliases: Array.isArray(settings?.disabledAliases) ? settings.disabledAliases : [],
         });
         // Fanout notifications for newly created events (best effort).
         const createdEventIds: string[] = Array.isArray(ingestRes?.createdEventIds)

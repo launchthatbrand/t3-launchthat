@@ -41,7 +41,9 @@ import type * as platform_crm from "../platform/crm.js";
 import type * as platform_joinCodes from "../platform/joinCodes.js";
 import type * as platform_newsAdmin from "../platform/newsAdmin.js";
 import type * as platform_newsLogs from "../platform/newsLogs.js";
+import type * as platform_newsParsingSettings from "../platform/newsParsingSettings.js";
 import type * as platform_newsSchedulerInternal from "../platform/newsSchedulerInternal.js";
+import type * as platform_newsSymbolUniverse from "../platform/newsSymbolUniverse.js";
 import type * as platform_newsSymbolUniverseInternalQueries from "../platform/newsSymbolUniverseInternalQueries.js";
 import type * as platform_priceDataAccountPolicies from "../platform/priceDataAccountPolicies.js";
 import type * as platform_priceDataJobs from "../platform/priceDataJobs.js";
@@ -135,7 +137,9 @@ declare const fullApi: ApiFromModules<{
   "platform/joinCodes": typeof platform_joinCodes;
   "platform/newsAdmin": typeof platform_newsAdmin;
   "platform/newsLogs": typeof platform_newsLogs;
+  "platform/newsParsingSettings": typeof platform_newsParsingSettings;
   "platform/newsSchedulerInternal": typeof platform_newsSchedulerInternal;
+  "platform/newsSymbolUniverse": typeof platform_newsSymbolUniverse;
   "platform/newsSymbolUniverseInternalQueries": typeof platform_newsSymbolUniverseInternalQueries;
   "platform/priceDataAccountPolicies": typeof platform_priceDataAccountPolicies;
   "platform/priceDataJobs": typeof platform_priceDataJobs;
@@ -5414,7 +5418,13 @@ export declare const components: {
         ingestSource: FunctionReference<
           "action",
           "internal",
-          { nowMs: number; sourceId: string; supportedSymbols: Array<string> },
+          {
+            assetAliasMap?: Record<string, string>;
+            disabledAliases?: Array<string>;
+            nowMs: number;
+            sourceId: string;
+            supportedSymbols: Array<string>;
+          },
           {
             createdEventIds: Array<string>;
             createdEvents: number;
@@ -5427,6 +5437,26 @@ export declare const components: {
             sourceKey: string;
             symbolLinksWritten: number;
             updatedEvents: number;
+          }
+        >;
+        reprocessSourceDeterministic: FunctionReference<
+          "action",
+          "internal",
+          {
+            assetAliasMap?: Record<string, string>;
+            disabledAliases?: Array<string>;
+            limit?: number;
+            lookbackDays?: number;
+            sourceId: string;
+            supportedSymbols: Array<string>;
+          },
+          {
+            classificationsWritten: number;
+            error?: string;
+            eventsConsidered: number;
+            ok: boolean;
+            sourceId: string;
+            symbolLinksAdded: number;
           }
         >;
       };

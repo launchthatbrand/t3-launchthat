@@ -63,7 +63,18 @@ export default function NewsEventPage() {
           return;
         }
         setEvent(res?.event ?? null);
-        setSymbols(Array.isArray(res?.symbols) ? res.symbols : []);
+        const rawSymbols: unknown[] = Array.isArray(res?.symbols) ? res.symbols : [];
+        const normalizedSymbols = rawSymbols
+          .map((s): string => {
+            if (typeof s === "string") return s;
+            if (s && typeof s === "object" && typeof (s as any).symbol === "string") {
+              return String((s as any).symbol);
+            }
+            return "";
+          })
+          .map((s) => s.trim().toUpperCase())
+          .filter(Boolean);
+        setSymbols(Array.from(new Set(normalizedSymbols)));
         setSources(Array.isArray(res?.sources) ? res.sources : []);
       } catch (e) {
         if (cancelled) return;
@@ -134,19 +145,26 @@ export default function NewsEventPage() {
               <div className="text-sm text-muted-foreground whitespace-pre-wrap">{event.summary}</div>
             ) : null}
 
+            <div className="space-y-2">
+              <div className="text-xs font-semibold text-muted-foreground">Linked symbols</div>
+              {symbols.length === 0 ? (
+                <div className="text-xs text-muted-foreground">No linked symbols.</div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {symbols.map((s) => (
+                    <Link key={s} href={`/symbol/${encodeURIComponent(s)}`} className="inline-flex">
+                      <Badge variant="secondary" className="hover:bg-secondary/70">
+                        {s}
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="flex flex-wrap gap-2">
               {event.currency ? <Badge variant="outline">{event.currency}</Badge> : null}
               {event.country ? <Badge variant="outline">{event.country}</Badge> : null}
-              {symbols.slice(0, 12).map((s) => (
-                <Link key={s} href={`/symbol/${encodeURIComponent(s)}`} className="inline-flex">
-                  <Badge variant="secondary" className="hover:bg-secondary/70">
-                    {s}
-                  </Badge>
-                </Link>
-              ))}
-              {symbols.length > 12 ? (
-                <Badge variant="outline">+{symbols.length - 12} more</Badge>
-              ) : null}
             </div>
 
             <div className="rounded-xl border border-border/40 bg-background/40 p-3">

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useAction } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@convex-config/_generated/api";
 
 import { Badge } from "@acme/ui/badge";
@@ -19,6 +19,11 @@ import {
 } from "@acme/ui/select";
 import { Switch } from "@acme/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@acme/ui/table";
+
+interface AliasRow {
+  alias: string;
+  symbol: string;
+}
 
 interface SourceRow {
   _id: string;
@@ -41,15 +46,30 @@ export default function PlatformNewsSyncClient() {
   const updateSource = useAction(api.platform.newsAdmin.updateSource);
   // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
   const runNow = useAction(api.platform.newsAdmin.runSourceNow);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  const reprocessNow = useAction(api.platform.newsAdmin.reprocessSourceNow);
+
+  const supportedSymbols = useQuery(api.platform.newsSymbolUniverse.listSupportedSymbols, {
+    limitPerSource: 20000,
+  });
+  const parsingSettings = useQuery(api.platform.newsParsingSettings.getNewsParsingSettings, {});
+  const upsertSettings = useMutation(api.platform.newsParsingSettings.upsertNewsParsingSettings);
+  const resetSettings = useMutation(
+    api.platform.newsParsingSettings.resetNewsParsingSettingsToDefaults,
+  );
 
   const [sources, setSources] = React.useState<SourceRow[]>([]);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [lastRunResult, setLastRunResult] = React.useState<unknown>(null);
 
+  const [settingsBusy, setSettingsBusy] = React.useState(false);
+  const [settingsError, setSettingsError] = React.useState<string | null>(null);
+  const [aliases, setAliases] = React.useState<AliasRow[]>([]);
+
   const [form, setForm] = React.useState({
     sourceKey: "",
-    kind: "rss",
+    feedType: "rss_headlines" as "rss_headlines" | "rss_economic",
     label: "",
     url: "",
     cadenceSeconds: 600,
@@ -68,6 +88,17 @@ export default function PlatformNewsSyncClient() {
     void refresh();
   }, [refresh]);
 
+  React.useEffect(() => {
+    const map = parsingSettings?.assetAliasMap ?? null;
+    if (!map || typeof map !== "object") return;
+    const rows: AliasRow[] = [];
+    for (const [alias, symbol] of Object.entries(map)) {
+      rows.push({ alias: String(alias), symbol: String(symbol) });
+    }
+    rows.sort((a, b) => a.alias.localeCompare(b.alias));
+    setAliases(rows);
+  }, [parsingSettings?.assetAliasMap]);
+
   const handleCreate = async () => {
     setError(null);
     setLastRunResult(null);
@@ -75,14 +106,19 @@ export default function PlatformNewsSyncClient() {
     if (!form.url.trim()) return setError("url is required");
     setBusy(true);
     try {
+      const eventTypeHint = form.feedType === "rss_economic" ? "economic" : "headline";
       await createSource({
         sourceKey: form.sourceKey.trim(),
-        kind: form.kind,
+        kind: "rss",
         label: form.label.trim() || undefined,
         cadenceSeconds: Number(form.cadenceSeconds),
         overlapSeconds: 300,
         enabled: true,
-        config: { url: form.url.trim(), label: form.label.trim() || undefined },
+        config: {
+          url: form.url.trim(),
+          label: form.label.trim() || undefined,
+          eventTypeHint,
+        },
       });
       setForm((s) => ({ ...s, sourceKey: "", label: "", url: "" }));
       await refresh();
@@ -118,14 +154,19 @@ export default function PlatformNewsSyncClient() {
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="grid gap-2">
-            <Label>Kind</Label>
-            <Select value={form.kind} onValueChange={(v) => setForm((s) => ({ ...s, kind: v }))}>
+            <Label>Feed type</Label>
+            <Select
+              value={form.feedType}
+              onValueChange={(v) =>
+                setForm((s) => ({ ...s, feedType: v as "rss_headlines" | "rss_economic" }))
+              }
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Select kind" />
+                <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="rss">RSS</SelectItem>
-                <SelectItem value="economic_calendar_api">Economic calendar API (JSON)</SelectItem>
+                <SelectItem value="rss_headlines">RSS — Headlines</SelectItem>
+                <SelectItem value="rss_economic">RSS — Economic calendar</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -173,6 +214,161 @@ export default function PlatformNewsSyncClient() {
       </Card>
 
       <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <div>
+            <CardTitle>Parsing settings</CardTitle>
+            <div className="text-xs text-muted-foreground">
+              Deterministic alias mapping for asset-name mentions (e.g. Bitcoin → BTCUSD).
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={settingsBusy}
+              onClick={() =>
+                void (async () => {
+                  setSettingsError(null);
+                  setSettingsBusy(true);
+                  try {
+                    await resetSettings({});
+                  } catch (e) {
+                    setSettingsError(e instanceof Error ? e.message : "Failed to reset");
+                  } finally {
+                    setSettingsBusy(false);
+                  }
+                })()
+              }
+            >
+              Reset to defaults
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {settingsError ? <div className="text-sm text-red-600">{settingsError}</div> : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline" className="text-xs">
+              supportedSymbols: {supportedSymbols ? supportedSymbols.length : "…"}
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              updatedAt:{" "}
+              {typeof parsingSettings?.updatedAt === "number" && parsingSettings.updatedAt > 0
+                ? new Date(parsingSettings.updatedAt).toLocaleString()
+                : "—"}
+            </Badge>
+          </div>
+
+          <div className="rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-60">Alias</TableHead>
+                  <TableHead>Symbol</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {aliases.map((row, idx) => (
+                  <TableRow key={`${row.alias}:${idx}`}>
+                    <TableCell>
+                      <Input
+                        value={row.alias}
+                        className="h-9 font-mono text-xs"
+                        onChange={(e) => {
+                          const v = e.target.value.toUpperCase();
+                          setAliases((prev) => {
+                            const next = prev.slice();
+                            next[idx] = { ...next[idx]!, alias: v };
+                            return next;
+                          });
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        value={row.symbol}
+                        className="h-9 font-mono text-xs"
+                        placeholder="e.g. BTCUSD"
+                        onChange={(e) => {
+                          const v = e.target.value.toUpperCase();
+                          setAliases((prev) => {
+                            const next = prev.slice();
+                            next[idx] = { ...next[idx]!, symbol: v };
+                            return next;
+                          });
+                        }}
+                      />
+                      {supportedSymbols && row.symbol && !supportedSymbols.includes(row.symbol) ? (
+                        <div className="mt-1 text-[11px] text-red-600">
+                          Symbol not in pricedata universe
+                        </div>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setAliases((prev) => prev.filter((_, i) => i !== idx))
+                        }
+                      >
+                        Remove
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {aliases.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="p-6 text-sm text-muted-foreground">
+                      No aliases configured.
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAliases((prev) => [{ alias: "", symbol: "" }, ...prev])}
+            >
+              Add alias
+            </Button>
+            <Button
+              type="button"
+              disabled={settingsBusy}
+              onClick={() =>
+                void (async () => {
+                  setSettingsError(null);
+                  setSettingsBusy(true);
+                  try {
+                    const map: Record<string, string> = {};
+                    for (const r of aliases) {
+                      const a = r.alias.trim().toUpperCase();
+                      const s = r.symbol.trim().toUpperCase();
+                      if (!a || !s) continue;
+                      map[a] = s;
+                    }
+                    await upsertSettings({ assetAliasMap: map, disabledAliases: [] });
+                  } catch (e) {
+                    setSettingsError(e instanceof Error ? e.message : "Failed to save settings");
+                  } finally {
+                    setSettingsBusy(false);
+                  }
+                })()
+              }
+            >
+              Save settings
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader>
           <CardTitle>Sources</CardTitle>
         </CardHeader>
@@ -211,29 +407,57 @@ export default function PlatformNewsSyncClient() {
                   </TableCell>
                   <TableCell className="font-mono text-xs">{s.cadenceSeconds}s</TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        void (async () => {
-                          setError(null);
-                          setBusy(true);
-                          setLastRunResult(null);
-                          try {
-                            const res = await runNow({ sourceId: s._id });
-                            setLastRunResult(res);
-                            await refresh();
-                          } catch (e) {
-                            setError(e instanceof Error ? e.message : "Failed to run");
-                          } finally {
-                            setBusy(false);
-                          }
-                        })()
-                      }
-                    >
-                      Run now
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          void (async () => {
+                            setError(null);
+                            setBusy(true);
+                            setLastRunResult(null);
+                            try {
+                              const res = await runNow({ sourceId: s._id });
+                              setLastRunResult(res);
+                              await refresh();
+                            } catch (e) {
+                              setError(e instanceof Error ? e.message : "Failed to run");
+                            } finally {
+                              setBusy(false);
+                            }
+                          })()
+                        }
+                      >
+                        Run now
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() =>
+                          void (async () => {
+                            setError(null);
+                            setBusy(true);
+                            setLastRunResult(null);
+                            try {
+                              const res = await reprocessNow({
+                                sourceId: s._id,
+                                lookbackDays: 30,
+                                limit: 1000,
+                              });
+                              setLastRunResult(res);
+                            } catch (e) {
+                              setError(e instanceof Error ? e.message : "Failed to reprocess");
+                            } finally {
+                              setBusy(false);
+                            }
+                          })()
+                        }
+                      >
+                        Reprocess
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

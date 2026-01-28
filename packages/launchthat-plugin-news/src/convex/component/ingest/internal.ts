@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "../server";
 import { bucketMs, normalizeTitleKey, normalizeUrl } from "./lib";
+import { extractSymbolsDeterministic } from "./symbolExtract";
+import { classifyByRules } from "./ruleTagging";
 
 export const getSource = internalQuery({
   args: { sourceId: v.id("newsSources") },
@@ -96,12 +98,26 @@ const computeCanonicalKeyHeadline = (args: {
   return `headline:title:${titleKey}:${bucket}`;
 };
 
+const computeCanonicalKeyEconomicRss = (args: {
+  urlNormalized: string | null;
+  title: string;
+  startsAt: number;
+}): string => {
+  if (args.urlNormalized) return `econrss:url:${args.urlNormalized}`;
+  const titleKey = normalizeTitleKey(args.title);
+  const bucket = bucketMs(args.startsAt, 5 * 60 * 1000);
+  return `econrss:title:${titleKey}:${bucket}`;
+};
+
 export const applyRssItemsChunk = internalMutation({
   args: {
     sourceId: v.id("newsSources"),
     sourceKey: v.string(),
     nowMs: v.number(),
     supportedSymbols: v.array(v.string()),
+    assetAliasMap: v.optional(v.record(v.string(), v.string())),
+    disabledAliases: v.optional(v.array(v.string())),
+    eventTypeHint: v.optional(v.string()),
     items: v.array(
       v.object({
         externalId: v.optional(v.string()),
@@ -132,12 +148,28 @@ export const applyRssItemsChunk = internalMutation({
         .map((s) => String(s).trim().toUpperCase())
         .filter(Boolean),
     );
+    const assetAliasMap: Record<string, string> =
+      args.assetAliasMap && typeof args.assetAliasMap === "object"
+        ? (args.assetAliasMap as Record<string, string>)
+        : {};
+    const disabledAliases = new Set(
+      (Array.isArray(args.disabledAliases) ? args.disabledAliases : [])
+        .map((s) => String(s).trim().toUpperCase())
+        .filter(Boolean),
+    );
 
     let createdRaw = 0;
     let createdEvents = 0;
     let updatedEvents = 0;
     let symbolLinksWritten = 0;
     let dedupedEvents = 0;
+
+    const hint =
+      String(args.eventTypeHint ?? "")
+        .trim()
+        .toLowerCase() === "economic"
+        ? ("economic" as const)
+        : ("headline" as const);
 
     const list: RssNormalizedItem[] = Array.isArray(args.items) ? (args.items as any) : [];
     for (const item of list) {
@@ -182,12 +214,20 @@ export const applyRssItemsChunk = internalMutation({
         typeof item.publishedAt === "number" && Number.isFinite(item.publishedAt)
           ? item.publishedAt
           : args.nowMs;
+      const startsAt = hint === "economic" ? publishedAt : undefined;
 
-      const canonicalKey = computeCanonicalKeyHeadline({
-        urlNormalized: urlNormalized ?? null,
-        title,
-        publishedAt,
-      });
+      const canonicalKey =
+        hint === "economic"
+          ? computeCanonicalKeyEconomicRss({
+              urlNormalized: urlNormalized ?? null,
+              title,
+              startsAt: publishedAt,
+            })
+          : computeCanonicalKeyHeadline({
+              urlNormalized: urlNormalized ?? null,
+              title,
+              publishedAt,
+            });
 
       const existingEvent = await ctx.db
         .query("newsEvents")
@@ -196,25 +236,45 @@ export const applyRssItemsChunk = internalMutation({
 
       let eventId;
       if (existingEvent) {
+        const existingMeta = (existingEvent as any).meta;
+        const existingClassification = existingMeta?.classification;
+        const shouldClassify =
+          !existingClassification || existingClassification?.version !== "v1" || existingClassification?.method !== "rules";
+        const classification = shouldClassify ? classifyByRules({ title, summary: typeof item.summary === "string" ? item.summary : undefined }) : null;
+
         await ctx.db.patch(existingEvent._id, {
+          eventType: hint,
           title,
           summary:
             typeof item.summary === "string" && item.summary.trim()
               ? item.summary
               : existingEvent.summary,
-          publishedAt,
+          publishedAt: hint === "economic" ? undefined : publishedAt,
+          startsAt: hint === "economic" ? startsAt : undefined,
           updatedAt: Date.now(),
+          meta: classification
+            ? {
+                ...(typeof existingMeta === "object" && existingMeta ? existingMeta : {}),
+                classification,
+              }
+            : existingMeta,
         });
         updatedEvents += 1;
         dedupedEvents += 1;
         eventId = existingEvent._id;
       } else {
+        const classification = classifyByRules({
+          title,
+          summary: typeof item.summary === "string" ? item.summary : undefined,
+        });
         eventId = await ctx.db.insert("newsEvents", {
-          eventType: "headline",
+          eventType: hint,
           canonicalKey,
           title,
           summary: typeof item.summary === "string" ? item.summary : undefined,
-          publishedAt,
+          publishedAt: hint === "economic" ? undefined : publishedAt,
+          startsAt: hint === "economic" ? startsAt : undefined,
+          meta: { classification },
           createdAt: Date.now(),
           updatedAt: Date.now(),
         });
@@ -231,15 +291,25 @@ export const applyRssItemsChunk = internalMutation({
       });
 
       const forced = typeof item.forcedSymbol === "string" ? item.forcedSymbol.trim() : "";
-      const symbolsFromPayload = Array.isArray(item.payloadSymbols) ? item.payloadSymbols : [];
+      // Deterministic symbol linking.
+      // 1) forcedSymbol override (if provided)
+      // 2) explicit extraction from title/summary (exact/pair/alias)
+      const extracted = extractSymbolsDeterministic({
+        title,
+        summary: typeof item.summary === "string" ? item.summary : undefined,
+        supportedSymbols: supported,
+        assetAliasMap,
+        disabledAliases,
+        maxLinks: 5,
+      });
       const toIndex = [
-        ...(forced ? [forced] : []),
-        ...symbolsFromPayload,
-      ]
-        .map((s) => String(s).trim().toUpperCase())
-        .filter((s) => s && supported.has(s));
+        ...(forced ? [{ symbol: forced.toUpperCase(), matchKind: "forced", matchText: forced }] : []),
+        ...extracted,
+      ];
 
-      for (const sym of toIndex) {
+      for (const row of toIndex.slice(0, 5)) {
+        const sym = String((row as any).symbol ?? "").trim().toUpperCase();
+        if (!sym || !supported.has(sym)) continue;
         const existingLink = await ctx.db
           .query("newsEventSymbols")
           .withIndex("by_eventId_symbol", (q) =>
@@ -250,8 +320,13 @@ export const applyRssItemsChunk = internalMutation({
         await ctx.db.insert("newsEventSymbols", {
           eventId,
           symbol: sym,
-          at: publishedAt,
-          matchKind: forced ? "forced" : "source",
+          at: hint === "economic" && typeof startsAt === "number" ? startsAt : publishedAt,
+          matchKind:
+            typeof (row as any).matchKind === "string"
+              ? String((row as any).matchKind)
+              : forced
+                ? "forced"
+                : "unknown",
         });
         symbolLinksWritten += 1;
       }
@@ -265,6 +340,120 @@ export const applyRssItemsChunk = internalMutation({
     });
 
     return { createdRaw, createdEvents, updatedEvents, symbolLinksWritten, dedupedEvents };
+  },
+});
+
+export const listEventIdsForSourceSince = internalQuery({
+  args: {
+    sourceId: v.id("newsSources"),
+    sinceMs: v.number(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(v.id("newsEvents")),
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(2000, Number(args.limit ?? 500)));
+    const rows = await ctx.db
+      .query("newsEventSources")
+      .withIndex("by_sourceId_createdAt", (q) =>
+        (q as any).eq("sourceId", args.sourceId).gte("createdAt", args.sinceMs),
+      )
+      .order("desc")
+      .take(limit);
+    const list = Array.isArray(rows) ? rows : [];
+    const set = new Set<string>();
+    const out: any[] = [];
+    for (const r of list) {
+      const id = (r as any).eventId;
+      const key = String(id);
+      if (!key || set.has(key)) continue;
+      set.add(key);
+      out.push(id);
+    }
+    return out;
+  },
+});
+
+export const reprocessEventDeterministic = internalMutation({
+  args: {
+    eventId: v.id("newsEvents"),
+    supportedSymbols: v.array(v.string()),
+    assetAliasMap: v.optional(v.record(v.string(), v.string())),
+    disabledAliases: v.optional(v.array(v.string())),
+  },
+  returns: v.object({
+    symbolLinksAdded: v.number(),
+    wroteClassification: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const e = await ctx.db.get(args.eventId);
+    if (!e) return { symbolLinksAdded: 0, wroteClassification: false };
+
+    const supported = new Set(
+      (Array.isArray(args.supportedSymbols) ? args.supportedSymbols : [])
+        .map((s) => String(s).trim().toUpperCase())
+        .filter(Boolean),
+    );
+    const assetAliasMap: Record<string, string> =
+      args.assetAliasMap && typeof args.assetAliasMap === "object"
+        ? (args.assetAliasMap as Record<string, string>)
+        : {};
+    const disabledAliases = new Set(
+      (Array.isArray(args.disabledAliases) ? args.disabledAliases : [])
+        .map((s) => String(s).trim().toUpperCase())
+        .filter(Boolean),
+    );
+
+    const title = String((e as any).title ?? "");
+    const summary = typeof (e as any).summary === "string" ? (e as any).summary : undefined;
+
+    // Always recompute rule classification v1 (overwrite).
+    const classification = classifyByRules({ title, summary });
+    const prevMeta = (e as any).meta;
+    await ctx.db.patch(args.eventId, {
+      meta: {
+        ...(typeof prevMeta === "object" && prevMeta ? prevMeta : {}),
+        classification,
+      },
+      updatedAt: Date.now(),
+    });
+
+    const extracted = extractSymbolsDeterministic({
+      title,
+      summary,
+      supportedSymbols: supported,
+      assetAliasMap,
+      disabledAliases,
+      maxLinks: 5,
+    });
+
+    const at =
+      typeof (e as any).publishedAt === "number"
+        ? (e as any).publishedAt
+        : typeof (e as any).startsAt === "number"
+          ? (e as any).startsAt
+          : Date.now();
+
+    let symbolLinksAdded = 0;
+    for (const row of extracted) {
+      const sym = String(row.symbol).trim().toUpperCase();
+      if (!sym || !supported.has(sym)) continue;
+      const existingLink = await ctx.db
+        .query("newsEventSymbols")
+        .withIndex("by_eventId_symbol", (q) =>
+          (q as any).eq("eventId", args.eventId).eq("symbol", sym),
+        )
+        .first();
+      if (existingLink) continue;
+      await ctx.db.insert("newsEventSymbols", {
+        eventId: args.eventId,
+        symbol: sym,
+        at,
+        matchKind: row.matchKind,
+      });
+      symbolLinksAdded += 1;
+    }
+
+    return { symbolLinksAdded, wroteClassification: true };
   },
 });
 

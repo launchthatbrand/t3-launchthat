@@ -6,7 +6,7 @@
 
 import { v } from "convex/values";
 import { action } from "../_generated/server";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const componentsUntyped: any = require("../_generated/api").components;
@@ -73,17 +73,56 @@ export const deleteSource = action({
 export const runSourceNow = action({
   args: { sourceId: v.any() },
   returns: v.any(),
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<any> => {
     await requirePlatformAdmin(ctx);
     const supportedSymbols: string[] = await ctx.runQuery(
       internal.platform.newsSymbolUniverseInternalQueries.listSupportedSymbols,
       { limitPerSource: 5000 },
     );
+    const settings: {
+      assetAliasMap: Record<string, string>;
+      disabledAliases?: string[];
+      updatedAt: number;
+    } = await ctx.runQuery(api.platform.newsParsingSettings.getNewsParsingSettings, {});
     return await ctx.runAction(componentsUntyped.launchthat_news.ingest.actions.ingestSource, {
       sourceId: args.sourceId,
       nowMs: Date.now(),
       supportedSymbols,
+      assetAliasMap: settings?.assetAliasMap ?? {},
+      disabledAliases: Array.isArray(settings?.disabledAliases) ? settings.disabledAliases : [],
     });
+  },
+});
+
+export const reprocessSourceNow = action({
+  args: {
+    sourceId: v.any(),
+    lookbackDays: v.optional(v.number()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args): Promise<any> => {
+    await requirePlatformAdmin(ctx);
+    const supportedSymbols: string[] = await ctx.runQuery(
+      internal.platform.newsSymbolUniverseInternalQueries.listSupportedSymbols,
+      { limitPerSource: 20000 },
+    );
+    const settings: {
+      assetAliasMap: Record<string, string>;
+      disabledAliases?: string[];
+      updatedAt: number;
+    } = await ctx.runQuery(api.platform.newsParsingSettings.getNewsParsingSettings, {});
+    return await ctx.runAction(
+      componentsUntyped.launchthat_news.ingest.actions.reprocessSourceDeterministic,
+      {
+        sourceId: args.sourceId,
+        supportedSymbols,
+        assetAliasMap: settings?.assetAliasMap ?? {},
+        disabledAliases: Array.isArray(settings?.disabledAliases) ? settings.disabledAliases : [],
+        lookbackDays: args.lookbackDays,
+        limit: args.limit,
+      },
+    );
   },
 });
 

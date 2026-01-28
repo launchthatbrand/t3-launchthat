@@ -16,6 +16,8 @@ import type * as ingest_index from "../ingest/index.js";
 import type * as ingest_internal from "../ingest/internal.js";
 import type * as ingest_lib from "../ingest/lib.js";
 import type * as ingest_rss from "../ingest/rss.js";
+import type * as ingest_ruleTagging from "../ingest/ruleTagging.js";
+import type * as ingest_symbolExtract from "../ingest/symbolExtract.js";
 import type * as runs_index from "../runs/index.js";
 import type * as runs_queries from "../runs/queries.js";
 import type * as server from "../server.js";
@@ -50,6 +52,8 @@ declare const fullApi: ApiFromModules<{
   "ingest/internal": typeof ingest_internal;
   "ingest/lib": typeof ingest_lib;
   "ingest/rss": typeof ingest_rss;
+  "ingest/ruleTagging": typeof ingest_ruleTagging;
+  "ingest/symbolExtract": typeof ingest_symbolExtract;
   "runs/index": typeof runs_index;
   "runs/queries": typeof runs_queries;
   server: typeof server;
@@ -144,7 +148,13 @@ export type Mounts = {
       ingestSource: FunctionReference<
         "action",
         "public",
-        { nowMs: number; sourceId: string; supportedSymbols: Array<string> },
+        {
+          assetAliasMap?: Record<string, string>;
+          disabledAliases?: Array<string>;
+          nowMs: number;
+          sourceId: string;
+          supportedSymbols: Array<string>;
+        },
         {
           createdEventIds: Array<string>;
           createdEvents: number;
@@ -157,6 +167,26 @@ export type Mounts = {
           sourceKey: string;
           symbolLinksWritten: number;
           updatedEvents: number;
+        }
+      >;
+      reprocessSourceDeterministic: FunctionReference<
+        "action",
+        "public",
+        {
+          assetAliasMap?: Record<string, string>;
+          disabledAliases?: Array<string>;
+          limit?: number;
+          lookbackDays?: number;
+          sourceId: string;
+          supportedSymbols: Array<string>;
+        },
+        {
+          classificationsWritten: number;
+          error?: string;
+          eventsConsidered: number;
+          ok: boolean;
+          sourceId: string;
+          symbolLinksAdded: number;
         }
       >;
     };

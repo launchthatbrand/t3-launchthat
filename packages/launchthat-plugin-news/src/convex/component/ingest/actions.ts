@@ -46,6 +46,8 @@ export const ingestSource = action({
     sourceId: v.id("newsSources"),
     nowMs: v.number(),
     supportedSymbols: v.array(v.string()),
+    assetAliasMap: v.optional(v.record(v.string(), v.string())),
+    disabledAliases: v.optional(v.array(v.string())),
   },
   returns: v.object({
     ok: v.boolean(),
@@ -65,6 +67,15 @@ export const ingestSource = action({
     const supported = new Set(
       (Array.isArray(args.supportedSymbols) ? args.supportedSymbols : [])
         .map((s) => normalizeSymbol(s))
+        .filter(Boolean),
+    );
+    const assetAliasMap: Record<string, string> =
+      args.assetAliasMap && typeof args.assetAliasMap === "object"
+        ? (args.assetAliasMap as Record<string, string>)
+        : {};
+    const disabledAliases = new Set(
+      (Array.isArray(args.disabledAliases) ? args.disabledAliases : [])
+        .map((s) => normalizeSymbol(String(s)))
         .filter(Boolean),
     );
 
@@ -133,6 +144,11 @@ export const ingestSource = action({
 
       if (kind === "rss") {
         const url = safeText(cfg.url);
+        const eventTypeHintRaw = safeText(cfg.eventTypeHint);
+        const eventTypeHint =
+          eventTypeHintRaw === "economic" || eventTypeHintRaw === "headline"
+            ? eventTypeHintRaw
+            : undefined;
         if (!url) return await fail("Missing RSS url");
         const res = await fetch(url, {
           headers: {
@@ -149,9 +165,12 @@ export const ingestSource = action({
             sourceKey: String(source.sourceKey),
             nowMs,
             supportedSymbols: Array.from(supported),
+            assetAliasMap,
+            disabledAliases: Array.from(disabledAliases),
             items: [],
             cursorPatch: source.cursor ?? undefined,
             nextRunAt: nowMs + cadenceMs,
+            eventTypeHint,
           });
           await ctx.runMutation(internal.ingest.internal.finishRun, {
             runId,
@@ -217,9 +236,12 @@ export const ingestSource = action({
             sourceKey: String(source.sourceKey),
             nowMs,
             supportedSymbols: Array.from(supported),
+            assetAliasMap,
+            disabledAliases: Array.from(disabledAliases),
             items: chunk,
             cursorPatch,
             nextRunAt: nowMs + cadenceMs,
+            eventTypeHint,
           });
           createdRaw += stats.createdRaw;
           createdEvents += stats.createdEvents;
@@ -261,6 +283,74 @@ export const ingestSource = action({
       return await fail(`Unsupported source kind: ${kind}`);
     } catch (e) {
       return await fail(e instanceof Error ? e.message : String(e));
+    }
+  },
+});
+
+export const reprocessSourceDeterministic = action({
+  args: {
+    sourceId: v.id("newsSources"),
+    supportedSymbols: v.array(v.string()),
+    assetAliasMap: v.optional(v.record(v.string(), v.string())),
+    disabledAliases: v.optional(v.array(v.string())),
+    lookbackDays: v.optional(v.number()),
+    limit: v.optional(v.number()),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    sourceId: v.string(),
+    eventsConsidered: v.number(),
+    symbolLinksAdded: v.number(),
+    classificationsWritten: v.number(),
+    error: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const source = await ctx.runQuery(internal.ingest.internal.getSource, {
+      sourceId: args.sourceId,
+    });
+    if (!source) return { ok: false, sourceId: String(args.sourceId), eventsConsidered: 0, symbolLinksAdded: 0, classificationsWritten: 0, error: "Source not found" };
+
+    const lookbackDays = Math.max(1, Math.min(365, Math.floor(args.lookbackDays ?? 30)));
+    const sinceMs = Date.now() - lookbackDays * 24 * 60 * 60 * 1000;
+    const limit = Math.max(1, Math.min(2000, Number(args.limit ?? 500)));
+
+    try {
+      const eventIds = await ctx.runQuery(internal.ingest.internal.listEventIdsForSourceSince, {
+        sourceId: args.sourceId,
+        sinceMs,
+        limit,
+      });
+
+      let symbolLinksAdded = 0;
+      let classificationsWritten = 0;
+
+      for (const eventId of eventIds) {
+        const res = await ctx.runMutation(internal.ingest.internal.reprocessEventDeterministic, {
+          eventId,
+          supportedSymbols: args.supportedSymbols,
+          assetAliasMap: args.assetAliasMap,
+          disabledAliases: args.disabledAliases,
+        });
+        symbolLinksAdded += Number(res.symbolLinksAdded ?? 0);
+        if (res.wroteClassification) classificationsWritten += 1;
+      }
+
+      return {
+        ok: true,
+        sourceId: String(args.sourceId),
+        eventsConsidered: eventIds.length,
+        symbolLinksAdded,
+        classificationsWritten,
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        sourceId: String(args.sourceId),
+        eventsConsidered: 0,
+        symbolLinksAdded: 0,
+        classificationsWritten: 0,
+        error: e instanceof Error ? e.message : String(e),
+      };
     }
   },
 });

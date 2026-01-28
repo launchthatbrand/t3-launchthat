@@ -86,6 +86,7 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_eventId", ["eventId"])
+    .index("by_sourceId_createdAt", ["sourceId", "createdAt"])
     .index("by_sourceId_externalId", ["sourceId", "externalId"])
     .index("by_sourceId_url", ["sourceId", "url"]),
 
