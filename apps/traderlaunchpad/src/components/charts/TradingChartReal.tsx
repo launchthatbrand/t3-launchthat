@@ -2,6 +2,7 @@
 
 import React from "react";
 import {
+  CandlestickSeries,
   ColorType,
   CrosshairMode,
   createChart,
@@ -87,7 +88,8 @@ export const TradingChartReal = (props: Props) => {
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true },
     });
 
-    const series = chart.addCandlestickSeries({
+    // v5: unified series API
+    const series = chart.addSeries(CandlestickSeries, {
       upColor: "#10B981",
       downColor: "#EF4444",
       borderUpColor: "#10B981",

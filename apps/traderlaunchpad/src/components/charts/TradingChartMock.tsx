@@ -2,9 +2,11 @@
 
 import React from "react";
 import {
+  CandlestickSeries,
   ColorType,
   CrosshairMode,
   createChart,
+  createSeriesMarkers,
   type IChartApi,
   type ISeriesApi,
   type UTCTimestamp,
@@ -135,6 +137,9 @@ export const TradingChartMock = (props: Props) => {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const chartRef = React.useRef<IChartApi | null>(null);
   const seriesRef = React.useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const markersRef = React.useRef<ReturnType<typeof createSeriesMarkers> | null>(
+    null,
+  );
   const resizeObserverRef = React.useRef<ResizeObserver | null>(null);
 
   const symbol = (props.symbol ?? "MARKET").trim() || "MARKET";
@@ -178,7 +183,8 @@ export const TradingChartMock = (props: Props) => {
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true },
     });
 
-    const series = chart.addCandlestickSeries({
+    // v5: unified series API
+    const series = chart.addSeries(CandlestickSeries, {
       upColor: "#10B981",
       downColor: "#EF4444",
       borderUpColor: "#10B981",
@@ -189,6 +195,7 @@ export const TradingChartMock = (props: Props) => {
 
     chartRef.current = chart;
     seriesRef.current = series;
+    markersRef.current = createSeriesMarkers(series, []);
 
     const ro = new ResizeObserver(() => {
       const nextWidth = el.clientWidth;
@@ -203,6 +210,7 @@ export const TradingChartMock = (props: Props) => {
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
+      markersRef.current = null;
     };
   }, [height]);
 
@@ -267,7 +275,8 @@ export const TradingChartMock = (props: Props) => {
       .sort((a, b) => Number(a.time) - Number(b.time) || a.__idx - b.__idx)
       .map(({ __idx, ...m }) => m);
 
-    series.setMarkers(allMarkers);
+    // v5: markers are managed through a dedicated primitive
+    markersRef.current?.setMarkers(allMarkers);
     chart.timeScale().fitContent();
   }, [intervalSec, props.markers, props.showDefaultMarkers, symbol]);
 

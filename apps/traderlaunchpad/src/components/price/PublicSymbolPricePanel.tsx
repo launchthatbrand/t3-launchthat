@@ -7,6 +7,14 @@ import { TradingChartReal } from "~/components/charts/TradingChartReal";
 import { api } from "@convex-config/_generated/api";
 import { useAction } from "convex/react";
 import { cn } from "@acme/ui/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@acme/ui/select";
+import { Skeleton } from "@acme/ui/skeleton";
 
 type Resolution = "15m" | "1H" | "4H";
 
@@ -53,11 +61,19 @@ const parseBars = (value: unknown): Bar[] => {
 
 export function PublicSymbolPricePanel({
   symbol,
+  selectedSourceKey,
+  sourceOptions,
+  onSelectedSourceKeyChangeAction,
+  externalLoading,
   chartHeight,
   fillHeight,
   className,
 }: {
   symbol: string;
+  selectedSourceKey?: string | null;
+  sourceOptions?: { sourceKey: string; label: string; isDefault?: boolean }[];
+  onSelectedSourceKeyChangeAction?: (nextSourceKey: string) => void;
+  externalLoading?: boolean;
   chartHeight?: number;
   fillHeight?: boolean;
   className?: string;
@@ -68,22 +84,25 @@ export function PublicSymbolPricePanel({
   const [resolution, setResolution] = React.useState<Resolution>("15m");
   const pageSize = 2000;
   const cacheTtlMs = 60_000;
-  const cacheRef = React.useRef<Record<Resolution, CacheEntry | undefined>>({
-    "15m": undefined,
-    "1H": undefined,
-    "4H": undefined,
-  });
+  const cacheRef = React.useRef<Record<string, CacheEntry | undefined>>({});
 
   const [loading, setLoading] = React.useState(false);
   const [syncing, setSyncing] = React.useState(false);
-  const [sourceKey, setSourceKey] = React.useState<string | null>(null);
+  const [resolvedSourceKey, setResolvedSourceKey] = React.useState<string | null>(null);
   const [bars, setBars] = React.useState<Bar[]>([]);
   const [nextToMs, setNextToMs] = React.useState<number | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [showRaw, setShowRaw] = React.useState(false);
 
+  const requestedSourceKey =
+    typeof selectedSourceKey === "string" && selectedSourceKey.trim()
+      ? selectedSourceKey.trim()
+      : undefined;
+  const cacheKey = `${requestedSourceKey ?? "default"}::${resolution}`;
+  const isLoading = loading || Boolean(externalLoading);
+
   const load = React.useCallback(async () => {
-    const cached = cacheRef.current[resolution];
+    const cached = cacheRef.current[cacheKey];
     const nowMs = Date.now();
     if (
       cached &&
@@ -91,7 +110,7 @@ export function PublicSymbolPricePanel({
       nowMs - cached.fetchedAtMs <= cacheTtlMs
     ) {
       setError(null);
-      setSourceKey(cached.sourceKey);
+      setResolvedSourceKey(cached.sourceKey);
       setBars(cached.bars);
       setNextToMs(cached.nextToMs);
       return;
@@ -100,7 +119,12 @@ export function PublicSymbolPricePanel({
     setLoading(true);
     setError(null);
     try {
-      const res: unknown = await getBars({ symbol, resolution, limit: pageSize });
+      const res: unknown = await getBars({
+        symbol,
+        resolution,
+        sourceKey: requestedSourceKey,
+        limit: pageSize,
+      });
       const r = res as {
         ok?: boolean;
         sourceKey?: string;
@@ -108,20 +132,20 @@ export function PublicSymbolPricePanel({
         nextToMs?: number;
         error?: string;
       };
-      const nextSourceKey = typeof r.sourceKey === "string" ? r.sourceKey : null;
+      const nextResolvedSourceKey = typeof r.sourceKey === "string" ? r.sourceKey : null;
       const nextBars = parseBars(r.bars);
       const nextCursor = typeof r.nextToMs === "number" ? r.nextToMs : null;
 
-      setSourceKey(nextSourceKey);
+      setResolvedSourceKey(nextResolvedSourceKey);
       setBars(nextBars);
       setNextToMs(nextCursor);
 
       // Cache only the latest-page fetch (no `toMs` cursor).
       if (r.ok !== false && nextBars.length > 0) {
-        cacheRef.current[resolution] = {
+        cacheRef.current[cacheKey] = {
           bars: nextBars,
           nextToMs: nextCursor,
-          sourceKey: nextSourceKey,
+          sourceKey: nextResolvedSourceKey,
           fetchedAtMs: Date.now(),
         };
       }
@@ -131,14 +155,20 @@ export function PublicSymbolPricePanel({
     } finally {
       setLoading(false);
     }
-  }, [cacheTtlMs, getBars, resolution, symbol]);
+  }, [cacheKey, cacheTtlMs, getBars, requestedSourceKey, resolution, symbol]);
 
   const loadOlder = React.useCallback(async () => {
     if (typeof nextToMs !== "number") return;
     setLoading(true);
     setError(null);
     try {
-      const res: unknown = await getBars({ symbol, resolution, limit: pageSize, toMs: nextToMs });
+      const res: unknown = await getBars({
+        symbol,
+        resolution,
+        sourceKey: requestedSourceKey,
+        limit: pageSize,
+        toMs: nextToMs,
+      });
       const r = res as {
         ok?: boolean;
         bars?: Bar[];
@@ -158,17 +188,22 @@ export function PublicSymbolPricePanel({
     } finally {
       setLoading(false);
     }
-  }, [getBars, nextToMs, resolution, symbol]);
+  }, [getBars, nextToMs, requestedSourceKey, resolution, symbol]);
 
   const ensureAndReload = React.useCallback(async () => {
     setSyncing(true);
     setError(null);
     try {
       // Ensure we refetch after Sync.
-      cacheRef.current[resolution] = undefined;
+      cacheRef.current[cacheKey] = undefined;
 
       // Warm a small recent window; deeper history should be handled by platform backfill jobs.
-      const res: unknown = await ensure({ symbol, resolution, lookbackDays: 7 });
+      const res: unknown = await ensure({
+        symbol,
+        resolution,
+        sourceKey: requestedSourceKey,
+        lookbackDays: 7,
+      });
       const r = res as { ok?: boolean; error?: string };
       if (r.ok === false) {
         setError(r.error ?? "Failed to fetch from broker.");
@@ -180,16 +215,16 @@ export function PublicSymbolPricePanel({
     } finally {
       setSyncing(false);
     }
-  }, [ensure, load, resolution, symbol]);
+  }, [cacheKey, ensure, load, requestedSourceKey, resolution, symbol]);
 
   React.useEffect(() => {
     // Reset cache & state when symbol changes.
-    cacheRef.current = { "15m": undefined, "1H": undefined, "4H": undefined };
+    cacheRef.current = {};
     setBars([]);
     setNextToMs(null);
-    setSourceKey(null);
+    setResolvedSourceKey(null);
     setError(null);
-  }, [symbol]);
+  }, [symbol, requestedSourceKey]);
 
   React.useEffect(() => {
     void load();
@@ -199,16 +234,16 @@ export function PublicSymbolPricePanel({
   const didAutoWarmRef = React.useRef(false);
   React.useEffect(() => {
     didAutoWarmRef.current = false;
-  }, [symbol, resolution]);
+  }, [symbol, resolution, requestedSourceKey]);
   React.useEffect(() => {
     if (didAutoWarmRef.current) return;
     if (bars.length > 0) return;
     if (!error) return;
-    if (!sourceKey) return;
+    if (!resolvedSourceKey) return;
     if (error.includes("No default price source")) return;
     didAutoWarmRef.current = true;
     void ensureAndReload();
-  }, [bars.length, ensureAndReload, error, sourceKey]);
+  }, [bars.length, ensureAndReload, error, resolvedSourceKey]);
 
   const last = bars.length > 0 ? bars[bars.length - 1] : null;
   const lastTime = last ? new Date(last.t).toISOString() : null;
@@ -230,9 +265,10 @@ export function PublicSymbolPricePanel({
             Real price data (cached)
           </div>
           <div className="mt-1 text-xs text-white/55">
-            {sourceKey ? (
+            {resolvedSourceKey ? (
               <>
-                Source: <span className="font-mono text-white/70">{sourceKey}</span>
+                Source:{" "}
+                <span className="font-mono text-white/70">{resolvedSourceKey}</span>
               </>
             ) : (
               "Source not configured yet."
@@ -241,6 +277,35 @@ export function PublicSymbolPricePanel({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {bars.length > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-9"
+              onClick={() => setShowRaw((v) => !v)}
+              disabled={loading || syncing}
+            >
+              {showRaw ? "Hide raw" : "Show raw"}
+            </Button>
+          ) : null}
+          {Array.isArray(sourceOptions) && sourceOptions.length > 0 ? (
+            <Select
+              value={requestedSourceKey ?? ""}
+              onValueChange={(v) => onSelectedSourceKeyChangeAction?.(v)}
+            >
+              <SelectTrigger size="sm" className="h-9 min-w-[180px]">
+                <SelectValue placeholder="Select feed" />
+              </SelectTrigger>
+              <SelectContent align="start">
+                {sourceOptions.map((s) => (
+                  <SelectItem key={s.sourceKey} value={s.sourceKey}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
+
           <Button
             type="button"
             variant={resolution === "15m" ? "secondary" : "outline"}
@@ -274,23 +339,13 @@ export function PublicSymbolPricePanel({
             variant="outline"
             className="h-9"
             onClick={ensureAndReload}
-            disabled={loading || syncing || !sourceKey}
+            disabled={loading || syncing || !resolvedSourceKey}
           >
             <RefreshCw className="mr-2 h-4 w-4" />
             {syncing ? "Syncing..." : "Sync"}
           </Button>
 
-          {bars.length > 0 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-9"
-              onClick={() => setShowRaw((v) => !v)}
-              disabled={loading || syncing}
-            >
-              {showRaw ? "Hide raw" : "Show raw"}
-            </Button>
-          ) : null}
+          
         </div>
       </div>
 
@@ -330,13 +385,20 @@ export function PublicSymbolPricePanel({
         </div>
       ) : null}
 
-      {bars.length > 0 ? (
+      {bars.length > 0 || isLoading ? (
         <div
           className={cn(
-            "mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black/40",
+            "relative mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black/40",
             fillHeight ? "flex min-h-0 flex-1 flex-col" : undefined,
           )}
         >
+          {isLoading ? (
+            <div className="absolute inset-0 z-10 flex flex-col gap-3 bg-black/30 p-4">
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-full w-full" />
+            </div>
+          ) : null}
+
           <TradingChartReal
             bars={bars}
             {...(typeof chartHeight === "number" && !fillHeight

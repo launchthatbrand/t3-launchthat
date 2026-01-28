@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { useAction } from "convex/react";
+import { api } from "@convex-config/_generated/api";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -22,8 +24,8 @@ import {
 } from "@acme/ui/table";
 import { cn } from "@acme/ui/lib/utils";
 import { PublicSymbolPricePanel } from "~/components/price/PublicSymbolPricePanel";
-
-const watchlist = ["BTCUSD", "ETHUSD", "XAUUSD", "EURUSD", "GBPUSD"];
+import { useRouter, useSearchParams } from "next/navigation";
+import { Flag, Search, Loader2 } from "lucide-react";
 
 export function PublicSymbolTradingPanel({
   symbol,
@@ -32,6 +34,162 @@ export function PublicSymbolTradingPanel({
   symbol: string;
   className?: string;
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const listSources = useAction(api.traderlaunchpad.actions.pricedataListPublicSources);
+  const listSymbolsForSourceKey = useAction(
+    api.traderlaunchpad.actions.pricedataListPublicSymbolsForSourceKey,
+  );
+
+  const [sources, setSources] = React.useState<
+    Array<{ sourceKey: string; label: string; isDefault?: boolean }>
+  >([]);
+  const [selectedSourceKey, setSelectedSourceKey] = React.useState<string | null>(
+    null,
+  );
+  const [symbols, setSymbols] = React.useState<string[]>([]);
+  const [search, setSearch] = React.useState("");
+  const [favoriteSet, setFavoriteSet] = React.useState<Set<string>>(
+    () => new Set(),
+  );
+  const [pendingSymbol, setPendingSymbol] = React.useState<string | null>(null);
+
+  const urlSourceKey = searchParams.get("sourceKey");
+  const favoritesStorageKey = selectedSourceKey
+    ? `publicTradingPanel:favorites:${selectedSourceKey}`
+    : null;
+
+  React.useEffect(() => {
+    if (!favoritesStorageKey) return;
+    try {
+      const raw = window.localStorage.getItem(favoritesStorageKey);
+      const arr = raw ? (JSON.parse(raw) as unknown) : [];
+      const list = Array.isArray(arr)
+        ? arr
+            .map((s) => (typeof s === "string" ? s.trim().toUpperCase() : ""))
+            .filter(Boolean)
+        : [];
+      setFavoriteSet(new Set(list));
+    } catch {
+      setFavoriteSet(new Set());
+    }
+  }, [favoritesStorageKey]);
+
+  const toggleFavorite = React.useCallback(
+    (sym: string) => {
+      const k = sym.trim().toUpperCase();
+      if (!k || !favoritesStorageKey) return;
+      setFavoriteSet((prev) => {
+        const next = new Set(prev);
+        if (next.has(k)) next.delete(k);
+        else next.add(k);
+        try {
+          window.localStorage.setItem(
+            favoritesStorageKey,
+            JSON.stringify(Array.from(next)),
+          );
+        } catch {
+          // ignore
+        }
+        return next;
+      });
+    },
+    [favoritesStorageKey],
+  );
+
+  React.useEffect(() => {
+    let cancelled = false;
+    listSources({ limit: 50 })
+      .then((rows) => {
+        if (cancelled) return;
+        const next = Array.isArray(rows) ? rows : [];
+        setSources(next);
+
+        const preferred =
+          typeof urlSourceKey === "string" && urlSourceKey
+            ? next.find((s) => s.sourceKey === urlSourceKey)?.sourceKey ?? null
+            : null;
+
+        const fallback =
+          next.find((s) => s.isDefault)?.sourceKey ??
+          next[0]?.sourceKey ??
+          null;
+
+        const chosen = preferred ?? fallback;
+        setSelectedSourceKey(chosen);
+
+        if (!preferred && chosen) {
+          const sp = new URLSearchParams(searchParams.toString());
+          sp.set("sourceKey", chosen);
+          router.replace(`/symbol/${encodeURIComponent(symbol)}?${sp.toString()}`, {
+            scroll: false,
+          });
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSources([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Intentionally exclude router/searchParams from deps to avoid replace loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listSources, urlSourceKey]);
+
+  React.useEffect(() => {
+    const k = selectedSourceKey;
+    if (!k) {
+      setSymbols([]);
+      return;
+    }
+    let cancelled = false;
+    listSymbolsForSourceKey({ sourceKey: k, limit: 5000 })
+      .then((res) => {
+        if (cancelled) return;
+        setSymbols(Array.isArray(res?.symbols) ? res.symbols : []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSymbols([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [listSymbolsForSourceKey, selectedSourceKey]);
+
+  const filteredSymbols = React.useMemo(() => {
+    const q = search.trim().toUpperCase();
+    const base = q ? symbols.filter((s) => s.includes(q)) : symbols;
+    const fav: string[] = [];
+    const rest: string[] = [];
+    for (const s of base) {
+      if (favoriteSet.has(s)) fav.push(s);
+      else rest.push(s);
+    }
+    return { fav, rest };
+  }, [favoriteSet, search, symbols]);
+
+  const handleSelectSourceKey = React.useCallback(
+    (next: string) => {
+      const trimmed = next.trim();
+      if (!trimmed) return;
+      setSelectedSourceKey(trimmed);
+      const sp = new URLSearchParams(searchParams.toString());
+      sp.set("sourceKey", trimmed);
+      router.replace(`/symbol/${encodeURIComponent(symbol)}?${sp.toString()}`, {
+        scroll: false,
+      });
+    },
+    [router, searchParams, symbol],
+  );
+
+  React.useEffect(() => {
+    // Clear pending click feedback once the route param updates.
+    setPendingSymbol(null);
+  }, [symbol]);
+
   return (
     <div className={cn("w-full", className)}>
       <ResizablePanelGroup
@@ -44,6 +202,10 @@ export function PublicSymbolTradingPanel({
               <div className="h-full p-3">
                 <PublicSymbolPricePanel
                   symbol={symbol}
+                  selectedSourceKey={selectedSourceKey}
+                  sourceOptions={sources}
+                  onSelectedSourceKeyChangeAction={handleSelectSourceKey}
+                  externalLoading={Boolean(pendingSymbol && pendingSymbol !== symbol)}
                   fillHeight
                   className="h-full min-h-0 rounded-2xl border-white/10 bg-white/3 p-4"
                 />
@@ -77,19 +239,171 @@ export function PublicSymbolTradingPanel({
                       value="watchlist"
                       className="flex-1 overflow-auto p-3"
                     >
-                      <div className="space-y-2">
-                        {watchlist.map((s) => (
-                          <button
+                      <div className="space-y-3">
+                        <div className="relative">
+                          <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-white/40" />
+                          <Input
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search symbols..."
+                            className="h-9 pl-9"
+                          />
+                        </div>
+
+                        {filteredSymbols.fav.length > 0 ? (
+                          <div className="space-y-2">
+                            <div className="text-[11px] font-semibold text-white/50">
+                              Favorites
+                            </div>
+                            {filteredSymbols.fav.map((s) => (
+                              <div
+                                key={s}
+                                className={cn(
+                                  "flex w-full items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-left text-sm text-white/80 hover:bg-black/30",
+                                  s === symbol ? "ring-1 ring-white/20" : "",
+                                )}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => {
+                                  if (s === symbol) {
+                                    setPendingSymbol(null);
+                                    return;
+                                  }
+                                  setPendingSymbol(s);
+                                  const sp = new URLSearchParams(searchParams.toString());
+                                  if (selectedSourceKey) sp.set("sourceKey", selectedSourceKey);
+                                  router.push(
+                                    `/symbol/${encodeURIComponent(s)}?${sp.toString()}`,
+                                    { scroll: false },
+                                  );
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key !== "Enter" && e.key !== " ") return;
+                                  e.preventDefault();
+                                  if (s === symbol) {
+                                    setPendingSymbol(null);
+                                    return;
+                                  }
+                                  setPendingSymbol(s);
+                                  const sp = new URLSearchParams(searchParams.toString());
+                                  if (selectedSourceKey) sp.set("sourceKey", selectedSourceKey);
+                                  router.push(
+                                    `/symbol/${encodeURIComponent(s)}?${sp.toString()}`,
+                                    { scroll: false },
+                                  );
+                                }}
+                              >
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <button
+                                    type="button"
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-black/30 hover:bg-black/40"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      toggleFavorite(s);
+                                    }}
+                                    aria-label="Toggle favorite"
+                                  >
+                                    <Flag className="h-4 w-4 text-rose-300" />
+                                  </button>
+                                  <span className="min-w-0 truncate font-mono">
+                                    {s}
+                                  </span>
+                                </span>
+                                {pendingSymbol === s ? (
+                                  <span className="inline-flex items-center gap-2 text-xs text-white/50">
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Loading
+                                  </span>
+                                ) : s === symbol ? (
+                                  <span className="text-xs text-white/50">
+                                    Viewing
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-white/50">
+                                    Open
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        <div className="space-y-2">
+                          {filteredSymbols.fav.length > 0 ? (
+                            <div className="text-[11px] font-semibold text-white/50">
+                              All
+                            </div>
+                          ) : null}
+                          {filteredSymbols.rest.map((s) => (
+                          <div
                             key={s}
-                            type="button"
                             className={cn(
                               "flex w-full items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-left text-sm text-white/80 hover:bg-black/30",
                               s === symbol ? "ring-1 ring-white/20" : "",
+                              pendingSymbol === s ? "opacity-80" : "",
                             )}
-                            // MVP: just visual; no navigation yet
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => {
+                              if (s === symbol) {
+                                setPendingSymbol(null);
+                                return;
+                              }
+                              setPendingSymbol(s);
+                              const sp = new URLSearchParams(searchParams.toString());
+                              if (selectedSourceKey) sp.set("sourceKey", selectedSourceKey);
+                              router.push(
+                                `/symbol/${encodeURIComponent(s)}?${sp.toString()}`,
+                                { scroll: false },
+                              );
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key !== "Enter" && e.key !== " ") return;
+                              e.preventDefault();
+                              if (s === symbol) {
+                                setPendingSymbol(null);
+                                return;
+                              }
+                              setPendingSymbol(s);
+                              const sp = new URLSearchParams(searchParams.toString());
+                              if (selectedSourceKey) sp.set("sourceKey", selectedSourceKey);
+                              router.push(
+                                `/symbol/${encodeURIComponent(s)}?${sp.toString()}`,
+                                { scroll: false },
+                              );
+                            }}
                           >
-                            <span className="font-mono">{s}</span>
-                            {s === symbol ? (
+                            <span className="flex min-w-0 items-center gap-2">
+                              <button
+                                type="button"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-black/30 hover:bg-black/40"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  toggleFavorite(s);
+                                }}
+                                aria-label="Toggle favorite"
+                              >
+                                <Flag
+                                  className={cn(
+                                    "h-4 w-4",
+                                    favoriteSet.has(s)
+                                      ? "text-rose-300"
+                                      : "text-white/30",
+                                  )}
+                                />
+                              </button>
+                              <span className="min-w-0 truncate font-mono">
+                                {s}
+                              </span>
+                            </span>
+                            {pendingSymbol === s ? (
+                              <span className="inline-flex items-center gap-2 text-xs text-white/50">
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                Loading
+                              </span>
+                            ) : s === symbol ? (
                               <span className="text-xs text-white/50">
                                 Viewing
                               </span>
@@ -98,8 +412,9 @@ export function PublicSymbolTradingPanel({
                                 Open
                               </span>
                             )}
-                          </button>
-                        ))}
+                          </div>
+                          ))}
+                        </div>
                       </div>
                     </TabsContent>
 

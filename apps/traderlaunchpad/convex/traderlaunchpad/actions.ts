@@ -1248,10 +1248,83 @@ export const pricedataListPublicSymbols = action({
   },
 });
 
+export const pricedataListPublicSources = action({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      sourceKey: v.string(),
+      label: v.string(),
+      isDefault: v.optional(v.boolean()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const rows: any[] = await ctx.runQuery(
+      componentsUntyped.launchthat_pricedata.sources.queries.listSources,
+      { limit: args.limit },
+    );
+    const defaultSource = await ctx.runQuery(
+      componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
+      {},
+    );
+    const defaultKey =
+      typeof defaultSource?.sourceKey === "string" ? String(defaultSource.sourceKey) : "";
+
+    const mapped = Array.isArray(rows)
+      ? rows
+          .map((r: any) => {
+            const sourceKey = typeof r?.sourceKey === "string" ? String(r.sourceKey) : "";
+            const environment = typeof r?.environment === "string" ? String(r.environment) : "";
+            const server = typeof r?.server === "string" ? String(r.server) : "";
+            const provider = typeof r?.provider === "string" ? String(r.provider) : "";
+            if (!sourceKey) return null;
+            const label = [provider, environment, server].filter(Boolean).join(":") || sourceKey;
+            const isDefault = Boolean(r?.isDefault) || (defaultKey && sourceKey === defaultKey);
+            return { sourceKey, label, isDefault: isDefault || undefined };
+          })
+          .filter(Boolean)
+      : [];
+
+    mapped.sort((a: any, b: any) => Number(Boolean(b.isDefault)) - Number(Boolean(a.isDefault)));
+    return mapped as any;
+  },
+});
+
+export const pricedataListPublicSymbolsForSourceKey = action({
+  args: {
+    sourceKey: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.object({
+    sourceKey: v.string(),
+    symbols: v.array(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const sourceKey = args.sourceKey.trim();
+    if (!sourceKey) return { sourceKey, symbols: [] };
+
+    const rows = await ctx.runQuery(
+      componentsUntyped.launchthat_pricedata.instruments.queries.listInstrumentsForSource,
+      { sourceKey, limit: args.limit },
+    );
+
+    const symbols = Array.isArray(rows)
+      ? rows
+          .map((r: any) => (typeof r?.symbol === "string" ? r.symbol : ""))
+          .filter(Boolean)
+      : [];
+
+    return { sourceKey, symbols };
+  },
+});
+
 export const pricedataGetPublicBars = action({
   args: {
     symbol: v.string(),
     resolution: v.string(),
+    // Optional override for broker/feed selection on public pages.
+    sourceKey: v.optional(v.string()),
     // Pagination:
     // - `toMs` is an inclusive cursor (ms). Omit for "latest".
     // - `limit` is the maximum number of candles returned.
@@ -1281,6 +1354,8 @@ export const pricedataGetPublicBars = action({
   handler: async (ctx, args) => {
     const symbol = normalizeSymbol(args.symbol);
     const resolutionRaw = args.resolution.trim();
+    const requestedSourceKey =
+      typeof args.sourceKey === "string" ? args.sourceKey.trim() : "";
     const lookbackDaysRaw =
       typeof args.lookbackDays === "number" && Number.isFinite(args.lookbackDays)
         ? Math.floor(args.lookbackDays)
@@ -1299,12 +1374,16 @@ export const pricedataGetPublicBars = action({
       };
     }
 
-    const source = await ctx.runQuery(
-      componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
-      {},
-    );
-    const sourceKey =
-      typeof source?.sourceKey === "string" ? String(source.sourceKey) : "";
+    const source = requestedSourceKey
+      ? await ctx.runQuery(
+          componentsUntyped.launchthat_pricedata.sources.queries.getSourceByKey,
+          { sourceKey: requestedSourceKey },
+        )
+      : await ctx.runQuery(
+          componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
+          {},
+        );
+    const sourceKey = typeof source?.sourceKey === "string" ? String(source.sourceKey) : "";
     if (!sourceKey) {
       return {
         ok: false,
@@ -1313,7 +1392,7 @@ export const pricedataGetPublicBars = action({
         resolution: resolutionRaw,
         bars: [],
         nextToMs: undefined,
-        error: "No default price source configured.",
+        error: requestedSourceKey ? "Unknown price sourceKey." : "No default price source configured.",
       };
     }
 
@@ -1382,13 +1461,17 @@ export const pricedataGetPublicBars = action({
 
     // Temporary fallback while ClickHouse is being phased in.
     if (bars.length === 0 && allowLegacyChunks) {
+      const legacyFromMs =
+        typeof fromMs === "number" && Number.isFinite(fromMs)
+          ? fromMs
+          : Math.max(0, toMs - 7 * DAY_MS);
       const chunks = await ctx.runQuery(
         componentsUntyped.launchthat_pricedata.bars.queries.getBarChunks,
         {
           sourceKey,
           tradableInstrumentId: instrument.tradableInstrumentId,
           resolution: resolutionRaw,
-          fromMs,
+          fromMs: legacyFromMs,
           toMs,
         },
       );
@@ -1437,6 +1520,8 @@ export const pricedataEnsurePublicBarsCached = action({
   args: {
     symbol: v.string(),
     resolution: v.string(),
+    // Optional override for broker/feed selection on public pages.
+    sourceKey: v.optional(v.string()),
     // Backward compatible bounded warm window.
     lookbackDays: v.optional(v.number()),
     // Optional explicit window (ms) for warming the currently viewed chart range.
@@ -1454,6 +1539,8 @@ export const pricedataEnsurePublicBarsCached = action({
   handler: async (ctx, args) => {
     const symbol = normalizeSymbol(args.symbol);
     const resolution = args.resolution.trim();
+    const requestedSourceKey =
+      typeof args.sourceKey === "string" ? args.sourceKey.trim() : "";
     // This action is meant to quickly warm ClickHouse; keep it bounded.
     const lookbackDaysRaw =
       typeof args.lookbackDays === "number" && Number.isFinite(args.lookbackDays)
@@ -1461,10 +1548,15 @@ export const pricedataEnsurePublicBarsCached = action({
         : 7;
     const lookbackDays = Math.max(1, Math.min(7, lookbackDaysRaw));
 
-    const source = await ctx.runQuery(
-      componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
-      {},
-    );
+    const source = requestedSourceKey
+      ? await ctx.runQuery(
+          componentsUntyped.launchthat_pricedata.sources.queries.getSourceByKey,
+          { sourceKey: requestedSourceKey },
+        )
+      : await ctx.runQuery(
+          componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
+          {},
+        );
     const sourceKey =
       typeof source?.sourceKey === "string" ? String(source.sourceKey) : "";
     if (!sourceKey) {
@@ -1473,7 +1565,9 @@ export const pricedataEnsurePublicBarsCached = action({
         sourceKey: undefined,
         symbol,
         resolution,
-        error: "No default price source configured. Set it in Admin → Settings → Connections.",
+        error: requestedSourceKey
+          ? "Unknown price sourceKey."
+          : "No default price source configured. Set it in Admin → Settings → Connections.",
       };
     }
 

@@ -68,7 +68,7 @@
     "launchthat-plugin-pwa": "workspace:*",
     "launchthat-plugin-shortlinks": "workspace:*",
     "launchthat-plugin-traderlaunchpad": "workspace:*",
-    "lightweight-charts": "^4.2.0",
+    "lightweight-charts": "^5.1.0",
     "lucide-react": "^0.555.0",
     "motion": "^12.23.24",
     "next": "catalog:",
