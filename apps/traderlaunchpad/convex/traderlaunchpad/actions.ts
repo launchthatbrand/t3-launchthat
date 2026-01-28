@@ -1,3 +1,5 @@
+/* eslint-disable no-restricted-properties */
+/* eslint-disable turbo/no-undeclared-env-vars */
 "use node";
 
 import { resolveOrganizationId, resolveViewerUserId } from "./lib/resolve";
@@ -252,16 +254,23 @@ export const startTradeLockerConnect = action({
         ? accountsJson.accounts
         : [];
 
-    const tokenStorage = env.TRADELOCKER_TOKEN_STORAGE ?? "raw";
+    const tokenStorage = env.TRADELOCKER_TOKEN_STORAGE;
     const secretsKey = env.TRADELOCKER_SECRETS_KEY;
-    const accessTokenEncrypted =
-      tokenStorage === "enc"
-        ? await encryptSecret(accessToken, secretsKey)
-        : accessToken;
-    const refreshTokenEncrypted =
-      tokenStorage === "enc"
-        ? await encryptSecret(refreshToken, secretsKey)
-        : refreshToken;
+
+    let accessTokenEncrypted: string;
+    let refreshTokenEncrypted: string;
+    if (tokenStorage === "enc") {
+      if (!secretsKey) {
+        throw new Error(
+          "TRADELOCKER_SECRETS_KEY is required when TRADELOCKER_TOKEN_STORAGE=enc",
+        );
+      }
+      accessTokenEncrypted = await encryptSecret(accessToken, secretsKey);
+      refreshTokenEncrypted = await encryptSecret(refreshToken, secretsKey);
+    } else {
+      accessTokenEncrypted = accessToken;
+      refreshTokenEncrypted = refreshToken;
+    }
 
     const draftId = await ctx.runMutation(
       traderlaunchpadDraftMutations.createConnectDraft,
@@ -551,14 +560,14 @@ export const syncMyTradeLockerNow = action({
 
           let instrumentSymbols = Array.isArray(mappedPrimary)
             ? mappedPrimary
-                .map((r: any) => ({
-                  instrumentId:
-                    typeof r?.tradableInstrumentId === "string"
-                      ? String(r.tradableInstrumentId)
-                      : "",
-                  symbol: typeof r?.symbol === "string" ? String(r.symbol) : "",
-                }))
-                .filter((r) => r.instrumentId && r.symbol)
+              .map((r: any) => ({
+                instrumentId:
+                  typeof r?.tradableInstrumentId === "string"
+                    ? String(r.tradableInstrumentId)
+                    : "",
+                symbol: typeof r?.symbol === "string" ? String(r.symbol) : "",
+              }))
+              .filter((r) => r.instrumentId && r.symbol)
             : [];
 
           // Fallback: if the derived key isn't populated, try the pricedata default key too.
@@ -570,14 +579,14 @@ export const syncMyTradeLockerNow = action({
             );
             instrumentSymbols = Array.isArray(mappedFallback)
               ? mappedFallback
-                  .map((r: any) => ({
-                    instrumentId:
-                      typeof r?.tradableInstrumentId === "string"
-                        ? String(r.tradableInstrumentId)
-                        : "",
-                    symbol: typeof r?.symbol === "string" ? String(r.symbol) : "",
-                  }))
-                  .filter((r) => r.instrumentId && r.symbol)
+                .map((r: any) => ({
+                  instrumentId:
+                    typeof r?.tradableInstrumentId === "string"
+                      ? String(r.tradableInstrumentId)
+                      : "",
+                  symbol: typeof r?.symbol === "string" ? String(r.symbol) : "",
+                }))
+                .filter((r) => r.instrumentId && r.symbol)
               : [];
           }
 
@@ -589,8 +598,8 @@ export const syncMyTradeLockerNow = action({
             );
             const sourceKeys = Array.isArray(sources)
               ? sources
-                  .map((s: any) => (typeof s?.sourceKey === "string" ? String(s.sourceKey) : ""))
-                  .filter(Boolean)
+                .map((s: any) => (typeof s?.sourceKey === "string" ? String(s.sourceKey) : ""))
+                .filter(Boolean)
               : [];
             for (const k of sourceKeys) {
               if (k === sourceKey || k === defaultSourceKey) continue;
@@ -601,14 +610,14 @@ export const syncMyTradeLockerNow = action({
               );
               const next = Array.isArray(mappedAny)
                 ? mappedAny
-                    .map((r: any) => ({
-                      instrumentId:
-                        typeof r?.tradableInstrumentId === "string"
-                          ? String(r.tradableInstrumentId)
-                          : "",
-                      symbol: typeof r?.symbol === "string" ? String(r.symbol) : "",
-                    }))
-                    .filter((r) => r.instrumentId && r.symbol)
+                  .map((r: any) => ({
+                    instrumentId:
+                      typeof r?.tradableInstrumentId === "string"
+                        ? String(r.tradableInstrumentId)
+                        : "",
+                    symbol: typeof r?.symbol === "string" ? String(r.symbol) : "",
+                  }))
+                  .filter((r) => r.instrumentId && r.symbol)
                 : [];
               if (next.length > 0) {
                 instrumentSymbols = next;

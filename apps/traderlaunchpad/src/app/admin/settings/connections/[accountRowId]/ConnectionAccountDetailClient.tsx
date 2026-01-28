@@ -10,6 +10,8 @@ import { RefreshCw } from "lucide-react";
 import { TradeLockerApiDebugPanel } from "~/components/settings/tradelocker/TradeLockerApiDebugPanel";
 import { api } from "@convex-config/_generated/api";
 import { usePathname } from "next/navigation";
+import { Checkbox } from "@acme/ui/checkbox";
+import { Label } from "@acme/ui/label";
 
 type UnknownRecord = Record<string, unknown>;
 interface ConnectionAccountResult {
@@ -56,6 +58,7 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
 
     const [busy, setBusy] = React.useState<string | null>(null);
     const [error, setError] = React.useState<string | null>(null);
+    const [includeDeveloperKey, setIncludeDeveloperKey] = React.useState(true);
 
     const data: ConnectionAccountResult | null | undefined = (() => {
         if (dataRaw === undefined) return undefined;
@@ -143,10 +146,18 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
                     : props.accountRowId;
             const accNum = toNumber(account.accNum) ?? 0;
 
-            await refreshAccountConfig({
-                accountRowId: rowId,
-                accNum,
-            });
+            if (isPlatform) {
+                await refreshAccountConfig({
+                    accountRowId: rowId,
+                    accNum,
+                    includeDeveloperKey,
+                });
+            } else {
+                await refreshAccountConfig({
+                    accountRowId: rowId,
+                    accNum,
+                });
+            }
         } catch (e) {
             setError(e instanceof Error ? e.message : String(e));
         } finally {
@@ -214,6 +225,18 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
+                        {isPlatform ? (
+                            <div className="flex items-center gap-2 rounded-md border border-border/40 bg-background/40 px-3 py-2">
+                                <Checkbox
+                                    id="tl-include-devkey"
+                                    checked={includeDeveloperKey}
+                                    onCheckedChange={(v) => setIncludeDeveloperKey(Boolean(v))}
+                                />
+                                <Label htmlFor="tl-include-devkey" className="text-xs text-muted-foreground">
+                                    Include developer API key header
+                                </Label>
+                            </div>
+                        ) : null}
                         <Button
                             type="button"
                             variant="outline"

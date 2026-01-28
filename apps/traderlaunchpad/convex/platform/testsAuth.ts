@@ -17,7 +17,16 @@ export const assertPlatformAdmin = internalQuery({
   returns: v.null(),
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
+    // Local dev ergonomics:
+    // Some local-host routes run under TenantConvexProvider without a Convex auth identity
+    // (see host-mode.ts notes). For platform tooling like `/platform/data`, allow access
+    // in non-production environments even if a Convex identity is missing.
+    //
+    // Security note: this ONLY applies to non-production deployments.
+    if (!identity) {
+      if (process.env.NODE_ENV !== "production") return null;
+      throw new Error("Unauthorized");
+    }
 
     let viewer: any =
       (await ctx.db

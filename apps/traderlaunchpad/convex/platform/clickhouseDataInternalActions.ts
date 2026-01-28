@@ -1,0 +1,166 @@
+"use node";
+
+/* eslint-disable
+  @typescript-eslint/no-explicit-any,
+  @typescript-eslint/no-unsafe-assignment,
+  @typescript-eslint/no-unsafe-member-access
+*/
+
+import { v } from "convex/values";
+import { internalAction } from "../_generated/server";
+import { clickhouseSelect } from "../lib/clickhouseHttp";
+
+export const listSourceKeys = internalAction({
+  args: { limit: v.number() },
+  returns: v.array(v.string()),
+  handler: async (_ctx, args) => {
+    const limit = Math.max(1, Math.min(2000, Number(args.limit ?? 500)));
+    const res = await clickhouseSelect<{ sourceKey: string }>(
+      "SELECT DISTINCT sourceKey FROM candles_1m ORDER BY sourceKey LIMIT {limit:Int64}",
+      [{ name: "limit", type: "Int64", value: limit }],
+    );
+    if (!res.ok) throw new Error(res.error ?? "ClickHouse query failed");
+    return res.rows.map((r) => String(r.sourceKey ?? "")).filter(Boolean);
+  },
+});
+
+export const listPairsForSourceKey = internalAction({
+  args: {
+    sourceKey: v.string(),
+    search: v.optional(v.string()),
+    limit: v.number(),
+  },
+  returns: v.array(v.object({ tradableInstrumentId: v.string(), symbol: v.string() })),
+  handler: async (_ctx, args) => {
+    const sourceKey = args.sourceKey.trim();
+    if (!sourceKey) return [];
+    const limit = Math.max(1, Math.min(2000, Number(args.limit ?? 200)));
+    const search = typeof args.search === "string" ? args.search.trim().toUpperCase() : "";
+
+    const whereSearch = search ? " AND symbol ILIKE {q:String}" : "";
+    const params = [
+      { name: "sourceKey", type: "String", value: sourceKey },
+      { name: "limit", type: "Int64", value: limit },
+      ...(search ? [{ name: "q", type: "String", value: `%${search}%` }] : []),
+    ];
+
+    const res = await clickhouseSelect<{ tradableInstrumentId: string; symbol: string }>(
+      `SELECT tradableInstrumentId, any(symbol) AS symbol
+       FROM candles_1m
+       WHERE sourceKey = {sourceKey:String}${whereSearch}
+       GROUP BY tradableInstrumentId
+       ORDER BY symbol
+       LIMIT {limit:Int64}`,
+      params,
+    );
+    if (!res.ok) throw new Error(res.error ?? "ClickHouse query failed");
+    return res.rows
+      .map((r) => ({
+        tradableInstrumentId: String(r.tradableInstrumentId ?? "").trim(),
+        symbol: String(r.symbol ?? "").trim(),
+      }))
+      .filter((r) => r.tradableInstrumentId && r.symbol);
+  },
+});
+
+export const getCoverageSummary1m = internalAction({
+  args: { sourceKey: v.string(), tradableInstrumentId: v.string() },
+  returns: v.union(
+    v.object({
+      minTs: v.optional(v.string()),
+      maxTs: v.optional(v.string()),
+      rows: v.number(),
+      expectedRows: v.number(),
+      missingEstimate: v.number(),
+    }),
+    v.null(),
+  ),
+  handler: async (_ctx, args) => {
+    const sourceKey = args.sourceKey.trim();
+    const tradableInstrumentId = args.tradableInstrumentId.trim();
+    if (!sourceKey || !tradableInstrumentId) return null;
+
+    const res = await clickhouseSelect<{
+      minTs: string;
+      maxTs: string;
+      rows: number;
+      expectedRows: number;
+      missingEstimate: number;
+    }>(
+      `SELECT
+         toString(min(ts)) AS minTs,
+         toString(max(ts)) AS maxTs,
+         count() AS rows,
+         dateDiff('minute', min(ts), max(ts)) + 1 AS expectedRows,
+         (dateDiff('minute', min(ts), max(ts)) + 1) - count() AS missingEstimate
+       FROM candles_1m
+       WHERE sourceKey = {sourceKey:String}
+         AND tradableInstrumentId = {tradableInstrumentId:String}`,
+      [
+        { name: "sourceKey", type: "String", value: sourceKey },
+        { name: "tradableInstrumentId", type: "String", value: tradableInstrumentId },
+      ],
+    );
+    if (!res.ok) throw new Error(res.error ?? "ClickHouse query failed");
+    const row = res.rows[0] as any;
+    if (!row) return null;
+    return {
+      minTs: typeof row.minTs === "string" ? row.minTs : undefined,
+      maxTs: typeof row.maxTs === "string" ? row.maxTs : undefined,
+      rows: Number(row.rows ?? 0),
+      expectedRows: Number(row.expectedRows ?? 0),
+      missingEstimate: Number(row.missingEstimate ?? 0),
+    };
+  },
+});
+
+export const compareBrokersForSymbol1m = internalAction({
+  args: { symbol: v.string(), limit: v.number() },
+  returns: v.array(
+    v.object({
+      sourceKey: v.string(),
+      tradableInstrumentId: v.string(),
+      minTs: v.optional(v.string()),
+      maxTs: v.optional(v.string()),
+      rows_24h: v.number(),
+    }),
+  ),
+  handler: async (_ctx, args) => {
+    const symbol = args.symbol.trim().toUpperCase();
+    if (!symbol) return [];
+    const limit = Math.max(1, Math.min(2000, Number(args.limit ?? 200)));
+
+    const res = await clickhouseSelect<{
+      sourceKey: string;
+      tradableInstrumentId: string;
+      minTs: string;
+      maxTs: string;
+      rows_24h: number;
+    }>(
+      `SELECT
+         sourceKey,
+         any(tradableInstrumentId) AS tradableInstrumentId,
+         toString(min(ts)) AS minTs,
+         toString(max(ts)) AS maxTs,
+         countIf(ts >= now() - INTERVAL 1 DAY) AS rows_24h
+       FROM candles_1m
+       WHERE symbol = {symbol:String}
+       GROUP BY sourceKey
+       ORDER BY sourceKey
+       LIMIT {limit:Int64}`,
+      [
+        { name: "symbol", type: "String", value: symbol },
+        { name: "limit", type: "Int64", value: limit },
+      ],
+    );
+    if (!res.ok) throw new Error(res.error ?? "ClickHouse query failed");
+    return res.rows.map((r: any) => ({
+      sourceKey: String(r.sourceKey ?? ""),
+      tradableInstrumentId: String(r.tradableInstrumentId ?? ""),
+      minTs: typeof r.minTs === "string" ? r.minTs : undefined,
+      maxTs: typeof r.maxTs === "string" ? r.maxTs : undefined,
+      rows_24h: Number(r.rows_24h ?? 0),
+    }));
+  },
+});
+

@@ -15,12 +15,12 @@ export const env = createEnv({
    */
   server: {
     // POSTGRES_URL: z.url(),
-    TRADERLAUNCHPAD_DEFAULT_ORG_ID: z.string().min(1),
+    TRADERLAUNCHPAD_DEFAULT_ORG_ID: z.string().min(1).optional(),
     // Default tenant slug used for local dev fallback when return_to is bare localhost.
     // Mirrors Portal’s PORTAL_TENANT_SLUG behavior.
     // TraderLaunchpad: "platform" represents the apex/global experience.
     TRADERLAUNCHPAD_DEFAULT_TENANT_SLUG: z.string().min(1).default("platform"),
-    TRADELOCKER_SECRETS_KEY: z.string().min(1),
+    TRADELOCKER_SECRETS_KEY: z.string().min(1).optional(),
     TRADELOCKER_TOKEN_STORAGE: z.enum(["raw", "enc"]).default("raw"),
     // Optional: TradeLocker developer program key (improves rate limits / access on some endpoints).
     // Keep this server-only.
@@ -39,6 +39,12 @@ export const env = createEnv({
     DISCORD_GLOBAL_CLIENT_ID: z.string().min(1).optional(),
     DISCORD_GLOBAL_BOT_TOKEN: z.string().min(1).optional(),
     DISCORD_SECRETS_KEY: z.string().min(1).optional(),
+
+    // ClickHouse (HTTP interface) - used by platform `/platform/data` dashboards/jobs.
+    CLICKHOUSE_HTTP_URL: z.string().url().optional(),
+    CLICKHOUSE_DB: z.string().min(1).optional().default("traderlaunchpad"),
+    CLICKHOUSE_USER: z.string().min(1).optional(),
+    CLICKHOUSE_PASSWORD: z.string().min(1).optional(),
   },
 
   /**

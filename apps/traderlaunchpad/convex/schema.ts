@@ -185,5 +185,51 @@ export default defineSchema({
     .index("by_token", ["token"])
     .index("by_expiresAt", ["expiresAt"]),
 
+  /**
+   * Platform-managed ClickHouse price data backfill jobs.
+   * These are platform-admin only and are used by `/platform/data`.
+   */
+  platformPriceDataJobs: defineTable({
+    status: v.union(
+      v.literal("queued"),
+      v.literal("running"),
+      v.literal("done"),
+      v.literal("error"),
+    ),
+    sourceKey: v.string(),
+    tradableInstrumentId: v.string(),
+    symbol: v.string(),
+    resolution: v.union(v.literal("1m")),
+    requestedLookbackDays: v.number(),
+    overlapDays: v.number(),
+
+    // Computed fetch window in epoch ms.
+    computedFromTs: v.optional(v.number()),
+    computedToTs: v.optional(v.number()),
+
+    workflowId: v.optional(v.string()),
+    createdAt: v.number(),
+    startedAt: v.optional(v.number()),
+    finishedAt: v.optional(v.number()),
+    progress: v.optional(v.any()),
+    error: v.optional(v.string()),
+  })
+    .index("by_status", ["status"])
+    .index("by_source_and_instrument", ["sourceKey", "tradableInstrumentId"])
+    .index("by_createdAt", ["createdAt"]),
+
+  /**
+   * Append-only logs for platform price data job runs (workflow/debug visibility).
+   */
+  platformPriceDataJobLogs: defineTable({
+    jobId: v.id("platformPriceDataJobs"),
+    ts: v.number(),
+    level: v.union(v.literal("info"), v.literal("warn"), v.literal("error")),
+    message: v.string(),
+    data: v.optional(v.any()),
+  })
+    .index("by_ts", ["ts"])
+    .index("by_jobId_and_ts", ["jobId", "ts"]),
+
 });
 

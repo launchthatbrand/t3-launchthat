@@ -26,6 +26,7 @@ import type * as email_queries from "../email/queries.js";
 import type * as feedback_mutations from "../feedback/mutations.js";
 import type * as feedback_queries from "../feedback/queries.js";
 import type * as flags from "../flags.js";
+import type * as lib_clickhouseHttp from "../lib/clickhouseHttp.js";
 import type * as notifications_mutations from "../notifications/mutations.js";
 import type * as notifications_queries from "../notifications/queries.js";
 import type * as notifications_test from "../notifications/test.js";
@@ -33,8 +34,17 @@ import type * as onboarding_mutations from "../onboarding/mutations.js";
 import type * as onboarding_queries from "../onboarding/queries.js";
 import type * as platform_brokerConnections from "../platform/brokerConnections.js";
 import type * as platform_brokerConnectionsActions from "../platform/brokerConnectionsActions.js";
+import type * as platform_clickhouseCandles from "../platform/clickhouseCandles.js";
+import type * as platform_clickhouseData from "../platform/clickhouseData.js";
+import type * as platform_clickhouseDataInternalActions from "../platform/clickhouseDataInternalActions.js";
 import type * as platform_crm from "../platform/crm.js";
 import type * as platform_joinCodes from "../platform/joinCodes.js";
+import type * as platform_priceDataJobs from "../platform/priceDataJobs.js";
+import type * as platform_priceDataJobsInternalActions from "../platform/priceDataJobsInternalActions.js";
+import type * as platform_priceDataJobsInternalMutations from "../platform/priceDataJobsInternalMutations.js";
+import type * as platform_priceDataLogs from "../platform/priceDataLogs.js";
+import type * as platform_priceDataLogsInternalMutations from "../platform/priceDataLogsInternalMutations.js";
+import type * as platform_priceDataWorkflow from "../platform/priceDataWorkflow.js";
 import type * as platform_queries from "../platform/queries.js";
 import type * as platform_test_helpers from "../platform/test/helpers.js";
 import type * as platform_test_mutations from "../platform/test/mutations.js";
@@ -43,6 +53,7 @@ import type * as platform_tests from "../platform/tests.js";
 import type * as platform_testsAuth from "../platform/testsAuth.js";
 import type * as platform_testsDebug from "../platform/testsDebug.js";
 import type * as platform_testsQueries from "../platform/testsQueries.js";
+import type * as platform_tradelockerSources from "../platform/tradelockerSources.js";
 import type * as platform_tradingviewConnections from "../platform/tradingviewConnections.js";
 import type * as platform_tradingviewConnectionsActions from "../platform/tradingviewConnectionsActions.js";
 import type * as platform_userAccess from "../platform/userAccess.js";
@@ -64,6 +75,7 @@ import type * as traderlaunchpad_types from "../traderlaunchpad/types.js";
 import type * as userMedia from "../userMedia.js";
 import type * as viewer_mutations from "../viewer/mutations.js";
 import type * as viewer_queries from "../viewer/queries.js";
+import type * as workflow from "../workflow.js";
 
 import type {
   ApiFromModules,
@@ -98,6 +110,7 @@ declare const fullApi: ApiFromModules<{
   "feedback/mutations": typeof feedback_mutations;
   "feedback/queries": typeof feedback_queries;
   flags: typeof flags;
+  "lib/clickhouseHttp": typeof lib_clickhouseHttp;
   "notifications/mutations": typeof notifications_mutations;
   "notifications/queries": typeof notifications_queries;
   "notifications/test": typeof notifications_test;
@@ -105,8 +118,17 @@ declare const fullApi: ApiFromModules<{
   "onboarding/queries": typeof onboarding_queries;
   "platform/brokerConnections": typeof platform_brokerConnections;
   "platform/brokerConnectionsActions": typeof platform_brokerConnectionsActions;
+  "platform/clickhouseCandles": typeof platform_clickhouseCandles;
+  "platform/clickhouseData": typeof platform_clickhouseData;
+  "platform/clickhouseDataInternalActions": typeof platform_clickhouseDataInternalActions;
   "platform/crm": typeof platform_crm;
   "platform/joinCodes": typeof platform_joinCodes;
+  "platform/priceDataJobs": typeof platform_priceDataJobs;
+  "platform/priceDataJobsInternalActions": typeof platform_priceDataJobsInternalActions;
+  "platform/priceDataJobsInternalMutations": typeof platform_priceDataJobsInternalMutations;
+  "platform/priceDataLogs": typeof platform_priceDataLogs;
+  "platform/priceDataLogsInternalMutations": typeof platform_priceDataLogsInternalMutations;
+  "platform/priceDataWorkflow": typeof platform_priceDataWorkflow;
   "platform/queries": typeof platform_queries;
   "platform/test/helpers": typeof platform_test_helpers;
   "platform/test/mutations": typeof platform_test_mutations;
@@ -115,6 +137,7 @@ declare const fullApi: ApiFromModules<{
   "platform/testsAuth": typeof platform_testsAuth;
   "platform/testsDebug": typeof platform_testsDebug;
   "platform/testsQueries": typeof platform_testsQueries;
+  "platform/tradelockerSources": typeof platform_tradelockerSources;
   "platform/tradingviewConnections": typeof platform_tradingviewConnections;
   "platform/tradingviewConnectionsActions": typeof platform_tradingviewConnectionsActions;
   "platform/userAccess": typeof platform_userAccess;
@@ -136,6 +159,7 @@ declare const fullApi: ApiFromModules<{
   userMedia: typeof userMedia;
   "viewer/mutations": typeof viewer_mutations;
   "viewer/queries": typeof viewer_queries;
+  workflow: typeof workflow;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
 
@@ -504,6 +528,397 @@ export declare const components: {
           name: string;
           slug: string;
         }>
+      >;
+    };
+  };
+  workflow: {
+    event: {
+      create: FunctionReference<
+        "mutation",
+        "internal",
+        { name: string; workflowId: string },
+        string
+      >;
+      send: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          eventId?: string;
+          name?: string;
+          result:
+            | { kind: "success"; returnValue: any }
+            | { error: string; kind: "failed" }
+            | { kind: "canceled" };
+          workflowId?: string;
+          workpoolOptions?: {
+            defaultRetryBehavior?: {
+              base: number;
+              initialBackoffMs: number;
+              maxAttempts: number;
+            };
+            logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+            maxParallelism?: number;
+            retryActionsByDefault?: boolean;
+          };
+        },
+        string
+      >;
+    };
+    journal: {
+      load: FunctionReference<
+        "query",
+        "internal",
+        { shortCircuit?: boolean; workflowId: string },
+        {
+          blocked?: boolean;
+          journalEntries: Array<{
+            _creationTime: number;
+            _id: string;
+            step:
+              | {
+                  args: any;
+                  argsSize: number;
+                  completedAt?: number;
+                  functionType: "query" | "mutation" | "action";
+                  handle: string;
+                  inProgress: boolean;
+                  kind?: "function";
+                  name: string;
+                  runResult?:
+                    | { kind: "success"; returnValue: any }
+                    | { error: string; kind: "failed" }
+                    | { kind: "canceled" };
+                  startedAt: number;
+                  workId?: string;
+                }
+              | {
+                  args: any;
+                  argsSize: number;
+                  completedAt?: number;
+                  handle: string;
+                  inProgress: boolean;
+                  kind: "workflow";
+                  name: string;
+                  runResult?:
+                    | { kind: "success"; returnValue: any }
+                    | { error: string; kind: "failed" }
+                    | { kind: "canceled" };
+                  startedAt: number;
+                  workflowId?: string;
+                }
+              | {
+                  args: { eventId?: string };
+                  argsSize: number;
+                  completedAt?: number;
+                  eventId?: string;
+                  inProgress: boolean;
+                  kind: "event";
+                  name: string;
+                  runResult?:
+                    | { kind: "success"; returnValue: any }
+                    | { error: string; kind: "failed" }
+                    | { kind: "canceled" };
+                  startedAt: number;
+                };
+            stepNumber: number;
+            workflowId: string;
+          }>;
+          logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+          ok: boolean;
+          workflow: {
+            _creationTime: number;
+            _id: string;
+            args: any;
+            generationNumber: number;
+            logLevel?: any;
+            name?: string;
+            onComplete?: { context?: any; fnHandle: string };
+            runResult?:
+              | { kind: "success"; returnValue: any }
+              | { error: string; kind: "failed" }
+              | { kind: "canceled" };
+            startedAt?: any;
+            state?: any;
+            workflowHandle: string;
+          };
+        }
+      >;
+      startSteps: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          generationNumber: number;
+          steps: Array<{
+            retry?:
+              | boolean
+              | { base: number; initialBackoffMs: number; maxAttempts: number };
+            schedulerOptions?: { runAt?: number } | { runAfter?: number };
+            step:
+              | {
+                  args: any;
+                  argsSize: number;
+                  completedAt?: number;
+                  functionType: "query" | "mutation" | "action";
+                  handle: string;
+                  inProgress: boolean;
+                  kind?: "function";
+                  name: string;
+                  runResult?:
+                    | { kind: "success"; returnValue: any }
+                    | { error: string; kind: "failed" }
+                    | { kind: "canceled" };
+                  startedAt: number;
+                  workId?: string;
+                }
+              | {
+                  args: any;
+                  argsSize: number;
+                  completedAt?: number;
+                  handle: string;
+                  inProgress: boolean;
+                  kind: "workflow";
+                  name: string;
+                  runResult?:
+                    | { kind: "success"; returnValue: any }
+                    | { error: string; kind: "failed" }
+                    | { kind: "canceled" };
+                  startedAt: number;
+                  workflowId?: string;
+                }
+              | {
+                  args: { eventId?: string };
+                  argsSize: number;
+                  completedAt?: number;
+                  eventId?: string;
+                  inProgress: boolean;
+                  kind: "event";
+                  name: string;
+                  runResult?:
+                    | { kind: "success"; returnValue: any }
+                    | { error: string; kind: "failed" }
+                    | { kind: "canceled" };
+                  startedAt: number;
+                };
+          }>;
+          workflowId: string;
+          workpoolOptions?: {
+            defaultRetryBehavior?: {
+              base: number;
+              initialBackoffMs: number;
+              maxAttempts: number;
+            };
+            logLevel?: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+            maxParallelism?: number;
+            retryActionsByDefault?: boolean;
+          };
+        },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          step:
+            | {
+                args: any;
+                argsSize: number;
+                completedAt?: number;
+                functionType: "query" | "mutation" | "action";
+                handle: string;
+                inProgress: boolean;
+                kind?: "function";
+                name: string;
+                runResult?:
+                  | { kind: "success"; returnValue: any }
+                  | { error: string; kind: "failed" }
+                  | { kind: "canceled" };
+                startedAt: number;
+                workId?: string;
+              }
+            | {
+                args: any;
+                argsSize: number;
+                completedAt?: number;
+                handle: string;
+                inProgress: boolean;
+                kind: "workflow";
+                name: string;
+                runResult?:
+                  | { kind: "success"; returnValue: any }
+                  | { error: string; kind: "failed" }
+                  | { kind: "canceled" };
+                startedAt: number;
+                workflowId?: string;
+              }
+            | {
+                args: { eventId?: string };
+                argsSize: number;
+                completedAt?: number;
+                eventId?: string;
+                inProgress: boolean;
+                kind: "event";
+                name: string;
+                runResult?:
+                  | { kind: "success"; returnValue: any }
+                  | { error: string; kind: "failed" }
+                  | { kind: "canceled" };
+                startedAt: number;
+              };
+          stepNumber: number;
+          workflowId: string;
+        }>
+      >;
+    };
+    workflow: {
+      cancel: FunctionReference<
+        "mutation",
+        "internal",
+        { workflowId: string },
+        null
+      >;
+      cleanup: FunctionReference<
+        "mutation",
+        "internal",
+        { workflowId: string },
+        boolean
+      >;
+      complete: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          generationNumber: number;
+          runResult:
+            | { kind: "success"; returnValue: any }
+            | { error: string; kind: "failed" }
+            | { kind: "canceled" };
+          workflowId: string;
+        },
+        null
+      >;
+      create: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          maxParallelism?: number;
+          onComplete?: { context?: any; fnHandle: string };
+          startAsync?: boolean;
+          workflowArgs: any;
+          workflowHandle: string;
+          workflowName: string;
+        },
+        string
+      >;
+      getStatus: FunctionReference<
+        "query",
+        "internal",
+        { workflowId: string },
+        {
+          inProgress: Array<{
+            _creationTime: number;
+            _id: string;
+            step:
+              | {
+                  args: any;
+                  argsSize: number;
+                  completedAt?: number;
+                  functionType: "query" | "mutation" | "action";
+                  handle: string;
+                  inProgress: boolean;
+                  kind?: "function";
+                  name: string;
+                  runResult?:
+                    | { kind: "success"; returnValue: any }
+                    | { error: string; kind: "failed" }
+                    | { kind: "canceled" };
+                  startedAt: number;
+                  workId?: string;
+                }
+              | {
+                  args: any;
+                  argsSize: number;
+                  completedAt?: number;
+                  handle: string;
+                  inProgress: boolean;
+                  kind: "workflow";
+                  name: string;
+                  runResult?:
+                    | { kind: "success"; returnValue: any }
+                    | { error: string; kind: "failed" }
+                    | { kind: "canceled" };
+                  startedAt: number;
+                  workflowId?: string;
+                }
+              | {
+                  args: { eventId?: string };
+                  argsSize: number;
+                  completedAt?: number;
+                  eventId?: string;
+                  inProgress: boolean;
+                  kind: "event";
+                  name: string;
+                  runResult?:
+                    | { kind: "success"; returnValue: any }
+                    | { error: string; kind: "failed" }
+                    | { kind: "canceled" };
+                  startedAt: number;
+                };
+            stepNumber: number;
+            workflowId: string;
+          }>;
+          logLevel: "DEBUG" | "TRACE" | "INFO" | "REPORT" | "WARN" | "ERROR";
+          workflow: {
+            _creationTime: number;
+            _id: string;
+            args: any;
+            generationNumber: number;
+            logLevel?: any;
+            name?: string;
+            onComplete?: { context?: any; fnHandle: string };
+            runResult?:
+              | { kind: "success"; returnValue: any }
+              | { error: string; kind: "failed" }
+              | { kind: "canceled" };
+            startedAt?: any;
+            state?: any;
+            workflowHandle: string;
+          };
+        }
+      >;
+      listSteps: FunctionReference<
+        "query",
+        "internal",
+        {
+          order: "asc" | "desc";
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+          workflowId: string;
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            args: any;
+            completedAt?: number;
+            eventId?: string;
+            kind: "function" | "workflow" | "event";
+            name: string;
+            nestedWorkflowId?: string;
+            runResult?:
+              | { kind: "success"; returnValue: any }
+              | { error: string; kind: "failed" }
+              | { kind: "canceled" };
+            startedAt: number;
+            stepId: string;
+            stepNumber: number;
+            workId?: string;
+            workflowId: string;
+          }>;
+          pageStatus?: "SplitRecommended" | "SplitRequired" | null;
+          splitCursor?: string | null;
+        }
       >;
     };
   };

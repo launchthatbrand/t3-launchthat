@@ -38,7 +38,10 @@ export const setDataMode = mutation({
     }
 
     // Ensure root user exists and has up-to-date admin flag.
-    const userDocId = await ctx.runMutation(api.coreTenant.mutations.createOrGetUser, {});
+    const userDocId = (await ctx.runMutation(
+      api.coreTenant.mutations.createOrGetUser,
+      {},
+    )) as Id<"users"> | null;
     if (!userDocId) throw new ConvexError("Unauthorized");
 
     const user = await ctx.db.get(userDocId);

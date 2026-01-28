@@ -1,3 +1,5 @@
+/* eslint-disable no-restricted-properties */
+/* eslint-disable turbo/no-undeclared-env-vars */
 "use node";
 
 /* eslint-disable
@@ -5,12 +7,10 @@
   @typescript-eslint/no-require-imports,
   @typescript-eslint/no-unsafe-assignment,
   @typescript-eslint/no-unsafe-member-access,
-  turbo/no-undeclared-env-vars
 */
 
-import { v } from "convex/values";
 import { action } from "../_generated/server";
-import { env } from "../../src/env";
+import { v } from "convex/values";
 
 // Avoid typed api imports here (can cause TS deep instantiation errors in node actions).
 const internal: any = require("../_generated/api").internal;
@@ -18,7 +18,7 @@ const componentsUntyped: any = require("../_generated/api").components;
 const platform = componentsUntyped.launchthat_traderlaunchpad.connections.platform;
 
 const developerKeyHeader = (): Record<string, string> => {
-  const key = env.TRADELOCKER_DEVELOPER_API_KEY;
+  const key = process.env.TRADELOCKER_DEVELOPER_API_KEY;
   if (!key) return {};
   return { "tl-developer-api-key": key };
 };
@@ -173,12 +173,15 @@ export const startPlatformTradeLockerConnect = action({
         ? accountsJson.accounts
         : [];
 
-    const tokenStorage = env.TRADELOCKER_TOKEN_STORAGE;
-    const secretsKey = env.TRADELOCKER_SECRETS_KEY;
-    const accessTokenEncrypted =
-      tokenStorage === "enc" ? await encryptSecret(accessToken, secretsKey) : accessToken;
-    const refreshTokenEncrypted =
-      tokenStorage === "enc" ? await encryptSecret(refreshToken, secretsKey) : refreshToken;
+    const tokenStorage = process.env.TRADELOCKER_TOKEN_STORAGE;
+    const secretsKey = process.env.TRADELOCKER_SECRETS_KEY;
+    let accessTokenEncrypted = accessToken;
+    let refreshTokenEncrypted = refreshToken;
+    if (tokenStorage === "enc") {
+      if (!secretsKey) throw new Error("Missing TRADELOCKER_SECRETS_KEY for encrypted token storage");
+      accessTokenEncrypted = await encryptSecret(accessToken, secretsKey);
+      refreshTokenEncrypted = await encryptSecret(refreshToken, secretsKey);
+    }
 
     const draftId: any = await ctx.runMutation(platform.createTradeLockerConnectDraft, {
       environment: args.environment,
@@ -244,14 +247,14 @@ export const connectPlatformTradeLocker = action({
       accountRows.length > 0
         ? accountRows
         : [
-            {
-              accountId: selectedAccountId,
-              accNum: selectedAccNum,
-              name: undefined,
-              currency: undefined,
-              status: undefined,
-            },
-          ];
+          {
+            accountId: selectedAccountId,
+            accNum: selectedAccNum,
+            name: undefined,
+            currency: undefined,
+            status: undefined,
+          },
+        ];
 
     await ctx.runMutation(platform.upsertTradeLockerConnectionWithSecrets, {
       connectionId: currentDefault ? currentDefault._id : undefined,
@@ -278,6 +281,7 @@ export const refreshPlatformTradeLockerAccountConfig = action({
   args: {
     accountRowId: v.string(),
     accNum: v.number(),
+    includeDeveloperKey: v.optional(v.boolean()),
   },
   returns: v.object({ ok: v.boolean() }),
   handler: async (ctx, args) => {
@@ -298,43 +302,181 @@ export const refreshPlatformTradeLockerAccountConfig = action({
     if (!secretsRes?.secrets) throw new Error("Missing connection secrets");
     const secrets = secretsRes.secrets;
 
-    const tokenStorage = env.TRADELOCKER_TOKEN_STORAGE;
-    const secretsKey = env.TRADELOCKER_SECRETS_KEY;
+    const tokenStorage = process.env.TRADELOCKER_TOKEN_STORAGE;
+    const secretsKey = process.env.TRADELOCKER_SECRETS_KEY;
     const accessTokenCipher = String(secrets.accessTokenEncrypted ?? "");
-    const accessToken =
-      tokenStorage === "enc" ? await decryptSecret(accessTokenCipher, secretsKey) : accessTokenCipher;
+    const refreshTokenCipher = String(secrets.refreshTokenEncrypted ?? "");
+    let accessToken = accessTokenCipher;
+    let refreshToken = refreshTokenCipher;
+    if (tokenStorage === "enc") {
+      if (!secretsKey) throw new Error("Missing TRADELOCKER_SECRETS_KEY for encrypted token storage");
+      accessToken = await decryptSecret(accessTokenCipher, secretsKey);
+      refreshToken = await decryptSecret(refreshTokenCipher, secretsKey);
+    }
 
     const envName = secrets.environment === "live" ? "live" : "demo";
     const baseUrl = secrets.jwtHost ? `https://${secrets.jwtHost}/backend-api` : baseUrlForEnv(envName);
 
-    const res = await fetch(`${baseUrl}/trade/config`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        accNum: String(args.accNum),
-        ...developerKeyHeader(),
-      },
-    });
-    const text = await res.text().catch(() => "");
-    let json: any = null;
-    try {
-      json = text ? JSON.parse(text) : null;
-    } catch {
-      json = null;
+    const includeDeveloperKeyParam = args.includeDeveloperKey !== false;
+    const envDeveloperKey =
+      typeof process.env.TRADELOCKER_DEVELOPER_API_KEY === "string"
+        ? process.env.TRADELOCKER_DEVELOPER_API_KEY
+        : "";
+    const envHasDeveloperKey = Boolean(envDeveloperKey.trim());
+    const sentDeveloperKeyHeader = includeDeveloperKeyParam && envHasDeveloperKey;
+
+    const fetchTradeConfig = async (token: string) => {
+      const res = await fetch(`${baseUrl}/trade/config`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          accNum: String(args.accNum),
+          ...(includeDeveloperKeyParam ? developerKeyHeader() : {}),
+        },
+      });
+      const text = await res.text().catch(() => "");
+      let json: any = null;
+      try {
+        json = text ? JSON.parse(text) : null;
+      } catch {
+        json = null;
+      }
+      return { res, text, json };
+    };
+
+    let didRefreshTokens = false;
+    let cfg = await fetchTradeConfig(accessToken);
+
+    // If the token is expired, attempt to refresh and retry.
+    const shouldAttemptRefresh =
+      (cfg.res.status === 401 || cfg.res.status === 403) &&
+      typeof refreshToken === "string" &&
+      refreshToken.trim().length > 0;
+
+    if (shouldAttemptRefresh) {
+      const refreshRes = await fetch(`${baseUrl}/auth/jwt/refresh`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+      const refreshText = await refreshRes.text().catch(() => "");
+      let refreshJson: any = null;
+      try {
+        refreshJson = refreshText ? JSON.parse(refreshText) : null;
+      } catch {
+        refreshJson = null;
+      }
+
+      const refreshedAccessToken: string =
+        typeof refreshJson?.accessToken === "string" ? refreshJson.accessToken : "";
+      const refreshedRefreshToken: string =
+        typeof refreshJson?.refreshToken === "string" ? refreshJson.refreshToken : "";
+      const expireDateMsRaw =
+        typeof refreshJson?.expireDate === "string" ? Date.parse(String(refreshJson.expireDate)) : NaN;
+      const accessTokenExpiresAt = Number.isFinite(expireDateMsRaw) ? expireDateMsRaw : undefined;
+
+      if (refreshRes.ok && refreshedAccessToken && refreshedRefreshToken) {
+        didRefreshTokens = true;
+        accessToken = refreshedAccessToken;
+        refreshToken = refreshedRefreshToken;
+
+        // Persist refreshed tokens back onto the platform connection secrets.
+        const jwtHost =
+          extractJwtHost(refreshedAccessToken) ??
+          (typeof secrets.jwtHost === "string" ? secrets.jwtHost : undefined);
+        let accessTokenEncrypted = refreshedAccessToken;
+        let refreshTokenEncrypted = refreshedRefreshToken;
+        if (tokenStorage === "enc") {
+          const secretsKeyStr = typeof secretsKey === "string" ? secretsKey : "";
+          if (!secretsKeyStr) {
+            throw new Error("Missing TRADELOCKER_SECRETS_KEY for encrypted token storage");
+          }
+          accessTokenEncrypted = await encryptSecret(refreshedAccessToken, secretsKeyStr);
+          refreshTokenEncrypted = await encryptSecret(refreshedRefreshToken, secretsKeyStr);
+        }
+
+        // Preserve current account rows; also ensure selected account fields are set.
+        const accountsRaw: any[] = await ctx.runQuery(platform.listConnectionAccounts, {
+          connectionId: currentDefault._id,
+        });
+        const accounts = Array.isArray(accountsRaw) ? accountsRaw : [];
+
+        const selectedAccNum =
+          typeof secrets.selectedAccNum === "number" && Number.isFinite(secrets.selectedAccNum)
+            ? secrets.selectedAccNum
+            : Number(args.accNum);
+        const selectedAccountIdFromSecrets: string =
+          typeof secrets.selectedAccountId === "string" ? secrets.selectedAccountId : "";
+        const selectedAccountId =
+          selectedAccountIdFromSecrets.trim()
+            ? selectedAccountIdFromSecrets.trim()
+            : (accounts.find((a: any) => Number(a?.accNum) === Number(args.accNum))?.accountId as string | undefined) ??
+              "";
+
+        await ctx.runMutation(platform.upsertTradeLockerConnectionWithSecrets, {
+          connectionId: currentDefault._id,
+          label: String(currentDefault.label ?? "TradeLocker"),
+          status: currentDefault.status === "disabled" ? "disabled" : "active",
+          makeDefault: Boolean(currentDefault.isDefault),
+          environment: envName,
+          server: String(secrets.server ?? ""),
+          jwtHost: typeof jwtHost === "string" ? jwtHost : undefined,
+          selectedAccountId,
+          selectedAccNum,
+          accessTokenEncrypted,
+          refreshTokenEncrypted,
+          accessTokenExpiresAt,
+          refreshTokenExpiresAt:
+            typeof secrets.refreshTokenExpiresAt === "number" ? secrets.refreshTokenExpiresAt : undefined,
+          accounts: accounts.map((a: any) => ({
+            accountId: String(a?.accountId ?? ""),
+            accNum: Number(a?.accNum ?? NaN),
+            name: typeof a?.name === "string" ? a.name : undefined,
+            currency: typeof a?.currency === "string" ? a.currency : undefined,
+            status: typeof a?.status === "string" ? a.status : undefined,
+          })),
+        });
+
+        // Retry config with fresh access token.
+        cfg = await fetchTradeConfig(accessToken);
+      } else {
+        // If refresh fails, keep original cfg and expose refresh error in debug payload.
+        cfg = {
+          ...cfg,
+          json: cfg.json ?? refreshJson ?? { refreshError: refreshText.slice(0, 500) },
+        };
+      }
     }
 
-    const customerAccessRaw =
-      json?.d && typeof json.d === "object" ? (json.d as any).customerAccess : undefined;
+    const res = cfg.res;
+    const json: Record<string, unknown> = (() => {
+      const payload = cfg.json;
+      const debug = {
+        includeDeveloperKeyParam,
+        envHasDeveloperKey,
+        sentDeveloperKeyHeader,
+        didRefreshTokens,
+      };
+      if (payload && typeof payload === "object") {
+        return { ...(payload as Record<string, unknown>), _debug: debug };
+      }
+      return { payload, _debug: debug };
+    })();
+
+    const customerAccessRaw: unknown = (json as any).d?.customerAccess;
     const customerAccess =
       customerAccessRaw && typeof customerAccessRaw === "object"
-        ? {
-            orders: Boolean((customerAccessRaw as any).orders),
-            ordersHistory: Boolean((customerAccessRaw as any).ordersHistory),
-            filledOrders: Boolean((customerAccessRaw as any).filledOrders),
-            positions: Boolean((customerAccessRaw as any).positions),
-            symbolInfo: Boolean((customerAccessRaw as any).symbolInfo),
-            marketDepth: Boolean((customerAccessRaw as any).marketDepth),
-          }
+        ? (() => {
+          const ca = customerAccessRaw as Record<string, unknown>;
+          return {
+            orders: Boolean(ca.orders),
+            ordersHistory: Boolean(ca.ordersHistory),
+            filledOrders: Boolean(ca.filledOrders),
+            positions: Boolean(ca.positions),
+            symbolInfo: Boolean(ca.symbolInfo),
+            marketDepth: Boolean(ca.marketDepth),
+          };
+        })()
         : undefined;
 
     await ctx.runMutation(platform.updateConnectionAccountDebug, {

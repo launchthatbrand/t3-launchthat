@@ -1,3 +1,4 @@
+import workflow from "@convex-dev/workflow/convex.config";
 import { defineApp } from "convex/server";
 import launchthat_core_tenant from "../../../packages/launchthat-plugin-core-tenant/src/convex/component/convex.config";
 import launchthat_discord from "../../../packages/launchthat-plugin-discord/src/convex/component/convex.config";
@@ -16,6 +17,7 @@ const app = defineApp();
 
 // Core tenant primitives (users/orgs/memberships) used by notifications and other shared features.
 app.use(launchthat_core_tenant);
+app.use(workflow);
 app.use(launchthat_notifications);
 app.use(launchthat_push);
 app.use(launchthat_email);

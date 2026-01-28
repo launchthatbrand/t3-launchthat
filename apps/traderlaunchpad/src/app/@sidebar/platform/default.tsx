@@ -8,6 +8,7 @@ import {
   IconBuilding,
   IconBulb,
   IconChartBar,
+  IconDatabase,
   IconNotebook,
   IconPlug,
   IconSettings,
@@ -102,6 +103,16 @@ const navItems: NavItem[] = [
     href: "/platform/connections",
     icon: (
       <IconPlug
+        stroke={1}
+        className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
+      />
+    ),
+  },
+  {
+    label: "Data",
+    href: "/platform/data",
+    icon: (
+      <IconDatabase
         stroke={1}
         className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
       />
