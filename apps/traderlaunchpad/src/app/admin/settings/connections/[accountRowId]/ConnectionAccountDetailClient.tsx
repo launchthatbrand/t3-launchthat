@@ -50,10 +50,11 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
             : api.traderlaunchpad.actions.disconnectTradeLocker,
     );
     const syncNow = useAction(api.traderlaunchpad.actions.syncMyTradeLockerNow);
-    const refreshAccountConfig = useAction(
-        isPlatform
-            ? api.platform.brokerConnectionsActions.refreshPlatformTradeLockerAccountConfig
-            : api.traderlaunchpad.actions.refreshMyTradeLockerAccountConfig,
+    const refreshPlatformAccountConfig = useAction(
+        api.platform.brokerConnectionsActions.refreshPlatformTradeLockerAccountConfig,
+    );
+    const refreshMyAccountConfig = useAction(
+        api.traderlaunchpad.actions.refreshMyTradeLockerAccountConfig,
     );
 
     const [busy, setBusy] = React.useState<string | null>(null);
@@ -147,13 +148,13 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
             const accNum = toNumber(account.accNum) ?? 0;
 
             if (isPlatform) {
-                await refreshAccountConfig({
+                await refreshPlatformAccountConfig({
                     accountRowId: rowId,
                     accNum,
                     includeDeveloperKey,
                 });
             } else {
-                await refreshAccountConfig({
+                await refreshMyAccountConfig({
                     accountRowId: rowId,
                     accNum,
                 });

@@ -231,5 +231,83 @@ export default defineSchema({
     .index("by_ts", ["ts"])
     .index("by_jobId_and_ts", ["jobId", "ts"]),
 
+  /**
+   * Per platform broker connection account participation in price data ingestion.
+   *
+   * This is app-owned state that layers on top of the platform broker connections component.
+   * We store component IDs as strings to avoid cross-component `v.id()` coupling.
+   */
+  platformPriceDataAccountPolicies: defineTable({
+    provider: v.string(), // e.g. "tradelocker"
+    sourceKey: v.string(),
+
+    // Component IDs stored as strings.
+    connectionId: v.string(),
+    accountRowId: v.string(),
+
+    // Broker account identifiers (for debugging and selection).
+    accountId: v.string(),
+    accNum: v.number(),
+    label: v.optional(v.string()),
+
+    enabledForPriceData: v.boolean(),
+    weight: v.optional(v.number()),
+    notes: v.optional(v.string()),
+
+    lastUsedAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+    updatedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_account_row", ["accountRowId"])
+    .index("by_sourceKey", ["sourceKey"])
+    .index("by_sourceKey_and_enabled", ["sourceKey", "enabledForPriceData"])
+    .index("by_connectionId", ["connectionId"]),
+
+  /**
+   * Continuous sync rules for keeping select pairs up-to-date (platform accounts only).
+   */
+  platformPriceDataSyncRules: defineTable({
+    sourceKey: v.string(),
+    tradableInstrumentId: v.string(),
+    symbol: v.string(),
+    resolution: v.union(v.literal("1m")),
+
+    cadenceSeconds: v.number(), // typically 60
+    overlapSeconds: v.number(), // small overlap for safety; inserts must remain monotonic
+    enabled: v.boolean(),
+
+    // Scheduling/health
+    nextRunAt: v.number(),
+    lastRunAt: v.optional(v.number()),
+    lastOkAt: v.optional(v.number()),
+    lastError: v.optional(v.string()),
+
+    // Runner hints
+    lastSeenMaxTsMs: v.optional(v.number()),
+    lastAccountRowIdUsed: v.optional(v.string()),
+    infoRouteId: v.optional(v.number()),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_nextRunAt", ["nextRunAt"])
+    .index("by_source_and_instrument", ["sourceKey", "tradableInstrumentId"])
+    .index("by_enabled_and_nextRunAt", ["enabled", "nextRunAt"]),
+
+  /**
+   * Scheduler status for platform price data continuous sync.
+   * Single-row pattern keyed by `key` (use "main").
+   */
+  platformPriceDataSyncSchedulerState: defineTable({
+    key: v.string(),
+    lastTickAt: v.optional(v.number()),
+    lastTickOkAt: v.optional(v.number()),
+    lastTickError: v.optional(v.string()),
+    processedRulesLastTick: v.optional(v.number()),
+    updatedAt: v.number(),
+    createdAt: v.number(),
+  }).index("by_key", ["key"]),
+
 });
 

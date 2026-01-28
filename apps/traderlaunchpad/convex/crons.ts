@@ -12,5 +12,13 @@ crons.interval(
   {},
 );
 
+// Platform price data sync (continuous rules).
+crons.interval(
+  "run_platform_price_data_sync",
+  { minutes: 1 },
+  internal.platform.priceDataSyncSchedulerInternal.runDuePriceDataSyncRules,
+  {},
+);
+
 export default crons;
 
