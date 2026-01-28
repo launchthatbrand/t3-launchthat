@@ -10,7 +10,7 @@ import { resolveOrganizationId, resolveViewerIsAdmin, resolveViewerUserId } from
 import { components } from "../_generated/api";
 import { internal } from "../_generated/api";
 import { paginationOptsValidator } from "convex/server";
-import { internalQuery, query } from "../_generated/server";
+import { action, internalQuery, query } from "../_generated/server";
 import { ConvexError, v } from "convex/values";
 import { clusterCommunityPositions, type CommunityPosition } from "launchthat-plugin-traderlaunchpad/runtime/discordSnapshot";
 
@@ -45,6 +45,31 @@ const pricedataBars = (components as any).launchthat_pricedata?.bars?.queries as
 
 const normalizeSymbol = (value: string) => value.trim().toUpperCase();
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+const normalizeClickhouseResolution = (
+  value: string,
+): "1m" | "5m" | "15m" | "30m" | "1h" | "4h" | "1d" | null => {
+  const v0 = String(value ?? "").trim().toLowerCase();
+  if (v0 === "1m" || v0 === "m1") return "1m";
+  if (v0 === "5m" || v0 === "m5") return "5m";
+  if (v0 === "15m" || v0 === "m15") return "15m";
+  if (v0 === "30m" || v0 === "m30") return "30m";
+  if (v0 === "1h" || v0 === "h1" || v0 === "1hr") return "1h";
+  if (v0 === "4h" || v0 === "h4" || v0 === "4hr") return "4h";
+  if (v0 === "1d" || v0 === "d1") return "1d";
+  return null;
+};
+
+const requireClickhouseComponentConfig = () => {
+  const url = process.env.CLICKHOUSE_HTTP_URL;
+  const database = process.env.CLICKHOUSE_DB ?? "traderlaunchpad";
+  const user = process.env.CLICKHOUSE_USER;
+  const password = process.env.CLICKHOUSE_PASSWORD;
+  if (!url) throw new Error("Missing CLICKHOUSE_HTTP_URL");
+  if (!user) throw new Error("Missing CLICKHOUSE_USER");
+  if (!password) throw new Error("Missing CLICKHOUSE_PASSWORD");
+  return { url, database, user, password };
+};
 
 const resolveMembershipForOrg = async (ctx: any, organizationId: string, userId: string) => {
   const memberships = (await ctx.runQuery(coreTenantQueries.listOrganizationsByUserId, {
@@ -2041,7 +2066,7 @@ export const getMyTradeIdeaById = query({
   },
 });
 
-export const getMyTradeIdeaBars = query({
+export const getMyTradeIdeaBars = action({
   args: {
     tradeIdeaGroupId: v.string(),
     resolution: v.string(),
@@ -2068,7 +2093,8 @@ export const getMyTradeIdeaBars = query({
   handler: async (ctx, args) => {
     await requireGlobalPermission(ctx, "tradeIdeas");
     const tradeIdeaGroupId = String(args.tradeIdeaGroupId ?? "").trim();
-    const resolution = String(args.resolution ?? "").trim();
+    const resolutionRaw = String(args.resolution ?? "").trim();
+    const chResolution = normalizeClickhouseResolution(resolutionRaw);
     const lookbackDays = Math.max(1, Math.min(30, Math.floor(args.lookbackDays ?? 7)));
 
     if (!tradeIdeaGroupId) {
@@ -2077,21 +2103,32 @@ export const getMyTradeIdeaBars = query({
         tradeIdeaGroupId: "",
         symbol: undefined,
         sourceKey: undefined,
-        resolution,
+        resolution: resolutionRaw,
         bars: [],
         error: "Missing tradeIdeaGroupId.",
       };
     }
 
-    if (!pricedataInstruments || !pricedataBars) {
+    if (!pricedataInstruments) {
       return {
         ok: false,
         tradeIdeaGroupId,
         symbol: undefined,
         sourceKey: undefined,
-        resolution,
+        resolution: resolutionRaw,
         bars: [],
         error: "Price data is not configured.",
+      };
+    }
+    if (!chResolution) {
+      return {
+        ok: false,
+        tradeIdeaGroupId,
+        symbol: undefined,
+        sourceKey: undefined,
+        resolution: resolutionRaw,
+        bars: [],
+        error: "Unsupported resolution.",
       };
     }
 
@@ -2104,7 +2141,7 @@ export const getMyTradeIdeaBars = query({
         tradeIdeaGroupId,
         symbol: undefined,
         sourceKey: undefined,
-        resolution,
+        resolution: resolutionRaw,
         bars: [],
         error: "Trade idea not found.",
       };
@@ -2124,7 +2161,7 @@ export const getMyTradeIdeaBars = query({
         tradeIdeaGroupId,
         symbol: String(group.symbol ?? ""),
         sourceKey: undefined,
-        resolution,
+        resolution: resolutionRaw,
         bars: [],
         error: "Connection not found.",
       };
@@ -2151,7 +2188,7 @@ export const getMyTradeIdeaBars = query({
         tradeIdeaGroupId,
         symbol: undefined,
         sourceKey,
-        resolution,
+        resolution: resolutionRaw,
         bars: [],
         error: "Trade idea symbol is missing.",
       };
@@ -2167,7 +2204,7 @@ export const getMyTradeIdeaBars = query({
         tradeIdeaGroupId,
         symbol,
         sourceKey,
-        resolution,
+        resolution: resolutionRaw,
         bars: [],
         error: "Symbol is not mapped for this broker source.",
       };
@@ -2176,36 +2213,42 @@ export const getMyTradeIdeaBars = query({
     const toMs = Date.now();
     const fromMs = toMs - lookbackDays * DAY_MS;
 
-    const chunks = await ctx.runQuery(pricedataBars.getBarChunks, {
-      sourceKey,
-      tradableInstrumentId: instrument.tradableInstrumentId,
-      resolution,
-      fromMs,
-      toMs,
-    });
+    const clickhouse = requireClickhouseComponentConfig();
+    const barsRes: unknown = await ctx.runAction(
+      (components as any).launchthat_clickhouse.candles.actions.listCandles,
+      {
+        clickhouse,
+        sourceKey,
+        tradableInstrumentId: instrument.tradableInstrumentId,
+        resolution: chResolution,
+        fromMs,
+        toMs,
+        limit: 2000,
+      },
+    );
 
-    const bars = (Array.isArray(chunks) ? chunks : [])
-      .flatMap((c: any) => (Array.isArray(c?.bars) ? c.bars : []))
-      .map((b: any) => ({
-        t: Number(b?.t),
-        o: Number(b?.o),
-        h: Number(b?.h),
-        l: Number(b?.l),
-        c: Number(b?.c),
-        v: Number(b?.v),
-      }))
-      .filter(
-        (b) =>
-          Number.isFinite(b.t) &&
-          Number.isFinite(b.o) &&
-          Number.isFinite(b.h) &&
-          Number.isFinite(b.l) &&
-          Number.isFinite(b.c) &&
-          Number.isFinite(b.v),
-      )
-      .sort((a, b) => a.t - b.t);
+    const bars = Array.isArray(barsRes)
+      ? barsRes
+          .map((b: any) => ({
+            t: Number(b?.t),
+            o: Number(b?.o),
+            h: Number(b?.h),
+            l: Number(b?.l),
+            c: Number(b?.c),
+            v: Number.isFinite(Number(b?.v)) ? Number(b?.v) : 0,
+          }))
+          .filter(
+            (b: any) =>
+              Number.isFinite(b.t) &&
+              Number.isFinite(b.o) &&
+              Number.isFinite(b.h) &&
+              Number.isFinite(b.l) &&
+              Number.isFinite(b.c) &&
+              Number.isFinite(b.v),
+          )
+      : [];
 
-    return { ok: true, tradeIdeaGroupId, symbol, sourceKey, resolution, bars };
+    return { ok: true, tradeIdeaGroupId, symbol, sourceKey, resolution: resolutionRaw, bars };
   },
 });
 

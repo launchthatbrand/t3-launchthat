@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
@@ -138,21 +138,49 @@ function TradeIdeaBrokerChart(props: {
     setTimeframe(props.defaultTimeframe);
   }, [props.defaultTimeframe]);
 
-  const data = useQuery(
-    api.traderlaunchpad.queries.getMyTradeIdeaBars,
-    props.tradeIdeaGroupId
-      ? {
-        tradeIdeaGroupId: props.tradeIdeaGroupId,
-        resolution,
-        lookbackDays,
-      }
-      : "skip",
-  ) as TradeIdeaBarsResult | undefined;
+  const getBars = useAction(api.traderlaunchpad.queries.getMyTradeIdeaBars);
+  const [data, setData] = React.useState<TradeIdeaBarsResult | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
 
-  const isLoading = data === undefined;
+  React.useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!props.tradeIdeaGroupId) {
+        setData(null);
+        setLoadError(null);
+        setIsLoading(false);
+        return;
+      }
+      setIsLoading(true);
+      setLoadError(null);
+      try {
+        const res = (await getBars({
+          tradeIdeaGroupId: props.tradeIdeaGroupId,
+          resolution,
+          lookbackDays,
+        })) as TradeIdeaBarsResult;
+        if (cancelled) return;
+        setData(res);
+      } catch (e) {
+        if (cancelled) return;
+        setLoadError(e instanceof Error ? e.message : String(e));
+        setData(null);
+      } finally {
+        if (cancelled) return;
+        setIsLoading(false);
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [getBars, lookbackDays, props.tradeIdeaGroupId, resolution]);
+
   const bars = Array.isArray(data?.bars) ? data.bars : [];
   const sourceKey = typeof data?.sourceKey === "string" ? data.sourceKey : "";
-  const error = data && data.ok === false ? data.error ?? "No bars available." : null;
+  const error =
+    loadError ?? (data && data.ok === false ? data.error ?? "No bars available." : null);
 
   return (
     <Card className="border-white/10 bg-white/3 backdrop-blur-md">

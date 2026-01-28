@@ -75,5 +75,32 @@ export default defineSchema({
     "resolution",
     "chunkStartMs",
   ]),
+
+  /**
+   * Ephemeral cache for the *current* in-progress candle (hybrid model).
+   * Finalized candles live in ClickHouse; this table is for low-latency UI updates.
+   */
+  priceLiveCandles: defineTable({
+    sourceKey: v.string(),
+    tradableInstrumentId: v.string(),
+    resolution: v.string(), // start with "1m"; kept generic
+    minuteStartMs: v.number(),
+    lastUpdateAt: v.number(),
+
+    o: v.number(),
+    h: v.number(),
+    l: v.number(),
+    c: v.number(),
+    v: v.number(),
+
+    updatedAt: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_source_instrument_resolution", [
+      "sourceKey",
+      "tradableInstrumentId",
+      "resolution",
+    ])
+    .index("by_updatedAt", ["updatedAt"]),
 });
 

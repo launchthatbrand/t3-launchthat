@@ -1,5 +1,5 @@
 {
-  "name": "launchthat-plugin-pricedata",
+  "name": "launchthat-plugin-clickhouse",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -28,7 +28,6 @@
   },
   "dependencies": {
     "convex": "^1.23.0",
-    "launchthat-plugin-clickhouse": "workspace:*",
     "launchthat-plugin-core": "workspace:*"
   },
   "devDependencies": {

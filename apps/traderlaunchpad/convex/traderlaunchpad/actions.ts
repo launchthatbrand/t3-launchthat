@@ -17,6 +17,8 @@ import { v } from "convex/values";
 // "type instantiation is excessively deep". Pull via require() to keep it `any`.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const componentsUntyped: any = require("../_generated/api").components;
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const internalUntyped: any = require("../_generated/api").internal;
 
 const traderlaunchpadConnectionsMutations =
   componentsUntyped.launchthat_traderlaunchpad.connections.mutations;
@@ -28,6 +30,20 @@ const traderlaunchpadConnectionsQueries =
   componentsUntyped.launchthat_traderlaunchpad.connections.queries;
 const traderlaunchpadConnectionsInternal =
   componentsUntyped.launchthat_traderlaunchpad.connections.internalQueries;
+
+const traderlaunchpadPlatformConnections =
+  componentsUntyped.launchthat_traderlaunchpad.connections.platform;
+
+const requireClickhouseComponentConfig = () => {
+  const url = process.env.CLICKHOUSE_HTTP_URL;
+  const database = process.env.CLICKHOUSE_DB ?? "traderlaunchpad";
+  const user = process.env.CLICKHOUSE_USER;
+  const password = process.env.CLICKHOUSE_PASSWORD;
+  if (!url) throw new Error("Missing CLICKHOUSE_HTTP_URL");
+  if (!user) throw new Error("Missing CLICKHOUSE_USER");
+  if (!password) throw new Error("Missing CLICKHOUSE_PASSWORD");
+  return { url, database, user, password };
+};
 
 const textEncoder = new TextEncoder();
 
@@ -1144,6 +1160,62 @@ const utcDayStartMs = (tMs: number) => {
   return d.getTime();
 };
 
+const normalizeClickhouseResolution = (
+  value: string,
+):
+  | "1m"
+  | "5m"
+  | "15m"
+  | "30m"
+  | "1h"
+  | "4h"
+  | "1d"
+  | null => {
+  const v = String(value ?? "").trim().toLowerCase();
+  if (v === "1m" || v === "m1") return "1m";
+  if (v === "5m" || v === "m5") return "5m";
+  if (v === "15m" || v === "m15") return "15m";
+  if (v === "30m" || v === "m30") return "30m";
+  if (v === "1h" || v === "h1" || v === "1hr") return "1h";
+  if (v === "4h" || v === "h4" || v === "4hr") return "4h";
+  if (v === "1d" || v === "d1") return "1d";
+  return null;
+};
+
+const formatDateTime64Utc = (ms: number): string => {
+  const d = new Date(ms);
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+  const pad3 = (n: number) => String(n).padStart(3, "0");
+  return (
+    `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}` +
+    ` ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}:${pad2(d.getUTCSeconds())}.` +
+    `${pad3(d.getUTCMilliseconds())}`
+  );
+};
+
+const dedupeBarsStrictAsc = <T extends { t: number }>(bars: T[]): T[] => {
+  const sorted = (Array.isArray(bars) ? bars : [])
+    .filter((b) => b && Number.isFinite(b.t))
+    .sort((a, b) => a.t - b.t);
+
+  const out: T[] = [];
+  for (const b of sorted) {
+    const prev = out.length > 0 ? out[out.length - 1]! : null;
+    if (!prev) {
+      out.push(b);
+      continue;
+    }
+    if (b.t > prev.t) {
+      out.push(b);
+      continue;
+    }
+    // Same timestamp (or out-of-order due to duplicates): replace the previous value.
+    // This ensures STRICTLY increasing times for chart consumers that assert uniqueness.
+    out[out.length - 1] = b;
+  }
+  return out;
+};
+
 export const pricedataListPublicSymbols = action({
   args: {
     limit: v.optional(v.number()),
@@ -1201,8 +1273,22 @@ export const pricedataGetPublicBars = action({
   }),
   handler: async (ctx, args) => {
     const symbol = normalizeSymbol(args.symbol);
-    const resolution = args.resolution.trim();
-    const lookbackDays = Math.max(1, Math.min(30, Math.floor(args.lookbackDays)));
+    const resolutionRaw = args.resolution.trim();
+    const lookbackDaysRaw = Number.isFinite(Number(args.lookbackDays))
+      ? Math.floor(Number(args.lookbackDays))
+      : 0;
+    const lookbackDays = Math.max(0, Math.min(3650, lookbackDaysRaw));
+    const resolution = normalizeClickhouseResolution(resolutionRaw);
+    if (!resolution) {
+      return {
+        ok: false,
+        sourceKey: undefined,
+        symbol,
+        resolution: resolutionRaw,
+        bars: [],
+        error: "Unsupported resolution.",
+      };
+    }
 
     const source = await ctx.runQuery(
       componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
@@ -1223,41 +1309,129 @@ export const pricedataGetPublicBars = action({
     }
 
     const toMs = Date.now();
-    const fromMs = toMs - lookbackDays * DAY_MS;
+    const fromMs = lookbackDays > 0 ? toMs - lookbackDays * DAY_MS : undefined;
 
-    const chunks = await ctx.runQuery(
-      componentsUntyped.launchthat_pricedata.bars.queries.getBarChunks,
-      {
-        sourceKey,
-        tradableInstrumentId: instrument.tradableInstrumentId,
-        resolution,
-        fromMs,
-        toMs,
-      },
-    );
+    const allowLegacyChunks = process.env.PRICEDATA_USE_LEGACY_CHUNKS !== "false";
 
-    const bars = (Array.isArray(chunks) ? chunks : [])
-      .flatMap((c: any) => (Array.isArray(c?.bars) ? c.bars : []))
-      .map((b: any) => ({
-        t: Number(b?.t),
-        o: Number(b?.o),
-        h: Number(b?.h),
-        l: Number(b?.l),
-        c: Number(b?.c),
-        v: Number(b?.v),
-      }))
-      .filter(
-        (b) =>
-          Number.isFinite(b.t) &&
-          Number.isFinite(b.o) &&
-          Number.isFinite(b.h) &&
-          Number.isFinite(b.l) &&
-          Number.isFinite(b.c) &&
-          Number.isFinite(b.v),
-      )
-      .sort((a, b) => a.t - b.t);
+    let bars: Array<{ t: number; o: number; h: number; l: number; c: number; v: number }> = [];
+    try {
+      const clickhouse = requireClickhouseComponentConfig();
+      // If lookbackDays is 0, page backward to fetch "all available" up to a safe cap.
+      const maxBars = 50_000;
+      const pageSize = 5_000;
 
-    return { ok: true, sourceKey, symbol, resolution, bars };
+      const parseBars = (rows: unknown) =>
+        Array.isArray(rows)
+          ? rows
+              .map((b: any) => ({
+                t: Number(b?.t),
+                o: Number(b?.o),
+                h: Number(b?.h),
+                l: Number(b?.l),
+                c: Number(b?.c),
+                v: Number.isFinite(Number(b?.v)) ? Number(b?.v) : 0,
+              }))
+              .filter(
+                (b: any) =>
+                  Number.isFinite(b.t) &&
+                  Number.isFinite(b.o) &&
+                  Number.isFinite(b.h) &&
+                  Number.isFinite(b.l) &&
+                  Number.isFinite(b.c) &&
+                  Number.isFinite(b.v),
+              )
+          : [];
+
+      if (lookbackDays > 0) {
+        const barsRes: unknown = await ctx.runAction(
+          componentsUntyped.launchthat_clickhouse.candles.actions.listCandles,
+          {
+            clickhouse,
+            sourceKey,
+            tradableInstrumentId: instrument.tradableInstrumentId,
+            resolution,
+            fromMs,
+            toMs,
+            limit: pageSize,
+          },
+        );
+        bars = parseBars(barsRes);
+      } else {
+        let cursorToMs: number | undefined = toMs;
+        let lastOldest: number | null = null;
+        let acc: Array<{ t: number; o: number; h: number; l: number; c: number; v: number }> = [];
+
+        for (let i = 0; i < 50; i += 1) {
+          const rows: unknown = await ctx.runAction(
+            componentsUntyped.launchthat_clickhouse.candles.actions.listCandles,
+            {
+              clickhouse,
+              sourceKey,
+              tradableInstrumentId: instrument.tradableInstrumentId,
+              resolution,
+              toMs: cursorToMs,
+              limit: pageSize,
+            },
+          );
+          const page = parseBars(rows);
+          if (page.length === 0) break;
+
+          const oldest = page[0]!.t;
+          if (lastOldest !== null && oldest >= lastOldest) break;
+          lastOldest = oldest;
+
+          acc = [...page, ...acc];
+          if (acc.length >= maxBars) {
+            acc = acc.slice(acc.length - maxBars);
+            break;
+          }
+
+          cursorToMs = oldest - 1;
+        }
+
+        bars = acc;
+      }
+    } catch {
+      // ignore; we may fall back to legacy Convex chunks
+    }
+
+    // Temporary fallback while ClickHouse is being phased in.
+    if (bars.length === 0 && allowLegacyChunks) {
+      const chunks = await ctx.runQuery(
+        componentsUntyped.launchthat_pricedata.bars.queries.getBarChunks,
+        {
+          sourceKey,
+          tradableInstrumentId: instrument.tradableInstrumentId,
+          resolution: resolutionRaw,
+          fromMs,
+          toMs,
+        },
+      );
+      bars = (Array.isArray(chunks) ? chunks : [])
+        .flatMap((c: any) => (Array.isArray(c?.bars) ? c.bars : []))
+        .map((b: any) => ({
+          t: Number(b?.t),
+          o: Number(b?.o),
+          h: Number(b?.h),
+          l: Number(b?.l),
+          c: Number(b?.c),
+          v: Number(b?.v),
+        }))
+        .filter(
+          (b: any) =>
+            Number.isFinite(b.t) &&
+            Number.isFinite(b.o) &&
+            Number.isFinite(b.h) &&
+            Number.isFinite(b.l) &&
+            Number.isFinite(b.c) &&
+            Number.isFinite(b.v),
+        )
+        .sort((a: any, b: any) => a.t - b.t);
+    }
+
+    // Enforce strict ascending & unique timestamps (TradingChartReal asserts this).
+    const deduped = dedupeBarsStrictAsc(bars);
+    return { ok: true, sourceKey, symbol, resolution: resolutionRaw, bars: deduped };
   },
 });
 
@@ -1278,7 +1452,8 @@ export const pricedataEnsurePublicBarsCached = action({
   handler: async (ctx, args) => {
     const symbol = normalizeSymbol(args.symbol);
     const resolution = args.resolution.trim();
-    const lookbackDays = Math.max(1, Math.min(30, Math.floor(args.lookbackDays)));
+    // This action is meant to quickly warm ClickHouse; keep it bounded.
+    const lookbackDays = Math.max(1, Math.min(7, Math.floor(args.lookbackDays)));
 
     const source = await ctx.runQuery(
       componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
@@ -1303,34 +1478,110 @@ export const pricedataEnsurePublicBarsCached = action({
       sourceKey,
     });
 
+    const resolvePlatformPoolAuth = async (): Promise<{
+      baseUrl: string;
+      accessToken: string;
+      refreshToken: string;
+      accNum: number;
+      accountId: string;
+      environment: "demo" | "live";
+      server: string;
+      jwtHost?: string;
+    } | null> => {
+      // Local dev ergonomics: allow public "Sync" to use the platform account pool
+      // when the default source seed connection isn't connected.
+      if (process.env.NODE_ENV === "production") return null;
+
+      const policies: any[] = await ctx.runQuery(
+        internalUntyped.platform.priceDataSyncInternalQueries
+          .listEnabledAccountPoliciesForSourceKey,
+        { sourceKey, limit: 50 },
+      );
+      const p = Array.isArray(policies) ? policies[0] : null;
+      if (!p) return null;
+
+      const connectionId = String(p.connectionId ?? "").trim();
+      const accountId = String(p.accountId ?? "").trim();
+      const accNum = Number(p.accNum ?? NaN);
+      if (!connectionId || !accountId || !Number.isFinite(accNum) || accNum <= 0) return null;
+
+      const secretsRes: any = await ctx.runQuery(
+        traderlaunchpadPlatformConnections.getConnectionSecrets,
+        { connectionId: (connectionId as unknown) as any },
+      );
+      const secrets = secretsRes?.secrets ?? null;
+      if (!secrets) return null;
+
+      const environment = secrets.environment === "live" ? ("live" as const) : ("demo" as const);
+      const server = String(secrets.server ?? "");
+      const jwtHost = typeof secrets.jwtHost === "string" ? secrets.jwtHost : undefined;
+      const baseUrl = jwtHost ? `https://${jwtHost}/backend-api` : baseUrlForEnv(environment);
+
+      const tokenStorage = env.TRADELOCKER_TOKEN_STORAGE ?? "raw";
+      const keyMaterial = requireTradeLockerSecretsKey();
+      const accessTokenEncrypted = String(secrets.accessTokenEncrypted ?? "");
+      const refreshTokenEncrypted = String(secrets.refreshTokenEncrypted ?? "");
+      const accessToken =
+        tokenStorage === "enc" ? await decryptSecret(accessTokenEncrypted, keyMaterial) : accessTokenEncrypted;
+      const refreshToken =
+        tokenStorage === "enc" ? await decryptSecret(refreshTokenEncrypted, keyMaterial) : refreshTokenEncrypted;
+
+      if (!accessToken || !refreshToken) return null;
+
+      console.log("[pricedataEnsurePublicBarsCached] using platform pool account", {
+        connectionId,
+        accountRowId: String(p.accountRowId ?? ""),
+        accountId,
+        accNum,
+      });
+
+      return { baseUrl, accessToken, refreshToken, accNum, accountId, environment, server, jwtHost };
+    };
+
     const seedRef = source?.seedRef;
     const seedOrg =
       typeof seedRef?.organizationId === "string" ? seedRef.organizationId : "";
     const seedUser = typeof seedRef?.userId === "string" ? seedRef.userId : "";
-    if (!seedOrg || !seedUser) {
-      return {
-        ok: false,
-        sourceKey,
-        symbol,
-        resolution,
-        error: "Default price source has no seedRef. Set it in Admin → Settings → Connections.",
-      };
-    }
+    const canPersistSeed = Boolean(seedOrg && seedUser);
 
-    console.log("[pricedataEnsurePublicBarsCached] seedRef", { seedOrg, seedUser });
+    console.log("[pricedataEnsurePublicBarsCached] seedRef", {
+      seedOrg: seedOrg || undefined,
+      seedUser: seedUser || undefined,
+      canPersistSeed,
+    });
 
     // 1) Load seed connection secrets to get TradeLocker tokens + account identifiers
-    const secrets = await ctx.runQuery(
-      traderlaunchpadConnectionsInternal.getConnectionSecrets,
-      { organizationId: seedOrg, userId: seedUser },
-    );
+    let secrets: any = null;
+    if (canPersistSeed) {
+      secrets = await ctx.runQuery(traderlaunchpadConnectionsInternal.getConnectionSecrets, {
+        organizationId: seedOrg,
+        userId: seedUser,
+      });
+    }
     if (!secrets || secrets.status !== "connected") {
-      return {
-        ok: false,
-        sourceKey,
-        symbol,
-        resolution,
-        error: "Seed TradeLocker connection is not connected.",
+      const platformAuth = await resolvePlatformPoolAuth();
+      if (!platformAuth) {
+        return {
+          ok: false,
+          sourceKey,
+          symbol,
+          resolution,
+          error: "Seed TradeLocker connection is not connected.",
+        };
+      }
+
+      // Use platformAuth instead of the seed connection for TradeLocker calls.
+      // We normalize it into the same shape as the seed `secrets` payload so the rest
+      // of this function can proceed unchanged.
+      secrets = {
+        status: "connected",
+        environment: platformAuth.environment,
+        server: platformAuth.server,
+        jwtHost: platformAuth.jwtHost,
+        selectedAccNum: platformAuth.accNum,
+        selectedAccountId: platformAuth.accountId,
+        accessTokenEncrypted: platformAuth.accessToken,
+        refreshTokenEncrypted: platformAuth.refreshToken,
       };
     }
 
@@ -1414,21 +1665,23 @@ export const pricedataEnsurePublicBarsCached = action({
           accNum = resolvedAccNum;
 
           // Persist corrected selection to the seed connection (best effort).
-          await ctx.runMutation(traderlaunchpadConnectionsMutations.upsertConnection, {
-            organizationId: seedOrg,
-            userId: seedUser,
-            environment: secrets.environment === "live" ? "live" : "demo",
-            server: String((secrets as any).server ?? ""),
-            jwtHost: extractJwtHost(accessToken),
-            selectedAccountId: accountId,
-            selectedAccNum: accNum,
-            accessTokenEncrypted: (secrets as any).accessTokenEncrypted,
-            refreshTokenEncrypted: (secrets as any).refreshTokenEncrypted,
-            accessTokenExpiresAt: (secrets as any).accessTokenExpiresAt,
-            refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
-            status: "connected",
-            lastError: undefined,
-          });
+          if (canPersistSeed) {
+            await ctx.runMutation(traderlaunchpadConnectionsMutations.upsertConnection, {
+              organizationId: seedOrg,
+              userId: seedUser,
+              environment: secrets.environment === "live" ? "live" : "demo",
+              server: String((secrets as any).server ?? ""),
+              jwtHost: extractJwtHost(accessToken),
+              selectedAccountId: accountId,
+              selectedAccNum: accNum,
+              accessTokenEncrypted: (secrets as any).accessTokenEncrypted,
+              refreshTokenEncrypted: (secrets as any).refreshTokenEncrypted,
+              accessTokenExpiresAt: (secrets as any).accessTokenExpiresAt,
+              refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
+              status: "connected",
+              lastError: undefined,
+            });
+          }
         }
       }
     } else {
@@ -1492,21 +1745,23 @@ export const pricedataEnsurePublicBarsCached = action({
             ? await encryptSecret(instrumentsRes.refreshed.refreshToken, keyMaterial)
             : instrumentsRes.refreshed.refreshToken;
 
-        await ctx.runMutation(traderlaunchpadConnectionsMutations.upsertConnection, {
-          organizationId: seedOrg,
-          userId: seedUser,
-          environment: secrets.environment === "live" ? "live" : "demo",
-          server: String((secrets as any).server ?? ""),
-          selectedAccountId: accountId,
-          selectedAccNum: accNum,
-          accessTokenEncrypted: accessToStore,
-          refreshTokenEncrypted: refreshToStore,
-          accessTokenExpiresAt: instrumentsRes.refreshed.expireDateMs,
-          refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
-          status: "connected",
-          lastError: undefined,
-          jwtHost: extractJwtHost(instrumentsRes.refreshed.accessToken),
-        });
+        if (canPersistSeed) {
+          await ctx.runMutation(traderlaunchpadConnectionsMutations.upsertConnection, {
+            organizationId: seedOrg,
+            userId: seedUser,
+            environment: secrets.environment === "live" ? "live" : "demo",
+            server: String((secrets as any).server ?? ""),
+            selectedAccountId: accountId,
+            selectedAccNum: accNum,
+            accessTokenEncrypted: accessToStore,
+            refreshTokenEncrypted: refreshToStore,
+            accessTokenExpiresAt: instrumentsRes.refreshed.expireDateMs,
+            refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
+            status: "connected",
+            lastError: undefined,
+            jwtHost: extractJwtHost(instrumentsRes.refreshed.accessToken),
+          });
+        }
       }
 
       const list: any[] = Array.isArray(instrumentsRes?.instruments)
@@ -1579,82 +1834,103 @@ export const pricedataEnsurePublicBarsCached = action({
       };
     }
 
-    // 3) Fetch bars
-    const toMs = Date.now();
-    const fromMs = toMs - lookbackDays * DAY_MS;
-
-    const history = await ctx.runAction(
-      componentsUntyped.launchthat_pricedata.tradelocker.actions.fetchHistory,
-      {
-        baseUrl,
-        accessToken,
-        refreshToken,
-        accNum,
-        tradableInstrumentId,
-        infoRouteId,
-        resolution,
-        fromMs,
-        toMs,
-        developerKey: env.TRADELOCKER_DEVELOPER_API_KEY,
-      },
+    // 3) Insert missing bars into ClickHouse.
+    // IMPORTANT: Convex values have an array length limit (8192). A 7-day 1m window is 10080 bars,
+    // so we MUST fetch in slices when we're doing an initial warm.
+    const clickhouse = requireClickhouseComponentConfig();
+    const maxTsMsRaw: unknown = await ctx.runAction(
+      componentsUntyped.launchthat_clickhouse.candles.actions.getMaxTsMs1m,
+      { clickhouse, sourceKey, tradableInstrumentId },
     );
+    const maxTsMs =
+      typeof maxTsMsRaw === "number" && Number.isFinite(maxTsMsRaw) ? maxTsMsRaw : null;
 
-    if (!history?.ok) {
-      return {
-        ok: false,
-        sourceKey,
-        symbol,
-        resolution,
-        error: String(history?.error ?? "TradeLocker history fetch failed."),
-      };
-    }
+    const toMs = Date.now();
+    const fullFromMs = toMs - lookbackDays * DAY_MS;
+    const overlapMs = DAY_MS; // allow some overlap for dedupe
+    const fromMs =
+      maxTsMs === null ? fullFromMs : Math.max(fullFromMs, maxTsMs - overlapMs);
+    console.log("[pricedataEnsurePublicBarsCached] window", {
+      maxTsMs,
+      fullFromMs,
+      fromMs,
+      toMs,
+    });
 
-    // Persist refreshed tokens (best effort)
-    if (history?.refreshed?.accessToken && history?.refreshed?.refreshToken) {
-      const tokenStorage = env.TRADELOCKER_TOKEN_STORAGE ?? "raw";
-      const accessToStore =
-        tokenStorage === "enc"
-          ? await encryptSecret(history.refreshed.accessToken, keyMaterial)
-          : history.refreshed.accessToken;
-      const refreshToStore =
-        tokenStorage === "enc"
-          ? await encryptSecret(history.refreshed.refreshToken, keyMaterial)
-          : history.refreshed.refreshToken;
+    const sliceMs = 3 * DAY_MS; // 4320 bars at 1m, safely under Convex 8192 limit
+    let maxInserted = maxTsMs ?? -1;
+    let barsStored = 0;
 
-      await ctx.runMutation(traderlaunchpadConnectionsMutations.upsertConnection, {
-        organizationId: seedOrg,
-        userId: seedUser,
-        environment: secrets.environment === "live" ? "live" : "demo",
-        server: String((secrets as any).server ?? ""),
-        selectedAccountId: accountId,
-        selectedAccNum: accNum,
-        accessTokenEncrypted: accessToStore,
-        refreshTokenEncrypted: refreshToStore,
-        accessTokenExpiresAt: history.refreshed.expireDateMs,
-        refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
-        status: "connected",
-        lastError: undefined,
-        jwtHost: extractJwtHost(history.refreshed.accessToken),
+    for (let cursor = fromMs; cursor < toMs; cursor += sliceMs) {
+      const sliceToMs = Math.min(toMs, cursor + sliceMs);
+      console.log("[pricedataEnsurePublicBarsCached] slice", {
+        fromMs: cursor,
+        toMs: sliceToMs,
+        spanMinutes: Math.round((sliceToMs - cursor) / 60_000),
       });
-    }
+      const history = await ctx.runAction(
+        componentsUntyped.launchthat_pricedata.tradelocker.actions.fetchHistory,
+        {
+          baseUrl,
+          accessToken,
+          refreshToken,
+          accNum,
+          tradableInstrumentId,
+          infoRouteId,
+          resolution: "1m",
+          fromMs: cursor,
+          toMs: sliceToMs,
+          developerKey: env.TRADELOCKER_DEVELOPER_API_KEY,
+        },
+      );
 
-    const bars: any[] = Array.isArray(history?.bars) ? history.bars : [];
+      if (!history?.ok) {
+        return {
+          ok: false,
+          sourceKey,
+          symbol,
+          resolution,
+          error: String(history?.error ?? "TradeLocker history fetch failed."),
+        };
+      }
 
-    // 4) Chunk + store bars by UTC day
-    const buckets = new Map<number, any[]>();
-    for (const b of bars) {
-      const t = Number(b?.t);
-      if (!Number.isFinite(t)) continue;
-      const start = utcDayStartMs(t);
-      const list = buckets.get(start);
-      if (list) list.push(b);
-      else buckets.set(start, [b]);
-    }
+      // Persist refreshed tokens (best effort) ONLY if we are actually using the seed connection.
+      if (history?.refreshed?.accessToken && history?.refreshed?.refreshToken) {
+        accessToken = history.refreshed.accessToken;
+        refreshToken = history.refreshed.refreshToken;
 
-    let stored = 0;
-    for (const [chunkStartMs, chunkBars] of buckets) {
-      const normalizedBars = chunkBars
-        .map((b) => ({
+        if (canPersistSeed) {
+          const tokenStorage = env.TRADELOCKER_TOKEN_STORAGE ?? "raw";
+          const accessToStore =
+            tokenStorage === "enc"
+              ? await encryptSecret(history.refreshed.accessToken, keyMaterial)
+              : history.refreshed.accessToken;
+          const refreshToStore =
+            tokenStorage === "enc"
+              ? await encryptSecret(history.refreshed.refreshToken, keyMaterial)
+              : history.refreshed.refreshToken;
+
+          await ctx.runMutation(traderlaunchpadConnectionsMutations.upsertConnection, {
+            organizationId: seedOrg,
+            userId: seedUser,
+            environment: secrets.environment === "live" ? "live" : "demo",
+            server: String((secrets as any).server ?? ""),
+            selectedAccountId: accountId,
+            selectedAccNum: accNum,
+            accessTokenEncrypted: accessToStore,
+            refreshTokenEncrypted: refreshToStore,
+            accessTokenExpiresAt: history.refreshed.expireDateMs,
+            refreshTokenExpiresAt: (secrets as any).refreshTokenExpiresAt,
+            status: "connected",
+            lastError: undefined,
+            jwtHost: extractJwtHost(history.refreshed.accessToken),
+          });
+        }
+      }
+
+      const bars: any[] = Array.isArray(history?.bars) ? history.bars : [];
+      const normalizedBars = bars
+        .map((b: any) => ({
           t: Number(b?.t),
           o: Number(b?.o),
           h: Number(b?.h),
@@ -1663,31 +1939,54 @@ export const pricedataEnsurePublicBarsCached = action({
           v: Number(b?.v),
         }))
         .filter(
-          (b) =>
+          (b: any) =>
             Number.isFinite(b.t) &&
             Number.isFinite(b.o) &&
             Number.isFinite(b.h) &&
             Number.isFinite(b.l) &&
             Number.isFinite(b.c) &&
-            Number.isFinite(b.v),
+            Number.isFinite(b.v) &&
+            b.t > maxInserted,
         )
-        .sort((a, b) => a.t - b.t);
+        .sort((a: any, b: any) => a.t - b.t);
 
-      await ctx.runMutation(
-        componentsUntyped.launchthat_pricedata.bars.mutations.upsertBarChunk,
-        {
-          sourceKey,
-          tradableInstrumentId,
-          resolution,
-          chunkStartMs,
-          chunkEndMs: chunkStartMs + DAY_MS,
-          bars: normalizedBars,
-        },
+      if (normalizedBars.length === 0) continue;
+
+      const payload = normalizedBars
+        .map((b: any) =>
+          JSON.stringify({
+            sourceKey: sourceKey.toLowerCase(),
+            tradableInstrumentId,
+            symbol,
+            ts: formatDateTime64Utc(b.t),
+            open: b.o,
+            high: b.h,
+            low: b.l,
+            close: b.c,
+            volume: b.v,
+          }),
+        )
+        .join("\n");
+
+      const ins: any = await ctx.runAction(
+        componentsUntyped.launchthat_clickhouse.candles.actions.insertCandles1mJsonEachRow,
+        { clickhouse, payload },
       );
-      stored += normalizedBars.length;
+      if (!ins?.ok) {
+        return {
+          ok: false,
+          sourceKey,
+          symbol,
+          resolution,
+          error: typeof ins?.error === "string" ? ins.error : "ClickHouse insert failed",
+        };
+      }
+
+      barsStored += normalizedBars.length;
+      maxInserted = normalizedBars[normalizedBars.length - 1]!.t;
     }
 
-    return { ok: true, sourceKey, symbol, resolution, barsStored: stored };
+    return { ok: true, sourceKey, symbol, resolution, barsStored };
   },
 });
 

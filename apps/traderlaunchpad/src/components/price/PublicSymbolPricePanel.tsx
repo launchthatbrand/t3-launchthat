@@ -48,7 +48,8 @@ export function PublicSymbolPricePanel({ symbol }: { symbol: string }) {
   const ensure = useAction(api.traderlaunchpad.actions.pricedataEnsurePublicBarsCached);
 
   const [resolution, setResolution] = React.useState<Resolution>("15m");
-  const [lookbackDays, setLookbackDays] = React.useState(7);
+  // 0 = "all available" (server will cap to a safe maximum number of bars)
+  const [lookbackDays, setLookbackDays] = React.useState(0);
 
   const [loading, setLoading] = React.useState(false);
   const [syncing, setSyncing] = React.useState(false);

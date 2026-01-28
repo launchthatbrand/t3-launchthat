@@ -36,6 +36,14 @@ export const TradingChartReal = (props: Props) => {
   const chartRef = React.useRef<IChartApi | null>(null);
   const seriesRef = React.useRef<ISeriesApi<"Candlestick"> | null>(null);
   const resizeObserverRef = React.useRef<ResizeObserver | null>(null);
+  const lastVisibleRangeRef = React.useRef<
+    | {
+        from: UTCTimestamp;
+        to: UTCTimestamp;
+      }
+    | null
+  >(null);
+  const hasEverFitRef = React.useRef(false);
 
   const height = clamp(props.height ?? 360, 220, 720);
 
@@ -84,6 +92,15 @@ export const TradingChartReal = (props: Props) => {
       wickDownColor: "rgba(239,68,68,0.9)",
     });
 
+    // Track zoom/pan so we can preserve it across data swaps (timeframe changes).
+    const handleVisibleRangeChange = (
+      range: { from: UTCTimestamp; to: UTCTimestamp } | null,
+    ) => {
+      if (!range) return;
+      lastVisibleRangeRef.current = range;
+    };
+    chart.timeScale().subscribeVisibleTimeRangeChange(handleVisibleRangeChange);
+
     chartRef.current = chart;
     seriesRef.current = series;
 
@@ -95,6 +112,7 @@ export const TradingChartReal = (props: Props) => {
     resizeObserverRef.current = ro;
 
     return () => {
+      chart.timeScale().unsubscribeVisibleTimeRangeChange(handleVisibleRangeChange);
       resizeObserverRef.current?.disconnect();
       resizeObserverRef.current = null;
       chart.remove();
@@ -123,7 +141,21 @@ export const TradingChartReal = (props: Props) => {
       }));
 
     series.setData(data);
-    chart.timeScale().fitContent();
+    // Preserve user zoom/pan when swapping datasets (e.g. changing timeframe).
+    // If we have no prior range yet, fit once on the initial draw.
+    const last = lastVisibleRangeRef.current;
+    if (last) {
+      try {
+        chart.timeScale().setVisibleRange(last);
+      } catch {
+        // If the last range isn't valid for this dataset, fall back to fit.
+        chart.timeScale().fitContent();
+        hasEverFitRef.current = true;
+      }
+    } else if (!hasEverFitRef.current) {
+      chart.timeScale().fitContent();
+      hasEverFitRef.current = true;
+    }
   }, [props.bars]);
 
   return (

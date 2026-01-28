@@ -4588,6 +4588,124 @@ export declare const components: {
       >;
     };
   };
+  launchthat_clickhouse: {
+    candles: {
+      actions: {
+        getMaxTsMs1m: FunctionReference<
+          "action",
+          "internal",
+          {
+            clickhouse: {
+              database?: string;
+              password: string;
+              url: string;
+              user: string;
+            };
+            sourceKey: string;
+            tradableInstrumentId: string;
+          },
+          null | number
+        >;
+        insertCandles1mJsonEachRow: FunctionReference<
+          "action",
+          "internal",
+          {
+            clickhouse: {
+              database?: string;
+              password: string;
+              url: string;
+              user: string;
+            };
+            payload: string;
+          },
+          { error?: string; ok: boolean }
+        >;
+        listCandles: FunctionReference<
+          "action",
+          "internal",
+          {
+            clickhouse: {
+              database?: string;
+              password: string;
+              url: string;
+              user: string;
+            };
+            fromMs?: number;
+            limit?: number;
+            resolution?: "1m" | "5m" | "15m" | "30m" | "1h" | "4h" | "1d";
+            sourceKey: string;
+            toMs?: number;
+            tradableInstrumentId: string;
+          },
+          Array<{
+            c: number;
+            h: number;
+            l: number;
+            o: number;
+            t: number;
+            v?: number;
+          }>
+        >;
+      };
+      index: {
+        getMaxTsMs1m: FunctionReference<
+          "action",
+          "internal",
+          {
+            clickhouse: {
+              database?: string;
+              password: string;
+              url: string;
+              user: string;
+            };
+            sourceKey: string;
+            tradableInstrumentId: string;
+          },
+          null | number
+        >;
+        insertCandles1mJsonEachRow: FunctionReference<
+          "action",
+          "internal",
+          {
+            clickhouse: {
+              database?: string;
+              password: string;
+              url: string;
+              user: string;
+            };
+            payload: string;
+          },
+          { error?: string; ok: boolean }
+        >;
+        listCandles: FunctionReference<
+          "action",
+          "internal",
+          {
+            clickhouse: {
+              database?: string;
+              password: string;
+              url: string;
+              user: string;
+            };
+            fromMs?: number;
+            limit?: number;
+            resolution?: "1m" | "5m" | "15m" | "30m" | "1h" | "4h" | "1d";
+            sourceKey: string;
+            toMs?: number;
+            tradableInstrumentId: string;
+          },
+          Array<{
+            c: number;
+            h: number;
+            l: number;
+            o: number;
+            t: number;
+            v?: number;
+          }>
+        >;
+      };
+    };
+  };
   launchthat_pricedata: {
     bars: {
       index: {
@@ -4862,6 +4980,86 @@ export declare const components: {
             tradableInstrumentId: string;
             updatedAt: number;
           }>
+        >;
+      };
+    };
+    live: {
+      index: {
+        getLiveCandle: FunctionReference<
+          "query",
+          "internal",
+          {
+            resolution: string;
+            sourceKey: string;
+            tradableInstrumentId: string;
+          },
+          null | {
+            c: number;
+            h: number;
+            l: number;
+            lastUpdateAt: number;
+            minuteStartMs: number;
+            o: number;
+            t: number;
+            v: number;
+          }
+        >;
+        upsertLiveCandle: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            c: number;
+            h: number;
+            l: number;
+            lastUpdateAt: number;
+            minuteStartMs: number;
+            o: number;
+            resolution: string;
+            sourceKey: string;
+            tradableInstrumentId: string;
+            v: number;
+          },
+          null
+        >;
+      };
+      mutations: {
+        upsertLiveCandle: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            c: number;
+            h: number;
+            l: number;
+            lastUpdateAt: number;
+            minuteStartMs: number;
+            o: number;
+            resolution: string;
+            sourceKey: string;
+            tradableInstrumentId: string;
+            v: number;
+          },
+          null
+        >;
+      };
+      queries: {
+        getLiveCandle: FunctionReference<
+          "query",
+          "internal",
+          {
+            resolution: string;
+            sourceKey: string;
+            tradableInstrumentId: string;
+          },
+          null | {
+            c: number;
+            h: number;
+            l: number;
+            lastUpdateAt: number;
+            minuteStartMs: number;
+            o: number;
+            t: number;
+            v: number;
+          }
         >;
       };
     };

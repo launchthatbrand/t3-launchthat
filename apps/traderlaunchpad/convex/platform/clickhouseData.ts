@@ -18,6 +18,12 @@ const requirePlatformAdmin = async (ctx: any) => {
   await ctx.runQuery(internal.platform.testsAuth.assertPlatformAdmin, {});
 };
 
+const throwClickhouse = (res: { error?: string; status?: number; textPreview?: string }) => {
+  const status = typeof res.status === "number" ? ` (${res.status})` : "";
+  const preview = typeof res.textPreview === "string" && res.textPreview.trim() ? `\n${res.textPreview}` : "";
+  throw new Error(`ClickHouse query failed${status}: ${res.error ?? "Unknown error"}${preview}`);
+};
+
 export const listSourceKeys = action({
   args: { limit: v.optional(v.number()) },
   returns: v.array(v.string()),
@@ -28,7 +34,7 @@ export const listSourceKeys = action({
       "SELECT DISTINCT sourceKey FROM candles_1m ORDER BY sourceKey LIMIT {limit:Int64}",
       [{ name: "limit", type: "Int64", value: limit }],
     );
-    if (!res.ok) throw new Error(res.error ?? "ClickHouse query failed");
+    if (!res.ok) throwClickhouse(res);
     return res.rows.map((r) => String(r.sourceKey ?? "")).filter(Boolean);
   },
 });
@@ -54,20 +60,22 @@ export const listPairsForSourceKey = action({
       ...(search ? [{ name: "q", type: "String", value: `%${search}%` }] : []),
     ];
 
-    const res = await clickhouseSelect<{ tradableInstrumentId: string; symbol: string }>(
-      `SELECT tradableInstrumentId, any(symbol) AS symbol
+    // IMPORTANT: don't alias as "symbol" because ClickHouse may resolve `symbol`
+    // in WHERE to the SELECT alias (aggregate), causing ILLEGAL_AGGREGATION.
+    const res = await clickhouseSelect<{ tradableInstrumentId: string; symbolAny: string }>(
+      `SELECT tradableInstrumentId, any(symbol) AS symbolAny
        FROM candles_1m
        WHERE sourceKey = {sourceKey:String}${whereSearch}
        GROUP BY tradableInstrumentId
-       ORDER BY symbol
+       ORDER BY symbolAny
        LIMIT {limit:Int64}`,
       params,
     );
-    if (!res.ok) throw new Error(res.error ?? "ClickHouse query failed");
+    if (!res.ok) throwClickhouse(res);
     return res.rows
       .map((r) => ({
         tradableInstrumentId: String(r.tradableInstrumentId ?? "").trim(),
-        symbol: String(r.symbol ?? "").trim(),
+        symbol: String(r.symbolAny ?? "").trim(),
       }))
       .filter((r) => r.tradableInstrumentId && r.symbol);
   },
@@ -115,7 +123,7 @@ export const getCoverageSummary1m = action({
         { name: "tradableInstrumentId", type: "String", value: tradableInstrumentId },
       ],
     );
-    if (!res.ok) throw new Error(res.error ?? "ClickHouse query failed");
+    if (!res.ok) throwClickhouse(res);
     const row = res.rows[0] as any;
     if (!row) return null;
     const rows = Number(row.rows ?? 0);
@@ -178,7 +186,7 @@ export const compareBrokersForSymbol1m = action({
         { name: "limit", type: "Int64", value: limit },
       ],
     );
-    if (!res.ok) throw new Error(res.error ?? "ClickHouse query failed");
+    if (!res.ok) throwClickhouse(res);
     return res.rows.map((r: any) => ({
       sourceKey: String(r.sourceKey ?? ""),
       tradableInstrumentId: String(r.tradableInstrumentId ?? ""),

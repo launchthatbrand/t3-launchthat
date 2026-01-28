@@ -44,12 +44,14 @@ export const listPairsForSourceKey = internalAction({
       ...(search ? [{ name: "q", type: "String", value: `%${search}%` }] : []),
     ];
 
-    const res = await clickhouseSelect<{ tradableInstrumentId: string; symbol: string }>(
-      `SELECT tradableInstrumentId, any(symbol) AS symbol
+    // IMPORTANT: don't alias as "symbol" because ClickHouse may resolve `symbol`
+    // in WHERE to the SELECT alias (aggregate), causing ILLEGAL_AGGREGATION.
+    const res = await clickhouseSelect<{ tradableInstrumentId: string; symbolAny: string }>(
+      `SELECT tradableInstrumentId, any(symbol) AS symbolAny
        FROM candles_1m
        WHERE sourceKey = {sourceKey:String}${whereSearch}
        GROUP BY tradableInstrumentId
-       ORDER BY symbol
+       ORDER BY symbolAny
        LIMIT {limit:Int64}`,
       params,
     );
@@ -57,7 +59,7 @@ export const listPairsForSourceKey = internalAction({
     return res.rows
       .map((r) => ({
         tradableInstrumentId: String(r.tradableInstrumentId ?? "").trim(),
-        symbol: String(r.symbol ?? "").trim(),
+        symbol: String(r.symbolAny ?? "").trim(),
       }))
       .filter((r) => r.tradableInstrumentId && r.symbol);
   },

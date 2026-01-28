@@ -16,6 +16,9 @@ import type * as index from "../index.js";
 import type * as instruments_index from "../instruments/index.js";
 import type * as instruments_mutations from "../instruments/mutations.js";
 import type * as instruments_queries from "../instruments/queries.js";
+import type * as live_index from "../live/index.js";
+import type * as live_mutations from "../live/mutations.js";
+import type * as live_queries from "../live/queries.js";
 import type * as server from "../server.js";
 import type * as sources_index from "../sources/index.js";
 import type * as sources_mutations from "../sources/mutations.js";
@@ -45,6 +48,9 @@ declare const fullApi: ApiFromModules<{
   "instruments/index": typeof instruments_index;
   "instruments/mutations": typeof instruments_mutations;
   "instruments/queries": typeof instruments_queries;
+  "live/index": typeof live_index;
+  "live/mutations": typeof live_mutations;
+  "live/queries": typeof live_queries;
   server: typeof server;
   "sources/index": typeof sources_index;
   "sources/mutations": typeof sources_mutations;
@@ -325,6 +331,78 @@ export type Mounts = {
           tradableInstrumentId: string;
           updatedAt: number;
         }>
+      >;
+    };
+  };
+  live: {
+    index: {
+      getLiveCandle: FunctionReference<
+        "query",
+        "public",
+        { resolution: string; sourceKey: string; tradableInstrumentId: string },
+        null | {
+          c: number;
+          h: number;
+          l: number;
+          lastUpdateAt: number;
+          minuteStartMs: number;
+          o: number;
+          t: number;
+          v: number;
+        }
+      >;
+      upsertLiveCandle: FunctionReference<
+        "mutation",
+        "public",
+        {
+          c: number;
+          h: number;
+          l: number;
+          lastUpdateAt: number;
+          minuteStartMs: number;
+          o: number;
+          resolution: string;
+          sourceKey: string;
+          tradableInstrumentId: string;
+          v: number;
+        },
+        null
+      >;
+    };
+    mutations: {
+      upsertLiveCandle: FunctionReference<
+        "mutation",
+        "public",
+        {
+          c: number;
+          h: number;
+          l: number;
+          lastUpdateAt: number;
+          minuteStartMs: number;
+          o: number;
+          resolution: string;
+          sourceKey: string;
+          tradableInstrumentId: string;
+          v: number;
+        },
+        null
+      >;
+    };
+    queries: {
+      getLiveCandle: FunctionReference<
+        "query",
+        "public",
+        { resolution: string; sourceKey: string; tradableInstrumentId: string },
+        null | {
+          c: number;
+          h: number;
+          l: number;
+          lastUpdateAt: number;
+          minuteStartMs: number;
+          o: number;
+          t: number;
+          v: number;
+        }
       >;
     };
   };
