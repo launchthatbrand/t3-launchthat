@@ -310,6 +310,26 @@ export const fetchAndInsertTradeLockerHistoryChunk1m = internalAction({
       ? (history.bars as { t: number; o: number; h: number; l: number; c: number; v: number }[])
       : [];
 
+    // This workflow backfills *older* history. To keep the base table append-only (and avoid
+    // duplicate 1m timestamps which would double-count in rollups), only insert rows that
+    // are strictly older than the current min(ts) for this instrument.
+    const minRes = await clickhouseSelect<{ rows: number; minTsMs: number }>(
+      `SELECT
+         count() AS rows,
+         toUnixTimestamp64Milli(min(ts)) AS minTsMs
+       FROM candles_1m
+       WHERE sourceKey = {sourceKey:String}
+         AND tradableInstrumentId = {tradableInstrumentId:String}`,
+      [
+        { name: "sourceKey", type: "String", value: sourceKey },
+        { name: "tradableInstrumentId", type: "String", value: tradableInstrumentId },
+      ],
+    );
+    const existingMinTsMs =
+      minRes.ok && Number(minRes.rows[0]?.rows ?? 0) > 0 && Number.isFinite(Number(minRes.rows[0]?.minTsMs ?? NaN))
+        ? Number(minRes.rows[0]!.minTsMs)
+        : undefined;
+
     const formatDateTime64Utc = (ms: number): string => {
       const d = new Date(ms);
       const pad2 = (n: number) => String(n).padStart(2, "0");
@@ -330,6 +350,9 @@ export const fetchAndInsertTradeLockerHistoryChunk1m = internalAction({
         const c = Number(b.c);
         const v = Number.isFinite(Number(b.v)) ? Number(b.v) : 0;
         if (!Number.isFinite(t) || !Number.isFinite(o) || !Number.isFinite(h) || !Number.isFinite(l) || !Number.isFinite(c)) {
+          return null;
+        }
+        if (typeof existingMinTsMs === "number" && Number.isFinite(existingMinTsMs) && t >= existingMinTsMs) {
           return null;
         }
         // Important: ClickHouse DateTime64 parsing is happiest with "YYYY-MM-DD HH:MM:SS.mmm" (UTC),

@@ -1252,7 +1252,13 @@ export const pricedataGetPublicBars = action({
   args: {
     symbol: v.string(),
     resolution: v.string(),
-    lookbackDays: v.number(),
+    // Pagination:
+    // - `toMs` is an inclusive cursor (ms). Omit for "latest".
+    // - `limit` is the maximum number of candles returned.
+    toMs: v.optional(v.number()),
+    limit: v.optional(v.number()),
+    // Backward compatible: allow callers to request a bounded window from `toMs`/now.
+    lookbackDays: v.optional(v.number()),
   },
   returns: v.object({
     ok: v.boolean(),
@@ -1269,14 +1275,16 @@ export const pricedataGetPublicBars = action({
         v: v.number(),
       }),
     ),
+    nextToMs: v.optional(v.number()),
     error: v.optional(v.string()),
   }),
   handler: async (ctx, args) => {
     const symbol = normalizeSymbol(args.symbol);
     const resolutionRaw = args.resolution.trim();
-    const lookbackDaysRaw = Number.isFinite(Number(args.lookbackDays))
-      ? Math.floor(Number(args.lookbackDays))
-      : 0;
+    const lookbackDaysRaw =
+      typeof args.lookbackDays === "number" && Number.isFinite(args.lookbackDays)
+        ? Math.floor(args.lookbackDays)
+        : 0;
     const lookbackDays = Math.max(0, Math.min(3650, lookbackDaysRaw));
     const resolution = normalizeClickhouseResolution(resolutionRaw);
     if (!resolution) {
@@ -1286,6 +1294,7 @@ export const pricedataGetPublicBars = action({
         symbol,
         resolution: resolutionRaw,
         bars: [],
+        nextToMs: undefined,
         error: "Unsupported resolution.",
       };
     }
@@ -1297,7 +1306,15 @@ export const pricedataGetPublicBars = action({
     const sourceKey =
       typeof source?.sourceKey === "string" ? String(source.sourceKey) : "";
     if (!sourceKey) {
-      return { ok: false, sourceKey: undefined, symbol, resolution, bars: [], error: "No default price source configured." };
+      return {
+        ok: false,
+        sourceKey: undefined,
+        symbol,
+        resolution: resolutionRaw,
+        bars: [],
+        nextToMs: undefined,
+        error: "No default price source configured.",
+      };
     }
 
     const instrument = await ctx.runQuery(
@@ -1305,92 +1322,60 @@ export const pricedataGetPublicBars = action({
       { sourceKey, symbol },
     );
     if (!instrument || typeof instrument.tradableInstrumentId !== "string") {
-      return { ok: false, sourceKey, symbol, resolution, bars: [], error: "Symbol is not mapped for the default source yet." };
+      return {
+        ok: false,
+        sourceKey,
+        symbol,
+        resolution: resolutionRaw,
+        bars: [],
+        nextToMs: undefined,
+        error: "Symbol is not mapped for the default source yet.",
+      };
     }
 
-    const toMs = Date.now();
-    const fromMs = lookbackDays > 0 ? toMs - lookbackDays * DAY_MS : undefined;
+    const limit = Math.max(50, Math.min(5000, Number(args.limit ?? 2000)));
+    const toMsRaw =
+      typeof args.toMs === "number" && Number.isFinite(args.toMs) ? args.toMs : Date.now();
+    const toMs = Math.max(0, Math.floor(toMsRaw));
+    const fromMs = lookbackDays > 0 ? Math.max(0, toMs - lookbackDays * DAY_MS) : undefined;
 
     const allowLegacyChunks = process.env.PRICEDATA_USE_LEGACY_CHUNKS !== "false";
 
     let bars: Array<{ t: number; o: number; h: number; l: number; c: number; v: number }> = [];
     try {
       const clickhouse = requireClickhouseComponentConfig();
-      // If lookbackDays is 0, page backward to fetch "all available" up to a safe cap.
-      const maxBars = 50_000;
-      const pageSize = 5_000;
-
-      const parseBars = (rows: unknown) =>
-        Array.isArray(rows)
-          ? rows
-              .map((b: any) => ({
-                t: Number(b?.t),
-                o: Number(b?.o),
-                h: Number(b?.h),
-                l: Number(b?.l),
-                c: Number(b?.c),
-                v: Number.isFinite(Number(b?.v)) ? Number(b?.v) : 0,
-              }))
-              .filter(
-                (b: any) =>
-                  Number.isFinite(b.t) &&
-                  Number.isFinite(b.o) &&
-                  Number.isFinite(b.h) &&
-                  Number.isFinite(b.l) &&
-                  Number.isFinite(b.c) &&
-                  Number.isFinite(b.v),
-              )
-          : [];
-
-      if (lookbackDays > 0) {
-        const barsRes: unknown = await ctx.runAction(
-          componentsUntyped.launchthat_clickhouse.candles.actions.listCandles,
-          {
-            clickhouse,
-            sourceKey,
-            tradableInstrumentId: instrument.tradableInstrumentId,
-            resolution,
-            fromMs,
-            toMs,
-            limit: pageSize,
-          },
-        );
-        bars = parseBars(barsRes);
-      } else {
-        let cursorToMs: number | undefined = toMs;
-        let lastOldest: number | null = null;
-        let acc: Array<{ t: number; o: number; h: number; l: number; c: number; v: number }> = [];
-
-        for (let i = 0; i < 50; i += 1) {
-          const rows: unknown = await ctx.runAction(
-            componentsUntyped.launchthat_clickhouse.candles.actions.listCandles,
-            {
-              clickhouse,
-              sourceKey,
-              tradableInstrumentId: instrument.tradableInstrumentId,
-              resolution,
-              toMs: cursorToMs,
-              limit: pageSize,
-            },
-          );
-          const page = parseBars(rows);
-          if (page.length === 0) break;
-
-          const oldest = page[0]!.t;
-          if (lastOldest !== null && oldest >= lastOldest) break;
-          lastOldest = oldest;
-
-          acc = [...page, ...acc];
-          if (acc.length >= maxBars) {
-            acc = acc.slice(acc.length - maxBars);
-            break;
-          }
-
-          cursorToMs = oldest - 1;
-        }
-
-        bars = acc;
-      }
+      const barsRes: unknown = await ctx.runAction(
+        componentsUntyped.launchthat_clickhouse.candles.actions.listCandles,
+        {
+          clickhouse,
+          sourceKey,
+          tradableInstrumentId: instrument.tradableInstrumentId,
+          resolution,
+          fromMs,
+          toMs,
+          limit,
+        },
+      );
+      bars = Array.isArray(barsRes)
+        ? barsRes
+            .map((b: any) => ({
+              t: Number(b?.t),
+              o: Number(b?.o),
+              h: Number(b?.h),
+              l: Number(b?.l),
+              c: Number(b?.c),
+              v: Number.isFinite(Number(b?.v)) ? Number(b?.v) : 0,
+            }))
+            .filter(
+              (b: any) =>
+                Number.isFinite(b.t) &&
+                Number.isFinite(b.o) &&
+                Number.isFinite(b.h) &&
+                Number.isFinite(b.l) &&
+                Number.isFinite(b.c) &&
+                Number.isFinite(b.v),
+            )
+        : [];
     } catch {
       // ignore; we may fall back to legacy Convex chunks
     }
@@ -1431,7 +1416,20 @@ export const pricedataGetPublicBars = action({
 
     // Enforce strict ascending & unique timestamps (TradingChartReal asserts this).
     const deduped = dedupeBarsStrictAsc(bars);
-    return { ok: true, sourceKey, symbol, resolution: resolutionRaw, bars: deduped };
+    const oldest = deduped.length > 0 ? deduped[0]!.t : null;
+    const nextToMs =
+      deduped.length >= limit && typeof oldest === "number" && Number.isFinite(oldest) && oldest > 0
+        ? oldest - 1
+        : undefined;
+
+    return {
+      ok: true,
+      sourceKey,
+      symbol,
+      resolution: resolutionRaw,
+      bars: deduped,
+      nextToMs,
+    };
   },
 });
 
@@ -1439,7 +1437,11 @@ export const pricedataEnsurePublicBarsCached = action({
   args: {
     symbol: v.string(),
     resolution: v.string(),
-    lookbackDays: v.number(),
+    // Backward compatible bounded warm window.
+    lookbackDays: v.optional(v.number()),
+    // Optional explicit window (ms) for warming the currently viewed chart range.
+    fromMs: v.optional(v.number()),
+    toMs: v.optional(v.number()),
   },
   returns: v.object({
     ok: v.boolean(),
@@ -1453,7 +1455,11 @@ export const pricedataEnsurePublicBarsCached = action({
     const symbol = normalizeSymbol(args.symbol);
     const resolution = args.resolution.trim();
     // This action is meant to quickly warm ClickHouse; keep it bounded.
-    const lookbackDays = Math.max(1, Math.min(7, Math.floor(args.lookbackDays)));
+    const lookbackDaysRaw =
+      typeof args.lookbackDays === "number" && Number.isFinite(args.lookbackDays)
+        ? Math.floor(args.lookbackDays)
+        : 7;
+    const lookbackDays = Math.max(1, Math.min(7, lookbackDaysRaw));
 
     const source = await ctx.runQuery(
       componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
@@ -1845,8 +1851,12 @@ export const pricedataEnsurePublicBarsCached = action({
     const maxTsMs =
       typeof maxTsMsRaw === "number" && Number.isFinite(maxTsMsRaw) ? maxTsMsRaw : null;
 
-    const toMs = Date.now();
-    const fullFromMs = toMs - lookbackDays * DAY_MS;
+    const toMs =
+      typeof args.toMs === "number" && Number.isFinite(args.toMs) ? Math.floor(args.toMs) : Date.now();
+    const fullFromMs =
+      typeof args.fromMs === "number" && Number.isFinite(args.fromMs)
+        ? Math.max(0, Math.floor(args.fromMs))
+        : toMs - lookbackDays * DAY_MS;
     const overlapMs = DAY_MS; // allow some overlap for dedupe
     const fromMs =
       maxTsMs === null ? fullFromMs : Math.max(fullFromMs, maxTsMs - overlapMs);

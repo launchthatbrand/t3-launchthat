@@ -4,10 +4,11 @@ import { demoPublicUsers, demoReviewTrades } from "@acme/demo-data";
 import { AffiliatePageShell } from "../../../../components/affiliates/AffiliatePageShell";
 import { Button } from "@acme/ui/button";
 import Link from "next/link";
+import { PublicSymbolTradingPanel } from "~/components/price/PublicSymbolTradingPanel";
 import React from "react";
-import { PublicSymbolPricePanel } from "~/components/price/PublicSymbolPricePanel";
 
 const normalizeSymbol = (value: string) => value.trim().toUpperCase();
+
 
 const getTradeIdForPublicTrade = (t: { symbol: string; side: "Long" | "Short" }) => {
   const match = demoReviewTrades.find(
@@ -32,7 +33,7 @@ export default async function SymbolDetailPage({
 
   const tradesByUser = demoPublicUsers
     .map((u) => {
-      const trades = (u.recentTrades ?? []).filter(
+      const trades = u.recentTrades.filter(
         (t) => normalizeSymbol(t.symbol) === canonical,
       );
       if (trades.length === 0) return null;
@@ -52,7 +53,7 @@ export default async function SymbolDetailPage({
       title={canonical}
       subtitle="Symbol overview • Public cache + demo fallbacks"
     >
-      <PublicSymbolPricePanel symbol={canonical} />
+      <PublicSymbolTradingPanel symbol={canonical} />
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Button
@@ -92,6 +93,8 @@ export default async function SymbolDetailPage({
               ) : (
                 tradesByUser.map(({ user, trades }) => {
                   const recent = trades.slice(0, 2);
+                  const primary = trades[0];
+                  if (!primary) return null;
                   return (
                     <div
                       key={user.username}
@@ -125,7 +128,7 @@ export default async function SymbolDetailPage({
                       </div>
                       <div className="col-span-2 flex justify-end">
                         <Link
-                          href={`/u/${encodeURIComponent(user.username)}/tradeidea/${getTradeIdForPublicTrade(trades[0]!)}`}
+                          href={`/u/${encodeURIComponent(user.username)}/tradeidea/${getTradeIdForPublicTrade(primary)}`}
                           className="inline-flex items-center gap-2 text-xs text-white/60 hover:text-white"
                         >
                           View

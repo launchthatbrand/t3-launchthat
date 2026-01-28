@@ -6,8 +6,16 @@ import { RefreshCw } from "lucide-react";
 import { TradingChartReal } from "~/components/charts/TradingChartReal";
 import { api } from "@convex-config/_generated/api";
 import { useAction } from "convex/react";
+import { cn } from "@acme/ui/lib/utils";
 
 type Resolution = "15m" | "1H" | "4H";
+
+interface CacheEntry {
+  bars: Bar[];
+  nextToMs: number | null;
+  sourceKey: string | null;
+  fetchedAtMs: number;
+}
 
 interface Bar {
   t: number;
@@ -24,11 +32,11 @@ const parseBars = (value: unknown): Bar[] => {
   for (const row of value) {
     const r = row as Partial<Bar>;
     if (
-      typeof r?.t === "number" &&
-      typeof r?.o === "number" &&
-      typeof r?.h === "number" &&
-      typeof r?.l === "number" &&
-      typeof r?.c === "number"
+      typeof r.t === "number" &&
+      typeof r.o === "number" &&
+      typeof r.h === "number" &&
+      typeof r.l === "number" &&
+      typeof r.c === "number"
     ) {
       result.push({
         t: r.t,
@@ -43,47 +51,122 @@ const parseBars = (value: unknown): Bar[] => {
   return result;
 };
 
-export function PublicSymbolPricePanel({ symbol }: { symbol: string }) {
+export function PublicSymbolPricePanel({
+  symbol,
+  chartHeight,
+  className,
+}: {
+  symbol: string;
+  chartHeight?: number;
+  className?: string;
+}) {
   const getBars = useAction(api.traderlaunchpad.actions.pricedataGetPublicBars);
   const ensure = useAction(api.traderlaunchpad.actions.pricedataEnsurePublicBarsCached);
 
   const [resolution, setResolution] = React.useState<Resolution>("15m");
-  // 0 = "all available" (server will cap to a safe maximum number of bars)
-  const [lookbackDays, setLookbackDays] = React.useState(0);
+  const pageSize = 2000;
+  const cacheTtlMs = 60_000;
+  const cacheRef = React.useRef<Record<Resolution, CacheEntry | undefined>>({
+    "15m": undefined,
+    "1H": undefined,
+    "4H": undefined,
+  });
 
   const [loading, setLoading] = React.useState(false);
   const [syncing, setSyncing] = React.useState(false);
   const [sourceKey, setSourceKey] = React.useState<string | null>(null);
   const [bars, setBars] = React.useState<Bar[]>([]);
+  const [nextToMs, setNextToMs] = React.useState<number | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [showRaw, setShowRaw] = React.useState(false);
 
   const load = React.useCallback(async () => {
+    const cached = cacheRef.current[resolution];
+    const nowMs = Date.now();
+    if (
+      cached &&
+      cached.bars.length > 0 &&
+      nowMs - cached.fetchedAtMs <= cacheTtlMs
+    ) {
+      setError(null);
+      setSourceKey(cached.sourceKey);
+      setBars(cached.bars);
+      setNextToMs(cached.nextToMs);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const res: unknown = await getBars({ symbol, resolution, lookbackDays });
+      const res: unknown = await getBars({ symbol, resolution, limit: pageSize });
       const r = res as {
         ok?: boolean;
         sourceKey?: string;
         bars?: Bar[];
+        nextToMs?: number;
         error?: string;
       };
-      setSourceKey(typeof r.sourceKey === "string" ? r.sourceKey : null);
-      setBars(parseBars(r.bars));
+      const nextSourceKey = typeof r.sourceKey === "string" ? r.sourceKey : null;
+      const nextBars = parseBars(r.bars);
+      const nextCursor = typeof r.nextToMs === "number" ? r.nextToMs : null;
+
+      setSourceKey(nextSourceKey);
+      setBars(nextBars);
+      setNextToMs(nextCursor);
+
+      // Cache only the latest-page fetch (no `toMs` cursor).
+      if (r.ok !== false && nextBars.length > 0) {
+        cacheRef.current[resolution] = {
+          bars: nextBars,
+          nextToMs: nextCursor,
+          sourceKey: nextSourceKey,
+          fetchedAtMs: Date.now(),
+        };
+      }
       if (r.ok === false) setError(r.error ?? "No cached data.");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }, [getBars, lookbackDays, resolution, symbol]);
+  }, [cacheTtlMs, getBars, resolution, symbol]);
+
+  const loadOlder = React.useCallback(async () => {
+    if (typeof nextToMs !== "number") return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res: unknown = await getBars({ symbol, resolution, limit: pageSize, toMs: nextToMs });
+      const r = res as {
+        ok?: boolean;
+        bars?: Bar[];
+        nextToMs?: number;
+        error?: string;
+      };
+      if (r.ok === false) {
+        setError(r.error ?? "Failed to load older candles.");
+        return;
+      }
+      const older = parseBars(r.bars);
+      // Prepend and let the server-side dedupe handle duplicates across pages.
+      setBars((prev) => [...older, ...prev]);
+      setNextToMs(typeof r.nextToMs === "number" ? r.nextToMs : null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [getBars, nextToMs, resolution, symbol]);
 
   const ensureAndReload = React.useCallback(async () => {
     setSyncing(true);
     setError(null);
     try {
-      const res: unknown = await ensure({ symbol, resolution, lookbackDays });
+      // Ensure we refetch after Sync.
+      cacheRef.current[resolution] = undefined;
+
+      // Warm a small recent window; deeper history should be handled by platform backfill jobs.
+      const res: unknown = await ensure({ symbol, resolution, lookbackDays: 7 });
       const r = res as { ok?: boolean; error?: string };
       if (r.ok === false) {
         setError(r.error ?? "Failed to fetch from broker.");
@@ -95,7 +178,16 @@ export function PublicSymbolPricePanel({ symbol }: { symbol: string }) {
     } finally {
       setSyncing(false);
     }
-  }, [ensure, load, lookbackDays, resolution, symbol]);
+  }, [ensure, load, resolution, symbol]);
+
+  React.useEffect(() => {
+    // Reset cache & state when symbol changes.
+    cacheRef.current = { "15m": undefined, "1H": undefined, "4H": undefined };
+    setBars([]);
+    setNextToMs(null);
+    setSourceKey(null);
+    setError(null);
+  }, [symbol]);
 
   React.useEffect(() => {
     void load();
@@ -103,6 +195,9 @@ export function PublicSymbolPricePanel({ symbol }: { symbol: string }) {
 
   // If there are no cached bars but we have a default source configured, auto-warm once.
   const didAutoWarmRef = React.useRef(false);
+  React.useEffect(() => {
+    didAutoWarmRef.current = false;
+  }, [symbol, resolution]);
   React.useEffect(() => {
     if (didAutoWarmRef.current) return;
     if (bars.length > 0) return;
@@ -121,7 +216,12 @@ export function PublicSymbolPricePanel({ symbol }: { symbol: string }) {
     first && last && first.o !== 0 ? ((last.c - first.o) / first.o) * 100 : null;
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/3 p-6 backdrop-blur-md">
+    <div
+      className={cn(
+        "rounded-3xl border border-white/10 bg-white/3 p-6 backdrop-blur-md",
+        className,
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-sm font-semibold text-white/85">
@@ -230,7 +330,32 @@ export function PublicSymbolPricePanel({ symbol }: { symbol: string }) {
 
       {bars.length > 0 ? (
         <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-black/40">
-          <TradingChartReal bars={bars} height={360} className="w-full" />
+          <TradingChartReal
+            bars={bars}
+            height={typeof chartHeight === "number" ? chartHeight : 360}
+            className="w-full"
+          />
+
+          <div className="flex items-center justify-between gap-2 border-t border-white/10 bg-black/40 p-3 text-xs text-white/70">
+            <div>
+              {typeof nextToMs === "number" ? (
+                <>
+                  Older candles available.{" "}
+                  <button
+                    type="button"
+                    className="underline hover:text-white"
+                    onClick={() => void loadOlder()}
+                    disabled={loading || syncing}
+                  >
+                    Load older
+                  </button>
+                </>
+              ) : (
+                "No older candles."
+              )}
+            </div>
+            <div className="font-mono">{bars.length} bars</div>
+          </div>
 
           {showRaw ? (
             <pre className="max-h-80 overflow-auto whitespace-pre-wrap border-t border-white/10 bg-black/40 p-3 text-[11px] text-white/70">
