@@ -54,7 +54,19 @@ export const listDueSources = query({
     const list = Array.isArray(rows) ? rows : [];
     return list
       .filter((r) => r.enabled === true && Number(r.nextRunAt) <= nowMs)
-      .slice(0, limit);
+      .slice(0, limit)
+      .map((r) => ({
+        _id: r._id,
+        sourceKey: String((r as any).sourceKey ?? ""),
+        kind: String((r as any).kind ?? ""),
+        label: typeof (r as any).label === "string" ? (r as any).label : undefined,
+        enabled: Boolean((r as any).enabled),
+        cadenceSeconds: Number((r as any).cadenceSeconds ?? 0),
+        overlapSeconds: Number((r as any).overlapSeconds ?? 0),
+        nextRunAt: Number((r as any).nextRunAt ?? 0),
+        config: (r as any).config,
+        cursor: (r as any).cursor,
+      }));
   },
 });
 

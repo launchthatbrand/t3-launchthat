@@ -1,8 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 
-import { v } from "convex/values";
-
 import { userPublicProfileConfigV1Validator } from "./publicProfiles/types";
+import { v } from "convex/values";
 
 /**
  * TraderLaunchpad app-owned tables.

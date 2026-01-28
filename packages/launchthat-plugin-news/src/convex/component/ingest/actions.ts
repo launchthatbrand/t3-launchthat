@@ -1,8 +1,9 @@
-import { v } from "convex/values";
-import { action } from "../server";
-import { parseRssXml } from "./rss";
 import { bucketMs, normalizeSymbol, normalizeTitleKey, normalizeUrl, safeText } from "./lib";
+
+import { action } from "../server";
 import { internal } from "../_generated/api";
+import { parseRssXml } from "./rss";
+import { v } from "convex/values";
 
 type IngestResult = {
   ok: boolean;

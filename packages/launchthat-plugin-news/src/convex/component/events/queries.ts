@@ -1,5 +1,5 @@
-import { v } from "convex/values";
 import { query } from "../server";
+import { v } from "convex/values";
 
 export const listEventsForSymbol = query({
   args: {
@@ -77,6 +77,7 @@ export const listEventsGlobal = query({
       impact: v.optional(v.string()),
       country: v.optional(v.string()),
       currency: v.optional(v.string()),
+      meta: v.optional(v.any()),
       createdAt: v.number(),
       updatedAt: v.number(),
     }),
@@ -94,19 +95,19 @@ export const listEventsGlobal = query({
     const rows =
       type === "economic"
         ? await ctx.db
-            .query("newsEvents")
-            .withIndex("by_eventType_startsAt", (q) =>
-              q.eq("eventType", "economic").gte("startsAt", fromMs).lte("startsAt", toMs),
-            )
-            .order("asc")
-            .take(limit)
+          .query("newsEvents")
+          .withIndex("by_eventType_startsAt", (q) =>
+            q.eq("eventType", "economic").gte("startsAt", fromMs).lte("startsAt", toMs),
+          )
+          .order("asc")
+          .take(limit)
         : await ctx.db
-            .query("newsEvents")
-            .withIndex("by_eventType_publishedAt", (q) =>
-              q.eq("eventType", type === "headline" ? "headline" : "headline").gte("publishedAt", fromMs).lte("publishedAt", toMs),
-            )
-            .order("desc")
-            .take(limit);
+          .query("newsEvents")
+          .withIndex("by_eventType_publishedAt", (q) =>
+            q.eq("eventType", type === "headline" ? "headline" : "headline").gte("publishedAt", fromMs).lte("publishedAt", toMs),
+          )
+          .order("desc")
+          .take(limit);
 
     const list = Array.isArray(rows) ? rows : [];
     return list
@@ -121,6 +122,7 @@ export const listEventsGlobal = query({
         impact: typeof r.impact === "string" ? r.impact : undefined,
         country: typeof r.country === "string" ? r.country : undefined,
         currency: typeof r.currency === "string" ? r.currency : undefined,
+        meta: (r as any).meta,
         createdAt: Number(r.createdAt),
         updatedAt: Number(r.updatedAt),
       }));

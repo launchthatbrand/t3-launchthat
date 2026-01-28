@@ -1,15 +1,8 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { useAction, useMutation, useQuery } from "convex/react";
-import { api } from "@convex-config/_generated/api";
 
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { Input } from "@acme/ui/input";
-import { Label } from "@acme/ui/label";
 import {
   Select,
   SelectContent,
@@ -17,8 +10,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@acme/ui/select";
-import { Switch } from "@acme/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@acme/ui/table";
+import { useAction, useMutation, useQuery } from "convex/react";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
+import Link from "next/link";
+import { Switch } from "@acme/ui/switch";
+import { api } from "@convex-config/_generated/api";
 
 interface AliasRow {
   alias: string;

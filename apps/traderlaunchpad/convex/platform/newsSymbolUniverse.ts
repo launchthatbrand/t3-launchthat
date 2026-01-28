@@ -4,9 +4,9 @@
   @typescript-eslint/no-unsafe-assignment
 */
 
-import { v } from "convex/values";
-import { query } from "../_generated/server";
 import { internal } from "../_generated/api";
+import { query } from "../_generated/server";
+import { v } from "convex/values";
 
 const requirePlatformAdmin = async (ctx: any) => {
   await ctx.runQuery(internal.platform.testsAuth.assertPlatformAdmin, {});

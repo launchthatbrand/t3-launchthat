@@ -12,6 +12,7 @@ import type * as events_index from "../events/index.js";
 import type * as events_queries from "../events/queries.js";
 import type * as index from "../index.js";
 import type * as ingest_actions from "../ingest/actions.js";
+import type * as ingest_economicRssMyFxBook from "../ingest/economicRssMyFxBook.js";
 import type * as ingest_index from "../ingest/index.js";
 import type * as ingest_internal from "../ingest/internal.js";
 import type * as ingest_lib from "../ingest/lib.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   "events/queries": typeof events_queries;
   index: typeof index;
   "ingest/actions": typeof ingest_actions;
+  "ingest/economicRssMyFxBook": typeof ingest_economicRssMyFxBook;
   "ingest/index": typeof ingest_index;
   "ingest/internal": typeof ingest_internal;
   "ingest/lib": typeof ingest_lib;
@@ -117,6 +119,7 @@ export type Mounts = {
           currency?: string;
           eventType: string;
           impact?: string;
+          meta?: any;
           publishedAt?: number;
           startsAt?: number;
           summary?: string;

@@ -4,9 +4,10 @@
   @typescript-eslint/no-unsafe-member-access
 */
 
+import { api, internal } from "../_generated/api";
+
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
-import { api, internal } from "../_generated/api";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const componentsUntyped: any = require("../_generated/api").components;

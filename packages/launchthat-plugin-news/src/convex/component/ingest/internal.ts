@@ -1,8 +1,16 @@
-import { v } from "convex/values";
-import { internalMutation, internalQuery } from "../server";
 import { bucketMs, normalizeTitleKey, normalizeUrl } from "./lib";
-import { extractSymbolsDeterministic } from "./symbolExtract";
+import {
+  computeCanonicalKeyEconomicFromParts,
+  countrySlugToCurrency,
+  extractCountrySlugFromUrl,
+  extractEconomicValuesFromDescriptionHtml,
+  extractImpactFromDescriptionHtml,
+} from "./economicRssMyFxBook";
+import { internalMutation, internalQuery } from "../server";
+
 import { classifyByRules } from "./ruleTagging";
+import { extractSymbolsDeterministic } from "./symbolExtract";
+import { v } from "convex/values";
 
 export const getSource = internalQuery({
   args: { sourceId: v.id("newsSources") },
@@ -103,6 +111,7 @@ const computeCanonicalKeyEconomicRss = (args: {
   title: string;
   startsAt: number;
 }): string => {
+  // Backward-compatible fallback for economic feeds when we cannot parse country/currency.
   if (args.urlNormalized) return `econrss:url:${args.urlNormalized}`;
   const titleKey = normalizeTitleKey(args.title);
   const bucket = bucketMs(args.startsAt, 5 * 60 * 1000);
@@ -183,11 +192,11 @@ export const applyRssItemsChunk = internalMutation({
 
       const existingRaw = urlNormalized
         ? await ctx.db
-            .query("newsRawItems")
-            .withIndex("by_sourceId_urlNormalized", (q) =>
-              (q as any).eq("sourceId", args.sourceId).eq("urlNormalized", urlNormalized),
-            )
-            .first()
+          .query("newsRawItems")
+          .withIndex("by_sourceId_urlNormalized", (q) =>
+            (q as any).eq("sourceId", args.sourceId).eq("urlNormalized", urlNormalized),
+          )
+          .first()
         : null;
       if (existingRaw) continue;
 
@@ -216,18 +225,32 @@ export const applyRssItemsChunk = internalMutation({
           : args.nowMs;
       const startsAt = hint === "economic" ? publishedAt : undefined;
 
+      const econCountryCurrency =
+        hint === "economic" && url
+          ? countrySlugToCurrency(extractCountrySlugFromUrl(url) ?? "")
+          : {};
+      const econImpact =
+        hint === "economic" && typeof item.summary === "string"
+          ? extractImpactFromDescriptionHtml(item.summary)
+          : undefined;
+      const econValues =
+        hint === "economic" && typeof item.summary === "string"
+          ? extractEconomicValuesFromDescriptionHtml(item.summary)
+          : {};
+
       const canonicalKey =
         hint === "economic"
-          ? computeCanonicalKeyEconomicRss({
-              urlNormalized: urlNormalized ?? null,
-              title,
-              startsAt: publishedAt,
-            })
+          ? computeCanonicalKeyEconomicFromParts({
+            title,
+            startsAt: publishedAt,
+            country: econCountryCurrency.country,
+            currency: econCountryCurrency.currency,
+          })
           : computeCanonicalKeyHeadline({
-              urlNormalized: urlNormalized ?? null,
-              title,
-              publishedAt,
-            });
+            urlNormalized: urlNormalized ?? null,
+            title,
+            publishedAt,
+          });
 
       const existingEvent = await ctx.db
         .query("newsEvents")
@@ -242,6 +265,13 @@ export const applyRssItemsChunk = internalMutation({
           !existingClassification || existingClassification?.version !== "v1" || existingClassification?.method !== "rules";
         const classification = shouldClassify ? classifyByRules({ title, summary: typeof item.summary === "string" ? item.summary : undefined }) : null;
 
+        const shouldWriteEconomic =
+          hint === "economic" &&
+          (typeof (existingEvent as any).currency !== "string" ||
+            typeof (existingEvent as any).country !== "string" ||
+            typeof (existingEvent as any).impact !== "string" ||
+            !(existingMeta as any)?.economic);
+
         await ctx.db.patch(existingEvent._id, {
           eventType: hint,
           title,
@@ -251,12 +281,26 @@ export const applyRssItemsChunk = internalMutation({
               : existingEvent.summary,
           publishedAt: hint === "economic" ? undefined : publishedAt,
           startsAt: hint === "economic" ? startsAt : undefined,
+          country: shouldWriteEconomic ? econCountryCurrency.country : (existingEvent as any).country,
+          currency: shouldWriteEconomic ? econCountryCurrency.currency : (existingEvent as any).currency,
+          impact: shouldWriteEconomic ? econImpact : (existingEvent as any).impact,
           updatedAt: Date.now(),
           meta: classification
             ? {
-                ...(typeof existingMeta === "object" && existingMeta ? existingMeta : {}),
-                classification,
-              }
+              ...(typeof existingMeta === "object" && existingMeta ? existingMeta : {}),
+              classification,
+              ...(hint === "economic"
+                ? {
+                  economic: {
+                    ...(typeof (existingMeta as any)?.economic === "object" && (existingMeta as any)?.economic
+                      ? (existingMeta as any).economic
+                      : {}),
+                    ...(econValues ?? {}),
+                    source: "myfxbook",
+                  },
+                }
+                : {}),
+            }
             : existingMeta,
         });
         updatedEvents += 1;
@@ -267,6 +311,17 @@ export const applyRssItemsChunk = internalMutation({
           title,
           summary: typeof item.summary === "string" ? item.summary : undefined,
         });
+        const baseMeta =
+          hint === "economic"
+            ? {
+              classification,
+              economic: {
+                ...(econValues ?? {}),
+                source: "myfxbook",
+              },
+            }
+            : { classification };
+
         eventId = await ctx.db.insert("newsEvents", {
           eventType: hint,
           canonicalKey,
@@ -274,7 +329,10 @@ export const applyRssItemsChunk = internalMutation({
           summary: typeof item.summary === "string" ? item.summary : undefined,
           publishedAt: hint === "economic" ? undefined : publishedAt,
           startsAt: hint === "economic" ? startsAt : undefined,
-          meta: { classification },
+          country: hint === "economic" ? econCountryCurrency.country : undefined,
+          currency: hint === "economic" ? econCountryCurrency.currency : undefined,
+          impact: hint === "economic" ? econImpact : undefined,
+          meta: baseMeta,
           createdAt: Date.now(),
           updatedAt: Date.now(),
         });
@@ -405,6 +463,28 @@ export const reprocessEventDeterministic = internalMutation({
 
     const title = String((e as any).title ?? "");
     const summary = typeof (e as any).summary === "string" ? (e as any).summary : undefined;
+    const eventType = String((e as any).eventType ?? "");
+
+    const sourceRow =
+      eventType === "economic"
+        ? await ctx.db
+          .query("newsEventSources")
+          .withIndex("by_eventId", (q) => (q as any).eq("eventId", args.eventId))
+          .first()
+        : null;
+    const sourceUrl = sourceRow && typeof (sourceRow as any).url === "string" ? (sourceRow as any).url : "";
+    const econCountryCurrency =
+      eventType === "economic" && sourceUrl
+        ? countrySlugToCurrency(extractCountrySlugFromUrl(sourceUrl) ?? "")
+        : {};
+    const econImpact =
+      eventType === "economic" && typeof summary === "string"
+        ? extractImpactFromDescriptionHtml(summary)
+        : undefined;
+    const econValues =
+      eventType === "economic" && typeof summary === "string"
+        ? extractEconomicValuesFromDescriptionHtml(summary)
+        : {};
 
     // Always recompute rule classification v1 (overwrite).
     const classification = classifyByRules({ title, summary });
@@ -413,7 +493,23 @@ export const reprocessEventDeterministic = internalMutation({
       meta: {
         ...(typeof prevMeta === "object" && prevMeta ? prevMeta : {}),
         classification,
+        ...(eventType === "economic"
+          ? {
+            economic: {
+              ...(typeof prevMeta === "object" && prevMeta ? (prevMeta as any).economic : {}),
+              ...(econValues ?? {}),
+              source: "myfxbook",
+            },
+          }
+          : {}),
       },
+      ...(eventType === "economic"
+        ? {
+          country: econCountryCurrency.country,
+          currency: econCountryCurrency.currency,
+          impact: econImpact,
+        }
+        : {}),
       updatedAt: Date.now(),
     });
 

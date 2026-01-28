@@ -1,14 +1,15 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useAction } from "convex/react";
 
-import { api } from "@convex-config/_generated/api";
-import { Badge } from "@acme/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+
+import { Badge } from "@acme/ui/badge";
+import Link from "next/link";
 import { Skeleton } from "@acme/ui/skeleton";
+import { api } from "@convex-config/_generated/api";
+import { useAction } from "convex/react";
+import { useParams } from "next/navigation";
 
 interface NewsEventDetail {
   _id: string;

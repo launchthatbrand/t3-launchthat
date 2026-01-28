@@ -5387,6 +5387,7 @@ export declare const components: {
             currency?: string;
             eventType: string;
             impact?: string;
+            meta?: any;
             publishedAt?: number;
             startsAt?: number;
             summary?: string;

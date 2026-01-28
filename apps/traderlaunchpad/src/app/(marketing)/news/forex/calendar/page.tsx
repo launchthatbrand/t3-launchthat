@@ -1,24 +1,8 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { useAction } from "convex/react";
-import {
-  addWeeks,
-  endOfDay,
-  endOfWeek,
-  format,
-  isSameDay,
-  startOfDay,
-  startOfWeek,
-} from "date-fns";
 
-import { api } from "@convex-config/_generated/api";
-import { Badge } from "@acme/ui/badge";
-import { Button } from "@acme/ui/button";
-import { Calendar } from "@acme/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
-import { Input } from "@acme/ui/input";
 import {
   Select,
   SelectContent,
@@ -34,6 +18,23 @@ import {
   TableHeader,
   TableRow,
 } from "@acme/ui/table";
+import {
+  addWeeks,
+  endOfDay,
+  endOfWeek,
+  format,
+  isSameDay,
+  startOfDay,
+  startOfWeek,
+} from "date-fns";
+
+import { Badge } from "@acme/ui/badge";
+import { Button } from "@acme/ui/button";
+import { Calendar } from "@acme/ui/calendar";
+import { Input } from "@acme/ui/input";
+import Link from "next/link";
+import { api } from "@convex-config/_generated/api";
+import { useAction } from "convex/react";
 
 type RangePreset = "today" | "thisWeek" | "nextWeek";
 type ImpactFilter = "all" | "high" | "medium" | "low" | "unknown";
@@ -46,7 +47,21 @@ interface EconomicEventRow {
   impact?: string;
   country?: string;
   currency?: string;
+  meta?: unknown;
 }
+
+const getEconomicMeta = (
+  meta: unknown,
+): { actual?: string; forecast?: string; previous?: string } => {
+  if (!meta || typeof meta !== "object") return {};
+  const econ = (meta as any).economic;
+  if (!econ || typeof econ !== "object") return {};
+  return {
+    actual: typeof econ.actual === "string" ? econ.actual : undefined,
+    forecast: typeof econ.forecast === "string" ? econ.forecast : undefined,
+    previous: typeof econ.previous === "string" ? econ.previous : undefined,
+  };
+};
 
 const impactKey = (impact?: string): ImpactFilter => {
   const v = String(impact ?? "")
@@ -343,6 +358,7 @@ export default function ForexEconomicCalendarPage() {
                               ? format(new Date(e.startsAt), "p")
                               : "All day";
                           const ccy = String(e.currency ?? "").trim().toUpperCase();
+                          const econ = getEconomicMeta(e.meta);
                           return (
                             <TableRow key={e._id}>
                               <TableCell className="text-xs text-muted-foreground">
@@ -368,13 +384,13 @@ export default function ForexEconomicCalendarPage() {
                                 ) : null}
                               </TableCell>
                               <TableCell className="text-right text-xs text-muted-foreground">
-                                —
+                                {econ.actual ?? "—"}
                               </TableCell>
                               <TableCell className="text-right text-xs text-muted-foreground">
-                                —
+                                {econ.forecast ?? "—"}
                               </TableCell>
                               <TableCell className="text-right text-xs text-muted-foreground">
-                                —
+                                {econ.previous ?? "—"}
                               </TableCell>
                             </TableRow>
                           );

@@ -1275,17 +1275,17 @@ export const pricedataListPublicSources = action({
 
     const mapped = Array.isArray(rows)
       ? rows
-          .map((r: any) => {
-            const sourceKey = typeof r?.sourceKey === "string" ? String(r.sourceKey) : "";
-            const environment = typeof r?.environment === "string" ? String(r.environment) : "";
-            const server = typeof r?.server === "string" ? String(r.server) : "";
-            const provider = typeof r?.provider === "string" ? String(r.provider) : "";
-            if (!sourceKey) return null;
-            const label = [provider, environment, server].filter(Boolean).join(":") || sourceKey;
-            const isDefault = Boolean(r?.isDefault) || (defaultKey && sourceKey === defaultKey);
-            return { sourceKey, label, isDefault: isDefault || undefined };
-          })
-          .filter(Boolean)
+        .map((r: any) => {
+          const sourceKey = typeof r?.sourceKey === "string" ? String(r.sourceKey) : "";
+          const environment = typeof r?.environment === "string" ? String(r.environment) : "";
+          const server = typeof r?.server === "string" ? String(r.server) : "";
+          const provider = typeof r?.provider === "string" ? String(r.provider) : "";
+          if (!sourceKey) return null;
+          const label = [provider, environment, server].filter(Boolean).join(":") || sourceKey;
+          const isDefault = Boolean(r?.isDefault) || (defaultKey && sourceKey === defaultKey);
+          return { sourceKey, label, isDefault: isDefault || undefined };
+        })
+        .filter(Boolean)
       : [];
 
     mapped.sort((a: any, b: any) => Number(Boolean(b.isDefault)) - Number(Boolean(a.isDefault)));
@@ -1313,8 +1313,8 @@ export const pricedataListPublicSymbolsForSourceKey = action({
 
     const symbols = Array.isArray(rows)
       ? rows
-          .map((r: any) => (typeof r?.symbol === "string" ? r.symbol : ""))
-          .filter(Boolean)
+        .map((r: any) => (typeof r?.symbol === "string" ? r.symbol : ""))
+        .filter(Boolean)
       : [];
 
     return { sourceKey, symbols };
@@ -1378,13 +1378,13 @@ export const pricedataGetPublicBars = action({
 
     const source = requestedSourceKey
       ? await ctx.runQuery(
-          componentsUntyped.launchthat_pricedata.sources.queries.getSourceByKey,
-          { sourceKey: requestedSourceKey },
-        )
+        componentsUntyped.launchthat_pricedata.sources.queries.getSourceByKey,
+        { sourceKey: requestedSourceKey },
+      )
       : await ctx.runQuery(
-          componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
-          {},
-        );
+        componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
+        {},
+      );
     const sourceKey = typeof source?.sourceKey === "string" ? String(source.sourceKey) : "";
     if (!sourceKey) {
       return {
@@ -1439,23 +1439,23 @@ export const pricedataGetPublicBars = action({
       );
       bars = Array.isArray(barsRes)
         ? barsRes
-            .map((b: any) => ({
-              t: Number(b?.t),
-              o: Number(b?.o),
-              h: Number(b?.h),
-              l: Number(b?.l),
-              c: Number(b?.c),
-              v: Number.isFinite(Number(b?.v)) ? Number(b?.v) : 0,
-            }))
-            .filter(
-              (b: any) =>
-                Number.isFinite(b.t) &&
-                Number.isFinite(b.o) &&
-                Number.isFinite(b.h) &&
-                Number.isFinite(b.l) &&
-                Number.isFinite(b.c) &&
-                Number.isFinite(b.v),
-            )
+          .map((b: any) => ({
+            t: Number(b?.t),
+            o: Number(b?.o),
+            h: Number(b?.h),
+            l: Number(b?.l),
+            c: Number(b?.c),
+            v: Number.isFinite(Number(b?.v)) ? Number(b?.v) : 0,
+          }))
+          .filter(
+            (b: any) =>
+              Number.isFinite(b.t) &&
+              Number.isFinite(b.o) &&
+              Number.isFinite(b.h) &&
+              Number.isFinite(b.l) &&
+              Number.isFinite(b.c) &&
+              Number.isFinite(b.v),
+          )
         : [];
     } catch {
       // ignore; we may fall back to legacy Convex chunks
@@ -1557,13 +1557,13 @@ export const pricedataGetMyChartOverlays = action({
 
     const source = requestedSourceKey
       ? await ctx.runQuery(
-          componentsUntyped.launchthat_pricedata.sources.queries.getSourceByKey,
-          { sourceKey: requestedSourceKey },
-        )
+        componentsUntyped.launchthat_pricedata.sources.queries.getSourceByKey,
+        { sourceKey: requestedSourceKey },
+      )
       : await ctx.runQuery(
-          componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
-          {},
-        );
+        componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
+        {},
+      );
     const sourceKey = typeof source?.sourceKey === "string" ? String(source.sourceKey) : "";
     if (!sourceKey) {
       return {
@@ -1709,13 +1709,13 @@ export const pricedataEnsurePublicBarsCached = action({
 
     const source = requestedSourceKey
       ? await ctx.runQuery(
-          componentsUntyped.launchthat_pricedata.sources.queries.getSourceByKey,
-          { sourceKey: requestedSourceKey },
-        )
+        componentsUntyped.launchthat_pricedata.sources.queries.getSourceByKey,
+        { sourceKey: requestedSourceKey },
+      )
       : await ctx.runQuery(
-          componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
-          {},
-        );
+        componentsUntyped.launchthat_pricedata.sources.queries.getDefaultSource,
+        {},
+      );
     const sourceKey =
       typeof source?.sourceKey === "string" ? String(source.sourceKey) : "";
     if (!sourceKey) {
@@ -2290,6 +2290,7 @@ export const newsListGlobal = action({
       impact: v.optional(v.string()),
       country: v.optional(v.string()),
       currency: v.optional(v.string()),
+      meta: v.optional(v.any()),
       createdAt: v.number(),
       updatedAt: v.number(),
     }),
@@ -2315,6 +2316,7 @@ export const newsListGlobal = action({
       impact: typeof r?.impact === "string" ? r.impact : undefined,
       country: typeof r?.country === "string" ? r.country : undefined,
       currency: typeof r?.currency === "string" ? r.currency : undefined,
+      meta: r?.meta,
       createdAt: Number(r?.createdAt ?? 0),
       updatedAt: Number(r?.updatedAt ?? 0),
     }));
