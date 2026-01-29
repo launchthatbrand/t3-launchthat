@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 
-import { evaluateRewardsForReferrerImpl } from "./rewards";
+import { evaluateRewardsForReferrerImpl } from "./rewards/actions";
+import { insertAffiliateLog } from "./logs";
 
 const normalizeCode = (raw: string) => raw.trim().toLowerCase();
 
@@ -45,6 +46,27 @@ export const recordClick = mutation({
       uaHash: args.uaHash,
       ipHash: args.ipHash,
     });
+
+    // Resolve ownerUserId for logs.
+    const profile = await ctx.db
+      .query("affiliateProfiles")
+      .withIndex("by_referralCode", (q) => q.eq("referralCode", referralCode))
+      .first();
+    const ownerUserId = profile ? String((profile as any).userId ?? "") : "";
+    if (ownerUserId) {
+      await insertAffiliateLog(ctx as any, {
+        ts: now,
+        kind: "click_logged",
+        ownerUserId,
+        message: "Click logged",
+        referralCode,
+        visitorId,
+        data: {
+          landingPath: args.landingPath,
+          referrer: args.referrer,
+        },
+      });
+    }
     return null;
   },
 });
@@ -132,6 +154,18 @@ export const attributeSignup = mutation({
       status: "active",
     });
 
+    await insertAffiliateLog(ctx as any, {
+      ts: now,
+      kind: "signup_attributed",
+      ownerUserId: referrerUserId,
+      message: "Signup attributed",
+      referralCode,
+      referredUserId,
+      data: {
+        expiresAt,
+      },
+    });
+
     return { referrerUserId, referredUserId, referralCode, expiresAt };
   },
 });
@@ -190,6 +224,30 @@ export const markActivated = mutation({
       referredUserId,
       activatedAt: now,
       source: args.source ?? "email_verified",
+    });
+
+    // Denormalize activation timestamp onto the attribution row for fast "recruits" listings.
+    if (typeof (attribution as any)._id !== "undefined") {
+      const alreadyActivatedAt =
+        typeof (attribution as any).activatedAt === "number"
+          ? Number((attribution as any).activatedAt)
+          : null;
+      if (alreadyActivatedAt === null) {
+        await ctx.db.patch((attribution as any)._id, {
+          activatedAt: now,
+        });
+      }
+    }
+
+    await insertAffiliateLog(ctx as any, {
+      ts: now,
+      kind: "activated",
+      ownerUserId: referrerUserId,
+      message: "Referred user activated",
+      referredUserId,
+      data: {
+        source: args.source ?? "email_verified",
+      },
     });
 
     await evaluateRewardsForReferrerImpl(ctx as any, { referrerUserId });

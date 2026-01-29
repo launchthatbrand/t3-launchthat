@@ -4,7 +4,8 @@ import { mutation } from "./_generated/server";
 import {
   evaluateRewardsForReferrerImpl,
   maybeGrantSubscriptionDiscountBenefitImpl,
-} from "./rewards";
+} from "./rewards/actions";
+import { insertAffiliateLog } from "./logs";
 
 export const recordPaidConversion = mutation({
   args: {
@@ -85,6 +86,32 @@ export const recordPaidConversion = mutation({
       amountCents: Math.max(0, Math.round(args.amountCents)),
       currency: String(args.currency ?? "USD").toUpperCase(),
       occurredAt,
+    });
+
+    // Denormalize "first paid conversion" timestamp onto attribution for fast recruit listings.
+    if (typeof (attribution as any)._id !== "undefined") {
+      const existingFirst =
+        typeof (attribution as any).firstPaidConversionAt === "number"
+          ? Number((attribution as any).firstPaidConversionAt)
+          : null;
+      const nextFirst =
+        existingFirst === null ? occurredAt : Math.min(existingFirst, occurredAt);
+      if (existingFirst === null || nextFirst !== existingFirst) {
+        await ctx.db.patch((attribution as any)._id, {
+          firstPaidConversionAt: nextFirst,
+        });
+      }
+    }
+
+    await insertAffiliateLog(ctx as any, {
+      ts: occurredAt,
+      kind: "conversion_recorded",
+      ownerUserId: referrerUserId,
+      message: `Paid conversion recorded (${kind})`,
+      referredUserId,
+      externalId,
+      amountCents: Math.max(0, Math.round(args.amountCents)),
+      currency: String(args.currency ?? "USD").toUpperCase(),
     });
 
     await evaluateRewardsForReferrerImpl(ctx as any, { referrerUserId });

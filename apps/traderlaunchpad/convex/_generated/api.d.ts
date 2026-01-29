@@ -33,6 +33,7 @@ import type * as notifications_queries from "../notifications/queries.js";
 import type * as notifications_test from "../notifications/test.js";
 import type * as onboarding_mutations from "../onboarding/mutations.js";
 import type * as onboarding_queries from "../onboarding/queries.js";
+import type * as platform_affiliates from "../platform/affiliates.js";
 import type * as platform_brokerConnections from "../platform/brokerConnections.js";
 import type * as platform_brokerConnectionsActions from "../platform/brokerConnectionsActions.js";
 import type * as platform_clickhouseCandles from "../platform/clickhouseCandles.js";
@@ -134,6 +135,7 @@ declare const fullApi: ApiFromModules<{
   "notifications/test": typeof notifications_test;
   "onboarding/mutations": typeof onboarding_mutations;
   "onboarding/queries": typeof onboarding_queries;
+  "platform/affiliates": typeof platform_affiliates;
   "platform/brokerConnections": typeof platform_brokerConnections;
   "platform/brokerConnectionsActions": typeof platform_brokerConnectionsActions;
   "platform/clickhouseCandles": typeof platform_clickhouseCandles;
@@ -4743,6 +4745,96 @@ export declare const components: {
     };
   };
   launchthat_affiliates: {
+    admin: {
+      getAffiliateProfileByUserId: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        null | {
+          acceptedTermsAt?: number;
+          acceptedTermsVersion?: string;
+          createdAt: number;
+          referralCode: string;
+          status: "active" | "disabled";
+          updatedAt: number;
+          userId: string;
+        }
+      >;
+      listAffiliateCreditEventsForUser: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; userId: string },
+        Array<{
+          amountCents: number;
+          conversionId?: string;
+          createdAt: number;
+          currency: string;
+          reason: string;
+          referredUserId?: string;
+        }>
+      >;
+      listAffiliateLogs: FunctionReference<
+        "query",
+        "internal",
+        { fromMs?: number; limit?: number },
+        Array<{
+          amountCents?: number;
+          currency?: string;
+          data?: any;
+          externalId?: string;
+          kind: string;
+          message: string;
+          ownerUserId: string;
+          referralCode?: string;
+          referredUserId?: string;
+          ts: number;
+          visitorId?: string;
+        }>
+      >;
+      listAffiliateLogsForUser: FunctionReference<
+        "query",
+        "internal",
+        { fromMs?: number; limit?: number; ownerUserId: string },
+        Array<{
+          amountCents?: number;
+          currency?: string;
+          data?: any;
+          externalId?: string;
+          kind: string;
+          message: string;
+          ownerUserId: string;
+          referralCode?: string;
+          referredUserId?: string;
+          ts: number;
+          visitorId?: string;
+        }>
+      >;
+      listAffiliateProfiles: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number },
+        Array<{
+          acceptedTermsAt?: number;
+          acceptedTermsVersion?: string;
+          createdAt: number;
+          referralCode: string;
+          status: "active" | "disabled";
+          updatedAt: number;
+          userId: string;
+        }>
+      >;
+      listReferredUsersForReferrer: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; referrerUserId: string },
+        Array<{
+          activatedAt?: number;
+          attributedAt: number;
+          firstPaidConversionAt?: number;
+          referredUserId: string;
+        }>
+      >;
+    };
     conversions: {
       recordPaidConversion: FunctionReference<
         "mutation",
@@ -4769,13 +4861,23 @@ export declare const components: {
       createOrGetMyAffiliateProfile: FunctionReference<
         "mutation",
         "internal",
-        { userId: string },
+        { acceptTerms?: boolean; termsVersion?: string; userId: string },
         { referralCode: string; status: "active" | "disabled"; userId: string }
       >;
       getAffiliateProfileByReferralCode: FunctionReference<
         "query",
         "internal",
         { referralCode: string },
+        null | {
+          referralCode: string;
+          status: "active" | "disabled";
+          userId: string;
+        }
+      >;
+      getAffiliateProfileByUserId: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
         null | {
           referralCode: string;
           status: "active" | "disabled";
@@ -4796,9 +4898,32 @@ export declare const components: {
           userId: string;
         }
       >;
+      setAffiliateProfileStatus: FunctionReference<
+        "mutation",
+        "internal",
+        { status: "active" | "disabled"; userId: string },
+        { ok: boolean; status: "active" | "disabled"; userId: string }
+      >;
+    };
+    referrals: {
+      queries: {
+        listMyReferredUsers: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; referrerUserId: string },
+          Array<{
+            activatedAt?: number;
+            attributedAt: number;
+            expiresAt: number;
+            firstPaidConversionAt?: number;
+            referredUserId: string;
+            status: string;
+          }>
+        >;
+      };
     };
     rewards: {
-      index: {
+      actions: {
         evaluateRewardsForReferrer: FunctionReference<
           "mutation",
           "internal",
@@ -4811,6 +4936,19 @@ export declare const components: {
           { amountOffCentsMonthly?: number; userId: string },
           { created: boolean; ok: boolean }
         >;
+        redeemCredit: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            amountCents: number;
+            currency?: string;
+            reason?: string;
+            userId: string;
+          },
+          { balanceCents: number; ok: boolean }
+        >;
+      };
+      queries: {
         listActiveBenefitsForUser: FunctionReference<
           "query",
           "internal",
@@ -4822,17 +4960,6 @@ export declare const components: {
             status: string;
             value: any;
           }>
-        >;
-        redeemCredit: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            amountCents: number;
-            currency?: string;
-            reason?: string;
-            userId: string;
-          },
-          { balanceCents: number; ok: boolean }
         >;
       };
     };

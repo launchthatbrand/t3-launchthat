@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
+import { insertAffiliateLog } from "./logs";
+
 const randomCode = (): string => {
   const buf = new Uint8Array(8);
   crypto.getRandomValues(buf);
@@ -12,7 +14,11 @@ const randomCode = (): string => {
 const normalizeCode = (raw: string) => raw.trim().toLowerCase();
 
 export const createOrGetMyAffiliateProfile = mutation({
-  args: { userId: v.string() },
+  args: {
+    userId: v.string(),
+    acceptTerms: v.optional(v.boolean()),
+    termsVersion: v.optional(v.string()),
+  },
   returns: v.object({
     userId: v.string(),
     referralCode: v.string(),
@@ -36,6 +42,12 @@ export const createOrGetMyAffiliateProfile = mutation({
       };
     }
 
+    const acceptTerms = args.acceptTerms === true;
+    const termsVersion = typeof args.termsVersion === "string" ? args.termsVersion.trim() : "";
+    if (!acceptTerms || !termsVersion) {
+      throw new Error("Terms not accepted");
+    }
+
     // Generate a unique referral code (retry a few times).
     let referralCode = "";
     for (let i = 0; i < 5; i++) {
@@ -56,11 +68,49 @@ export const createOrGetMyAffiliateProfile = mutation({
       userId,
       referralCode,
       status: "active",
+      acceptedTermsAt: now,
+      acceptedTermsVersion: termsVersion,
       createdAt: now,
       updatedAt: now,
     });
 
+    await insertAffiliateLog(ctx as any, {
+      ts: now,
+      kind: "profile_created",
+      ownerUserId: userId,
+      message: "Affiliate profile created",
+      referralCode,
+    });
+
     return { userId, referralCode, status: "active" as const };
+  },
+});
+
+export const getAffiliateProfileByUserId = query({
+  args: { userId: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({
+      userId: v.string(),
+      referralCode: v.string(),
+      status: v.union(v.literal("active"), v.literal("disabled")),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const userId = String(args.userId ?? "").trim();
+    if (!userId) return null;
+    const row = await ctx.db
+      .query("affiliateProfiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+    if (!row) return null;
+    const status: "active" | "disabled" =
+      (row as any).status === "disabled" ? "disabled" : "active";
+    return {
+      userId: String((row as any).userId),
+      referralCode: String((row as any).referralCode),
+      status,
+    };
   },
 });
 
@@ -205,6 +255,46 @@ export const getMyAffiliateStats = query({
       conversions30d,
       creditBalanceCents,
     };
+  },
+});
+
+export const setAffiliateProfileStatus = mutation({
+  args: {
+    userId: v.string(),
+    status: v.union(v.literal("active"), v.literal("disabled")),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    userId: v.string(),
+    status: v.union(v.literal("active"), v.literal("disabled")),
+  }),
+  handler: async (ctx, args) => {
+    const userId = String(args.userId ?? "").trim();
+    if (!userId) throw new Error("Missing userId");
+
+    const existing = await ctx.db
+      .query("affiliateProfiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+    if (!existing) throw new Error("Affiliate profile not found");
+
+    const nextStatus = args.status;
+    const now = Date.now();
+
+    await ctx.db.patch(existing._id, {
+      status: nextStatus,
+      updatedAt: now,
+    });
+
+    await insertAffiliateLog(ctx as any, {
+      ts: now,
+      kind: "profile_status_changed",
+      ownerUserId: userId,
+      message: `Affiliate profile status set to ${nextStatus}`,
+      data: { status: nextStatus },
+    });
+
+    return { ok: true, userId, status: nextStatus };
   },
 });
 

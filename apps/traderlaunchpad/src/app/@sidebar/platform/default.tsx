@@ -9,6 +9,7 @@ import {
   IconBulb,
   IconChartBar,
   IconDatabase,
+  IconLink,
   IconNotebook,
   IconPlug,
   IconSettings,
@@ -59,6 +60,16 @@ const navItems: NavItem[] = [
     href: "/platform/users",
     icon: (
       <IconUsers
+        stroke={1}
+        className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
+      />
+    ),
+  },
+  {
+    label: "Affiliates",
+    href: "/platform/affiliates",
+    icon: (
+      <IconLink
         stroke={1}
         className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
       />

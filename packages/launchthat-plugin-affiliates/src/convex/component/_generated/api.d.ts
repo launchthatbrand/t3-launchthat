@@ -11,8 +11,11 @@
 import type * as admin from "../admin.js";
 import type * as conversions from "../conversions.js";
 import type * as index from "../index.js";
+import type * as logs from "../logs.js";
 import type * as profiles from "../profiles.js";
-import type * as rewards_index from "../rewards/index.js";
+import type * as referrals_queries from "../referrals/queries.js";
+import type * as rewards_actions from "../rewards/actions.js";
+import type * as rewards_queries from "../rewards/queries.js";
 import type * as tracking from "../tracking.js";
 
 import type {
@@ -33,11 +36,104 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   conversions: typeof conversions;
   index: typeof index;
+  logs: typeof logs;
   profiles: typeof profiles;
-  "rewards/index": typeof rewards_index;
+  "referrals/queries": typeof referrals_queries;
+  "rewards/actions": typeof rewards_actions;
+  "rewards/queries": typeof rewards_queries;
   tracking: typeof tracking;
 }>;
 export type Mounts = {
+  admin: {
+    getAffiliateProfileByUserId: FunctionReference<
+      "query",
+      "public",
+      { userId: string },
+      null | {
+        acceptedTermsAt?: number;
+        acceptedTermsVersion?: string;
+        createdAt: number;
+        referralCode: string;
+        status: "active" | "disabled";
+        updatedAt: number;
+        userId: string;
+      }
+    >;
+    listAffiliateCreditEventsForUser: FunctionReference<
+      "query",
+      "public",
+      { limit?: number; userId: string },
+      Array<{
+        amountCents: number;
+        conversionId?: string;
+        createdAt: number;
+        currency: string;
+        reason: string;
+        referredUserId?: string;
+      }>
+    >;
+    listAffiliateLogs: FunctionReference<
+      "query",
+      "public",
+      { fromMs?: number; limit?: number },
+      Array<{
+        amountCents?: number;
+        currency?: string;
+        data?: any;
+        externalId?: string;
+        kind: string;
+        message: string;
+        ownerUserId: string;
+        referralCode?: string;
+        referredUserId?: string;
+        ts: number;
+        visitorId?: string;
+      }>
+    >;
+    listAffiliateLogsForUser: FunctionReference<
+      "query",
+      "public",
+      { fromMs?: number; limit?: number; ownerUserId: string },
+      Array<{
+        amountCents?: number;
+        currency?: string;
+        data?: any;
+        externalId?: string;
+        kind: string;
+        message: string;
+        ownerUserId: string;
+        referralCode?: string;
+        referredUserId?: string;
+        ts: number;
+        visitorId?: string;
+      }>
+    >;
+    listAffiliateProfiles: FunctionReference<
+      "query",
+      "public",
+      { limit?: number },
+      Array<{
+        acceptedTermsAt?: number;
+        acceptedTermsVersion?: string;
+        createdAt: number;
+        referralCode: string;
+        status: "active" | "disabled";
+        updatedAt: number;
+        userId: string;
+      }>
+    >;
+    listReferredUsersForReferrer: FunctionReference<
+      "query",
+      "public",
+      { limit?: number; referrerUserId: string },
+      Array<{
+        activatedAt?: number;
+        attributedAt: number;
+        firstPaidConversionAt?: number;
+        referredUserId: string;
+      }>
+    >;
+  };
   conversions: {
     recordPaidConversion: FunctionReference<
       "mutation",
@@ -64,13 +160,23 @@ export type Mounts = {
     createOrGetMyAffiliateProfile: FunctionReference<
       "mutation",
       "public",
-      { userId: string },
+      { acceptTerms?: boolean; termsVersion?: string; userId: string },
       { referralCode: string; status: "active" | "disabled"; userId: string }
     >;
     getAffiliateProfileByReferralCode: FunctionReference<
       "query",
       "public",
       { referralCode: string },
+      null | {
+        referralCode: string;
+        status: "active" | "disabled";
+        userId: string;
+      }
+    >;
+    getAffiliateProfileByUserId: FunctionReference<
+      "query",
+      "public",
+      { userId: string },
       null | {
         referralCode: string;
         status: "active" | "disabled";
@@ -91,9 +197,32 @@ export type Mounts = {
         userId: string;
       }
     >;
+    setAffiliateProfileStatus: FunctionReference<
+      "mutation",
+      "public",
+      { status: "active" | "disabled"; userId: string },
+      { ok: boolean; status: "active" | "disabled"; userId: string }
+    >;
+  };
+  referrals: {
+    queries: {
+      listMyReferredUsers: FunctionReference<
+        "query",
+        "public",
+        { limit?: number; referrerUserId: string },
+        Array<{
+          activatedAt?: number;
+          attributedAt: number;
+          expiresAt: number;
+          firstPaidConversionAt?: number;
+          referredUserId: string;
+          status: string;
+        }>
+      >;
+    };
   };
   rewards: {
-    index: {
+    actions: {
       evaluateRewardsForReferrer: FunctionReference<
         "mutation",
         "public",
@@ -106,6 +235,19 @@ export type Mounts = {
         { amountOffCentsMonthly?: number; userId: string },
         { created: boolean; ok: boolean }
       >;
+      redeemCredit: FunctionReference<
+        "mutation",
+        "public",
+        {
+          amountCents: number;
+          currency?: string;
+          reason?: string;
+          userId: string;
+        },
+        { balanceCents: number; ok: boolean }
+      >;
+    };
+    queries: {
       listActiveBenefitsForUser: FunctionReference<
         "query",
         "public",
@@ -117,17 +259,6 @@ export type Mounts = {
           status: string;
           value: any;
         }>
-      >;
-      redeemCredit: FunctionReference<
-        "mutation",
-        "public",
-        {
-          amountCents: number;
-          currency?: string;
-          reason?: string;
-          userId: string;
-        },
-        { balanceCents: number; ok: boolean }
       >;
     };
   };

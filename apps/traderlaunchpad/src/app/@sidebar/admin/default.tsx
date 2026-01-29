@@ -7,6 +7,7 @@ import {
   IconBuilding,
   IconBulb,
   IconChartBar,
+  IconLink,
   IconMessageCircle,
   IconNotebook,
   IconPlug,
@@ -102,6 +103,11 @@ const primaryNavItems: NavItem[] = [
 ] as const;
 
 const secondaryNavItems: NavItem[] = [
+  {
+    label: "Affiliates",
+    href: "/admin/affiliates",
+    icon: <IconLink stroke={1} className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`} />,
+  },
   {
     label: "Feedback",
     href: "/admin/feedback",

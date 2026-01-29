@@ -6,11 +6,30 @@ export default defineSchema({
     userId: v.string(),
     referralCode: v.string(),
     status: v.union(v.literal("active"), v.literal("disabled")),
+    acceptedTermsAt: v.optional(v.number()),
+    acceptedTermsVersion: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_userId", ["userId"])
     .index("by_referralCode", ["referralCode"]),
+
+  affiliateLogs: defineTable({
+    ts: v.number(),
+    kind: v.string(),
+    ownerUserId: v.string(),
+    message: v.string(),
+    data: v.optional(v.any()),
+    referralCode: v.optional(v.string()),
+    visitorId: v.optional(v.string()),
+    referredUserId: v.optional(v.string()),
+    externalId: v.optional(v.string()),
+    amountCents: v.optional(v.number()),
+    currency: v.optional(v.string()),
+  })
+    .index("by_ts", ["ts"])
+    .index("by_kind_and_ts", ["kind", "ts"])
+    .index("by_ownerUserId_and_ts", ["ownerUserId", "ts"]),
 
   affiliateClicks: defineTable({
     referralCode: v.string(),
@@ -30,6 +49,8 @@ export default defineSchema({
     referredUserId: v.string(),
     attributedAt: v.number(),
     expiresAt: v.number(),
+    activatedAt: v.optional(v.number()),
+    firstPaidConversionAt: v.optional(v.number()),
     status: v.union(
       v.literal("active"),
       v.literal("consumed"),

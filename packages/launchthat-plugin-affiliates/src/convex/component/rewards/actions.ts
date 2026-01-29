@@ -1,5 +1,7 @@
 import { v } from "convex/values";
-import { mutation, query } from "../_generated/server";
+import { mutation } from "../_generated/server";
+
+import { insertAffiliateLog } from "../logs";
 
 const DEFAULT_ACTIVATION_MILESTONE_COUNT = 5;
 const DEFAULT_ACTIVATION_REWARD_CENTS = 1000;
@@ -9,6 +11,7 @@ const DEFAULT_PRO_DISCOUNT_AMOUNT_OFF_CENTS_MONTHLY = 1000;
 const getBalanceCents = async (ctx: any, userId: string): Promise<number> => {
   const rows = await ctx.db
     .query("affiliateCreditEvents")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .withIndex("by_userId_and_createdAt", (q: any) => q.eq("userId", userId))
     .order("desc")
     .take(5000);
@@ -21,15 +24,18 @@ const getBalanceCents = async (ctx: any, userId: string): Promise<number> => {
   return balance;
 };
 
-const grantCreditOnceImpl = async (ctx: any, args: {
-  userId: string;
-  amountCents: number;
-  currency: string;
-  reason: string;
-  referrerUserId?: string;
-  referredUserId?: string;
-  conversionId?: string;
-}): Promise<boolean> => {
+const grantCreditOnceImpl = async (
+  ctx: any,
+  args: {
+    userId: string;
+    amountCents: number;
+    currency: string;
+    reason: string;
+    referrerUserId?: string;
+    referredUserId?: string;
+    conversionId?: string;
+  },
+): Promise<boolean> => {
   const existing = await ctx.db
     .query("affiliateCreditEvents")
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,6 +44,8 @@ const grantCreditOnceImpl = async (ctx: any, args: {
     )
     .first();
   if (existing) return false;
+
+  const createdAt = Date.now();
   await ctx.db.insert("affiliateCreditEvents", {
     userId: args.userId,
     amountCents: args.amountCents,
@@ -46,8 +54,25 @@ const grantCreditOnceImpl = async (ctx: any, args: {
     referrerUserId: args.referrerUserId,
     referredUserId: args.referredUserId,
     conversionId: args.conversionId,
-    createdAt: Date.now(),
+    createdAt,
   });
+
+  await insertAffiliateLog(ctx as any, {
+    ts: createdAt,
+    kind: "credit_event",
+    ownerUserId: args.userId,
+    message: `Credit event: ${args.reason}`,
+    referredUserId: args.referredUserId,
+    externalId: args.conversionId,
+    amountCents: args.amountCents,
+    currency: args.currency,
+    data: {
+      reason: args.reason,
+      referrerUserId: args.referrerUserId,
+      conversionId: args.conversionId,
+    },
+  });
+
   return true;
 };
 
@@ -73,6 +98,17 @@ export const maybeGrantSubscriptionDiscountBenefitImpl = async (
     status: "active",
     createdAt: now,
     updatedAt: now,
+  });
+
+  await insertAffiliateLog(ctx as any, {
+    ts: now,
+    kind: "benefit_granted",
+    ownerUserId: args.userId,
+    message: "Benefit granted: subscription_discount",
+    data: {
+      kind: "subscription_discount",
+      value: { amountOffCentsMonthly: args.amountOffCentsMonthly },
+    },
   });
   return true;
 };
@@ -170,45 +206,27 @@ export const redeemCredit = mutation({
     const balance = await getBalanceCents(ctx as any, userId);
     if (balance < amountCents) throw new Error("Insufficient balance");
 
+    const createdAt = Date.now();
     await ctx.db.insert("affiliateCreditEvents", {
       userId,
       amountCents: -amountCents,
       currency,
       reason: String(args.reason ?? "redeem"),
-      createdAt: Date.now(),
+      createdAt,
+    });
+
+    await insertAffiliateLog(ctx as any, {
+      ts: createdAt,
+      kind: "credit_event",
+      ownerUserId: userId,
+      message: `Credit redeemed: ${String(args.reason ?? "redeem")}`,
+      amountCents: -amountCents,
+      currency,
+      data: { reason: String(args.reason ?? "redeem") },
     });
 
     const nextBalance = await getBalanceCents(ctx as any, userId);
     return { ok: true, balanceCents: nextBalance };
-  },
-});
-
-export const listActiveBenefitsForUser = query({
-  args: { userId: v.string() },
-  returns: v.array(
-    v.object({
-      kind: v.string(),
-      value: v.any(),
-      startsAt: v.number(),
-      endsAt: v.optional(v.number()),
-      status: v.string(),
-    }),
-  ),
-  handler: async (ctx, args) => {
-    const userId = String(args.userId ?? "").trim();
-    if (!userId) return [];
-    const rows = await ctx.db
-      .query("affiliateBenefits")
-      .withIndex("by_userId_and_status", (q: any) => q.eq("userId", userId).eq("status", "active"))
-      .order("desc")
-      .take(100);
-    return rows.map((row: any) => ({
-      kind: String(row.kind),
-      value: row.value,
-      startsAt: Number(row.startsAt),
-      endsAt: typeof row.endsAt === "number" ? Number(row.endsAt) : undefined,
-      status: String(row.status),
-    }));
   },
 });
 
