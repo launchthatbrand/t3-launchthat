@@ -26,6 +26,7 @@ import type * as email_queries from "../email/queries.js";
 import type * as feedback_mutations from "../feedback/mutations.js";
 import type * as feedback_queries from "../feedback/queries.js";
 import type * as flags from "../flags.js";
+import type * as http from "../http.js";
 import type * as lib_clickhouseHttp from "../lib/clickhouseHttp.js";
 import type * as notifications_mutations from "../notifications/mutations.js";
 import type * as notifications_queries from "../notifications/queries.js";
@@ -122,6 +123,7 @@ declare const fullApi: ApiFromModules<{
   "feedback/mutations": typeof feedback_mutations;
   "feedback/queries": typeof feedback_queries;
   flags: typeof flags;
+  http: typeof http;
   "lib/clickhouseHttp": typeof lib_clickhouseHttp;
   "notifications/mutations": typeof notifications_mutations;
   "notifications/queries": typeof notifications_queries;

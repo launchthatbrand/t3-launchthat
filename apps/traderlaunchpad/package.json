@@ -17,7 +17,8 @@
     "with-env": "dotenv -e ../../.env --",
     "btools": "npx @agentdeskai/browser-tools-server@latest",
     "clickhouse:migrate": "dotenv -e .env -- node scripts/clickhouse/migrate.mjs",
-    "clickhouse:query": "dotenv -e .env -- node scripts/clickhouse/query.mjs"
+    "clickhouse:query": "dotenv -e .env -- node scripts/clickhouse/query.mjs",
+    "widgets:build": "pnpm -C ../../packages/tdrlp-widgets build && mkdir -p public/widgets && cp ../../packages/tdrlp-widgets/dist/tdrlp-widgets.es.js public/widgets/tdrlp-widgets.es.js"
   },
   "dependencies": {
     "@acme/api": "workspace:*",
@@ -79,6 +80,7 @@
     "recharts": "2.15.4",
     "superjson": "2.2.3",
     "tailwind-merge": "^3.3.1",
+    "tdrlp-widgets": "workspace:*",
     "three": "^0.165.0",
     "web-push": "^3.6.7",
     "zod": "catalog:",

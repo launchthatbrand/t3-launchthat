@@ -14,6 +14,7 @@ const config = {
     "@acme/db",
     "@acme/ui",
     "@acme/validators",
+    "tdrlp-widgets",
   ],
 
   /** We already do linting and typechecking as separate tasks in CI */
@@ -29,6 +30,17 @@ const config = {
 
   async headers() {
     return [
+      {
+        // Allow cross-origin loading of widget bundles (module scripts require CORS).
+        source: "/widgets/:path*",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: "*" },
+          { key: "Access-Control-Allow-Methods", value: "GET, OPTIONS" },
+          { key: "Access-Control-Allow-Headers", value: "Content-Type" },
+          // Dev-friendly caching: avoid getting stuck on stale bundles.
+          { key: "Cache-Control", value: "no-store" },
+        ],
+      },
       {
         source: "/sw.js",
         headers: [
