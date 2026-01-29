@@ -63,3 +63,4 @@ export * from "./warp-background";
 export { default as AppleLogo } from "./icons/apple-logo";
 export { default as GooglePlayLogo } from "./icons/google-logo";
 export { default as AndroidIcon } from "./icons/android-icon";
+export * from "./components/ui/hero-highlight";

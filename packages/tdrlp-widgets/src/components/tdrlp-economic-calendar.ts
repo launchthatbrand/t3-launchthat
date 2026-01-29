@@ -131,6 +131,10 @@ export class TdrLpEconomicCalendar extends LitElement {
       color: var(--tdrlp-fg, #0f172a);
     }
 
+    :host {
+      --tdrlp-sticky-header-height: 35px;
+    }
+
     .layout {
       display: grid;
       gap: 16px;
@@ -179,17 +183,20 @@ export class TdrLpEconomicCalendar extends LitElement {
     }
 
     thead th {
+      position: sticky;
+      top: 0;
+      z-index: 3;
       text-align: left;
       font-size: 12px;
       font-weight: 700;
       color: var(--tdrlp-muted, #475569);
-      padding: 10px 12px;
+      padding: 9px 10px;
       border-bottom: 1px solid var(--tdrlp-border, #e2e8f0);
       background: var(--tdrlp-bg, #fff);
     }
 
     tbody td {
-      padding: 10px 12px;
+      padding: 8px 10px;
       border-bottom: 1px solid color-mix(in srgb, var(--tdrlp-border, #e2e8f0) 60%, transparent);
       vertical-align: top;
     }
@@ -200,11 +207,74 @@ export class TdrLpEconomicCalendar extends LitElement {
 
     /* Past events: make clearly visually distinct */
     tr.rowPast td {
-      background: color-mix(in srgb, var(--tdrlp-border, #e2e8f0) 22%, transparent);
-      color: var(--tdrlp-muted, #475569);
+      background: transparent;
+      color: color-mix(in srgb, var(--tdrlp-fg, #0f172a) 35%, var(--tdrlp-muted, #475569));
     }
 
     tr.rowPast a {
+      color: var(--tdrlp-muted, #475569);
+    }
+
+    /* Upcoming rows are neutral; only the "next" row is emphasized. */
+    tr.rowUpcoming td {
+      background: transparent;
+    }
+
+    /* Next upcoming event: subtle ring highlight (single row) */
+    tr.rowNext td {
+      border-top: 2px solid color-mix(in srgb, #f59e0b 70%, transparent);
+      border-bottom: 2px solid color-mix(in srgb, #f59e0b 70%, transparent);
+      background: color-mix(in srgb, #f59e0b 10%, transparent);
+    }
+    tr.rowNext td:first-child {
+      border-left: 2px solid color-mix(in srgb, #f59e0b 70%, transparent);
+    }
+    tr.rowNext td:last-child {
+      border-right: 2px solid color-mix(in srgb, #f59e0b 70%, transparent);
+    }
+
+    /* Separator between past and upcoming */
+    tr.splitRow td {
+      padding: 0;
+      height: 0;
+      border-bottom: 0;
+      border-top: 2px solid #f59e0b;
+      background: transparent;
+    }
+
+    .dayRow td {
+      position: sticky;
+      top: var(--tdrlp-sticky-header-height);
+      z-index: 2;
+      background: color-mix(in srgb, var(--tdrlp-bg, #fff) 92%, var(--tdrlp-border, #e2e8f0));
+      backdrop-filter: blur(4px);
+      border-bottom: 1px solid black;
+    }
+
+    .loadPastBanner {
+      position: sticky;
+      top: var(--tdrlp-sticky-header-height);
+      z-index: 2;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: var(--tdrlp-muted, #475569);
+      background: color-mix(in srgb, var(--tdrlp-bg, #fff) 92%, var(--tdrlp-border, #e2e8f0));
+      border-bottom: 1px solid color-mix(in srgb, var(--tdrlp-border, #e2e8f0) 60%, transparent);
+    }
+
+    .eventTitle {
+      font-size: 13px;
+      font-weight: 750;
+      line-height: 1.2;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .eventMeta {
+      margin-top: 2px;
+      font-size: 12px;
       color: var(--tdrlp-muted, #475569);
     }
 
@@ -557,9 +627,9 @@ export class TdrLpEconomicCalendar extends LitElement {
       typeof this.currencies === "string" && this.currencies.trim() ? this.currencies.trim() : "";
     const currenciesList = currenciesRaw
       ? currenciesRaw
-          .split(",")
-          .map((c) => c.trim().toUpperCase())
-          .filter(Boolean)
+        .split(",")
+        .map((c) => c.trim().toUpperCase())
+        .filter(Boolean)
       : [];
     const currencyAllow =
       currenciesList.length > 0 ? new Set<string>(currenciesList) : null;
@@ -778,6 +848,20 @@ export class TdrLpEconomicCalendar extends LitElement {
     this.scrolledToUpcoming = true;
   }
 
+  private scrollToNextUpcoming(): void {
+    const scrollEl = this.renderRoot.querySelector<HTMLElement>('[data-scroll="timeline"]');
+    if (!scrollEl) return;
+
+    const nowMs = Date.now();
+    const target = (this.rows ?? []).find((r) => typeof r.startsAt === "number" && r.startsAt > 0 && r.startsAt >= nowMs);
+    if (!target) return;
+
+    const rowEl = scrollEl.querySelector<HTMLElement>(`[data-event-id="${target.id}"]`);
+    if (!rowEl) return;
+    rowEl.scrollIntoView({ block: "center" });
+    this.scrolledToUpcoming = true;
+  }
+
   private renderMiniCalendar() {
     const anchor = new Date(this.monthAnchorMs);
     const year = anchor.getFullYear();
@@ -814,16 +898,16 @@ export class TdrLpEconomicCalendar extends LitElement {
         <div class="calGrid">
           ${["S", "M", "T", "W", "T", "F", "S"].map((d) => html`<div class="calDow">${d}</div>`)}
           ${days.map((d) => {
-            const key = formatDateKey(d.ms);
-            const cls = [
-              "calDay",
-              d.outside ? "calDayOutside" : "",
-              selected && selected === key ? "calDaySelected" : "",
-            ]
-              .filter(Boolean)
-              .join(" ");
-            return html`<div class=${cls} @click=${() => this.selectDay(d.ms)}>${d.label}</div>`;
-          })}
+      const key = formatDateKey(d.ms);
+      const cls = [
+        "calDay",
+        d.outside ? "calDayOutside" : "",
+        selected && selected === key ? "calDaySelected" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      return html`<div class=${cls} @click=${() => this.selectDay(d.ms)}>${d.label}</div>`;
+    })}
         </div>
       </div>
     `;
@@ -833,6 +917,11 @@ export class TdrLpEconomicCalendar extends LitElement {
     const { fromMs, toMs } = this.resolveRange();
     const rangeLabel = `${new Date(fromMs).toLocaleDateString()} – ${new Date(toMs).toLocaleDateString()}`;
     const newsBase = this.newsBase.replace(/\/+$/, "");
+    const nowMs = Date.now();
+    const firstUpcomingId =
+      (this.rows ?? []).find((r) => typeof r.startsAt === "number" && r.startsAt > 0 && r.startsAt >= nowMs)?.id ??
+      null;
+    let didInsertSplit = false;
 
     const todayKey = formatDateKey(Date.now());
     const mobileRowsAll = (this.rows ?? []).filter((r) => {
@@ -877,17 +966,17 @@ export class TdrLpEconomicCalendar extends LitElement {
           </div>
 
           ${this.loading
-            ? html`<div class="loading">Loading economic calendar…</div>`
-            : this.error
-              ? html`<div class="error">Error: ${this.error}</div>`
-              : mobileRowsAll.length === 0
-                ? html`<div class="empty">No economic events today.</div>`
-                : html`
+          ? html`<div class="loading">Loading economic calendar…</div>`
+          : this.error
+            ? html`<div class="error">Error: ${this.error}</div>`
+            : mobileRowsAll.length === 0
+              ? html`<div class="empty">No economic events today.</div>`
+              : html`
                     <div style="padding: 8px 10px;">
                       ${mobileRows.map((r) => {
-                        const href = `${newsBase}/news/${encodeURIComponent(r.id)}`;
-                        const expanded = this.mobileExpandedId === r.id;
-                        return html`
+                const href = `${newsBase}/news/${encodeURIComponent(r.id)}`;
+                const expanded = this.mobileExpandedId === r.id;
+                return html`
                           <div
                             style="
                               border: 1px solid color-mix(in srgb, var(--tdrlp-border, #e2e8f0) 70%, transparent);
@@ -935,7 +1024,7 @@ export class TdrLpEconomicCalendar extends LitElement {
                             </button>
 
                             ${expanded
-                              ? html`
+                    ? html`
                                   <div
                                     style="
                                       padding: 10px 10px;
@@ -945,10 +1034,10 @@ export class TdrLpEconomicCalendar extends LitElement {
                                     "
                                   >
                                     ${r.country
-                                      ? html`<div style="color: var(--tdrlp-muted, #475569); margin-bottom: 8px;">
+                        ? html`<div style="color: var(--tdrlp-muted, #475569); margin-bottom: 8px;">
                                           ${r.country}
                                         </div>`
-                                      : null}
+                        : null}
 
                                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
                                       <div>
@@ -970,28 +1059,28 @@ export class TdrLpEconomicCalendar extends LitElement {
                                     </div>
                                   </div>
                                 `
-                              : null}
+                    : null}
                           </div>
                         `;
-                      })}
+              })}
 
                       ${mobileRowsAll.length > mobileLimit
-                        ? html`
+                  ? html`
                             <button
                               class="btn"
                               style="width: 100%; justify-content: center; margin-top: 4px;"
                               type="button"
                               @click=${() => {
-                                this.mobileShowAll = !this.mobileShowAll;
-                                this.mobileExpandedId = null;
-                              }}
+                      this.mobileShowAll = !this.mobileShowAll;
+                      this.mobileExpandedId = null;
+                    }}
                             >
                               ${this.mobileShowAll
-                                ? "Show fewer"
-                                : `Show all (${mobileRowsAll.length})`}
+                      ? "Show fewer"
+                      : `Show all (${mobileRowsAll.length})`}
                             </button>
                           `
-                        : null}
+                  : null}
                     </div>
                   `}
         </div>
@@ -1031,29 +1120,41 @@ export class TdrLpEconomicCalendar extends LitElement {
               <div class="title">${this.mode === "day" ? "Day" : "Timeline"}: ${rangeLabel}</div>
               <div class="meta">
                 ${this.loading
-                  ? "Loading…"
-                  : this.mode === "day"
-                    ? `${this.rows.length} event${this.rows.length === 1 ? "" : "s"}`
-                    : `Next upcoming in view · scroll up for history`}
+        ? "Loading…"
+        : this.mode === "day"
+          ? `${this.rows.length} event${this.rows.length === 1 ? "" : "s"}`
+          : `Next upcoming in view · scroll up for history`}
               </div>
             </div>
             <div class="controlsRow">
+              ${this.mode === "timeline"
+        ? html`
+                    <button
+                      class="btn"
+                      type="button"
+                      @click=${() => this.scrollToNextUpcoming()}
+                      style="width: 140px; justify-content: center;"
+                    >
+                      Jump to next
+                    </button>
+                  `
+        : null}
               <input
                 class="field"
                 style="width: 220px;"
                 placeholder="Search events…"
                 .value=${this.query ?? ""}
                 @input=${(e: any) => {
-                  this.query = String(e?.target?.value ?? "");
-                }}
+        this.query = String(e?.target?.value ?? "");
+      }}
               />
               <select
                 class="field"
                 style="width: 110px;"
                 .value=${this.currency ?? "ALL"}
                 @change=${(e: any) => {
-                  this.currency = String(e?.target?.value ?? "ALL");
-                }}
+        this.currency = String(e?.target?.value ?? "ALL");
+      }}
               >
                 <option value="ALL">All</option>
                 ${availableCurrencies.map((c) => html`<option value=${c}>${c}</option>`)}
@@ -1063,8 +1164,8 @@ export class TdrLpEconomicCalendar extends LitElement {
                 style="width: 140px;"
                 .value=${this.impact ?? "all"}
                 @change=${(e: any) => {
-                  this.impact = String(e?.target?.value ?? "all") as ImpactFilter;
-                }}
+        this.impact = String(e?.target?.value ?? "all") as ImpactFilter;
+      }}
               >
                 <option value="all">All impact</option>
                 <option value="high">High</option>
@@ -1076,25 +1177,28 @@ export class TdrLpEconomicCalendar extends LitElement {
           </div>
 
           ${this.loading
-            ? html`<div class="loading">Loading economic calendar…</div>`
-            : this.error
-              ? html`<div class="error">Error: ${this.error}</div>`
-              : grouped.length === 0
-                ? html`<div class="empty">No economic events in range.</div>`
-                : html`
+        ? html`<div class="loading">Loading economic calendar…</div>`
+        : this.error
+          ? html`<div class="error">Error: ${this.error}</div>`
+          : grouped.length === 0
+            ? html`<div class="empty">No economic events in range.</div>`
+            : html`
                     <div
                       data-scroll="timeline"
                       @scroll=${(e: any) => {
-                        const el = e?.currentTarget as HTMLElement | null;
-                        if (!el) return;
-                        if (this.mode !== "timeline") return;
-                        const nextTop = el.scrollTop;
-                        const scrollingUp = nextTop < this.lastScrollTop;
-                        this.lastScrollTop = nextTop;
-                        if (scrollingUp && nextTop <= 24) void this.loadMorePast(el);
-                      }}
+                const el = e?.currentTarget as HTMLElement | null;
+                if (!el) return;
+                if (this.mode !== "timeline") return;
+                const nextTop = el.scrollTop;
+                const scrollingUp = nextTop < this.lastScrollTop;
+                this.lastScrollTop = nextTop;
+                if (scrollingUp && nextTop <= 24) void this.loadMorePast(el);
+              }}
                       style="width: 100%; overflow: auto; max-height: 70vh;"
                     >
+                      ${this.mode === "timeline" && this.loadingMorePast
+                ? html`<div class="loadPastBanner">Loading older…</div>`
+                : null}
                       <table>
                         <thead>
                           <tr>
@@ -1109,18 +1213,34 @@ export class TdrLpEconomicCalendar extends LitElement {
                         </thead>
                         <tbody>
                           ${grouped.map(
-                            (g) => html`
+                  (g) => html`
                               <tr class="dayRow">
                                 <td colspan="7" style="padding: 10px 12px;">${g.dayLabel}</td>
                               </tr>
                               ${g.rows.map((r) => {
-                                const href = `${newsBase}/news/${encodeURIComponent(r.id)}`;
-                                const nowMs = Date.now();
-                                const isPast = typeof r.startsAt === "number" && r.startsAt > 0 && r.startsAt < nowMs;
-                                return html`
+                    const href = `${newsBase}/news/${encodeURIComponent(r.id)}`;
+                    const isPast =
+                      typeof r.startsAt === "number" && r.startsAt > 0 && r.startsAt < nowMs;
+                    const isUpcoming =
+                      typeof r.startsAt === "number" && r.startsAt > 0 && r.startsAt >= nowMs;
+                    const isNextUpcoming = Boolean(firstUpcomingId && r.id === firstUpcomingId);
+                    const rowClass = isPast
+                      ? "rowPast"
+                      : isNextUpcoming
+                        ? "rowNext"
+                        : isUpcoming
+                          ? "rowUpcoming"
+                          : "";
+                    return html`
+                                  ${!didInsertSplit && firstUpcomingId && r.id === firstUpcomingId
+                        ? (() => {
+                          didInsertSplit = true;
+                          return html`<tr class="splitRow"><td colspan="7"></td></tr>`;
+                        })()
+                        : null}
                                   <tr
                                     data-event-id=${r.id}
-                                    class=${isPast ? "rowPast" : ""}
+                                    class=${rowClass}
                                   >
                                     <td style="font-size: 12px; color: var(--tdrlp-muted, #475569);">
                                       ${formatTime(r.startsAt)}
@@ -1134,17 +1254,12 @@ export class TdrLpEconomicCalendar extends LitElement {
                                       </span>
                                     </td>
                                     <td style="min-width: 320px;">
-                                      <a
-                                        href=${href}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        style=${isPast ? "color: var(--tdrlp-muted, #475569);" : ""}
-                                      >
-                                        ${r.title}
+                                      <a href=${href} target="_blank" rel="noreferrer">
+                                        <div class="eventTitle">${r.title}</div>
                                       </a>
                                       ${r.country
-                                        ? html`<div style="margin-top: 2px; font-size: 12px; color: var(--tdrlp-muted, #475569);">${r.country}</div>`
-                                        : null}
+                        ? html`<div class="eventMeta">${r.country}</div>`
+                        : null}
                                     </td>
                                     <td class="right" style="font-size: 12px; color: var(--tdrlp-muted, #475569);">
                                       ${r.actual ?? "—"}
@@ -1157,15 +1272,12 @@ export class TdrLpEconomicCalendar extends LitElement {
                                     </td>
                                   </tr>
                                 `;
-                              })}
+                  })}
                             `,
-                          )}
+                )}
                         </tbody>
                       </table>
                     </div>
-                    ${this.mode === "timeline" && this.loadingMorePast
-                      ? html`<div class="loading" style="border-top: 1px solid var(--tdrlp-border, #e2e8f0);">Loading older…</div>`
-                      : null}
                   `}
         </div>
       </div>
