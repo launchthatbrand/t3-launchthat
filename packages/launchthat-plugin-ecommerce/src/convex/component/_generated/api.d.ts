@@ -17,6 +17,11 @@ import type * as funnelSteps_queries from "../funnelSteps/queries.js";
 import type * as funnels_mutations from "../funnels/mutations.js";
 import type * as funnels_queries from "../funnels/queries.js";
 import type * as index from "../index.js";
+import type * as payouts_actions from "../payouts/actions.js";
+import type * as payouts_internal from "../payouts/internal.js";
+import type * as payouts_mutations from "../payouts/mutations.js";
+import type * as payouts_paymentEvents from "../payouts/paymentEvents.js";
+import type * as payouts_queries from "../payouts/queries.js";
 import type * as plans_mutations from "../plans/mutations.js";
 import type * as plans_queries from "../plans/queries.js";
 import type * as posts_helpers from "../posts/helpers.js";
@@ -47,6 +52,11 @@ declare const fullApi: ApiFromModules<{
   "funnels/mutations": typeof funnels_mutations;
   "funnels/queries": typeof funnels_queries;
   index: typeof index;
+  "payouts/actions": typeof payouts_actions;
+  "payouts/internal": typeof payouts_internal;
+  "payouts/mutations": typeof payouts_mutations;
+  "payouts/paymentEvents": typeof payouts_paymentEvents;
+  "payouts/queries": typeof payouts_queries;
   "plans/mutations": typeof plans_mutations;
   "plans/queries": typeof plans_queries;
   "posts/helpers": typeof posts_helpers;
@@ -308,6 +318,171 @@ export type Mounts = {
         "public",
         { organizationId?: string; slug: string },
         null | { id: string; isDefault: boolean; slug: string; title?: string }
+      >;
+    };
+  };
+  payouts: {
+    actions: {
+      createStripeConnectOnboardingLinkForUser: FunctionReference<
+        "action",
+        "public",
+        {
+          businessType?: "individual" | "company";
+          email?: string;
+          fullName?: string;
+          metadata?: any;
+          productDescription?: string;
+          refreshUrl: string;
+          returnUrl: string;
+          stripeSecretKey: string;
+          supportEmail?: string;
+          userId: string;
+          websiteUrl?: string;
+        },
+        { connectAccountId: string; ok: boolean; url: string }
+      >;
+      disconnectStripePayoutAccountForUser: FunctionReference<
+        "action",
+        "public",
+        { deleteRemote?: boolean; stripeSecretKey: string; userId: string },
+        { deletedLocal: boolean; deletedRemote: boolean; ok: boolean }
+      >;
+      getUpcomingSubscriptionDueCentsForUser: FunctionReference<
+        "action",
+        "public",
+        { currency?: string; stripeSecretKey: string; userId: string },
+        { dueCents: number; ok: boolean }
+      >;
+      processStripeWebhook: FunctionReference<
+        "action",
+        "public",
+        {
+          rawBody: string;
+          signature: string;
+          stripeSecretKey: string;
+          stripeWebhookSecret: string;
+        },
+        { handled: boolean; ok: boolean }
+      >;
+      runMonthly: FunctionReference<
+        "action",
+        "public",
+        {
+          dryRun?: boolean;
+          periodEnd: number;
+          periodStart: number;
+          provider?: string;
+          providerConfig?: any;
+        },
+        {
+          errors: Array<string>;
+          ok: boolean;
+          processedUsers: number;
+          runId: string | null;
+          totalCashCents: number;
+          totalSubscriptionCreditCents: number;
+        }
+      >;
+    };
+    mutations: {
+      deletePayoutAccount: FunctionReference<
+        "mutation",
+        "public",
+        { provider?: string; userId: string },
+        { connectAccountId?: string; deleted: boolean; ok: boolean }
+      >;
+      setPayoutPreference: FunctionReference<
+        "mutation",
+        "public",
+        {
+          currency?: string;
+          minPayoutCents?: number;
+          policy: "payout_only" | "apply_to_subscription_then_payout";
+          userId: string;
+        },
+        { ok: boolean }
+      >;
+      upsertPayoutAccount: FunctionReference<
+        "mutation",
+        "public",
+        {
+          connectAccountId: string;
+          details?: any;
+          provider?: string;
+          status: string;
+          userId: string;
+        },
+        { created: boolean; ok: boolean }
+      >;
+    };
+    paymentEvents: {
+      recordCommissionablePayment: FunctionReference<
+        "mutation",
+        "public",
+        {
+          amountCents: number;
+          commissionRateBps?: number;
+          currency?: string;
+          externalEventId: string;
+          kind: string;
+          occurredAt?: number;
+          referredUserId: string;
+          source: string;
+        },
+        {
+          commissionCents: number;
+          created: boolean;
+          ok: boolean;
+          referrerUserId: string | null;
+        }
+      >;
+    };
+    queries: {
+      getPayoutAccount: FunctionReference<
+        "query",
+        "public",
+        { provider?: string; userId: string },
+        null | {
+          connectAccountId: string;
+          createdAt: number;
+          details?: any;
+          provider: string;
+          status: string;
+          updatedAt: number;
+          userId: string;
+        }
+      >;
+      getPayoutPreference: FunctionReference<
+        "query",
+        "public",
+        { userId: string },
+        null | {
+          createdAt: number;
+          currency: string;
+          minPayoutCents: number;
+          policy: string;
+          updatedAt: number;
+          userId: string;
+        }
+      >;
+      listPayoutTransfersForUser: FunctionReference<
+        "query",
+        "public",
+        { limit?: number; userId: string },
+        Array<{
+          cashCents: number;
+          createdAt: number;
+          currency: string;
+          error?: string;
+          externalBalanceTxnId?: string;
+          externalTransferId?: string;
+          provider: string;
+          runId: string;
+          status: string;
+          subscriptionCreditCents: number;
+          updatedAt: number;
+          userId: string;
+        }>
       >;
     };
   };
@@ -667,4 +842,96 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  stripe: {
+    payouts: {
+      applyCustomerBalanceCredit: FunctionReference<
+        "action",
+        "internal",
+        {
+          amountCents: number;
+          currency?: string;
+          runId?: string;
+          stripeSecretKey: string;
+          userId: string;
+        },
+        { balanceTransactionId: string; ok: boolean }
+      >;
+      createConnectOnboardingLink: FunctionReference<
+        "action",
+        "internal",
+        {
+          connectAccountId: string;
+          refreshUrl: string;
+          returnUrl: string;
+          stripeSecretKey: string;
+        },
+        { ok: boolean; url: string }
+      >;
+      createOrGetExpressConnectAccountForUser: FunctionReference<
+        "action",
+        "internal",
+        {
+          businessType?: "individual" | "company";
+          email?: string;
+          fullName?: string;
+          metadata?: any;
+          productDescription?: string;
+          stripeSecretKey: string;
+          supportEmail?: string;
+          userId: string;
+          websiteUrl?: string;
+        },
+        { connectAccountId: string; ok: boolean }
+      >;
+      createTransferToConnectedAccount: FunctionReference<
+        "action",
+        "internal",
+        {
+          amountCents: number;
+          connectAccountId: string;
+          currency?: string;
+          runId?: string;
+          stripeSecretKey: string;
+          userId: string;
+        },
+        { ok: boolean; transferId: string }
+      >;
+      deleteExpressConnectAccount: FunctionReference<
+        "action",
+        "internal",
+        { connectAccountId: string; stripeSecretKey: string },
+        { deleted: boolean; ok: boolean }
+      >;
+      getUpcomingSubscriptionDueCentsForUser: FunctionReference<
+        "action",
+        "internal",
+        { currency?: string; stripeSecretKey: string; userId: string },
+        { dueCents: number; ok: boolean }
+      >;
+    };
+    webhooks: {
+      processEvent: FunctionReference<
+        "action",
+        "internal",
+        {
+          rawBody: string;
+          signature: string;
+          stripeSecretKey: string;
+          stripeWebhookSecret: string;
+        },
+        {
+          amountCents: number | null;
+          currency: string | null;
+          error: string | null;
+          externalEventId: string | null;
+          handled: boolean;
+          kind: string | null;
+          occurredAt: number | null;
+          ok: boolean;
+          userId: string | null;
+        }
+      >;
+    };
+  };
+};

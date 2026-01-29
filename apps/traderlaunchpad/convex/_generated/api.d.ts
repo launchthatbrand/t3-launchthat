@@ -4760,6 +4760,20 @@ export declare const components: {
           userId: string;
         }
       >;
+      listAffiliateConversions: FunctionReference<
+        "query",
+        "internal",
+        { fromMs?: number; limit?: number },
+        Array<{
+          amountCents: number;
+          currency: string;
+          externalId: string;
+          kind: string;
+          occurredAt: number;
+          referredUserId: string;
+          referrerUserId: string;
+        }>
+      >;
       listAffiliateCreditEventsForUser: FunctionReference<
         "query",
         "internal",
@@ -4769,6 +4783,8 @@ export declare const components: {
           conversionId?: string;
           createdAt: number;
           currency: string;
+          externalEventId?: string;
+          kind?: string;
           reason: string;
           referredUserId?: string;
         }>
@@ -4856,6 +4872,58 @@ export declare const components: {
           referrerUserId: string | null;
         }
       >;
+    };
+    credit: {
+      actions: {
+        consumeForPayout: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            cashCents?: number;
+            currency?: string;
+            runId: string;
+            source?: string;
+            subscriptionCreditCents?: number;
+            userId: string;
+          },
+          {
+            balanceCents: number;
+            consumedCashCents: number;
+            consumedSubscriptionCreditCents: number;
+            ok: boolean;
+          }
+        >;
+        recordCommissionFromPayment: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            amountCents: number;
+            commissionRateBps?: number;
+            currency?: string;
+            externalEventId: string;
+            grossAmountCents: number;
+            occurredAt?: number;
+            paymentKind?: string;
+            referredUserId: string;
+            source?: string;
+          },
+          {
+            amountCents: number;
+            created: boolean;
+            grossAmountCents: number;
+            ok: boolean;
+            referrerUserId: string | null;
+          }
+        >;
+      };
+      queries: {
+        getCreditBalance: FunctionReference<
+          "query",
+          "internal",
+          { currency?: string; userId: string },
+          { balanceCents: number; currency: string; userId: string }
+        >;
+      };
     };
     profiles: {
       createOrGetMyAffiliateProfile: FunctionReference<
@@ -5000,6 +5068,786 @@ export declare const components: {
         },
         null
       >;
+    };
+  };
+  launchthat_ecommerce: {
+    cart: {
+      mutations: {
+        addToCart: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            productPostId: string;
+            quantity?: number;
+            userId: string;
+            variationId?: string;
+          },
+          any
+        >;
+        addToGuestCart: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            guestSessionId: string;
+            productPostId: string;
+            quantity?: number;
+            variationId?: string;
+          },
+          any
+        >;
+        clearCart: FunctionReference<
+          "mutation",
+          "internal",
+          { guestSessionId?: string; userId?: string },
+          any
+        >;
+        mergeGuestCartIntoUserCart: FunctionReference<
+          "mutation",
+          "internal",
+          { guestSessionId: string; userId: string },
+          any
+        >;
+        removeFromCart: FunctionReference<
+          "mutation",
+          "internal",
+          { cartItemId: string; userId: string },
+          any
+        >;
+        removeFromGuestCart: FunctionReference<
+          "mutation",
+          "internal",
+          { cartItemId: string; guestSessionId: string },
+          any
+        >;
+        replaceCart: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            guestSessionId?: string;
+            productPostIds: Array<string>;
+            userId?: string;
+          },
+          any
+        >;
+        updateCartItemQuantity: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            cartItemId: string;
+            guestSessionId?: string;
+            quantity: number;
+            userId?: string;
+          },
+          any
+        >;
+      };
+      queries: {
+        getCart: FunctionReference<
+          "query",
+          "internal",
+          { guestSessionId?: string; userId?: string },
+          any
+        >;
+      };
+    };
+    discounts: {
+      mutations: {
+        createDiscountCode: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            active?: boolean;
+            amount: number;
+            code: string;
+            kind: "percent" | "fixed";
+            organizationId?: string;
+          },
+          string
+        >;
+        deleteDiscountCode: FunctionReference<
+          "mutation",
+          "internal",
+          { id: string },
+          null
+        >;
+        updateDiscountCode: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            active?: boolean;
+            amount?: number;
+            code?: string;
+            id: string;
+            kind?: "percent" | "fixed";
+          },
+          null
+        >;
+        validateDiscountCode: FunctionReference<
+          "mutation",
+          "internal",
+          { code: string; organizationId?: string; subtotal: number },
+          {
+            amount?: number;
+            appliedCode?: string;
+            discountAmount: number;
+            kind?: "percent" | "fixed";
+            ok: boolean;
+            reason?: string;
+          }
+        >;
+      };
+      queries: {
+        getDiscountCodeByCode: FunctionReference<
+          "query",
+          "internal",
+          { code: string; organizationId?: string },
+          null | any
+        >;
+        listDiscountCodes: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string },
+          any
+        >;
+      };
+    };
+    funnelSteps: {
+      mutations: {
+        addFunnelStep: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            funnelId: string;
+            kind: "checkout" | "upsell" | "thankYou";
+            order?: number;
+            organizationId?: string;
+            slug?: string;
+            title?: string;
+          },
+          string
+        >;
+        backfillFunnelStepRoutingMeta: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId?: string },
+          { scanned: number; skipped: number; updated: number }
+        >;
+        ensureBaselineStepsForFunnel: FunctionReference<
+          "mutation",
+          "internal",
+          { funnelId: string; organizationId?: string },
+          null
+        >;
+        ensureDefaultFunnelSteps: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId?: string },
+          null
+        >;
+        ensureFunnelStepRoutingMeta: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId?: string; stepId: string },
+          null
+        >;
+      };
+      queries: {
+        getFunnelStepById: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; stepId: string },
+          null | {
+            checkout?: {
+              design: string;
+              predefinedProductPostIds: Array<string>;
+            };
+            funnelId: string;
+            funnelSlug: string;
+            isDefaultFunnel: boolean;
+            kind: string;
+            order: number;
+            stepId: string;
+            stepSlug: string;
+            stepTitle?: string;
+          }
+        >;
+        getFunnelStepBySlug: FunctionReference<
+          "query",
+          "internal",
+          { funnelSlug: string; organizationId?: string; stepSlug: string },
+          null | {
+            checkout?: {
+              design: string;
+              predefinedProductPostIds: Array<string>;
+            };
+            funnelId: string;
+            funnelSlug: string;
+            isDefaultFunnel: boolean;
+            kind: string;
+            order: number;
+            stepId: string;
+            stepSlug: string;
+            stepTitle?: string;
+          }
+        >;
+        getFunnelStepsForFunnel: FunctionReference<
+          "query",
+          "internal",
+          { funnelId: string; organizationId?: string },
+          Array<{
+            id: string;
+            kind: string;
+            order: number;
+            slug: string;
+            title?: string;
+          }>
+        >;
+      };
+    };
+    funnels: {
+      mutations: {
+        ensureDefaultFunnel: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId?: string },
+          string
+        >;
+      };
+      queries: {
+        getDefaultFunnel: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string },
+          null | {
+            id: string;
+            isDefault: boolean;
+            slug: string;
+            title?: string;
+          }
+        >;
+        getFunnelBySlug: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; slug: string },
+          null | {
+            id: string;
+            isDefault: boolean;
+            slug: string;
+            title?: string;
+          }
+        >;
+      };
+    };
+    payouts: {
+      actions: {
+        createStripeConnectOnboardingLinkForUser: FunctionReference<
+          "action",
+          "internal",
+          {
+            businessType?: "individual" | "company";
+            email?: string;
+            fullName?: string;
+            metadata?: any;
+            productDescription?: string;
+            refreshUrl: string;
+            returnUrl: string;
+            stripeSecretKey: string;
+            supportEmail?: string;
+            userId: string;
+            websiteUrl?: string;
+          },
+          { connectAccountId: string; ok: boolean; url: string }
+        >;
+        disconnectStripePayoutAccountForUser: FunctionReference<
+          "action",
+          "internal",
+          { deleteRemote?: boolean; stripeSecretKey: string; userId: string },
+          { deletedLocal: boolean; deletedRemote: boolean; ok: boolean }
+        >;
+        getUpcomingSubscriptionDueCentsForUser: FunctionReference<
+          "action",
+          "internal",
+          { currency?: string; stripeSecretKey: string; userId: string },
+          { dueCents: number; ok: boolean }
+        >;
+        processStripeWebhook: FunctionReference<
+          "action",
+          "internal",
+          {
+            rawBody: string;
+            signature: string;
+            stripeSecretKey: string;
+            stripeWebhookSecret: string;
+          },
+          { handled: boolean; ok: boolean }
+        >;
+        runMonthly: FunctionReference<
+          "action",
+          "internal",
+          {
+            dryRun?: boolean;
+            periodEnd: number;
+            periodStart: number;
+            provider?: string;
+            providerConfig?: any;
+          },
+          {
+            errors: Array<string>;
+            ok: boolean;
+            processedUsers: number;
+            runId: string | null;
+            totalCashCents: number;
+            totalSubscriptionCreditCents: number;
+          }
+        >;
+      };
+      mutations: {
+        deletePayoutAccount: FunctionReference<
+          "mutation",
+          "internal",
+          { provider?: string; userId: string },
+          { connectAccountId?: string; deleted: boolean; ok: boolean }
+        >;
+        setPayoutPreference: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            currency?: string;
+            minPayoutCents?: number;
+            policy: "payout_only" | "apply_to_subscription_then_payout";
+            userId: string;
+          },
+          { ok: boolean }
+        >;
+        upsertPayoutAccount: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            connectAccountId: string;
+            details?: any;
+            provider?: string;
+            status: string;
+            userId: string;
+          },
+          { created: boolean; ok: boolean }
+        >;
+      };
+      paymentEvents: {
+        recordCommissionablePayment: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            amountCents: number;
+            commissionRateBps?: number;
+            currency?: string;
+            externalEventId: string;
+            kind: string;
+            occurredAt?: number;
+            referredUserId: string;
+            source: string;
+          },
+          {
+            commissionCents: number;
+            created: boolean;
+            ok: boolean;
+            referrerUserId: string | null;
+          }
+        >;
+      };
+      queries: {
+        getPayoutAccount: FunctionReference<
+          "query",
+          "internal",
+          { provider?: string; userId: string },
+          null | {
+            connectAccountId: string;
+            createdAt: number;
+            details?: any;
+            provider: string;
+            status: string;
+            updatedAt: number;
+            userId: string;
+          }
+        >;
+        getPayoutPreference: FunctionReference<
+          "query",
+          "internal",
+          { userId: string },
+          null | {
+            createdAt: number;
+            currency: string;
+            minPayoutCents: number;
+            policy: string;
+            updatedAt: number;
+            userId: string;
+          }
+        >;
+        listPayoutTransfersForUser: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; userId: string },
+          Array<{
+            cashCents: number;
+            createdAt: number;
+            currency: string;
+            error?: string;
+            externalBalanceTxnId?: string;
+            externalTransferId?: string;
+            provider: string;
+            runId: string;
+            status: string;
+            subscriptionCreditCents: number;
+            updatedAt: number;
+            userId: string;
+          }>
+        >;
+      };
+    };
+    plans: {
+      mutations: {
+        deactivateProductPlan: FunctionReference<
+          "mutation",
+          "internal",
+          { productPostId: string },
+          null
+        >;
+        seedPlans: FunctionReference<"mutation", "internal", {}, Array<string>>;
+        updatePlan: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            description?: string;
+            displayName?: string;
+            features?: Array<string>;
+            isActive?: boolean;
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
+            maxOrganizations?: number;
+            planId: string;
+            priceMonthly?: number;
+            priceYearly?: number;
+            sortOrder?: number;
+          },
+          null
+        >;
+        upsertProductPlan: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            description?: string;
+            displayName?: string;
+            features?: Array<string>;
+            isActive: boolean;
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
+            maxOrganizations?: number;
+            priceMonthly?: number;
+            priceYearly?: number;
+            productPostId: string;
+            sortOrder?: number;
+          },
+          string
+        >;
+      };
+      queries: {
+        getPlanById: FunctionReference<
+          "query",
+          "internal",
+          { planId: string },
+          null | {
+            _creationTime: number;
+            _id: string;
+            description: string;
+            displayName: string;
+            features?: Array<string>;
+            isActive: boolean;
+            kind: "system" | "product";
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
+            maxOrganizations: number;
+            name: string;
+            priceMonthly: number;
+            priceYearly?: number;
+            productPostId?: string;
+            sortOrder: number;
+            updatedAt: number;
+          }
+        >;
+        getPlanByName: FunctionReference<
+          "query",
+          "internal",
+          { name: string },
+          null | {
+            _creationTime: number;
+            _id: string;
+            description: string;
+            displayName: string;
+            features?: Array<string>;
+            isActive: boolean;
+            kind: "system" | "product";
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
+            maxOrganizations: number;
+            name: string;
+            priceMonthly: number;
+            priceYearly?: number;
+            productPostId?: string;
+            sortOrder: number;
+            updatedAt: number;
+          }
+        >;
+        getPlanByProductPostId: FunctionReference<
+          "query",
+          "internal",
+          { productPostId: string },
+          null | {
+            _creationTime: number;
+            _id: string;
+            description: string;
+            displayName: string;
+            features?: Array<string>;
+            isActive: boolean;
+            kind: "system" | "product";
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
+            maxOrganizations: number;
+            name: string;
+            priceMonthly: number;
+            priceYearly?: number;
+            productPostId?: string;
+            sortOrder: number;
+            updatedAt: number;
+          }
+        >;
+        getPlans: FunctionReference<
+          "query",
+          "internal",
+          { isActive?: boolean },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            description: string;
+            displayName: string;
+            features?: Array<string>;
+            isActive: boolean;
+            kind: "system" | "product";
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
+            maxOrganizations: number;
+            name: string;
+            priceMonthly: number;
+            priceYearly?: number;
+            productPostId?: string;
+            sortOrder: number;
+            updatedAt: number;
+          }>
+        >;
+        listAssignableOrgPlans: FunctionReference<
+          "query",
+          "internal",
+          {},
+          Array<{
+            _creationTime: number;
+            _id: string;
+            description: string;
+            displayName: string;
+            features?: Array<string>;
+            isActive: boolean;
+            kind: "system" | "product";
+            limits?: {
+              crmMaxContacts?: number;
+              discordAiDaily?: number;
+              supportBubbleAiDaily?: number;
+            };
+            maxOrganizations: number;
+            name: string;
+            priceMonthly: number;
+            priceYearly?: number;
+            productPostId?: string;
+            sortOrder: number;
+            updatedAt: number;
+          }>
+        >;
+      };
+    };
+    posts: {
+      mutations: {
+        createPost: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            authorId?: string;
+            category?: string;
+            content?: string;
+            createdAt?: number;
+            excerpt?: string;
+            featuredImage?: string;
+            featuredImageUrl?: string;
+            meta?: Record<string, string | number | boolean | null>;
+            organizationId?: string;
+            postTypeSlug: string;
+            slug: string;
+            status:
+              | "published"
+              | "draft"
+              | "archived"
+              | "unpaid"
+              | "paid"
+              | "failed";
+            tags?: Array<string>;
+            title: string;
+            updatedAt?: number;
+          },
+          any
+        >;
+        deletePost: FunctionReference<
+          "mutation",
+          "internal",
+          { id: string },
+          any
+        >;
+        setPostMeta: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            key: string;
+            postId: string;
+            value?: string | number | boolean | null;
+          },
+          any
+        >;
+        updatePost: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            category?: string;
+            content?: string;
+            excerpt?: string;
+            featuredImage?: string;
+            featuredImageUrl?: string;
+            id: string;
+            meta?: Record<string, string | number | boolean | null>;
+            organizationId?: string;
+            patch?: any;
+            slug?: string;
+            status?:
+              | "published"
+              | "draft"
+              | "archived"
+              | "unpaid"
+              | "paid"
+              | "failed";
+            tags?: Array<string>;
+            title?: string;
+          },
+          any
+        >;
+      };
+      queries: {
+        findFirstPostIdByMetaKeyValue: FunctionReference<
+          "query",
+          "internal",
+          {
+            key: string;
+            organizationId?: string;
+            postTypeSlug?: string;
+            value: string;
+          },
+          null | string
+        >;
+        getAllPosts: FunctionReference<
+          "query",
+          "internal",
+          {
+            filters?: {
+              authorId?: string;
+              category?: string;
+              limit?: number;
+              postTypeSlug?: string;
+              status?:
+                | "published"
+                | "draft"
+                | "archived"
+                | "unpaid"
+                | "paid"
+                | "failed";
+            };
+            organizationId?: string;
+          },
+          any
+        >;
+        getPostById: FunctionReference<
+          "query",
+          "internal",
+          { id: string; organizationId?: string },
+          null | any
+        >;
+        getPostBySlug: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; slug: string },
+          null | any
+        >;
+        getPostCategories: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; postTypeSlug?: string },
+          any
+        >;
+        getPostMeta: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; postId: string },
+          any
+        >;
+        getPostTags: FunctionReference<
+          "query",
+          "internal",
+          { organizationId?: string; postTypeSlug?: string },
+          any
+        >;
+        listPostIdsByMetaKeyValue: FunctionReference<
+          "query",
+          "internal",
+          {
+            key: string;
+            limit?: number;
+            organizationId?: string;
+            postTypeSlug?: string;
+            value: string;
+          },
+          Array<string>
+        >;
+        searchPosts: FunctionReference<
+          "query",
+          "internal",
+          {
+            limit?: number;
+            organizationId?: string;
+            postTypeSlug?: string;
+            searchTerm: string;
+          },
+          any
+        >;
+      };
     };
   };
   launchthat_pricedata: {

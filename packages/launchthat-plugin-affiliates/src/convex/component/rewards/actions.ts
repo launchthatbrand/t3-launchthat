@@ -28,9 +28,12 @@ const grantCreditOnceImpl = async (
   ctx: any,
   args: {
     userId: string;
+    kind?: string;
     amountCents: number;
     currency: string;
     reason: string;
+    externalEventId?: string;
+    source?: string;
     referrerUserId?: string;
     referredUserId?: string;
     conversionId?: string;
@@ -48,9 +51,12 @@ const grantCreditOnceImpl = async (
   const createdAt = Date.now();
   await ctx.db.insert("affiliateCreditEvents", {
     userId: args.userId,
+    kind: String(args.kind ?? "promo_credit"),
     amountCents: args.amountCents,
     currency: args.currency,
     reason: args.reason,
+    externalEventId: String(args.externalEventId ?? `reason:${args.reason}`),
+    source: args.source,
     referrerUserId: args.referrerUserId,
     referredUserId: args.referredUserId,
     conversionId: args.conversionId,
@@ -209,9 +215,11 @@ export const redeemCredit = mutation({
     const createdAt = Date.now();
     await ctx.db.insert("affiliateCreditEvents", {
       userId,
+      kind: "redeem",
       amountCents: -amountCents,
       currency,
       reason: String(args.reason ?? "redeem"),
+      externalEventId: `redeem:${createdAt}`,
       createdAt,
     });
 

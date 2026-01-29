@@ -258,6 +258,24 @@ export const getAffiliateAdminView = query({
         firstPaidConversionAt: v.optional(v.number()),
       }),
     ),
+    payoutAccount: v.union(
+      v.null(),
+      v.object({
+        userId: v.string(),
+        provider: v.string(),
+        connectAccountId: v.string(),
+        status: v.string(),
+      }),
+    ),
+    payoutPreference: v.union(
+      v.null(),
+      v.object({
+        userId: v.string(),
+        policy: v.string(),
+        currency: v.string(),
+        minPayoutCents: v.number(),
+      }),
+    ),
   }),
   handler: async (ctx, args) => {
     await requirePlatformAdmin(ctx);
@@ -334,6 +352,37 @@ export const getAffiliateAdminView = query({
       });
     }
 
+    const payoutAccountUnknown = await ctx.runQuery(
+      componentsUntyped.launchthat_ecommerce.payouts.queries.getPayoutAccount,
+      { userId, provider: "stripe" },
+    );
+    const payoutAccount =
+      payoutAccountUnknown && typeof payoutAccountUnknown === "object"
+        ? {
+            userId: String((payoutAccountUnknown as any).userId ?? ""),
+            provider: String((payoutAccountUnknown as any).provider ?? ""),
+            connectAccountId: String((payoutAccountUnknown as any).connectAccountId ?? ""),
+            status: String((payoutAccountUnknown as any).status ?? ""),
+          }
+        : null;
+
+    const payoutPreferenceUnknown = await ctx.runQuery(
+      componentsUntyped.launchthat_ecommerce.payouts.queries.getPayoutPreference,
+      { userId },
+    );
+    const payoutPreference =
+      payoutPreferenceUnknown && typeof payoutPreferenceUnknown === "object"
+        ? {
+            userId: String((payoutPreferenceUnknown as any).userId ?? ""),
+            policy: String((payoutPreferenceUnknown as any).policy ?? ""),
+            currency: String((payoutPreferenceUnknown as any).currency ?? "USD").toUpperCase(),
+            minPayoutCents:
+              typeof (payoutPreferenceUnknown as any).minPayoutCents === "number"
+                ? Number((payoutPreferenceUnknown as any).minPayoutCents)
+                : 0,
+          }
+        : null;
+
     return {
       userId,
       profile,
@@ -342,6 +391,8 @@ export const getAffiliateAdminView = query({
       creditEvents,
       logs,
       recruits,
+      payoutAccount,
+      payoutPreference,
     };
   },
 });
@@ -366,6 +417,140 @@ export const setAffiliateStatus = mutation({
       },
     );
     return resUnknown as any;
+  },
+});
+
+const startOfMonthUtc = (ms: number): number => {
+  const d = new Date(ms);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0, 0);
+};
+
+export const getRevenue = query({
+  args: { monthsBack: v.optional(v.number()) },
+  returns: v.object({
+    monthsBack: v.number(),
+    allTimeRevenueCents: v.number(),
+    byMonth: v.array(v.object({ monthStartMs: v.number(), revenueCents: v.number() })),
+  }),
+  handler: async (ctx, args) => {
+    await requirePlatformAdmin(ctx);
+
+    const monthsBackRaw = typeof args.monthsBack === "number" ? args.monthsBack : 12;
+    const monthsBack = Math.max(1, Math.min(36, Math.floor(monthsBackRaw)));
+
+    const now = Date.now();
+    const currentMonthStart = startOfMonthUtc(now);
+    const cur = new Date(currentMonthStart);
+    const fromMonthStart = Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() - (monthsBack - 1), 1, 0, 0, 0, 0);
+
+    const conversionsUnknown = await ctx.runQuery(
+      componentsUntyped.launchthat_affiliates.admin.listAffiliateConversions,
+      { fromMs: fromMonthStart, limit: 20000 },
+    );
+    const conversions = Array.isArray(conversionsUnknown) ? (conversionsUnknown as any[]) : [];
+
+    const byMonthMap = new Map<number, number>();
+    for (let i = 0; i < monthsBack; i++) {
+      const monthStart = Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() - (monthsBack - 1 - i), 1, 0, 0, 0, 0);
+      byMonthMap.set(monthStart, 0);
+    }
+
+    for (const c of conversions) {
+      const ts = typeof c?.occurredAt === "number" ? Number(c.occurredAt) : 0;
+      const amt = typeof c?.amountCents === "number" ? Math.max(0, Math.round(c.amountCents)) : 0;
+      if (!ts || !amt) continue;
+      const monthStart = startOfMonthUtc(ts);
+      if (byMonthMap.has(monthStart)) byMonthMap.set(monthStart, (byMonthMap.get(monthStart) ?? 0) + amt);
+    }
+
+    // All-time revenue: bounded scan (fine for now since there’s no historical backlog).
+    const allUnknown = await ctx.runQuery(
+      componentsUntyped.launchthat_affiliates.admin.listAffiliateConversions,
+      { fromMs: 0, limit: 20000 },
+    );
+    const all = Array.isArray(allUnknown) ? (allUnknown as any[]) : [];
+    let allTimeRevenueCents = 0;
+    for (const c of all) {
+      if (typeof c?.amountCents === "number") allTimeRevenueCents += Math.max(0, Math.round(c.amountCents));
+    }
+
+    const byMonth = Array.from(byMonthMap.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([monthStartMs, revenueCents]) => ({ monthStartMs, revenueCents }));
+
+    return { monthsBack, allTimeRevenueCents, byMonth };
+  },
+});
+
+export const listProfilesWithMetrics = query({
+  args: { limit: v.optional(v.number()), daysBack: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      userId: v.string(),
+      referralCode: v.string(),
+      status: v.union(v.literal("active"), v.literal("disabled")),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+      clicks: v.number(),
+      revenueCents: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    await requirePlatformAdmin(ctx);
+    const limitRaw = typeof args.limit === "number" ? args.limit : 500;
+    const limit = Math.max(1, Math.min(2000, Math.floor(limitRaw)));
+    const daysBackRaw = typeof args.daysBack === "number" ? args.daysBack : 30;
+    const daysBack = Math.max(1, Math.min(180, Math.floor(daysBackRaw)));
+    const sinceMs = Date.now() - daysBack * dayMs;
+
+    const profilesUnknown = await ctx.runQuery(
+      componentsUntyped.launchthat_affiliates.admin.listAffiliateProfiles,
+      { limit },
+    );
+    const profiles = Array.isArray(profilesUnknown) ? (profilesUnknown as any[]) : [];
+
+    // Clicks: derived from affiliate logs (bounded window).
+    const logsUnknown = await ctx.runQuery(
+      componentsUntyped.launchthat_affiliates.admin.listAffiliateLogs,
+      { fromMs: sinceMs, limit: 5000 },
+    );
+    const logs = Array.isArray(logsUnknown) ? (logsUnknown as any[]) : [];
+
+    const clicksByUser = new Map<string, number>();
+    for (const l of logs) {
+      if (l?.kind === "click_logged" && typeof l?.ownerUserId === "string") {
+        const id = String(l.ownerUserId);
+        clicksByUser.set(id, (clicksByUser.get(id) ?? 0) + 1);
+      }
+    }
+
+    // Revenue: derived from affiliate conversions (bounded window).
+    const conversionsUnknown = await ctx.runQuery(
+      componentsUntyped.launchthat_affiliates.admin.listAffiliateConversions,
+      { fromMs: sinceMs, limit: 20000 },
+    );
+    const conversions = Array.isArray(conversionsUnknown) ? (conversionsUnknown as any[]) : [];
+
+    const revenueByUser = new Map<string, number>();
+    for (const c of conversions) {
+      const id = typeof c?.referrerUserId === "string" ? String(c.referrerUserId) : "";
+      const amt = typeof c?.amountCents === "number" ? Math.max(0, Math.round(c.amountCents)) : 0;
+      if (!id || !amt) continue;
+      revenueByUser.set(id, (revenueByUser.get(id) ?? 0) + amt);
+    }
+
+    return profiles.map((row) => {
+      const userId = String(row?.userId ?? "");
+      return {
+        userId,
+        referralCode: String(row?.referralCode ?? ""),
+        status: row?.status === "disabled" ? ("disabled" as const) : ("active" as const),
+        createdAt: typeof row?.createdAt === "number" ? Number(row.createdAt) : 0,
+        updatedAt: typeof row?.updatedAt === "number" ? Number(row.updatedAt) : 0,
+        clicks: clicksByUser.get(userId) ?? 0,
+        revenueCents: revenueByUser.get(userId) ?? 0,
+      };
+    });
   },
 });
 

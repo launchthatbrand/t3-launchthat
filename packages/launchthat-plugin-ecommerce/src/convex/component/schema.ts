@@ -104,6 +104,56 @@ const discountCodesTable = defineTable({
   .index("by_org_and_code", ["organizationId", "code"])
   .index("by_org_and_active", ["organizationId", "active"]);
 
+const payoutAccountsTable = defineTable({
+  userId: v.string(),
+  provider: v.string(), // e.g. "stripe"
+  connectAccountId: v.string(),
+  status: v.string(), // e.g. "pending" | "enabled" | "restricted"
+  details: v.optional(v.any()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_userId", ["userId"])
+  .index("by_provider_and_userId", ["provider", "userId"]);
+
+const payoutPreferencesTable = defineTable({
+  userId: v.string(),
+  policy: v.string(), // "payout_only" | "apply_to_subscription_then_payout"
+  currency: v.string(), // start with "USD"
+  minPayoutCents: v.number(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+}).index("by_userId", ["userId"]);
+
+const payoutRunsTable = defineTable({
+  provider: v.string(), // e.g. "stripe"
+  periodStart: v.number(),
+  periodEnd: v.number(),
+  status: v.string(), // "pending" | "running" | "completed" | "failed"
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_provider_and_periodStart", ["provider", "periodStart"])
+  .index("by_status", ["status"]);
+
+const payoutTransfersTable = defineTable({
+  runId: v.id("payoutRuns"),
+  provider: v.string(),
+  userId: v.string(),
+  currency: v.string(),
+  cashCents: v.number(),
+  subscriptionCreditCents: v.number(),
+  status: v.string(), // "pending" | "sent" | "failed"
+  externalTransferId: v.optional(v.string()),
+  externalBalanceTxnId: v.optional(v.string()),
+  error: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_runId_and_userId", ["runId", "userId"])
+  .index("by_userId_and_createdAt", ["userId", "createdAt"])
+  .index("by_status", ["status"]);
+
 export default defineSchema({
   posts: postsTable,
   postsMeta: postsMetaTable,
@@ -111,4 +161,8 @@ export default defineSchema({
   cartItems: cartItemsTable,
   plans: plansTable,
   discountCodes: discountCodesTable,
+  payoutAccounts: payoutAccountsTable,
+  payoutPreferences: payoutPreferencesTable,
+  payoutRuns: payoutRunsTable,
+  payoutTransfers: payoutTransfersTable,
 });

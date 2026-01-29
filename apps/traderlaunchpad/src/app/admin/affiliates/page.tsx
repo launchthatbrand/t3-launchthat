@@ -23,7 +23,13 @@ const TERMS_VERSION = "v1" as const;
 
 export default function AdminAffiliatesPage() {
   const getDashboard = useAction(api.traderlaunchpad.affiliates.getMyAffiliateDashboard);
+  const getPayoutSettings = useAction(api.traderlaunchpad.affiliates.getMyAffiliatePayoutSettings);
+  const createOnboardingLink = useAction(
+    api.traderlaunchpad.affiliates.createMyAffiliatePayoutOnboardingLink,
+  );
+  const disconnectPayouts = useAction(api.traderlaunchpad.affiliates.disconnectMyAffiliatePayoutAccount);
   const becomeAffiliate = useMutation(api.traderlaunchpad.affiliates.becomeAffiliate);
+  const setPayoutPreference = useMutation(api.traderlaunchpad.affiliates.setMyAffiliatePayoutPreference);
 
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
 
@@ -55,13 +61,18 @@ export default function AdminAffiliatesPage() {
     | undefined;
 
   const [data, setData] = React.useState<Awaited<ReturnType<typeof getDashboard>> | null>(null);
+  const [payout, setPayout] = React.useState<Awaited<ReturnType<typeof getPayoutSettings>> | null>(
+    null,
+  );
   const [loading, setLoading] = React.useState(true);
+  const [payoutLoading, setPayoutLoading] = React.useState(true);
   const [baseOrigin, setBaseOrigin] = React.useState<string>("http://localhost:3000");
   const [landingPath, setLandingPath] = React.useState<string>("/");
   const [copyLabel, setCopyLabel] = React.useState<string>("Copy");
   const [acceptedTerms, setAcceptedTerms] = React.useState<boolean>(false);
   const [becoming, setBecoming] = React.useState<boolean>(false);
   const [becomeError, setBecomeError] = React.useState<string | null>(null);
+  const [payoutError, setPayoutError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (typeof window !== "undefined") setBaseOrigin(window.location.origin);
@@ -78,18 +89,33 @@ export default function AdminAffiliatesPage() {
       .finally(() => setLoading(false));
   }, [getDashboard]);
 
+  const refreshPayout = React.useCallback(() => {
+    setPayoutLoading(true);
+    getPayoutSettings({})
+      .then((res) => setPayout(res))
+      .catch((err: unknown) => {
+        console.error("[AdminAffiliatesPage] getPayoutSettings failed", err);
+        setPayout(null);
+      })
+      .finally(() => setPayoutLoading(false));
+  }, [getPayoutSettings]);
+
   React.useEffect(() => {
     // Wait for Convex auth to resolve before fetching.
     if (authLoading) {
       setLoading(true);
+      setPayoutLoading(true);
       return;
     }
     if (!isAuthenticated) {
       setData(null);
       setLoading(false);
+      setPayout(null);
+      setPayoutLoading(false);
       return;
     }
     refresh();
+    refreshPayout();
   }, [authLoading, isAuthenticated, refresh]);
 
   const referralCode = data?.profile?.referralCode ?? null;
@@ -133,6 +159,68 @@ export default function AdminAffiliatesPage() {
       })
       .finally(() => setBecoming(false));
   }, [acceptedTerms, becomeAffiliate, refresh]);
+
+  const handleStartOnboarding = React.useCallback(() => {
+    if (typeof window === "undefined") return;
+    setPayoutError(null);
+    createOnboardingLink({
+      refreshUrl: `${window.location.origin}/admin/affiliates`,
+      returnUrl: `${window.location.origin}/admin/affiliates`,
+    })
+      .then((res) => {
+        if (res?.url) window.location.href = res.url;
+        else setPayoutError("Failed to start onboarding.");
+      })
+      .catch((err: unknown) => {
+        console.error("[AdminAffiliatesPage] createOnboardingLink failed", err);
+        setPayoutError("Failed to start onboarding.");
+      });
+  }, [createOnboardingLink]);
+
+  const handleDisconnectPayouts = React.useCallback(() => {
+    setPayoutError(null);
+    disconnectPayouts({ deleteRemote: true })
+      .then(() => refreshPayout())
+      .catch((err: unknown) => {
+        console.error("[AdminAffiliatesPage] disconnectPayouts failed", err);
+        setPayoutError("Failed to disconnect payouts.");
+      });
+  }, [disconnectPayouts, refreshPayout]);
+
+  const handleSetPolicy = React.useCallback(
+    (policy: "payout_only" | "apply_to_subscription_then_payout") => {
+      setPayoutError(null);
+      setPayoutPreference({ policy, minPayoutCents: payout?.payoutPreference?.minPayoutCents ?? 0 })
+        .then(() => refreshPayout())
+        .catch((err: unknown) => {
+          console.error("[AdminAffiliatesPage] setPayoutPreference failed", err);
+          setPayoutError("Failed to save payout preference.");
+        });
+    },
+    [payout?.payoutPreference?.minPayoutCents, refreshPayout, setPayoutPreference],
+  );
+
+  const handleSetMinPayout = React.useCallback(
+    (next: number) => {
+      const policy =
+        (payout?.payoutPreference?.policy as "payout_only" | "apply_to_subscription_then_payout") ??
+        "payout_only";
+      setPayoutError(null);
+      setPayoutPreference({ policy, minPayoutCents: next })
+        .then(() => refreshPayout())
+        .catch((err: unknown) => {
+          console.error("[AdminAffiliatesPage] setPayoutPreference failed", err);
+          setPayoutError("Failed to save payout preference.");
+        });
+    },
+    [payout?.payoutPreference?.policy, refreshPayout, setPayoutPreference],
+  );
+
+  const payoutPolicy = (payout?.payoutPreference?.policy ?? "payout_only") as
+    | "payout_only"
+    | "apply_to_subscription_then_payout";
+  const minPayoutCents = payout?.payoutPreference?.minPayoutCents ?? 0;
+  const payoutAccountStatus = payout?.payoutAccount?.status ?? null;
 
   const recruitRows = React.useMemo(() => {
     return Array.isArray(recruits) ? recruits : [];
@@ -384,6 +472,108 @@ export default function AdminAffiliatesPage() {
               }
             />
           </div>
+
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b p-4">
+              <CardTitle className="text-base">Payouts</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 p-4">
+              {payoutLoading ? (
+                <div className="text-muted-foreground text-sm">Loading payout settings…</div>
+              ) : !payout?.userId ? (
+                <div className="text-muted-foreground text-sm">Sign in to manage payouts.</div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="text-sm font-medium">Payout account</div>
+                      <div className="text-muted-foreground text-xs">
+                        Connect a bank account to receive affiliate payouts.
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {payoutAccountStatus ? (
+                        <Badge variant={payoutAccountStatus === "enabled" ? "default" : "secondary"}>
+                          {payoutAccountStatus}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">not connected</Badge>
+                      )}
+                      <Button type="button" variant="outline" onClick={handleStartOnboarding}>
+                        {payoutAccountStatus ? "Manage" : "Connect payouts"}
+                      </Button>
+                      {payoutAccountStatus ? (
+                        <Button type="button" variant="outline" onClick={handleDisconnectPayouts}>
+                          Disconnect (test)
+                        </Button>
+                      ) : null}
+                      <Button type="button" variant="outline" onClick={refreshPayout}>
+                        Refresh
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="rounded-lg border bg-card p-3">
+                      <div className="text-muted-foreground text-xs">Credit balance</div>
+                      <div className="mt-1 text-sm font-semibold">
+                        {formatUsd(payout.creditBalanceCents)}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border bg-card p-3">
+                      <div className="text-muted-foreground text-xs">Next subscription due (est.)</div>
+                      <div className="mt-1 text-sm font-semibold">
+                        {formatUsd(payout.upcomingSubscriptionDueCents)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Distribution policy</div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant={payoutPolicy === "payout_only" ? "default" : "outline"}
+                        onClick={() => handleSetPolicy("payout_only")}
+                      >
+                        Payout only
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={
+                          payoutPolicy === "apply_to_subscription_then_payout" ? "default" : "outline"
+                        }
+                        onClick={() => handleSetPolicy("apply_to_subscription_then_payout")}
+                      >
+                        Apply to subscription, then payout remainder
+                      </Button>
+                    </div>
+                    <div className="text-muted-foreground text-xs">
+                      If your recruits cancel, you earn $0 and your subscription bills normally.
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <div className="text-sm font-medium">Minimum payout</div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={String(Math.round(minPayoutCents / 100))}
+                        onChange={(e) => {
+                          const n = Number(e.target.value);
+                          const next = Number.isFinite(n) ? Math.max(0, Math.round(n * 100)) : 0;
+                          handleSetMinPayout(next);
+                        }}
+                        className="w-36"
+                      />
+                      <div className="text-muted-foreground text-xs">USD</div>
+                    </div>
+                  </div>
+
+                  {payoutError ? <div className="text-sm text-destructive">{payoutError}</div> : null}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <Card className="overflow-hidden">
             <CardHeader className="border-b p-4">

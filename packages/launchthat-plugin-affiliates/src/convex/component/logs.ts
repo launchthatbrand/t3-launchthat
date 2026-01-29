@@ -5,6 +5,8 @@ export type AffiliateLogKind =
   | "signup_attributed"
   | "activated"
   | "conversion_recorded"
+  | "commission_recorded"
+  | "payout_consumed"
   | "credit_event"
   | "benefit_granted";
 

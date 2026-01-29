@@ -85,6 +85,18 @@ interface AffiliateAdminView {
     activatedAt?: number;
     firstPaidConversionAt?: number;
   }>;
+  payoutAccount: {
+    userId: string;
+    provider: string;
+    connectAccountId: string;
+    status: string;
+  } | null;
+  payoutPreference: {
+    userId: string;
+    policy: string;
+    currency: string;
+    minPayoutCents: number;
+  } | null;
 }
 
 const formatUsd = (cents: number): string => {
@@ -359,6 +371,48 @@ export default function PlatformAffiliateDetailPage() {
                 </div>
               }
             />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {view ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Payouts</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-lg border bg-card p-3">
+                <div className="text-muted-foreground text-xs">Connect status</div>
+                <div className="mt-1 flex items-center gap-2">
+                  {view.payoutAccount ? (
+                    <Badge variant={view.payoutAccount.status === "enabled" ? "default" : "secondary"}>
+                      {view.payoutAccount.status}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">not connected</Badge>
+                  )}
+                </div>
+                {view.payoutAccount ? (
+                  <div className="text-muted-foreground mt-2 text-xs font-mono">
+                    {view.payoutAccount.connectAccountId}
+                  </div>
+                ) : null}
+              </div>
+              <div className="rounded-lg border bg-card p-3">
+                <div className="text-muted-foreground text-xs">Distribution policy</div>
+                <div className="mt-1 text-sm font-medium">
+                  {view.payoutPreference?.policy ?? "—"}
+                </div>
+                <div className="text-muted-foreground mt-2 text-xs">
+                  Min payout:{" "}
+                  {typeof view.payoutPreference?.minPayoutCents === "number"
+                    ? formatUsd(view.payoutPreference.minPayoutCents)
+                    : "—"}{" "}
+                  {view.payoutPreference?.currency ?? ""}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       ) : null}

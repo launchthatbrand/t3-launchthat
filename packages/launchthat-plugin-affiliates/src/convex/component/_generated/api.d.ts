@@ -10,6 +10,8 @@
 
 import type * as admin from "../admin.js";
 import type * as conversions from "../conversions.js";
+import type * as credit_actions from "../credit/actions.js";
+import type * as credit_queries from "../credit/queries.js";
 import type * as index from "../index.js";
 import type * as logs from "../logs.js";
 import type * as profiles from "../profiles.js";
@@ -35,6 +37,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   conversions: typeof conversions;
+  "credit/actions": typeof credit_actions;
+  "credit/queries": typeof credit_queries;
   index: typeof index;
   logs: typeof logs;
   profiles: typeof profiles;
@@ -59,6 +63,20 @@ export type Mounts = {
         userId: string;
       }
     >;
+    listAffiliateConversions: FunctionReference<
+      "query",
+      "public",
+      { fromMs?: number; limit?: number },
+      Array<{
+        amountCents: number;
+        currency: string;
+        externalId: string;
+        kind: string;
+        occurredAt: number;
+        referredUserId: string;
+        referrerUserId: string;
+      }>
+    >;
     listAffiliateCreditEventsForUser: FunctionReference<
       "query",
       "public",
@@ -68,6 +86,8 @@ export type Mounts = {
         conversionId?: string;
         createdAt: number;
         currency: string;
+        externalEventId?: string;
+        kind?: string;
         reason: string;
         referredUserId?: string;
       }>
@@ -155,6 +175,58 @@ export type Mounts = {
         referrerUserId: string | null;
       }
     >;
+  };
+  credit: {
+    actions: {
+      consumeForPayout: FunctionReference<
+        "mutation",
+        "public",
+        {
+          cashCents?: number;
+          currency?: string;
+          runId: string;
+          source?: string;
+          subscriptionCreditCents?: number;
+          userId: string;
+        },
+        {
+          balanceCents: number;
+          consumedCashCents: number;
+          consumedSubscriptionCreditCents: number;
+          ok: boolean;
+        }
+      >;
+      recordCommissionFromPayment: FunctionReference<
+        "mutation",
+        "public",
+        {
+          amountCents: number;
+          commissionRateBps?: number;
+          currency?: string;
+          externalEventId: string;
+          grossAmountCents: number;
+          occurredAt?: number;
+          paymentKind?: string;
+          referredUserId: string;
+          source?: string;
+        },
+        {
+          amountCents: number;
+          created: boolean;
+          grossAmountCents: number;
+          ok: boolean;
+          referrerUserId: string | null;
+        }
+      >;
+    };
+    queries: {
+      getCreditBalance: FunctionReference<
+        "query",
+        "public",
+        { currency?: string; userId: string },
+        { balanceCents: number; currency: string; userId: string }
+      >;
+    };
   };
   profiles: {
     createOrGetMyAffiliateProfile: FunctionReference<

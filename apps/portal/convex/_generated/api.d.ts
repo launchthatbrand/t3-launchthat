@@ -6198,6 +6198,315 @@ export declare const components: {
       >;
     };
   };
+  launchthat_affiliates: {
+    admin: {
+      getAffiliateProfileByUserId: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        null | {
+          acceptedTermsAt?: number;
+          acceptedTermsVersion?: string;
+          createdAt: number;
+          referralCode: string;
+          status: "active" | "disabled";
+          updatedAt: number;
+          userId: string;
+        }
+      >;
+      listAffiliateCreditEventsForUser: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; userId: string },
+        Array<{
+          amountCents: number;
+          conversionId?: string;
+          createdAt: number;
+          currency: string;
+          externalEventId?: string;
+          kind?: string;
+          reason: string;
+          referredUserId?: string;
+        }>
+      >;
+      listAffiliateLogs: FunctionReference<
+        "query",
+        "internal",
+        { fromMs?: number; limit?: number },
+        Array<{
+          amountCents?: number;
+          currency?: string;
+          data?: any;
+          externalId?: string;
+          kind: string;
+          message: string;
+          ownerUserId: string;
+          referralCode?: string;
+          referredUserId?: string;
+          ts: number;
+          visitorId?: string;
+        }>
+      >;
+      listAffiliateLogsForUser: FunctionReference<
+        "query",
+        "internal",
+        { fromMs?: number; limit?: number; ownerUserId: string },
+        Array<{
+          amountCents?: number;
+          currency?: string;
+          data?: any;
+          externalId?: string;
+          kind: string;
+          message: string;
+          ownerUserId: string;
+          referralCode?: string;
+          referredUserId?: string;
+          ts: number;
+          visitorId?: string;
+        }>
+      >;
+      listAffiliateProfiles: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number },
+        Array<{
+          acceptedTermsAt?: number;
+          acceptedTermsVersion?: string;
+          createdAt: number;
+          referralCode: string;
+          status: "active" | "disabled";
+          updatedAt: number;
+          userId: string;
+        }>
+      >;
+      listReferredUsersForReferrer: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number; referrerUserId: string },
+        Array<{
+          activatedAt?: number;
+          attributedAt: number;
+          firstPaidConversionAt?: number;
+          referredUserId: string;
+        }>
+      >;
+    };
+    conversions: {
+      recordPaidConversion: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          amountCents: number;
+          currency: string;
+          externalId: string;
+          kind: "paid_subscription" | "paid_order";
+          occurredAt?: number;
+          proDiscountAmountOffCentsMonthly?: number;
+          referredUserId: string;
+          referrerIsPro?: boolean;
+        },
+        {
+          created: boolean;
+          discountGranted?: boolean;
+          ok: boolean;
+          referrerUserId: string | null;
+        }
+      >;
+    };
+    credit: {
+      actions: {
+        consumeForPayout: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            cashCents?: number;
+            currency?: string;
+            runId: string;
+            source?: string;
+            subscriptionCreditCents?: number;
+            userId: string;
+          },
+          {
+            balanceCents: number;
+            consumedCashCents: number;
+            consumedSubscriptionCreditCents: number;
+            ok: boolean;
+          }
+        >;
+        recordCommissionFromPayment: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            amountCents: number;
+            currency?: string;
+            externalEventId: string;
+            occurredAt?: number;
+            paymentKind?: string;
+            referredUserId: string;
+            source?: string;
+          },
+          {
+            amountCents: number;
+            created: boolean;
+            ok: boolean;
+            referrerUserId: string | null;
+          }
+        >;
+      };
+      queries: {
+        getCreditBalance: FunctionReference<
+          "query",
+          "internal",
+          { currency?: string; userId: string },
+          { balanceCents: number; currency: string; userId: string }
+        >;
+      };
+    };
+    profiles: {
+      createOrGetMyAffiliateProfile: FunctionReference<
+        "mutation",
+        "internal",
+        { acceptTerms?: boolean; termsVersion?: string; userId: string },
+        { referralCode: string; status: "active" | "disabled"; userId: string }
+      >;
+      getAffiliateProfileByReferralCode: FunctionReference<
+        "query",
+        "internal",
+        { referralCode: string },
+        null | {
+          referralCode: string;
+          status: "active" | "disabled";
+          userId: string;
+        }
+      >;
+      getAffiliateProfileByUserId: FunctionReference<
+        "query",
+        "internal",
+        { userId: string },
+        null | {
+          referralCode: string;
+          status: "active" | "disabled";
+          userId: string;
+        }
+      >;
+      getMyAffiliateStats: FunctionReference<
+        "query",
+        "internal",
+        { nowMs?: number; userId: string },
+        {
+          activations30d: number;
+          clicks30d: number;
+          conversions30d: number;
+          creditBalanceCents: number;
+          referralCode: string | null;
+          signups30d: number;
+          userId: string;
+        }
+      >;
+      setAffiliateProfileStatus: FunctionReference<
+        "mutation",
+        "internal",
+        { status: "active" | "disabled"; userId: string },
+        { ok: boolean; status: "active" | "disabled"; userId: string }
+      >;
+    };
+    referrals: {
+      queries: {
+        listMyReferredUsers: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; referrerUserId: string },
+          Array<{
+            activatedAt?: number;
+            attributedAt: number;
+            expiresAt: number;
+            firstPaidConversionAt?: number;
+            referredUserId: string;
+            status: string;
+          }>
+        >;
+      };
+    };
+    rewards: {
+      actions: {
+        evaluateRewardsForReferrer: FunctionReference<
+          "mutation",
+          "internal",
+          { referrerUserId: string },
+          null
+        >;
+        grantSubscriptionDiscountBenefit: FunctionReference<
+          "mutation",
+          "internal",
+          { amountOffCentsMonthly?: number; userId: string },
+          { created: boolean; ok: boolean }
+        >;
+        redeemCredit: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            amountCents: number;
+            currency?: string;
+            reason?: string;
+            userId: string;
+          },
+          { balanceCents: number; ok: boolean }
+        >;
+      };
+      queries: {
+        listActiveBenefitsForUser: FunctionReference<
+          "query",
+          "internal",
+          { userId: string },
+          Array<{
+            endsAt?: number;
+            kind: string;
+            startsAt: number;
+            status: string;
+            value: any;
+          }>
+        >;
+      };
+    };
+    tracking: {
+      attributeSignup: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          attributionWindowDays?: number;
+          nowMs?: number;
+          referralCode?: string;
+          referredUserId: string;
+          visitorId?: string;
+        },
+        null | {
+          expiresAt: number;
+          referralCode: string;
+          referredUserId: string;
+          referrerUserId: string;
+        }
+      >;
+      markActivated: FunctionReference<
+        "mutation",
+        "internal",
+        { referredUserId: string; source?: "email_verified" | "manual" },
+        { activated: boolean; ok: boolean; referrerUserId: string | null }
+      >;
+      recordClick: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          ipHash?: string;
+          landingPath?: string;
+          referralCode: string;
+          referrer?: string;
+          uaHash?: string;
+          visitorId: string;
+        },
+        null
+      >;
+    };
+  };
   launchthat_ecommerce: {
     cart: {
       mutations: {
@@ -6463,6 +6772,154 @@ export declare const components: {
             slug: string;
             title?: string;
           }
+        >;
+      };
+    };
+    payouts: {
+      actions: {
+        createStripeConnectOnboardingLinkForUser: FunctionReference<
+          "action",
+          "internal",
+          {
+            email?: string;
+            metadata?: any;
+            refreshUrl: string;
+            returnUrl: string;
+            stripeSecretKey: string;
+            userId: string;
+          },
+          { connectAccountId: string; ok: boolean; url: string }
+        >;
+        getUpcomingSubscriptionDueCentsForUser: FunctionReference<
+          "action",
+          "internal",
+          { currency?: string; stripeSecretKey: string; userId: string },
+          { dueCents: number; ok: boolean }
+        >;
+        processStripeWebhook: FunctionReference<
+          "action",
+          "internal",
+          {
+            rawBody: string;
+            signature: string;
+            stripeSecretKey: string;
+            stripeWebhookSecret: string;
+          },
+          { handled: boolean; ok: boolean }
+        >;
+        runMonthly: FunctionReference<
+          "action",
+          "internal",
+          {
+            dryRun?: boolean;
+            periodEnd: number;
+            periodStart: number;
+            provider?: string;
+            providerConfig?: any;
+          },
+          {
+            errors: Array<string>;
+            ok: boolean;
+            processedUsers: number;
+            runId: string | null;
+            totalCashCents: number;
+            totalSubscriptionCreditCents: number;
+          }
+        >;
+      };
+      mutations: {
+        setPayoutPreference: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            currency?: string;
+            minPayoutCents?: number;
+            policy: "payout_only" | "apply_to_subscription_then_payout";
+            userId: string;
+          },
+          { ok: boolean }
+        >;
+        upsertPayoutAccount: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            connectAccountId: string;
+            details?: any;
+            provider?: string;
+            status: string;
+            userId: string;
+          },
+          { created: boolean; ok: boolean }
+        >;
+      };
+      paymentEvents: {
+        recordCommissionablePayment: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            amountCents: number;
+            commissionRateBps?: number;
+            currency?: string;
+            externalEventId: string;
+            kind: string;
+            occurredAt?: number;
+            referredUserId: string;
+            source: string;
+          },
+          {
+            commissionCents: number;
+            created: boolean;
+            ok: boolean;
+            referrerUserId: string | null;
+          }
+        >;
+      };
+      queries: {
+        getPayoutAccount: FunctionReference<
+          "query",
+          "internal",
+          { provider?: string; userId: string },
+          null | {
+            connectAccountId: string;
+            createdAt: number;
+            details?: any;
+            provider: string;
+            status: string;
+            updatedAt: number;
+            userId: string;
+          }
+        >;
+        getPayoutPreference: FunctionReference<
+          "query",
+          "internal",
+          { userId: string },
+          null | {
+            createdAt: number;
+            currency: string;
+            minPayoutCents: number;
+            policy: string;
+            updatedAt: number;
+            userId: string;
+          }
+        >;
+        listPayoutTransfersForUser: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; userId: string },
+          Array<{
+            cashCents: number;
+            createdAt: number;
+            currency: string;
+            error?: string;
+            externalBalanceTxnId?: string;
+            externalTransferId?: string;
+            provider: string;
+            runId: string;
+            status: string;
+            subscriptionCreditCents: number;
+            updatedAt: number;
+            userId: string;
+          }>
         >;
       };
     };
@@ -6814,6 +7271,96 @@ export declare const components: {
     };
   };
   launchthat_discord: {
+    automations: {
+      mutations: {
+        createAutomation: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            action: { config: any; type: "send_message" };
+            conditions?: any;
+            enabled: boolean;
+            guildId: string;
+            name: string;
+            organizationId: string;
+            trigger: { config: any; type: "schedule" | "event" };
+          },
+          string
+        >;
+        deleteAutomation: FunctionReference<
+          "mutation",
+          "internal",
+          { automationId: string; organizationId: string },
+          null
+        >;
+        markAutomationRun: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            automationId: string;
+            cursor?: string;
+            lastRunAt?: number;
+            nextRunAt?: number;
+            organizationId: string;
+          },
+          null
+        >;
+        updateAutomation: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            action?: { config: any; type: "send_message" };
+            automationId: string;
+            conditions?: any;
+            enabled?: boolean;
+            name?: string;
+            organizationId: string;
+            trigger?: { config: any; type: "schedule" | "event" };
+          },
+          null
+        >;
+      };
+      queries: {
+        listAutomations: FunctionReference<
+          "query",
+          "internal",
+          { guildId: string; organizationId: string },
+          Array<{
+            action: any;
+            conditions?: any;
+            createdAt: number;
+            enabled: boolean;
+            guildId: string;
+            id: string;
+            name: string;
+            nextRunAt?: number;
+            organizationId: string;
+            state?: any;
+            trigger: any;
+            updatedAt: number;
+          }>
+        >;
+        listDueAutomations: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; now: number; organizationId?: string },
+          Array<{
+            action: any;
+            conditions?: any;
+            createdAt: number;
+            enabled: boolean;
+            guildId: string;
+            id: string;
+            name: string;
+            nextRunAt?: number;
+            organizationId: string;
+            state?: any;
+            trigger: any;
+            updatedAt: number;
+          }>
+        >;
+      };
+    };
     delivery: {
       mutations: {
         incrementUserDeliveryStat: FunctionReference<
@@ -6843,6 +7390,43 @@ export declare const components: {
             daysBack: number;
             totalMessagesSent: number;
           }
+        >;
+      };
+    };
+    events: {
+      mutations: {
+        emitEvent: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            dedupeKey?: string;
+            eventKey: string;
+            guildId?: string;
+            organizationId: string;
+            payloadJson: string;
+          },
+          null
+        >;
+      };
+      queries: {
+        listRecentEvents: FunctionReference<
+          "query",
+          "internal",
+          {
+            eventKey?: string;
+            guildId?: string;
+            limit?: number;
+            organizationId: string;
+          },
+          Array<{
+            createdAt: number;
+            dedupeKey?: string;
+            eventKey: string;
+            guildId?: string;
+            id: string;
+            organizationId: string;
+            payloadJson: string;
+          }>
         >;
       };
     };
@@ -7424,6 +8008,7 @@ export declare const components: {
             name: string;
             organizationId: string;
             template: string;
+            templateJson?: string;
           },
           string
         >;
@@ -7442,6 +8027,7 @@ export declare const components: {
             organizationId: string;
             template?: string;
             templateId: string;
+            templateJson?: string;
           },
           null
         >;
@@ -7455,6 +8041,7 @@ export declare const components: {
             name?: string;
             organizationId: string;
             template: string;
+            templateJson?: string;
           },
           null
         >;
@@ -7478,6 +8065,7 @@ export declare const components: {
             kind: string;
             name?: string;
             template: string;
+            templateJson?: string;
             updatedAt: number;
           }
         >;
@@ -7494,6 +8082,7 @@ export declare const components: {
             name?: string;
             scope: "org" | "guild";
             template: string;
+            templateJson?: string;
             updatedAt: number;
           }>
         >;
@@ -7851,6 +8440,18 @@ export declare const components: {
           }>
         >;
       };
+    };
+    queries: {
+      getCrmDashboardMetrics: FunctionReference<
+        "query",
+        "internal",
+        { limit?: number },
+        {
+          contacts: { isTruncated: boolean; total: number };
+          tagAssignments: { isTruncated: boolean; total: number };
+          tags: { isTruncated: boolean; total: number };
+        }
+      >;
     };
   };
   launchthat_tasks: {
@@ -8812,7 +9413,233 @@ export declare const components: {
           string
         >;
       };
+      platform: {
+        consumeTradeLockerConnectDraft: FunctionReference<
+          "mutation",
+          "internal",
+          { draftId: string },
+          {
+            accessTokenEncrypted: string;
+            accessTokenExpiresAt?: number;
+            environment: "demo" | "live";
+            jwtHost?: string;
+            refreshTokenEncrypted: string;
+            refreshTokenExpiresAt?: number;
+            server: string;
+          } | null
+        >;
+        createTradeLockerConnectDraft: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accessTokenEncrypted: string;
+            accessTokenExpiresAt?: number;
+            environment: "demo" | "live";
+            expiresAt: number;
+            jwtHost?: string;
+            refreshTokenEncrypted: string;
+            refreshTokenExpiresAt?: number;
+            server: string;
+          },
+          string
+        >;
+        deleteConnection: FunctionReference<
+          "mutation",
+          "internal",
+          { connectionId: string },
+          null
+        >;
+        getConnection: FunctionReference<
+          "query",
+          "internal",
+          { connectionId: string },
+          {
+            _creationTime: number;
+            _id: string;
+            createdAt: number;
+            isDefault: boolean;
+            label: string;
+            lastUsedAt?: number;
+            provider: string;
+            status: "active" | "disabled";
+            updatedAt: number;
+            username?: string;
+          } | null
+        >;
+        getConnectionAccount: FunctionReference<
+          "query",
+          "internal",
+          { accountRowId: string },
+          {
+            _creationTime: number;
+            _id: string;
+            accNum: number;
+            accountId: string;
+            connectionId: string;
+            createdAt: number;
+            currency?: string;
+            customerAccess?: {
+              filledOrders: boolean;
+              marketDepth: boolean;
+              orders: boolean;
+              ordersHistory: boolean;
+              positions: boolean;
+              symbolInfo: boolean;
+            };
+            lastConfigCheckedAt?: number;
+            lastConfigError?: string;
+            lastConfigOk?: boolean;
+            lastConfigRaw?: any;
+            name?: string;
+            status?: string;
+            updatedAt: number;
+          } | null
+        >;
+        getConnectionSecrets: FunctionReference<
+          "query",
+          "internal",
+          { connectionId: string },
+          {
+            connectionId: string;
+            isDefault: boolean;
+            provider: string;
+            secrets: any;
+            status: "active" | "disabled";
+            updatedAt: number;
+          } | null
+        >;
+        listConnectionAccounts: FunctionReference<
+          "query",
+          "internal",
+          { connectionId: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            accNum: number;
+            accountId: string;
+            connectionId: string;
+            createdAt: number;
+            currency?: string;
+            customerAccess?: {
+              filledOrders: boolean;
+              marketDepth: boolean;
+              orders: boolean;
+              ordersHistory: boolean;
+              positions: boolean;
+              symbolInfo: boolean;
+            };
+            lastConfigCheckedAt?: number;
+            lastConfigError?: string;
+            lastConfigOk?: boolean;
+            lastConfigRaw?: any;
+            name?: string;
+            status?: string;
+            updatedAt: number;
+          }>
+        >;
+        listConnections: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; provider?: string },
+          Array<{
+            _creationTime: number;
+            _id: string;
+            createdAt: number;
+            isDefault: boolean;
+            label: string;
+            lastUsedAt?: number;
+            provider: string;
+            status: "active" | "disabled";
+            updatedAt: number;
+            username?: string;
+          }>
+        >;
+        setConnectionStatus: FunctionReference<
+          "mutation",
+          "internal",
+          { connectionId: string; status: "active" | "disabled" },
+          null
+        >;
+        setDefaultConnection: FunctionReference<
+          "mutation",
+          "internal",
+          { connectionId: string },
+          null
+        >;
+        updateConnectionAccountDebug: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accountRowId: string;
+            customerAccess?: {
+              filledOrders: boolean;
+              marketDepth: boolean;
+              orders: boolean;
+              ordersHistory: boolean;
+              positions: boolean;
+              symbolInfo: boolean;
+            };
+            lastConfigError?: string;
+            lastConfigOk: boolean;
+            lastConfigRaw?: any;
+          },
+          null
+        >;
+        upsertTradeLockerConnectionWithSecrets: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accessTokenEncrypted: string;
+            accessTokenExpiresAt?: number;
+            accounts: Array<{
+              accNum: number;
+              accountId: string;
+              currency?: string;
+              name?: string;
+              status?: string;
+            }>;
+            connectionId?: string;
+            environment: "demo" | "live";
+            jwtHost?: string;
+            label: string;
+            makeDefault?: boolean;
+            refreshTokenEncrypted: string;
+            refreshTokenExpiresAt?: number;
+            selectedAccNum: number;
+            selectedAccountId: string;
+            server: string;
+            status: "active" | "disabled";
+          },
+          { connectionId: string }
+        >;
+      };
       queries: {
+        getConnectionById: FunctionReference<
+          "query",
+          "internal",
+          { connectionId: string },
+          {
+            _creationTime: number;
+            _id: string;
+            createdAt: number;
+            environment: "demo" | "live";
+            hasOpenTrade?: boolean;
+            jwtHost?: string;
+            lastBrokerActivityAt?: number;
+            lastError?: string;
+            lastSyncAt: number;
+            organizationId: string;
+            provider?: string;
+            selectedAccNum: number;
+            selectedAccountId: string;
+            server: string;
+            status: "connected" | "error" | "disconnected";
+            syncLeaseOwner?: string;
+            syncLeaseUntil?: number;
+            updatedAt: number;
+            userId: string;
+          } | null
+        >;
         getMyConnection: FunctionReference<
           "query",
           "internal",
@@ -8828,6 +9655,7 @@ export declare const components: {
             lastError?: string;
             lastSyncAt: number;
             organizationId: string;
+            provider?: string;
             selectedAccNum: number;
             selectedAccountId: string;
             server: string;
@@ -8911,11 +9739,57 @@ export declare const components: {
         >;
       };
     };
+    permissions: {
+      getPermissions: FunctionReference<
+        "query",
+        "internal",
+        { scopeId?: string; scopeType: "global" | "org"; userId: string },
+        {
+          globalEnabled: boolean;
+          openPositionsEnabled: boolean;
+          ordersEnabled: boolean;
+          scopeId: string | null;
+          scopeType: "global" | "org";
+          tradeIdeasEnabled: boolean;
+          updatedAt: number;
+          userId: string;
+        }
+      >;
+      listOrgPermissionsForUsers: FunctionReference<
+        "query",
+        "internal",
+        { organizationId: string; userIds: Array<string> },
+        Array<{
+          globalEnabled: boolean;
+          openPositionsEnabled: boolean;
+          ordersEnabled: boolean;
+          scopeId: string;
+          scopeType: "org";
+          tradeIdeasEnabled: boolean;
+          updatedAt: number;
+          userId: string;
+        }>
+      >;
+      upsertPermissions: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          globalEnabled: boolean;
+          openPositionsEnabled: boolean;
+          ordersEnabled: boolean;
+          scopeId?: string;
+          scopeType: "global" | "org";
+          tradeIdeasEnabled: boolean;
+          userId: string;
+        },
+        null
+      >;
+    };
     publicOrders: {
       listPublicOrdersForUser: FunctionReference<
         "query",
         "internal",
-        { limit?: number; organizationId: string; userId: string },
+        { limit?: number; organizationId?: string; userId: string },
         Array<{
           closedAt: number | null;
           createdAt: number | null;
@@ -8940,6 +9814,9 @@ export declare const components: {
           {
             executionsPatched: number;
             instrumentsReceived: number;
+            ordersHistoryPatched: number;
+            ordersPatched: number;
+            positionsPatched: number;
             tradeIdeaGroupsPatched: number;
           }
         >;
@@ -9402,6 +10279,389 @@ export declare const components: {
         null
       >;
     };
+    strategies: {
+      index: {
+        archiveMyStrategy: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; strategyId: string; userId: string },
+          null
+        >;
+        createMyStrategyFromTemplate: FunctionReference<
+          "mutation",
+          "internal",
+          { name?: string; organizationId: string; userId: string },
+          string
+        >;
+        createOrgStrategyFromTemplate: FunctionReference<
+          "mutation",
+          "internal",
+          { createdByUserId: string; name?: string; organizationId: string },
+          string
+        >;
+        getMyActiveStrategy: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; userId: string },
+          | {
+              _creationTime: number;
+              _id: string;
+              archivedAt?: number;
+              createdAt: number;
+              kind: "plan";
+              name: string;
+              organizationId: string;
+              ownerId: string;
+              ownerType: "user" | "org";
+              spec: {
+                kpis: {
+                  adherencePct: number;
+                  avgRiskPerTradePct7d: number;
+                  journalCompliancePct: number;
+                  sessionDisciplinePct7d: number;
+                  violations7d: number;
+                };
+                markets: Array<string>;
+                risk: {
+                  maxDailyLossPct: number;
+                  maxOpenPositions: number;
+                  maxRiskPerTradePct: number;
+                  maxTradesPerDay: number;
+                  maxWeeklyLossPct: number;
+                };
+                rules: Array<{
+                  category:
+                    | "Entry"
+                    | "Risk"
+                    | "Exit"
+                    | "Process"
+                    | "Psychology";
+                  description: string;
+                  id: string;
+                  severity: "hard" | "soft";
+                  title: string;
+                }>;
+                sessions: Array<{
+                  days: Array<string>;
+                  end: string;
+                  id: string;
+                  label: string;
+                  start: string;
+                  timezone: string;
+                }>;
+                strategySummary: string;
+              };
+              summary: string;
+              updatedAt: number;
+              version: string;
+            }
+          | {
+              _creationTime: number;
+              _id: string;
+              archivedAt?: number;
+              createdAt: number;
+              kind: "dsl";
+              name: string;
+              organizationId: string;
+              ownerId: string;
+              ownerType: "user" | "org";
+              spec: any;
+              summary: string;
+              updatedAt: number;
+              version: string;
+            }
+          | null
+        >;
+        getMyOrgStrategy: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; userId: string },
+          | {
+              _creationTime: number;
+              _id: string;
+              archivedAt?: number;
+              createdAt: number;
+              kind: "plan";
+              name: string;
+              organizationId: string;
+              ownerId: string;
+              ownerType: "user" | "org";
+              spec: {
+                kpis: {
+                  adherencePct: number;
+                  avgRiskPerTradePct7d: number;
+                  journalCompliancePct: number;
+                  sessionDisciplinePct7d: number;
+                  violations7d: number;
+                };
+                markets: Array<string>;
+                risk: {
+                  maxDailyLossPct: number;
+                  maxOpenPositions: number;
+                  maxRiskPerTradePct: number;
+                  maxTradesPerDay: number;
+                  maxWeeklyLossPct: number;
+                };
+                rules: Array<{
+                  category:
+                    | "Entry"
+                    | "Risk"
+                    | "Exit"
+                    | "Process"
+                    | "Psychology";
+                  description: string;
+                  id: string;
+                  severity: "hard" | "soft";
+                  title: string;
+                }>;
+                sessions: Array<{
+                  days: Array<string>;
+                  end: string;
+                  id: string;
+                  label: string;
+                  start: string;
+                  timezone: string;
+                }>;
+                strategySummary: string;
+              };
+              summary: string;
+              updatedAt: number;
+              version: string;
+            }
+          | {
+              _creationTime: number;
+              _id: string;
+              archivedAt?: number;
+              createdAt: number;
+              kind: "dsl";
+              name: string;
+              organizationId: string;
+              ownerId: string;
+              ownerType: "user" | "org";
+              spec: any;
+              summary: string;
+              updatedAt: number;
+              version: string;
+            }
+          | null
+        >;
+        getMyStrategy: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; strategyId: string; userId: string },
+          | {
+              _creationTime: number;
+              _id: string;
+              archivedAt?: number;
+              createdAt: number;
+              kind: "plan";
+              name: string;
+              organizationId: string;
+              ownerId: string;
+              ownerType: "user" | "org";
+              spec: {
+                kpis: {
+                  adherencePct: number;
+                  avgRiskPerTradePct7d: number;
+                  journalCompliancePct: number;
+                  sessionDisciplinePct7d: number;
+                  violations7d: number;
+                };
+                markets: Array<string>;
+                risk: {
+                  maxDailyLossPct: number;
+                  maxOpenPositions: number;
+                  maxRiskPerTradePct: number;
+                  maxTradesPerDay: number;
+                  maxWeeklyLossPct: number;
+                };
+                rules: Array<{
+                  category:
+                    | "Entry"
+                    | "Risk"
+                    | "Exit"
+                    | "Process"
+                    | "Psychology";
+                  description: string;
+                  id: string;
+                  severity: "hard" | "soft";
+                  title: string;
+                }>;
+                sessions: Array<{
+                  days: Array<string>;
+                  end: string;
+                  id: string;
+                  label: string;
+                  start: string;
+                  timezone: string;
+                }>;
+                strategySummary: string;
+              };
+              summary: string;
+              updatedAt: number;
+              version: string;
+            }
+          | {
+              _creationTime: number;
+              _id: string;
+              archivedAt?: number;
+              createdAt: number;
+              kind: "dsl";
+              name: string;
+              organizationId: string;
+              ownerId: string;
+              ownerType: "user" | "org";
+              spec: any;
+              summary: string;
+              updatedAt: number;
+              version: string;
+            }
+          | null
+        >;
+        getOrgStrategy: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string; strategyId: string },
+          | {
+              _creationTime: number;
+              _id: string;
+              archivedAt?: number;
+              createdAt: number;
+              kind: "plan";
+              name: string;
+              organizationId: string;
+              ownerId: string;
+              ownerType: "user" | "org";
+              spec: {
+                kpis: {
+                  adherencePct: number;
+                  avgRiskPerTradePct7d: number;
+                  journalCompliancePct: number;
+                  sessionDisciplinePct7d: number;
+                  violations7d: number;
+                };
+                markets: Array<string>;
+                risk: {
+                  maxDailyLossPct: number;
+                  maxOpenPositions: number;
+                  maxRiskPerTradePct: number;
+                  maxTradesPerDay: number;
+                  maxWeeklyLossPct: number;
+                };
+                rules: Array<{
+                  category:
+                    | "Entry"
+                    | "Risk"
+                    | "Exit"
+                    | "Process"
+                    | "Psychology";
+                  description: string;
+                  id: string;
+                  severity: "hard" | "soft";
+                  title: string;
+                }>;
+                sessions: Array<{
+                  days: Array<string>;
+                  end: string;
+                  id: string;
+                  label: string;
+                  start: string;
+                  timezone: string;
+                }>;
+                strategySummary: string;
+              };
+              summary: string;
+              updatedAt: number;
+              version: string;
+            }
+          | {
+              _creationTime: number;
+              _id: string;
+              archivedAt?: number;
+              createdAt: number;
+              kind: "dsl";
+              name: string;
+              organizationId: string;
+              ownerId: string;
+              ownerType: "user" | "org";
+              spec: any;
+              summary: string;
+              updatedAt: number;
+              version: string;
+            }
+          | null
+        >;
+        getOrgStrategyPolicy: FunctionReference<
+          "query",
+          "internal",
+          { organizationId: string },
+          {
+            allowedStrategyIds: Array<string>;
+            forcedStrategyId: string | null;
+            updatedAt: number | null;
+            updatedByUserId: string | null;
+          }
+        >;
+        listMyStrategies: FunctionReference<
+          "query",
+          "internal",
+          {
+            includeArchived?: boolean;
+            limit?: number;
+            organizationId: string;
+            userId: string;
+          },
+          Array<{
+            _id: string;
+            archivedAt?: number;
+            createdAt: number;
+            kind: "plan" | "dsl";
+            name: string;
+            ownerType: "user" | "org";
+            updatedAt: number;
+            version: string;
+          }>
+        >;
+        listOrgStrategies: FunctionReference<
+          "query",
+          "internal",
+          { includeArchived?: boolean; limit?: number; organizationId: string },
+          Array<{
+            _id: string;
+            archivedAt?: number;
+            createdAt: number;
+            kind: "plan" | "dsl";
+            name: string;
+            ownerType: "user" | "org";
+            updatedAt: number;
+            version: string;
+          }>
+        >;
+        setMyActiveStrategy: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; strategyId: string; userId: string },
+          null
+        >;
+        setMyOrgStrategy: FunctionReference<
+          "mutation",
+          "internal",
+          { organizationId: string; strategyId: string; userId: string },
+          null
+        >;
+        setOrgStrategyPolicy: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            allowedStrategyIds: Array<string>;
+            forcedStrategyId?: string | null;
+            organizationId: string;
+            updatedByUserId: string;
+          },
+          null
+        >;
+      };
+    };
     sync: {
       getInstrumentDetails: FunctionReference<
         "action",
@@ -9695,7 +10955,7 @@ export declare const components: {
           {
             accountId?: string;
             limit?: number;
-            organizationId: string;
+            organizationId?: string;
             userId: string;
           },
           {
@@ -9716,7 +10976,7 @@ export declare const components: {
           {
             accountId?: string;
             limit?: number;
-            organizationId: string;
+            organizationId?: string;
             userId: string;
           },
           Array<{
@@ -9852,7 +11112,7 @@ export declare const components: {
           "internal",
           {
             limitAssigned?: number;
-            organizationId: string;
+            organizationId?: string;
             scanCap?: number;
             userId: string;
           },
@@ -9864,7 +11124,7 @@ export declare const components: {
           {
             bias: "long" | "short" | "neutral";
             instrumentId?: string;
-            organizationId: string;
+            organizationId?: string;
             symbol: string;
             tags?: Array<string>;
             thesis?: string;
@@ -9932,14 +11192,13 @@ export declare const components: {
           "query",
           "internal",
           {
-            organizationId: string;
+            organizationId?: string;
             positionsLimit?: number;
             tradeIdeaId: string;
             userId: string;
           },
           null | {
             bias: "long" | "short" | "neutral";
-            expiresAt?: number;
             instrumentId?: string;
             lastActivityAt: number;
             openedAt: number;
@@ -9955,8 +11214,6 @@ export declare const components: {
               symbol: string;
               tradeIdeaGroupId: string;
             }>;
-            shareEnabledAt?: number;
-            shareToken?: string;
             status: "active" | "closed";
             symbol: string;
             tags?: Array<string>;
@@ -10053,7 +11310,7 @@ export declare const components: {
         listMyTradeIdeas: FunctionReference<
           "query",
           "internal",
-          { limit?: number; organizationId: string; userId: string },
+          { limit?: number; organizationId?: string; userId: string },
           Array<{
             bias: "long" | "short" | "neutral";
             instrumentId?: string;
@@ -10075,7 +11332,7 @@ export declare const components: {
         listPublicTradeIdeasForUser: FunctionReference<
           "query",
           "internal",
-          { expectedUserId: string; limit?: number; organizationId: string },
+          { expectedUserId: string; limit?: number; organizationId?: string },
           Array<{
             bias: "long" | "short" | "neutral";
             lastActivityAt: number;
@@ -10090,7 +11347,7 @@ export declare const components: {
         reconcileIdeasForUser: FunctionReference<
           "mutation",
           "internal",
-          { organizationId: string; scanCap?: number; userId: string },
+          { organizationId?: string; scanCap?: number; userId: string },
           {
             groupsReassigned: number;
             ideasDeleted: number;
@@ -10103,7 +11360,7 @@ export declare const components: {
           "internal",
           {
             expiresAt?: number;
-            organizationId: string;
+            organizationId?: string;
             tradeIdeaId: string;
             userId: string;
             visibility: "private" | "link" | "public";
@@ -10133,7 +11390,7 @@ export declare const components: {
           "internal",
           {
             accountId: string;
-            organizationId: string;
+            organizationId?: string;
             positionId: string;
             userId: string;
           },
@@ -10142,7 +11399,7 @@ export declare const components: {
         getLatestGroupForSymbol: FunctionReference<
           "query",
           "internal",
-          { organizationId: string; symbol: string; userId: string },
+          { organizationId?: string; symbol: string; userId: string },
           {
             _creationTime: number;
             _id: string;
@@ -10163,7 +11420,6 @@ export declare const components: {
             lastProcessedExecutionId?: string;
             netQty: number;
             openedAt: number;
-            organizationId: string;
             positionId?: string;
             realizedPnl?: number;
             status: "open" | "closed";
@@ -10176,7 +11432,7 @@ export declare const components: {
         getOpenGroupForSymbol: FunctionReference<
           "query",
           "internal",
-          { organizationId: string; symbol: string; userId: string },
+          { organizationId?: string; symbol: string; userId: string },
           {
             _creationTime: number;
             _id: string;
@@ -10197,7 +11453,6 @@ export declare const components: {
             lastProcessedExecutionId?: string;
             netQty: number;
             openedAt: number;
-            organizationId: string;
             positionId?: string;
             realizedPnl?: number;
             status: "open" | "closed";
@@ -10210,7 +11465,7 @@ export declare const components: {
         hasAnyOpenGroup: FunctionReference<
           "query",
           "internal",
-          { organizationId: string; userId: string },
+          { organizationId?: string; userId: string },
           boolean
         >;
       };
@@ -10241,7 +11496,6 @@ export declare const components: {
             accountId: string;
             connectionId: string;
             instrumentId: string;
-            organizationId: string;
             userId: string;
           },
           {
@@ -10291,7 +11545,6 @@ export declare const components: {
             lastProcessedExecutionId?: string;
             netQty: number;
             openedAt: number;
-            organizationId: string;
             positionId: string;
             realizedPnl?: number;
             status: "open" | "closed";
@@ -10305,13 +11558,12 @@ export declare const components: {
         getNoteForGroup: FunctionReference<
           "query",
           "internal",
-          { organizationId: string; tradeIdeaGroupId: string; userId: string },
+          { organizationId?: string; tradeIdeaGroupId: string; userId: string },
           {
             _creationTime: number;
             _id: string;
             mistakes?: string;
             nextTime?: string;
-            organizationId: string;
             outcome?: string;
             reviewStatus: "todo" | "reviewed";
             reviewedAt?: number;
@@ -10329,7 +11581,7 @@ export declare const components: {
           {
             accountId?: string;
             limit?: number;
-            organizationId: string;
+            organizationId?: string;
             userId: string;
           },
           Array<{
@@ -10370,7 +11622,7 @@ export declare const components: {
         markReviewed: FunctionReference<
           "mutation",
           "internal",
-          { organizationId: string; tradeIdeaGroupId: string; userId: string },
+          { organizationId?: string; tradeIdeaGroupId: string; userId: string },
           string
         >;
         upsertNoteForGroup: FunctionReference<
@@ -10379,7 +11631,7 @@ export declare const components: {
           {
             mistakes?: string;
             nextTime?: string;
-            organizationId: string;
+            organizationId?: string;
             outcome?: string;
             setup?: string;
             tags?: Array<string>;
@@ -10415,7 +11667,6 @@ export declare const components: {
             lastProcessedExecutionId?: string;
             netQty: number;
             openedAt: number;
-            organizationId: string;
             positionId?: string;
             realizedPnl?: number;
             status: "open" | "closed";
@@ -10450,7 +11701,6 @@ export declare const components: {
           "query",
           "internal",
           {
-            organizationId: string;
             paginationOpts: {
               cursor: string | null;
               endCursor?: string | null;
@@ -10485,7 +11735,6 @@ export declare const components: {
               lastProcessedExecutionId?: string;
               netQty: number;
               openedAt: number;
-              organizationId: string;
               positionId?: string;
               realizedPnl?: number;
               status: "open" | "closed";
@@ -10501,12 +11750,7 @@ export declare const components: {
         listEventsForGroup: FunctionReference<
           "query",
           "internal",
-          {
-            limit?: number;
-            organizationId: string;
-            tradeIdeaGroupId: string;
-            userId: string;
-          },
+          { limit?: number; tradeIdeaGroupId: string; userId: string },
           Array<{
             _creationTime: number;
             _id: string;
@@ -10516,7 +11760,6 @@ export declare const components: {
             externalExecutionId: string;
             externalOrderId?: string;
             externalPositionId?: string;
-            organizationId: string;
             tradeIdeaGroupId: string;
             userId: string;
           }>
@@ -10526,7 +11769,7 @@ export declare const components: {
           "internal",
           {
             limit?: number;
-            organizationId: string;
+            status?: "open" | "closed";
             symbol: string;
             userId: string;
           },
@@ -10550,7 +11793,6 @@ export declare const components: {
             lastProcessedExecutionId?: string;
             netQty: number;
             openedAt: number;
-            organizationId: string;
             positionId?: string;
             realizedPnl?: number;
             status: "open" | "closed";
@@ -10561,294 +11803,6 @@ export declare const components: {
             updatedAt: number;
             userId: string;
           }>
-        >;
-        listOpenGroupsForOrgSymbol: FunctionReference<
-          "query",
-          "internal",
-          { limit?: number; organizationId: string; symbol: string },
-          Array<{
-            avgEntryPrice?: number;
-            direction: "long" | "short";
-            netQty: number;
-            openedAt: number;
-            tradeIdeaGroupId: string;
-            userId: string;
-          }>
-        >;
-      };
-    };
-    tradingPlans: {
-      index: {
-        archiveTradingPlan: FunctionReference<
-          "mutation",
-          "internal",
-          { organizationId: string; planId: string; userId: string },
-          null
-        >;
-        createOrgTradingPlanFromTemplate: FunctionReference<
-          "mutation",
-          "internal",
-          { createdByUserId: string; name?: string; organizationId: string },
-          string
-        >;
-        createTradingPlanFromTemplate: FunctionReference<
-          "mutation",
-          "internal",
-          { name?: string; organizationId: string; userId: string },
-          string
-        >;
-        getActiveTradingPlan: FunctionReference<
-          "query",
-          "internal",
-          { organizationId: string; userId: string },
-          {
-            _creationTime: number;
-            _id: string;
-            archivedAt?: number;
-            createdAt: number;
-            kpis: {
-              adherencePct: number;
-              avgRiskPerTradePct7d: number;
-              journalCompliancePct: number;
-              sessionDisciplinePct7d: number;
-              violations7d: number;
-            };
-            markets: Array<string>;
-            name: string;
-            organizationId: string;
-            risk: {
-              maxDailyLossPct: number;
-              maxOpenPositions: number;
-              maxRiskPerTradePct: number;
-              maxTradesPerDay: number;
-              maxWeeklyLossPct: number;
-            };
-            rules: Array<{
-              category: "Entry" | "Risk" | "Exit" | "Process" | "Psychology";
-              description: string;
-              id: string;
-              severity: "hard" | "soft";
-              title: string;
-            }>;
-            sessions: Array<{
-              days: Array<string>;
-              end: string;
-              id: string;
-              label: string;
-              start: string;
-              timezone: string;
-            }>;
-            strategySummary: string;
-            updatedAt: number;
-            userId: string;
-            version: string;
-          } | null
-        >;
-        getMyOrgTradingPlan: FunctionReference<
-          "query",
-          "internal",
-          { organizationId: string; userId: string },
-          {
-            _creationTime: number;
-            _id: string;
-            archivedAt?: number;
-            createdAt: number;
-            createdByUserId: string;
-            kpis: {
-              adherencePct: number;
-              avgRiskPerTradePct7d: number;
-              journalCompliancePct: number;
-              sessionDisciplinePct7d: number;
-              violations7d: number;
-            };
-            markets: Array<string>;
-            name: string;
-            organizationId: string;
-            risk: {
-              maxDailyLossPct: number;
-              maxOpenPositions: number;
-              maxRiskPerTradePct: number;
-              maxTradesPerDay: number;
-              maxWeeklyLossPct: number;
-            };
-            rules: Array<{
-              category: "Entry" | "Risk" | "Exit" | "Process" | "Psychology";
-              description: string;
-              id: string;
-              severity: "hard" | "soft";
-              title: string;
-            }>;
-            sessions: Array<{
-              days: Array<string>;
-              end: string;
-              id: string;
-              label: string;
-              start: string;
-              timezone: string;
-            }>;
-            strategySummary: string;
-            updatedAt: number;
-            version: string;
-          } | null
-        >;
-        getOrgTradingPlan: FunctionReference<
-          "query",
-          "internal",
-          { organizationId: string; planId: string },
-          {
-            _creationTime: number;
-            _id: string;
-            archivedAt?: number;
-            createdAt: number;
-            createdByUserId: string;
-            kpis: {
-              adherencePct: number;
-              avgRiskPerTradePct7d: number;
-              journalCompliancePct: number;
-              sessionDisciplinePct7d: number;
-              violations7d: number;
-            };
-            markets: Array<string>;
-            name: string;
-            organizationId: string;
-            risk: {
-              maxDailyLossPct: number;
-              maxOpenPositions: number;
-              maxRiskPerTradePct: number;
-              maxTradesPerDay: number;
-              maxWeeklyLossPct: number;
-            };
-            rules: Array<{
-              category: "Entry" | "Risk" | "Exit" | "Process" | "Psychology";
-              description: string;
-              id: string;
-              severity: "hard" | "soft";
-              title: string;
-            }>;
-            sessions: Array<{
-              days: Array<string>;
-              end: string;
-              id: string;
-              label: string;
-              start: string;
-              timezone: string;
-            }>;
-            strategySummary: string;
-            updatedAt: number;
-            version: string;
-          } | null
-        >;
-        getOrgTradingPlanPolicy: FunctionReference<
-          "query",
-          "internal",
-          { organizationId: string },
-          {
-            allowedPlanIds: Array<string>;
-            forcedPlanId: string | null;
-            updatedAt: number | null;
-            updatedByUserId: string | null;
-          }
-        >;
-        getTradingPlan: FunctionReference<
-          "query",
-          "internal",
-          { organizationId: string; planId: string; userId: string },
-          {
-            _creationTime: number;
-            _id: string;
-            archivedAt?: number;
-            createdAt: number;
-            kpis: {
-              adherencePct: number;
-              avgRiskPerTradePct7d: number;
-              journalCompliancePct: number;
-              sessionDisciplinePct7d: number;
-              violations7d: number;
-            };
-            markets: Array<string>;
-            name: string;
-            organizationId: string;
-            risk: {
-              maxDailyLossPct: number;
-              maxOpenPositions: number;
-              maxRiskPerTradePct: number;
-              maxTradesPerDay: number;
-              maxWeeklyLossPct: number;
-            };
-            rules: Array<{
-              category: "Entry" | "Risk" | "Exit" | "Process" | "Psychology";
-              description: string;
-              id: string;
-              severity: "hard" | "soft";
-              title: string;
-            }>;
-            sessions: Array<{
-              days: Array<string>;
-              end: string;
-              id: string;
-              label: string;
-              start: string;
-              timezone: string;
-            }>;
-            strategySummary: string;
-            updatedAt: number;
-            userId: string;
-            version: string;
-          } | null
-        >;
-        listOrgTradingPlans: FunctionReference<
-          "query",
-          "internal",
-          { includeArchived?: boolean; limit?: number; organizationId: string },
-          Array<{
-            _id: string;
-            archivedAt?: number;
-            createdAt: number;
-            name: string;
-            updatedAt: number;
-            version: string;
-          }>
-        >;
-        listTradingPlans: FunctionReference<
-          "query",
-          "internal",
-          {
-            includeArchived?: boolean;
-            limit?: number;
-            organizationId: string;
-            userId: string;
-          },
-          Array<{
-            _id: string;
-            archivedAt?: number;
-            createdAt: number;
-            name: string;
-            updatedAt: number;
-            version: string;
-          }>
-        >;
-        setActiveTradingPlan: FunctionReference<
-          "mutation",
-          "internal",
-          { organizationId: string; planId: string; userId: string },
-          null
-        >;
-        setMyOrgTradingPlan: FunctionReference<
-          "mutation",
-          "internal",
-          { organizationId: string; planId: string; userId: string },
-          null
-        >;
-        setOrgTradingPlanPolicy: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            allowedPlanIds: Array<string>;
-            forcedPlanId?: string | null;
-            organizationId: string;
-            updatedByUserId: string;
-          },
-          null
         >;
       };
     };

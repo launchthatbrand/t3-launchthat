@@ -8,7 +8,7 @@ import type { Id } from "./_generated/dataModel";
 import { httpAction } from "./_generated/server";
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/require-await */
 import { httpRouter } from "convex/server";
-import { components, internal } from "./_generated/api";
+import { api, components, internal } from "./_generated/api";
 import { supportEmailInbound } from "./plugins/support/http";
 
 const internalAny = internal as Record<string, any>;
@@ -313,6 +313,60 @@ const relayStripeOAuth = httpAction(async (_, request) => {
   });
 });
 
+// Stripe webhooks (server-to-server; no CORS).
+const stripeWebhook = httpAction(async (ctx, request) => {
+  const signature = (request.headers.get("stripe-signature") ?? "").trim();
+  const rawBody = await request.text();
+
+  // Load Stripe secrets from site options (same keys used by Stripe settings page).
+  const opt: any = await ctx.runQuery(api.core.options.get as any, {
+    metaKey: "plugin.ecommerce.stripe.settings",
+    type: "site",
+    orgId: null,
+  });
+  const settings =
+    opt && typeof opt === "object" && typeof opt.metaValue === "object" && opt.metaValue
+      ? (opt.metaValue as any)
+      : {};
+  const secretKey =
+    typeof settings.secretKey === "string" ? String(settings.secretKey).trim() : "";
+  const webhookSecret =
+    typeof settings.webhookSecret === "string" ? String(settings.webhookSecret).trim() : "";
+
+  if (!secretKey || !webhookSecret) {
+    return new Response("Stripe not configured", { status: 500 });
+  }
+  if (!signature) {
+    return new Response("Missing stripe-signature", { status: 400 });
+  }
+
+  try {
+    const res: any = await ctx.runAction(
+      (components as any).launchthat_ecommerce.payouts.actions.processStripeWebhook,
+      {
+        stripeSecretKey: secretKey,
+        stripeWebhookSecret: webhookSecret,
+        signature,
+        rawBody,
+      },
+    );
+
+    // Always 2xx for handled/ignored events to stop retries.
+    return new Response(JSON.stringify({ ok: true, handled: Boolean(res?.handled) }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  } catch (err: any) {
+    // Stripe expects 2xx for events we "accept", but for signature verification failures we want a 4xx
+    // so Stripe retries until configuration is fixed.
+    const message = String(err?.message ?? err);
+    return new Response(JSON.stringify({ ok: false, error: message }), {
+      status: 400,
+      headers: { "content-type": "application/json" },
+    });
+  }
+});
+
 http.route({
   path: "/healthz",
   method: "GET",
@@ -561,6 +615,12 @@ http.route({
   path: "/api/integrations/stripe/start",
   method: "GET",
   handler: startStripeOAuth,
+});
+
+http.route({
+  path: "/api/webhooks/stripe",
+  method: "POST",
+  handler: stripeWebhook,
 });
 
 // Vimeo webhooks: best-effort receiver (Vimeo does not send CORS requests)

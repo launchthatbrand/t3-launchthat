@@ -25,6 +25,16 @@ const logValidator = v.object({
   currency: v.optional(v.string()),
 });
 
+const conversionValidator = v.object({
+  kind: v.string(),
+  externalId: v.string(),
+  referredUserId: v.string(),
+  referrerUserId: v.string(),
+  amountCents: v.number(),
+  currency: v.string(),
+  occurredAt: v.number(),
+});
+
 export const listAffiliateProfiles = query({
   args: { limit: v.optional(v.number()) },
   returns: v.array(profileValidator),
@@ -202,6 +212,30 @@ export const listAffiliateLogsForUser = query({
   },
 });
 
+export const listAffiliateConversions = query({
+  args: { limit: v.optional(v.number()), fromMs: v.optional(v.number()) },
+  returns: v.array(conversionValidator),
+  handler: async (ctx, args) => {
+    const limitRaw = typeof args.limit === "number" ? args.limit : 200;
+    const limit = Math.max(1, Math.min(20000, Math.floor(limitRaw)));
+    const fromMs = typeof args.fromMs === "number" ? Math.max(0, Number(args.fromMs)) : null;
+
+    const q = ctx.db.query("affiliateConversions").withIndex("by_occurredAt", (ix: any) =>
+      fromMs !== null ? ix.gte("occurredAt", fromMs) : ix.gte("occurredAt", 0),
+    );
+    const rows = await q.order("desc").take(limit);
+    return rows.map((row: any) => ({
+      kind: String(row.kind ?? ""),
+      externalId: String(row.externalId ?? ""),
+      referredUserId: String(row.referredUserId ?? ""),
+      referrerUserId: String(row.referrerUserId ?? ""),
+      amountCents: typeof row.amountCents === "number" ? Number(row.amountCents) : 0,
+      currency: String(row.currency ?? "USD").toUpperCase(),
+      occurredAt: typeof row.occurredAt === "number" ? Number(row.occurredAt) : 0,
+    }));
+  },
+});
+
 export const listAffiliateCreditEventsForUser = query({
   args: {
     userId: v.string(),
@@ -209,9 +243,11 @@ export const listAffiliateCreditEventsForUser = query({
   },
   returns: v.array(
     v.object({
+      kind: v.optional(v.string()),
       amountCents: v.number(),
       currency: v.string(),
       reason: v.string(),
+      externalEventId: v.optional(v.string()),
       createdAt: v.number(),
       referredUserId: v.optional(v.string()),
       conversionId: v.optional(v.string()),
@@ -231,9 +267,11 @@ export const listAffiliateCreditEventsForUser = query({
       .take(limit);
 
     return rows.map((row: any) => ({
+      kind: typeof row.kind === "string" ? row.kind : undefined,
       amountCents: typeof row.amountCents === "number" ? Number(row.amountCents) : 0,
       currency: String(row.currency ?? "USD"),
       reason: String(row.reason ?? ""),
+      externalEventId: typeof row.externalEventId === "string" ? row.externalEventId : undefined,
       createdAt: typeof row.createdAt === "number" ? Number(row.createdAt) : 0,
       referredUserId: typeof row.referredUserId === "string" ? row.referredUserId : undefined,
       conversionId: typeof row.conversionId === "string" ? row.conversionId : undefined,

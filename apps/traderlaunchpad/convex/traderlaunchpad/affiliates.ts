@@ -2,6 +2,8 @@ import { v } from "convex/values";
 import { action, mutation, query } from "../_generated/server";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
+const apiUntyped: any = require("../_generated/api").api;
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const componentsUntyped: any = require("../_generated/api").components;
 
 const readUserKey = async (ctx: any): Promise<string | null> => {
@@ -259,6 +261,218 @@ export const listMyCreditEvents = query({
       { userId, limit },
     );
     return Array.isArray(rowsUnknown) ? (rowsUnknown as any[]) : [];
+  },
+});
+
+const STRIPE_SECRET_KEY_ENV = "STRIPE_SECRET_KEY";
+
+const readStripeSecretKey = (): string => {
+  const key = typeof process.env[STRIPE_SECRET_KEY_ENV] === "string" ? String(process.env[STRIPE_SECRET_KEY_ENV]) : "";
+  const trimmed = key.trim();
+  if (!trimmed) {
+    throw new Error(`Missing ${STRIPE_SECRET_KEY_ENV} env var`);
+  }
+  return trimmed;
+};
+
+export const getMyAffiliatePayoutSettings = action({
+  args: {},
+  returns: v.object({
+    ok: v.boolean(),
+    userId: v.union(v.string(), v.null()),
+    payoutAccount: v.union(
+      v.null(),
+      v.object({
+        userId: v.string(),
+        provider: v.string(),
+        connectAccountId: v.string(),
+        status: v.string(),
+      }),
+    ),
+    payoutPreference: v.union(
+      v.null(),
+      v.object({
+        userId: v.string(),
+        policy: v.string(),
+        currency: v.string(),
+        minPayoutCents: v.number(),
+      }),
+    ),
+    creditBalanceCents: v.number(),
+    upcomingSubscriptionDueCents: v.number(),
+  }),
+  handler: async (ctx) => {
+    const userId = await readUserKey(ctx);
+    if (!userId) {
+      return {
+        ok: true,
+        userId: null,
+        payoutAccount: null,
+        payoutPreference: null,
+        creditBalanceCents: 0,
+        upcomingSubscriptionDueCents: 0,
+      };
+    }
+
+    const payoutAccountUnknown: any = await ctx.runQuery(
+      componentsUntyped.launchthat_ecommerce.payouts.queries.getPayoutAccount,
+      { userId, provider: "stripe" },
+    );
+    const payoutAccount =
+      payoutAccountUnknown && typeof payoutAccountUnknown === "object"
+        ? {
+            userId: String(payoutAccountUnknown.userId ?? ""),
+            provider: String(payoutAccountUnknown.provider ?? ""),
+            connectAccountId: String(payoutAccountUnknown.connectAccountId ?? ""),
+            status: String(payoutAccountUnknown.status ?? ""),
+          }
+        : null;
+
+    const payoutPreferenceUnknown: any = await ctx.runQuery(
+      componentsUntyped.launchthat_ecommerce.payouts.queries.getPayoutPreference,
+      { userId },
+    );
+    const payoutPreference =
+      payoutPreferenceUnknown && typeof payoutPreferenceUnknown === "object"
+        ? {
+            userId: String(payoutPreferenceUnknown.userId ?? ""),
+            policy: String(payoutPreferenceUnknown.policy ?? "payout_only"),
+            currency: String(payoutPreferenceUnknown.currency ?? "USD").toUpperCase(),
+            minPayoutCents:
+              typeof payoutPreferenceUnknown.minPayoutCents === "number"
+                ? Number(payoutPreferenceUnknown.minPayoutCents)
+                : 0,
+          }
+        : null;
+
+    const balUnknown: any = await ctx.runQuery(
+      componentsUntyped.launchthat_affiliates.credit.queries.getCreditBalance,
+      { userId, currency: "USD" },
+    );
+    const creditBalanceCents =
+      typeof balUnknown?.balanceCents === "number" ? Number(balUnknown.balanceCents) : 0;
+
+    let upcomingSubscriptionDueCents = 0;
+    try {
+      const stripeSecretKey = readStripeSecretKey();
+      const dueUnknown: any = await ctx.runAction(
+          componentsUntyped.launchthat_ecommerce.payouts.actions.getUpcomingSubscriptionDueCentsForUser,
+          { stripeSecretKey, userId, currency: "USD" },
+      );
+      upcomingSubscriptionDueCents =
+        typeof dueUnknown?.dueCents === "number" ? Number(dueUnknown.dueCents) : 0;
+    } catch {
+      upcomingSubscriptionDueCents = 0;
+    }
+
+    return {
+      ok: true,
+      userId,
+      payoutAccount,
+      payoutPreference,
+      creditBalanceCents,
+      upcomingSubscriptionDueCents,
+    };
+  },
+});
+
+export const setMyAffiliatePayoutPreference = mutation({
+  args: {
+    policy: v.union(v.literal("payout_only"), v.literal("apply_to_subscription_then_payout")),
+    minPayoutCents: v.optional(v.number()),
+  },
+  returns: v.object({ ok: v.boolean() }),
+  handler: async (ctx, args) => {
+    const userId = await readUserKey(ctx);
+    if (!userId) throw new Error("Unauthorized");
+    await ctx.runMutation(componentsUntyped.launchthat_ecommerce.payouts.mutations.setPayoutPreference, {
+      userId,
+      policy: args.policy,
+      currency: "USD",
+      minPayoutCents: typeof args.minPayoutCents === "number" ? args.minPayoutCents : 0,
+    });
+    return { ok: true };
+  },
+});
+
+export const createMyAffiliatePayoutOnboardingLink = action({
+  args: {
+    refreshUrl: v.string(),
+    returnUrl: v.string(),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    url: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const userId = await readUserKey(ctx);
+    if (!userId) throw new Error("Unauthorized");
+    const stripeSecretKey = readStripeSecretKey();
+
+    // Best-effort: prefill Stripe onboarding using the app-owned `users` table.
+    const viewerUnknown: any = await ctx.runQuery(apiUntyped.viewer.queries.getViewerProfile, {});
+    const email = viewerUnknown && typeof viewerUnknown.email === "string" ? String(viewerUnknown.email).trim() : undefined;
+    const fullName =
+      viewerUnknown && typeof viewerUnknown.name === "string" ? String(viewerUnknown.name).trim() : undefined;
+
+    let websiteUrl: string | undefined;
+    try {
+      const origin = new URL(String(args.returnUrl ?? "")).origin;
+      const parsed = new URL(origin);
+      const protocolOk = parsed.protocol === "https:" || parsed.protocol === "http:";
+      const host = parsed.hostname.toLowerCase();
+      const looksPublic =
+        host !== "localhost" &&
+        host !== "127.0.0.1" &&
+        host !== "::1" &&
+        // crude but effective: require a dot to avoid "localhost"
+        host.includes(".");
+      websiteUrl = protocolOk && looksPublic ? parsed.origin : undefined;
+    } catch {
+      websiteUrl = undefined;
+    }
+
+    const productDescription =
+      "Affiliate marketing and referral commissions for TraderLaunchpad subscriptions.";
+
+    const link: any = await ctx.runAction(
+      componentsUntyped.launchthat_ecommerce.payouts.actions.createStripeConnectOnboardingLinkForUser,
+      {
+        stripeSecretKey,
+        userId,
+        refreshUrl: String(args.refreshUrl ?? ""),
+        returnUrl: String(args.returnUrl ?? ""),
+        email,
+        fullName,
+        businessType: "individual",
+        productDescription,
+        websiteUrl,
+        supportEmail: email,
+        metadata: { app: "traderlaunchpad" },
+      },
+    );
+    const url = String(link?.url ?? "").trim();
+    if (!url) throw new Error("Failed to create onboarding link");
+    return { ok: true, url };
+  },
+});
+
+export const disconnectMyAffiliatePayoutAccount = action({
+  args: {
+    deleteRemote: v.optional(v.boolean()),
+  },
+  returns: v.object({ ok: v.boolean() }),
+  handler: async (ctx, args) => {
+    const userId = await readUserKey(ctx);
+    if (!userId) throw new Error("Unauthorized");
+    const stripeSecretKey = readStripeSecretKey();
+
+    await ctx.runAction(componentsUntyped.launchthat_ecommerce.payouts.actions.disconnectStripePayoutAccountForUser, {
+      stripeSecretKey,
+      userId,
+      deleteRemote: args.deleteRemote !== false,
+    });
+    return { ok: true };
   },
 });
 

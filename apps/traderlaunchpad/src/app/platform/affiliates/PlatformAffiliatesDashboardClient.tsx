@@ -18,6 +18,8 @@ type PlatformAffiliateProfileRow = {
   status: "active" | "disabled";
   createdAt: number;
   updatedAt: number;
+  clicks: number;
+  revenueCents: number;
 };
 
 type PlatformUserRow = {
@@ -32,11 +34,17 @@ const formatNumber = (n: number): string => {
   return Intl.NumberFormat().format(Math.max(0, Math.round(n)));
 };
 
+const formatUsd = (cents: number): string => {
+  const v = Math.round(cents) / 100;
+  return `$${v.toFixed(2)}`;
+};
+
 export const PlatformAffiliatesDashboardClient = () => {
   const router = useRouter();
 
   const summary = useQuery(api.platform.affiliates.getSummary, { daysBack: 30 });
-  const profiles = useQuery(api.platform.affiliates.listProfiles, { limit: 500 });
+  const profiles = useQuery(api.platform.affiliates.listProfilesWithMetrics, { limit: 500, daysBack: 30 });
+  const revenue = useQuery(api.platform.affiliates.getRevenue, { monthsBack: 12 });
   const users = useQuery(api.coreTenant.platformUsers.listUsers, { limit: 500 }) as
     | PlatformUserRow[]
     | undefined;
@@ -88,6 +96,24 @@ export const PlatformAffiliatesDashboardClient = () => {
           <Badge variant={p.status === "disabled" ? "secondary" : "default"}>
             {p.status}
           </Badge>
+        ),
+        sortable: true,
+      },
+      {
+        id: "revenue",
+        header: "Revenue (30d)",
+        accessorKey: "revenueCents",
+        cell: (p: PlatformAffiliateProfileRow) => (
+          <div className="whitespace-nowrap text-xs font-medium">{formatUsd(p.revenueCents)}</div>
+        ),
+        sortable: true,
+      },
+      {
+        id: "clicks",
+        header: "Clicks (30d)",
+        accessorKey: "clicks",
+        cell: (p: PlatformAffiliateProfileRow) => (
+          <div className="whitespace-nowrap text-xs">{formatNumber(p.clicks)}</div>
         ),
         sortable: true,
       },
@@ -172,6 +198,43 @@ export const PlatformAffiliatesDashboardClient = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="overflow-hidden">
+        <CardHeader className="border-b p-4">
+          <CardTitle className="text-base">Affiliate revenue</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 p-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <div className="text-muted-foreground text-xs">All-time</div>
+              <div className="text-lg font-semibold">
+                {revenue ? formatUsd(revenue.allTimeRevenueCents) : "—"}
+              </div>
+            </div>
+            <div className="text-muted-foreground text-xs">
+              {revenue ? `Last ${revenue.monthsBack} months` : "—"}
+            </div>
+          </div>
+
+          <div className="flex h-28 items-end gap-2">
+            {(revenue?.byMonth ?? []).map((m) => {
+              const max = Math.max(...(revenue?.byMonth ?? []).map((x) => x.revenueCents), 1);
+              const heightPct = Math.max(2, Math.round((m.revenueCents / max) * 100));
+              const label = new Date(m.monthStartMs).toLocaleString(undefined, { month: "short" });
+              return (
+                <div key={m.monthStartMs} className="flex flex-1 flex-col items-center gap-1">
+                  <div
+                    className="w-full rounded-sm bg-primary/80"
+                    style={{ height: `${heightPct}%` }}
+                    title={`${label}: ${formatUsd(m.revenueCents)}`}
+                  />
+                  <div className="text-muted-foreground text-[10px]">{label}</div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="overflow-hidden">
         <CardHeader className="border-b p-4">

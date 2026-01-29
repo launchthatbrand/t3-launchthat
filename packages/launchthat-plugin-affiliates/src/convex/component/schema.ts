@@ -77,14 +77,18 @@ export default defineSchema({
     occurredAt: v.number(),
   })
     .index("by_externalId_and_kind", ["externalId", "kind"])
+    .index("by_occurredAt", ["occurredAt"])
     .index("by_referrerUserId_and_occurredAt", ["referrerUserId", "occurredAt"])
     .index("by_referredUserId", ["referredUserId"]),
 
   affiliateCreditEvents: defineTable({
     userId: v.string(),
+    kind: v.string(),
     amountCents: v.number(),
     currency: v.string(),
     reason: v.string(),
+    externalEventId: v.string(),
+    source: v.optional(v.string()),
     referrerUserId: v.optional(v.string()),
     referredUserId: v.optional(v.string()),
     conversionId: v.optional(v.string()),
@@ -92,6 +96,7 @@ export default defineSchema({
   })
     .index("by_userId_and_createdAt", ["userId", "createdAt"])
     .index("by_userId_and_reason", ["userId", "reason"])
+    .index("by_userId_and_externalEventId", ["userId", "externalEventId"])
     .index("by_reason", ["reason"]),
 
   affiliateBenefits: defineTable({
