@@ -59,6 +59,7 @@
     "framer-motion": "^12.12.2",
     "jose": "5.9.6",
     "launchthat-plugin-canvas": "workspace:*",
+    "launchthat-plugin-affiliates": "workspace:*",
     "launchthat-plugin-core-tenant": "workspace:*",
     "launchthat-plugin-discord": "workspace:*",
     "launchthat-plugin-email": "workspace:*",

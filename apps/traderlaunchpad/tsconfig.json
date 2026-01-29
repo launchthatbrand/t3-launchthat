@@ -62,7 +62,12 @@
       "launchthat-plugin-crm/*": [
         "../../packages/launchthat-plugin-crm/src/*"
       ],
-
+      "launchthat-plugin-affiliates": [
+        "../../packages/launchthat-plugin-affiliates/src/index.ts"
+      ],
+      "launchthat-plugin-affiliates/*": [
+        "../../packages/launchthat-plugin-affiliates/src/*"
+      ],
     },
     "plugins": [
       {

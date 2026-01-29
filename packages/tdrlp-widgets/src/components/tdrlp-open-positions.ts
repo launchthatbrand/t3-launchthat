@@ -135,14 +135,14 @@ export class TdrLpOpenPositions extends LitElement {
       <div class="card">
         <div class="head">Open positions</div>
         ${this.positions.length === 0
-          ? html`<div class="state">No open positions.</div>`
-          : html`
+        ? html`<div class="state">No open positions.</div>`
+        : html`
               ${this.positions.map((p) => {
-                const symbol = p.symbol ?? "—";
-                const side = p.side ?? "—";
-                const qty = typeof p.qty === "number" ? p.qty : null;
-                const avg = typeof p.avgPrice === "number" ? p.avgPrice : null;
-                return html`
+          const symbol = p.symbol ?? "—";
+          const side = p.side ?? "—";
+          const qty = typeof p.qty === "number" ? p.qty : null;
+          const avg = typeof p.avgPrice === "number" ? p.avgPrice : null;
+          return html`
                   <div class="row">
                     <div>
                       <div class="sym">${symbol}</div>
@@ -155,7 +155,7 @@ export class TdrLpOpenPositions extends LitElement {
                     <div><span class="pill">${side}</span></div>
                   </div>
                 `;
-              })}
+        })}
             `}
       </div>
     `;

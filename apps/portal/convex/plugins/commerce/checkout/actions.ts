@@ -76,6 +76,32 @@ const commerceCartMutations = (
   }
 ).launchthat_ecommerce.cart.mutations;
 
+interface AffiliatesConversionsMutations {
+  recordPaidConversion: unknown;
+}
+interface AffiliatesRewardsMutations {
+  grantSubscriptionDiscountBenefit: unknown;
+}
+interface AffiliatesRewardsQueries {
+  listActiveBenefitsForUser: unknown;
+}
+
+const affiliatesConversionsMutations = (
+  components as unknown as {
+    launchthat_affiliates: { conversions: AffiliatesConversionsMutations };
+  }
+).launchthat_affiliates.conversions;
+const affiliatesRewardsMutations = (
+  components as unknown as {
+    launchthat_affiliates: { rewards: AffiliatesRewardsMutations };
+  }
+).launchthat_affiliates.rewards;
+const affiliatesRewardsQueries = (
+  components as unknown as {
+    launchthat_affiliates: { rewards: AffiliatesRewardsQueries };
+  }
+).launchthat_affiliates.rewards;
+
 interface CrmContactsQueries {
   getContactIdForUser: unknown;
 }
@@ -472,6 +498,40 @@ export const placeOrder = action({
           typeof trialDaysRaw === "number" && Number.isFinite(trialDaysRaw)
             ? Math.max(0, Math.floor(trialDaysRaw))
             : 0;
+
+        // Apply affiliate subscription discount benefit (if any) to the *buyer*.
+        // This affects both the first-month charge (if any) and the ARB recurring amount.
+        if (normalizedUserId && subscriptionAmountMonthlyCents > 0) {
+          try {
+            const benefits = await ctx.runQuery(
+              affiliatesRewardsQueries.listActiveBenefitsForUser as any,
+              { userId: normalizedUserId },
+            );
+            let amountOffCentsMonthly = 0;
+            if (Array.isArray(benefits)) {
+              for (const b of benefits) {
+                if (!b || typeof b !== "object") continue;
+                const kind = asString((b as any).kind).trim();
+                if (kind !== "subscription_discount") continue;
+                const value = asRecord((b as any).value);
+                const offRaw = value.amountOffCentsMonthly;
+                const off =
+                  typeof offRaw === "number" && Number.isFinite(offRaw)
+                    ? Math.max(0, Math.floor(offRaw))
+                    : 0;
+                amountOffCentsMonthly = Math.max(amountOffCentsMonthly, off);
+              }
+            }
+            if (amountOffCentsMonthly > 0) {
+              subscriptionAmountMonthlyCents = Math.max(
+                0,
+                subscriptionAmountMonthlyCents - amountOffCentsMonthly,
+              );
+            }
+          } catch {
+            // ignore affiliate discount lookup failures (checkout must still work)
+          }
+        }
 
         // ARB start date: if trialDays is set, delay first recurring payment by that many days.
         // Otherwise, we charge the first month immediately and start ARB billing ~30 days later.
@@ -1097,6 +1157,68 @@ export const placeOrder = action({
       });
     } else {
       throw new Error(`Unsupported payment method: ${args.paymentMethodId}`);
+    }
+
+    // Affiliate conversion tracking (optional): on first successful paid checkout, record
+    // a paid conversion for the buyer (referred user). This will (idempotently) grant
+    // discount benefits to the referrer if they are currently a "pro" subscriber.
+    try {
+      if (normalizedUserId && total > 0) {
+        const kind = subscriptionPostId ? "paid_subscription" : "paid_order";
+        const conv = await ctx.runMutation(
+          affiliatesConversionsMutations.recordPaidConversion as any,
+          {
+            kind,
+            externalId: orderId,
+            referredUserId: normalizedUserId,
+            amountCents: Math.max(0, Math.round(total * 100)),
+            currency,
+            occurredAt: now,
+          },
+        );
+
+        const referrerUserId = asString((conv as any)?.referrerUserId).trim();
+        if (referrerUserId) {
+          const referrerSubId = (await ctx.runQuery(
+            commercePostsQueries.findFirstPostIdByMetaKeyValue as any,
+            {
+              key: "subscription.customerUserId",
+              value: referrerUserId,
+              organizationId: args.organizationId,
+              postTypeSlug: "subscription",
+            },
+          )) as string | null;
+
+          if (referrerSubId) {
+            const referrerSubMeta = await ctx.runQuery(
+              apiAny.plugins.commerce.queries.getPostMeta,
+              {
+                postId: referrerSubId,
+                organizationId: args.organizationId,
+              },
+            );
+            const amountMonthlyRaw = readMetaValue(
+              referrerSubMeta,
+              "subscription.amountMonthly",
+            );
+            const amountMonthlyCents =
+              typeof amountMonthlyRaw === "number" &&
+              Number.isFinite(amountMonthlyRaw)
+                ? Math.max(0, Math.floor(amountMonthlyRaw))
+                : 0;
+
+            const isPro = amountMonthlyCents >= 4999;
+            if (isPro) {
+              await ctx.runMutation(
+                affiliatesRewardsMutations.grantSubscriptionDiscountBenefit as any,
+                { userId: referrerUserId, amountOffCentsMonthly: 1000 },
+              );
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[checkout] affiliate conversion tracking failed (continuing)", err);
     }
 
     // Discord role sync (optional): enqueue and process a sync job (non-blocking).

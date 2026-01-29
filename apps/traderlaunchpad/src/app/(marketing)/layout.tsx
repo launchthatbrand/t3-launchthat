@@ -2,6 +2,7 @@ import { GridLines } from "~/components/background/GridLines";
 import React from "react";
 import { ShootingStars } from "@acme/ui";
 import { headers } from "next/headers";
+import { AffiliateRefCaptureClient } from "~/components/affiliates/AffiliateRefCaptureClient";
 
 export default async function MarketingLayout({
     children,
@@ -18,6 +19,7 @@ export default async function MarketingLayout({
                 <div className="pointer-events-none absolute inset-0">
                     <GridLines />
                 </div>
+                <AffiliateRefCaptureClient />
                 {isMobileUa ? null : (
                     <ShootingStars
                         minSpeed={10}

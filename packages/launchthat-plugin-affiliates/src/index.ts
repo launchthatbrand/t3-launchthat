@@ -5,4 +5,4 @@ export {
   type CreatePluginDefinitionOptions,
   affiliatesPlugin,
 } from "./plugin";
-export default affiliatesPlugin;
+export { affiliatesPlugin as default } from "./plugin";

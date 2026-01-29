@@ -139,8 +139,8 @@ export class TdrLpMyTrades extends LitElement {
       <div class="card">
         <div class="head">Recent trades</div>
         ${this.trades.length === 0
-          ? html`<div class="state">No trades found.</div>`
-          : html`
+        ? html`<div class="state">No trades found.</div>`
+        : html`
               <table>
                 <thead>
                   <tr>
@@ -152,7 +152,7 @@ export class TdrLpMyTrades extends LitElement {
                 </thead>
                 <tbody>
                   ${this.trades.map(
-                    (t) => html`
+          (t) => html`
                       <tr>
                         <td>${fmtTime(t.closedAt)}</td>
                         <td>${t.symbol}</td>
@@ -160,7 +160,7 @@ export class TdrLpMyTrades extends LitElement {
                         <td><span class="pill">${t.reviewStatus}</span></td>
                       </tr>
                     `,
-                  )}
+        )}
                 </tbody>
               </table>
             `}

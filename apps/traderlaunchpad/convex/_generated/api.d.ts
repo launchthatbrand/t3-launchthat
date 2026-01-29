@@ -79,6 +79,7 @@ import type * as pushSubscriptions_queries from "../pushSubscriptions/queries.js
 import type * as shortlinks_mutations from "../shortlinks/mutations.js";
 import type * as shortlinks_queries from "../shortlinks/queries.js";
 import type * as traderlaunchpad_actions from "../traderlaunchpad/actions.js";
+import type * as traderlaunchpad_affiliates from "../traderlaunchpad/affiliates.js";
 import type * as traderlaunchpad_debug from "../traderlaunchpad/debug.js";
 import type * as traderlaunchpad_lib_resolve from "../traderlaunchpad/lib/resolve.js";
 import type * as traderlaunchpad_mutations from "../traderlaunchpad/mutations.js";
@@ -179,6 +180,7 @@ declare const fullApi: ApiFromModules<{
   "shortlinks/mutations": typeof shortlinks_mutations;
   "shortlinks/queries": typeof shortlinks_queries;
   "traderlaunchpad/actions": typeof traderlaunchpad_actions;
+  "traderlaunchpad/affiliates": typeof traderlaunchpad_affiliates;
   "traderlaunchpad/debug": typeof traderlaunchpad_debug;
   "traderlaunchpad/lib/resolve": typeof traderlaunchpad_lib_resolve;
   "traderlaunchpad/mutations": typeof traderlaunchpad_mutations;
@@ -4738,6 +4740,139 @@ export declare const components: {
           }>
         >;
       };
+    };
+  };
+  launchthat_affiliates: {
+    conversions: {
+      recordPaidConversion: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          amountCents: number;
+          currency: string;
+          externalId: string;
+          kind: "paid_subscription" | "paid_order";
+          occurredAt?: number;
+          proDiscountAmountOffCentsMonthly?: number;
+          referredUserId: string;
+          referrerIsPro?: boolean;
+        },
+        {
+          created: boolean;
+          discountGranted?: boolean;
+          ok: boolean;
+          referrerUserId: string | null;
+        }
+      >;
+    };
+    profiles: {
+      createOrGetMyAffiliateProfile: FunctionReference<
+        "mutation",
+        "internal",
+        { userId: string },
+        { referralCode: string; status: "active" | "disabled"; userId: string }
+      >;
+      getAffiliateProfileByReferralCode: FunctionReference<
+        "query",
+        "internal",
+        { referralCode: string },
+        null | {
+          referralCode: string;
+          status: "active" | "disabled";
+          userId: string;
+        }
+      >;
+      getMyAffiliateStats: FunctionReference<
+        "query",
+        "internal",
+        { nowMs?: number; userId: string },
+        {
+          activations30d: number;
+          clicks30d: number;
+          conversions30d: number;
+          creditBalanceCents: number;
+          referralCode: string | null;
+          signups30d: number;
+          userId: string;
+        }
+      >;
+    };
+    rewards: {
+      index: {
+        evaluateRewardsForReferrer: FunctionReference<
+          "mutation",
+          "internal",
+          { referrerUserId: string },
+          null
+        >;
+        grantSubscriptionDiscountBenefit: FunctionReference<
+          "mutation",
+          "internal",
+          { amountOffCentsMonthly?: number; userId: string },
+          { created: boolean; ok: boolean }
+        >;
+        listActiveBenefitsForUser: FunctionReference<
+          "query",
+          "internal",
+          { userId: string },
+          Array<{
+            endsAt?: number;
+            kind: string;
+            startsAt: number;
+            status: string;
+            value: any;
+          }>
+        >;
+        redeemCredit: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            amountCents: number;
+            currency?: string;
+            reason?: string;
+            userId: string;
+          },
+          { balanceCents: number; ok: boolean }
+        >;
+      };
+    };
+    tracking: {
+      attributeSignup: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          attributionWindowDays?: number;
+          nowMs?: number;
+          referralCode?: string;
+          referredUserId: string;
+          visitorId?: string;
+        },
+        null | {
+          expiresAt: number;
+          referralCode: string;
+          referredUserId: string;
+          referrerUserId: string;
+        }
+      >;
+      markActivated: FunctionReference<
+        "mutation",
+        "internal",
+        { referredUserId: string; source?: "email_verified" | "manual" },
+        { activated: boolean; ok: boolean; referrerUserId: string | null }
+      >;
+      recordClick: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          ipHash?: string;
+          landingPath?: string;
+          referralCode: string;
+          referrer?: string;
+          uaHash?: string;
+          visitorId: string;
+        },
+        null
+      >;
     };
   };
   launchthat_pricedata: {

@@ -129,6 +129,7 @@
     "jose": "5.9.6",
     "katex": "^0.16.22",
     "launchthat-ai": "workspace:*",
+    "launchthat-plugin-affiliates": "workspace:*",
     "launchthat-plugin-calendar": "workspace:*",
     "launchthat-plugin-core": "workspace:*",
     "launchthat-plugin-core-tenant": "workspace:*",

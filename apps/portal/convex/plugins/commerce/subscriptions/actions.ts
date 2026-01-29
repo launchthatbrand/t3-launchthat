@@ -29,6 +29,24 @@ const commercePostsMutations = (
   }
 ).launchthat_ecommerce.posts.mutations;
 
+interface AffiliatesConversionsMutations {
+  recordPaidConversion: unknown;
+}
+interface AffiliatesRewardsMutations {
+  grantSubscriptionDiscountBenefit: unknown;
+}
+
+const affiliatesConversionsMutations = (
+  components as unknown as {
+    launchthat_affiliates: { conversions: AffiliatesConversionsMutations };
+  }
+).launchthat_affiliates.conversions;
+const affiliatesRewardsMutations = (
+  components as unknown as {
+    launchthat_affiliates: { rewards: AffiliatesRewardsMutations };
+  }
+).launchthat_affiliates.rewards;
+
 const asString = (value: unknown): string =>
   typeof value === "string" ? value : "";
 const asBoolean = (value: unknown): boolean => value === true;
@@ -57,6 +75,7 @@ const SUB_META_KEYS = {
   amountMonthlyCents: "subscription.amountMonthly",
   currency: "subscription.currency",
   customerEmail: "subscription.customerEmail",
+  customerUserId: "subscription.customerUserId",
   productId: "subscription.productId",
   lastOrderId: "subscription.lastOrderId",
   currentPeriodStart: "subscription.currentPeriodStart",
@@ -216,6 +235,8 @@ export const processAuthnetWebhook = action({
     const productId = asString(getMetaValue(subMeta, SUB_META_KEYS.productId)).trim();
     const customerEmail =
       asString(getMetaValue(subMeta, SUB_META_KEYS.customerEmail)).trim() || "";
+    const customerUserId =
+      asString(getMetaValue(subMeta, SUB_META_KEYS.customerUserId)).trim() || "";
     const currency =
       asString(getMetaValue(subMeta, SUB_META_KEYS.currency)).trim() || "USD";
     const amountMonthlyCentsRaw = getMetaValue(subMeta, SUB_META_KEYS.amountMonthlyCents);
@@ -290,6 +311,58 @@ export const processAuthnetWebhook = action({
       key: SUB_META_KEYS.currentPeriodEnd,
       value: addDaysUtc(new Date(), 30).getTime(),
     });
+
+    // Affiliate conversion tracking (optional): a successful subscription payment
+    // is considered a paid conversion for the subscriber (referred user).
+    try {
+      if (customerUserId) {
+        const conv = await ctx.runMutation(
+          affiliatesConversionsMutations.recordPaidConversion as any,
+          {
+            kind: "paid_subscription",
+            externalId: transactionId || orderId,
+            referredUserId: customerUserId,
+            amountCents: Math.max(0, Math.round(orderAmount * 100)),
+            currency,
+            occurredAt: now,
+          },
+        );
+
+        const referrerUserId = asString((conv as any)?.referrerUserId).trim();
+        if (referrerUserId) {
+          const referrerSubId = (await ctx.runQuery(
+            commercePostsQueries.findFirstPostIdByMetaKeyValue as any,
+            {
+              key: SUB_META_KEYS.customerUserId,
+              value: referrerUserId,
+              organizationId: args.organizationId,
+              postTypeSlug: "subscription",
+            },
+          )) as string | null;
+
+          if (referrerSubId) {
+            const meta = (await ctx.runQuery(commercePostsQueries.getPostMeta as any, {
+              postId: referrerSubId,
+              organizationId: args.organizationId,
+            })) as { key: string; value: unknown }[];
+            const amountMonthlyRaw = getMetaValue(meta, SUB_META_KEYS.amountMonthlyCents);
+            const amountMonthlyCents =
+              typeof amountMonthlyRaw === "number" && Number.isFinite(amountMonthlyRaw)
+                ? Math.max(0, Math.floor(amountMonthlyRaw))
+                : 0;
+            const isPro = amountMonthlyCents >= 4999;
+            if (isPro) {
+              await ctx.runMutation(
+                affiliatesRewardsMutations.grantSubscriptionDiscountBenefit as any,
+                { userId: referrerUserId, amountOffCentsMonthly: 1000 },
+              );
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[authnet webhook] affiliate conversion tracking failed (continuing)", err);
+    }
 
     return { ok: true, createdOrderId: orderId, reason: null };
   },
