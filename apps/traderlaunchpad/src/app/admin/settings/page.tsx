@@ -7,6 +7,7 @@ const allowedTabs = new Set([
   "notifications",
   "billing",
   "organizations",
+  "widgets",
 ]);
 
 export default async function AdminSettingsPage(props: {

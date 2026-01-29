@@ -11,6 +11,7 @@ const tabs: Array<{ href: string; label: string }> = [
   { href: "/admin/settings/notifications", label: "Notifications" },
   { href: "/admin/settings/billing", label: "Billing" },
   { href: "/admin/settings/organizations", label: "Organizations" },
+  { href: "/admin/settings/widgets", label: "Widgets" },
 ];
 
 export const SettingsTabs = () => {

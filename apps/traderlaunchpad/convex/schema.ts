@@ -96,6 +96,31 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 
+  widgetInstallations: defineTable({
+    userId: v.string(),
+    widgetType: v.union(
+      v.literal("profileCard"),
+      v.literal("equityCurve"),
+      v.literal("journalMetrics"),
+      v.literal("myTrades"),
+      v.literal("openPositions"),
+    ),
+    enabled: v.boolean(),
+    /**
+     * MVP: stored as plaintext so we can validate quickly.
+     * Later: migrate to storing a hash and only displaying the secret once.
+     */
+    apiKey: v.string(),
+    displayName: v.optional(v.string()),
+    // Widget-specific configuration + styling defaults.
+    config: v.optional(v.any()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastUsedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_and_widgetType", ["userId", "widgetType"]),
+
   /**
    * User-controlled public visibility preferences for `/u/:username/*` pages.
    *

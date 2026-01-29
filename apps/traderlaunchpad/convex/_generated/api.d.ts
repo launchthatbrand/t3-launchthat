@@ -88,6 +88,9 @@ import type * as traderlaunchpad_types from "../traderlaunchpad/types.js";
 import type * as userMedia from "../userMedia.js";
 import type * as viewer_mutations from "../viewer/mutations.js";
 import type * as viewer_queries from "../viewer/queries.js";
+import type * as widgets_auth from "../widgets/auth.js";
+import type * as widgets_data from "../widgets/data.js";
+import type * as widgets_installations from "../widgets/installations.js";
 import type * as workflow from "../workflow.js";
 
 import type {
@@ -185,6 +188,9 @@ declare const fullApi: ApiFromModules<{
   userMedia: typeof userMedia;
   "viewer/mutations": typeof viewer_mutations;
   "viewer/queries": typeof viewer_queries;
+  "widgets/auth": typeof widgets_auth;
+  "widgets/data": typeof widgets_data;
+  "widgets/installations": typeof widgets_installations;
   workflow: typeof workflow;
 }>;
 declare const fullApiWithMounts: typeof fullApi;
