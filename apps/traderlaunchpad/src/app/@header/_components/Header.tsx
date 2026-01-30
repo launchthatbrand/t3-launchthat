@@ -22,10 +22,10 @@ export function Header() {
     //   name: "Prop Firms",
     //   link: "/firms",
     // },
-    // {
-    //   name: "Leaderboards",
-    //   link: "/leaderboards",
-    // },
+    {
+      name: "About",
+      link: "/about",
+    },
     {
       name: "Blog",
       link: "#blog",

@@ -9,8 +9,8 @@ import Link from "next/link";
 import React from "react";
 import { api } from "@convex-config/_generated/api";
 import { cn } from "~/lib/utils";
-import { usePathname } from "next/navigation";
 import { useGlobalPermissions } from "~/components/access/FeatureAccessGate";
+import { usePathname } from "next/navigation";
 
 type UnknownRecord = Record<string, unknown>;
 const isRecord = (value: unknown): value is UnknownRecord =>
@@ -45,9 +45,9 @@ export function ConnectionsShell(props: Props) {
     shouldQuery && !isPlatform ? {} : "skip",
   ) as
     | {
-        isSignedIn: boolean;
-        features: { journal: boolean };
-      }
+      isSignedIn: boolean;
+      features: { journal: boolean };
+    }
     | undefined;
   const canUseJournal =
     isPlatform ? true : Boolean(isAdmin) || Boolean(entitlements?.features?.journal);
@@ -74,7 +74,7 @@ export function ConnectionsShell(props: Props) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-      <aside className="space-y-4">
+      <aside className="space-y-4 overflow-hidden">
         <div className="flex items-center justify-between gap-3">
           <div className="text-sm font-semibold text-foreground/80">Connections</div>
           <AddBrokerConnectionDialog triggerClassName="h-8 px-3 text-xs" />
@@ -134,7 +134,7 @@ export function ConnectionsShell(props: Props) {
                     )}
                   >
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-foreground/85">
+                      <div className="block max-w-full truncate text-xs font-semibold text-foreground/85 sm:text-sm">
                         {typeof row.name === "string" && row.name.trim()
                           ? row.name
                           : `Account ${toNumber(row.accNum) ?? "—"}`}

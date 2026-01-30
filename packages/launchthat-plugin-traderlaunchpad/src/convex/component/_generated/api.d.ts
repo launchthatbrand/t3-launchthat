@@ -469,6 +469,12 @@ export type Mounts = {
         { organizationId: string; userId: string },
         null
       >;
+      deleteConnectionAccountsByConnectionId: FunctionReference<
+        "mutation",
+        "public",
+        { connectionId: string; organizationId: string; userId: string },
+        { deleted: number }
+      >;
       setConnectionSelectedAccount: FunctionReference<
         "mutation",
         "public",
@@ -958,6 +964,28 @@ export type Mounts = {
           ordersPatched: number;
           positionsPatched: number;
           tradeIdeaGroupsPatched: number;
+        }
+      >;
+      deleteTradeDataForConnection: FunctionReference<
+        "mutation",
+        "public",
+        {
+          accountIds?: Array<string>;
+          connectionId: string;
+          maxDeletesPerTable?: number;
+          organizationId: string;
+          userId: string;
+        },
+        {
+          tradeAccountStates: number;
+          tradeExecutions: number;
+          tradeIdeaEvents: number;
+          tradeIdeaGroups: number;
+          tradeIdeaNotes: number;
+          tradeOrders: number;
+          tradeOrdersHistory: number;
+          tradePositions: number;
+          tradeRealizationEvents: number;
         }
       >;
       upsertTradeAccountState: FunctionReference<

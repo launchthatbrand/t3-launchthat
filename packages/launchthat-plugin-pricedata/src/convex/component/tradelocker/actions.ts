@@ -101,6 +101,22 @@ const tradeLockerAllAccounts = async (args: {
   return { ok: res.ok, status: res.status, text: res.text, accounts, json: res.json };
 };
 
+const tradeLockerAccountState = async (args: {
+  baseUrl: string;
+  accessToken: string;
+  accNum: number;
+  accountId: string;
+  developerKey?: string;
+}): Promise<{ ok: boolean; status: number; text: string; json: any }> => {
+  return await tradeLockerApi({
+    baseUrl: args.baseUrl,
+    accessToken: args.accessToken,
+    accNum: args.accNum,
+    path: `/trade/accounts/${encodeURIComponent(args.accountId)}/state`,
+    developerKey: args.developerKey,
+  });
+};
+
 export const fetchAllAccounts = action({
   args: {
     baseUrl: v.string(),
@@ -172,6 +188,84 @@ export const fetchAllAccounts = action({
       refreshed,
       textPreview: res.text.slice(0, 500),
       error: res.ok ? undefined : "Failed to fetch all-accounts from TradeLocker.",
+    };
+  },
+});
+
+export const fetchAccountState = action({
+  args: {
+    baseUrl: v.string(),
+    accessToken: v.string(),
+    refreshToken: v.optional(v.string()),
+    accNum: v.number(),
+    accountId: v.string(),
+    developerKey: v.optional(v.string()),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    status: v.number(),
+    accountState: v.any(),
+    refreshed: v.optional(
+      v.object({
+        accessToken: v.string(),
+        refreshToken: v.string(),
+        expireDateMs: v.optional(v.number()),
+      }),
+    ),
+    textPreview: v.optional(v.string()),
+    error: v.optional(v.string()),
+  }),
+  handler: async (_ctx, args) => {
+    let accessToken = args.accessToken;
+    let refreshed:
+      | { accessToken: string; refreshToken: string; expireDateMs?: number }
+      | undefined;
+
+    let res = await tradeLockerAccountState({
+      baseUrl: args.baseUrl,
+      accessToken,
+      accNum: args.accNum,
+      accountId: args.accountId,
+      developerKey: args.developerKey,
+    });
+
+    if ((res.status === 401 || res.status === 403) && args.refreshToken) {
+      const refreshRes = await tradeLockerRefreshTokens({
+        baseUrl: args.baseUrl,
+        refreshToken: args.refreshToken,
+      });
+      if (refreshRes.ok && refreshRes.accessToken && refreshRes.refreshToken) {
+        refreshed = {
+          accessToken: refreshRes.accessToken,
+          refreshToken: refreshRes.refreshToken,
+          expireDateMs: refreshRes.expireDateMs,
+        };
+        accessToken = refreshRes.accessToken;
+        res = await tradeLockerAccountState({
+          baseUrl: args.baseUrl,
+          accessToken,
+          accNum: args.accNum,
+          accountId: args.accountId,
+          developerKey: args.developerKey,
+        });
+      }
+    }
+
+    if (!res.ok) {
+      console.log("[pricedata.tradelocker.fetchAccountState] failed", {
+        baseUrl: args.baseUrl,
+        status: res.status,
+        textPreview: res.text.slice(0, 500),
+      });
+    }
+
+    return {
+      ok: res.ok,
+      status: res.status,
+      accountState: res.json ?? null,
+      refreshed,
+      textPreview: res.text.slice(0, 500),
+      error: res.ok ? undefined : "Failed to fetch account state from TradeLocker.",
     };
   },
 });

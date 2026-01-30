@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@acme/ui/card";
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
+import { Checkbox } from "@acme/ui/checkbox";
 import { Plug } from "lucide-react";
 import { TradeLockerAccountsList } from "./TradeLockerAccountsList";
 import { TradeLockerConnectFlow } from "./TradeLockerConnectFlow";
@@ -41,6 +42,8 @@ export function TradeLockerProviderCard(props: TradeLockerProviderCardProps) {
   );
 
   const [showConnect, setShowConnect] = React.useState(false);
+  const [showDisconnectDialog, setShowDisconnectDialog] = React.useState(false);
+  const [deleteDataOnDisconnect, setDeleteDataOnDisconnect] = React.useState(false);
   const [disconnecting, setDisconnecting] = React.useState(false);
   const [syncing, setSyncing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -58,7 +61,7 @@ export function TradeLockerProviderCard(props: TradeLockerProviderCardProps) {
     setDisconnecting(true);
     setError(null);
     try {
-      await disconnect({});
+      await disconnect({ deleteData: deleteDataOnDisconnect });
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -149,17 +152,61 @@ export function TradeLockerProviderCard(props: TradeLockerProviderCardProps) {
         ) : null}
 
         <Dialog open={showConnect} onOpenChange={setShowConnect}>
-          <DialogContent className="max-w-xl">
-            <DialogHeader>
-              <DialogTitle>Connect TradeLocker</DialogTitle>
-              <DialogDescription>
-                Enter your TradeLocker credentials to fetch accounts, then select one to connect.
-              </DialogDescription>
-            </DialogHeader>
+          <DialogContent
+            className="max-w-xl"
+            onInteractOutside={(event) => event.preventDefault()}
+            onPointerDownOutside={(event) => event.preventDefault()}
+            onFocusOutside={(event) => event.preventDefault()}
+            onEscapeKeyDown={(event) => event.preventDefault()}
+          >
             <TradeLockerConnectFlow
               onCancel={() => setShowConnect(false)}
               onSuccess={() => setShowConnect(false)}
             />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
+          <DialogContent
+            className="max-w-lg"
+            onInteractOutside={(event) => event.preventDefault()}
+            onPointerDownOutside={(event) => event.preventDefault()}
+            onFocusOutside={(event) => event.preventDefault()}
+            onEscapeKeyDown={(event) => event.preventDefault()}
+          >
+            <DialogHeader>
+              <DialogTitle>Disconnect TradeLocker</DialogTitle>
+              <DialogDescription>
+                Disconnecting will stop syncs. You can optionally remove imported broker data.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 rounded-md border border-white/10 bg-black/20 p-3 text-xs text-white/70">
+                <Checkbox
+                  id="tl-delete-data"
+                  checked={deleteDataOnDisconnect}
+                  onCheckedChange={(v) => setDeleteDataOnDisconnect(Boolean(v))}
+                />
+                <label htmlFor="tl-delete-data" className="cursor-pointer">
+                  Delete imported broker data (trades, orders, positions, account state).
+                </label>
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowDisconnectDialog(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-red-600 text-white hover:bg-red-700"
+                  onClick={async () => {
+                    await handleDisconnect();
+                    setShowDisconnectDialog(false);
+                  }}
+                  disabled={disconnecting}
+                >
+                  {disconnecting ? "Disconnecting..." : "Disconnect"}
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 
@@ -175,10 +222,10 @@ export function TradeLockerProviderCard(props: TradeLockerProviderCardProps) {
           type="button"
           variant="outline"
           className="text-red-500 hover:bg-red-50 hover:text-red-600"
-          onClick={handleDisconnect}
+          onClick={() => setShowDisconnectDialog(true)}
           disabled={!isConnected || disconnecting}
         >
-          {disconnecting ? "Disconnecting..." : "Disconnect"}
+          Disconnect
         </Button>
         <Button
           type="button"

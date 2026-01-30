@@ -486,13 +486,64 @@ export const refreshMyTradeLockerAccountConfig = action({
 });
 
 export const disconnectTradeLocker = action({
-  args: {},
+  args: {
+    deleteData: v.optional(v.boolean()),
+  },
   returns: v.object({
     ok: v.boolean(),
+    deleted: v.optional(v.any()),
   }),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const organizationId = resolveOrganizationId();
     const userId = await resolveViewerUserId(ctx);
+
+    let deleted: any = null;
+
+    if (args.deleteData) {
+      const connection = await ctx.runQuery(traderlaunchpadConnectionsQueries.getMyConnection, {
+        organizationId,
+        userId,
+      });
+      if (connection?._id) {
+        const accounts = await ctx.runQuery(
+          traderlaunchpadConnectionsQueries.listMyConnectionAccounts,
+          {
+            organizationId,
+            userId,
+            connectionId: connection._id,
+          },
+        );
+        const accountIds = Array.isArray(accounts)
+          ? accounts.map((row: any) => String(row?.accountId ?? "")).filter(Boolean)
+          : [];
+        if (
+          typeof connection.selectedAccountId === "string" &&
+          connection.selectedAccountId.trim() &&
+          !accountIds.includes(connection.selectedAccountId)
+        ) {
+          accountIds.push(connection.selectedAccountId);
+        }
+
+        deleted = await ctx.runMutation(
+          componentsUntyped.launchthat_traderlaunchpad.raw.mutations.deleteTradeDataForConnection,
+          {
+            organizationId,
+            userId,
+            connectionId: connection._id,
+            accountIds,
+          },
+        );
+
+        await ctx.runMutation(
+          traderlaunchpadConnectionsMutations.deleteConnectionAccountsByConnectionId,
+          {
+            organizationId,
+            userId,
+            connectionId: connection._id,
+          },
+        );
+      }
+    }
 
     await ctx.runMutation(
       traderlaunchpadConnectionsMutations.deleteConnection,
@@ -502,7 +553,7 @@ export const disconnectTradeLocker = action({
       },
     );
 
-    return { ok: true };
+    return { ok: true, deleted };
   },
 });
 
@@ -696,6 +747,153 @@ export const syncMyTradeLockerNow = action({
         ideasBackfill,
         ideasReconcile,
       },
+    };
+  },
+});
+
+export const fetchMyTradeLockerAccountState = action({
+  args: {},
+  returns: v.object({
+    ok: v.boolean(),
+    status: v.number(),
+    accountState: v.any(),
+    balance: v.optional(v.number()),
+    equity: v.optional(v.number()),
+    error: v.optional(v.string()),
+  }),
+  handler: async (ctx) => {
+    const organizationId = resolveOrganizationId();
+    const userId = await resolveViewerUserId(ctx);
+
+    const connection = await ctx.runQuery(traderlaunchpadConnectionsQueries.getMyConnection, {
+      organizationId,
+      userId,
+    });
+    if (!connection || connection.status !== "connected") {
+      return {
+        ok: false,
+        status: 0,
+        accountState: null,
+        error: "TradeLocker not connected.",
+      };
+    }
+
+    const environment = connection.environment === "live" ? ("live" as const) : ("demo" as const);
+
+    const accNum = Number(connection.selectedAccNum ?? NaN);
+    const accountId = String(connection.selectedAccountId ?? "").trim();
+    if (!accountId || !Number.isFinite(accNum) || accNum <= 0) {
+      return {
+        ok: false,
+        status: 0,
+        accountState: null,
+        error: "Missing TradeLocker account identifiers.",
+      };
+    }
+
+    const tokenStorage = env.TRADELOCKER_TOKEN_STORAGE ?? "raw";
+    const keyMaterial = requireTradeLockerSecretsKey();
+    const accessTokenEncrypted = String(connection.accessTokenEncrypted ?? "");
+    const refreshTokenEncrypted = String(connection.refreshTokenEncrypted ?? "");
+    const accessToken =
+      tokenStorage === "enc"
+        ? await decryptSecret(accessTokenEncrypted, keyMaterial)
+        : accessTokenEncrypted;
+    const refreshToken =
+      tokenStorage === "enc"
+        ? await decryptSecret(refreshTokenEncrypted, keyMaterial)
+        : refreshTokenEncrypted;
+
+    const jwtHost =
+      typeof connection.jwtHost === "string" && connection.jwtHost.trim()
+        ? connection.jwtHost.trim()
+        : extractJwtHost(accessToken);
+    const baseUrl = jwtHost ? `https://${jwtHost}/backend-api` : baseUrlForEnv(environment);
+
+    const stateRes = await ctx.runAction(
+      componentsUntyped.launchthat_pricedata.tradelocker.actions.fetchAccountState,
+      {
+        baseUrl,
+        accessToken,
+        refreshToken,
+        accNum,
+        accountId,
+        developerKey: env.TRADELOCKER_DEVELOPER_API_KEY,
+      },
+    );
+
+    if (stateRes?.refreshed?.accessToken && stateRes?.refreshed?.refreshToken) {
+      const nextAccess =
+        tokenStorage === "enc"
+          ? await encryptSecret(stateRes.refreshed.accessToken, keyMaterial)
+          : stateRes.refreshed.accessToken;
+      const nextRefresh =
+        tokenStorage === "enc"
+          ? await encryptSecret(stateRes.refreshed.refreshToken, keyMaterial)
+          : stateRes.refreshed.refreshToken;
+
+      await ctx.runMutation(traderlaunchpadConnectionsMutations.upsertConnection, {
+        organizationId,
+        userId,
+        environment,
+        server: String(connection.server ?? ""),
+        jwtHost: extractJwtHost(stateRes.refreshed.accessToken) ?? jwtHost,
+        selectedAccountId: accountId,
+        selectedAccNum: accNum,
+        accessTokenEncrypted: nextAccess,
+        refreshTokenEncrypted: nextRefresh,
+        accessTokenExpiresAt: stateRes.refreshed.expireDateMs,
+        refreshTokenExpiresAt: typeof connection.refreshTokenExpiresAt === "number"
+          ? connection.refreshTokenExpiresAt
+          : undefined,
+        status: "connected",
+        lastError: undefined,
+      });
+    }
+
+    if (stateRes?.ok && stateRes?.accountState && connection._id) {
+      await ctx.runMutation(
+        componentsUntyped.launchthat_traderlaunchpad.raw.mutations.upsertTradeAccountState,
+        {
+          organizationId,
+          userId,
+          connectionId: connection._id,
+          accountId,
+          raw: stateRes.accountState,
+        },
+      );
+    }
+
+    const readNumber = (value: unknown): number | undefined => {
+      if (typeof value === "number" && Number.isFinite(value)) return value;
+      if (typeof value === "string") {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : undefined;
+      }
+      return undefined;
+    };
+
+    const accountState = stateRes?.accountState ?? null;
+    const balance =
+      accountState && typeof accountState === "object"
+        ? readNumber((accountState as any).balance) ??
+          readNumber((accountState as any).accountBalance) ??
+          readNumber((accountState as any).account_balance)
+        : undefined;
+    const equity =
+      accountState && typeof accountState === "object"
+        ? readNumber((accountState as any).equity) ??
+          readNumber((accountState as any).accountEquity) ??
+          readNumber((accountState as any).account_equity)
+        : undefined;
+
+    return {
+      ok: Boolean(stateRes?.ok),
+      status: typeof stateRes?.status === "number" ? stateRes.status : 0,
+      accountState,
+      balance,
+      equity,
+      error: stateRes?.ok ? undefined : stateRes?.error ?? "Failed to fetch account state.",
     };
   },
 });

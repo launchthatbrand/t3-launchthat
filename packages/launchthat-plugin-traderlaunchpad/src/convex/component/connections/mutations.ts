@@ -131,6 +131,31 @@ export const deleteConnection = mutation({
   },
 });
 
+export const deleteConnectionAccountsByConnectionId = mutation({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    connectionId: v.id("brokerConnections"),
+  },
+  returns: v.object({
+    deleted: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("brokerConnectionAccounts")
+      .withIndex("by_connectionId", (q: any) => q.eq("connectionId", args.connectionId))
+      .collect();
+
+    let deleted = 0;
+    for (const row of rows) {
+      if (row.organizationId !== args.organizationId || row.userId !== args.userId) continue;
+      await ctx.db.delete(row._id);
+      deleted += 1;
+    }
+    return { deleted };
+  },
+});
+
 export const upsertConnectionAccount = mutation({
   args: {
     organizationId: v.string(),

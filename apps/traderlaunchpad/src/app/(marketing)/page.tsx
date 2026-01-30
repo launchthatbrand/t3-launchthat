@@ -14,6 +14,7 @@ import {
 import {
   ArrowRight,
   BarChart3,
+  Code,
   Globe,
   MessageSquare,
   Sparkles,
@@ -29,6 +30,7 @@ import {
 
 import { BrokersPlatformsHoverAnimation } from "../../components/landing/BrokersPlatformsHoverAnimation";
 import { DarkOnly } from "~/components/theme/DarkOnly";
+import { HeroCtaInstallBlock } from "../../components/landing/HeroCtaInstallBlock";
 import { IphoneInteractiveHint } from "../../components/landing/IphoneInteractiveHint";
 import { IphoneNotificationDemo } from "../../components/landing/IphoneNotificationDemo";
 import { JournalAnalyticsAnimation } from "../../components/landing/JournalAnalyticsAnimation";
@@ -38,7 +40,6 @@ import { PricingSection } from "../../components/landing/PricingSection";
 import React from "react";
 import { SpinningSphere } from "~/components/landing/SpinningSphere";
 import { StrategyBuilderAnimation } from "../../components/landing/StrategyBuilderAnimation";
-import { HeroCtaInstallBlock } from "../../components/landing/HeroCtaInstallBlock";
 import { ThemeAwareSafariPreview } from "../../components/landing/ThemeAwareSafariPreview";
 import { auth } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
@@ -84,6 +85,15 @@ export default async function HomePage() {
     .sort((a, b) => b.rating - a.rating)
     .slice(0, 10);
   const _topFirms = [...firms].sort((a, b) => b.rating - a.rating).slice(0, 10);
+
+  const widgetSnippet = [
+    `<script type="module" src="https://traderlaunchpad.com/widgets/tdrlp-widgets.es.js"></script>`,
+    `<tdrlp-economic-calendar`,
+    `  api-base="https://api.traderlaunchpad.com"`,
+    `  news-base="https://traderlaunchpad.com/news/forex/calendar?ref=YOUR_CODE"`,
+    `  preset="thisWeek"`,
+    `></tdrlp-economic-calendar>`,
+  ].join("\n");
 
   return (
     <div className="text-foreground relative min-h-screen selection:bg-orange-500/30">
@@ -271,8 +281,8 @@ export default async function HomePage() {
                       <span className="block leading-none">
                         <FlipWords
                           words={[
+                            "Every Trade",
                             "Trading Groups",
-                            "Pattern Recognition",
                             "Data-Driven Traders",
                           ]}
                           duration={4000}
@@ -665,6 +675,89 @@ export default async function HomePage() {
               </div>
             </div>
           </Card>
+        </section>
+
+        <section className="relative container mx-auto mt-24 mb-24 max-w-7xl px-4 md:mt-32">
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+            <div>
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-200">
+                <Code className="h-3.5 w-3.5" />
+                Free for your site
+              </div>
+              <h2 className="text-foreground text-3xl font-bold tracking-tight md:text-4xl">
+                Embeddable widgets that pay you back
+              </h2>
+              <p className="text-muted-foreground mt-4 text-lg">
+                Add our professional Economic Calendar, News Feed, or Profile
+                Cards to your website for free.
+              </p>
+
+              <div className="mt-8 space-y-6">
+                <div className="flex gap-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 text-orange-500">
+                    <Globe className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">
+                      Economic Calendar & News
+                    </h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Keep your visitors engaged with real-time forex news and
+                      event data. No API keys required.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 text-orange-500">
+                    <Users className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">
+                      Automatic Affiliate Tracking
+                    </h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Add your referral code to the widget config. If a visitor
+                      clicks through and signs up, you get the credit (and the
+                      commission).
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8">
+                <Link
+                  href="/widgets"
+                  className="text-sm font-medium text-orange-500 hover:text-orange-400 flex items-center gap-1"
+                >
+                  Explore the widget library{" "}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
+            <div className="relative rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur-md">
+              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+                <div className="flex gap-1.5">
+                  <div className="h-3 w-3 rounded-full bg-red-500/20" />
+                  <div className="h-3 w-3 rounded-full bg-yellow-500/20" />
+                  <div className="h-3 w-3 rounded-full bg-green-500/20" />
+                </div>
+                <div className="text-xs text-muted-foreground font-mono">
+                  index.html
+                </div>
+              </div>
+              <pre className="overflow-x-auto text-xs font-mono leading-relaxed text-blue-100">
+                <code>{widgetSnippet}</code>
+              </pre>
+              <div className="mt-4 pt-4 border-t border-white/5 text-center">
+                <p className="text-xs text-muted-foreground">
+                  👆 Copy, paste, and add your{" "}
+                  <span className="text-orange-400">?ref=CODE</span>
+                </p>
+              </div>
+            </div>
+          </div>
         </section>
 
         <PricingSection />

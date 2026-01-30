@@ -543,3 +543,199 @@ export const upsertTradeAccountState = mutation({
     return { id, wasNew: true };
   },
 });
+
+const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
+
+const deletePaginated = async <T extends { _id: any }>(
+  ctx: any,
+  query: any,
+  shouldDelete: (row: T) => boolean,
+  maxDeletes: number,
+): Promise<number> => {
+  const rowsRaw = await query.take(maxDeletes);
+  const rows: T[] = Array.isArray(rowsRaw) ? rowsRaw : [];
+  let deleted = 0;
+  for (const row of rows) {
+    if (!shouldDelete(row)) continue;
+    await ctx.db.delete(row._id);
+    deleted += 1;
+    if (deleted >= maxDeletes) break;
+  }
+  return deleted;
+};
+
+const deleteAll = async <T extends { _id: any }>(
+  ctx: any,
+  query: any,
+  shouldDelete: (row: T) => boolean,
+): Promise<number> => {
+  const rowsRaw = await query.collect();
+  const rows: T[] = Array.isArray(rowsRaw) ? rowsRaw : [];
+  let deleted = 0;
+  for (const row of rows) {
+    if (!shouldDelete(row)) continue;
+    await ctx.db.delete(row._id);
+    deleted += 1;
+  }
+  return deleted;
+};
+export const deleteTradeDataForConnection = mutation({
+  args: {
+    organizationId: v.string(),
+    userId: v.string(),
+    connectionId: v.id("brokerConnections"),
+    accountIds: v.optional(v.array(v.string())),
+    maxDeletesPerTable: v.optional(v.number()),
+  },
+  returns: v.object({
+    tradeOrders: v.number(),
+    tradeExecutions: v.number(),
+    tradeOrdersHistory: v.number(),
+    tradePositions: v.number(),
+    tradeRealizationEvents: v.number(),
+    tradeAccountStates: v.number(),
+    tradeIdeaGroups: v.number(),
+    tradeIdeaEvents: v.number(),
+    tradeIdeaNotes: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const maxDeletes = clamp(args.maxDeletesPerTable ?? 5000, 200, 20000);
+    const accountIds = Array.isArray(args.accountIds) ? args.accountIds.filter(Boolean) : [];
+
+    const tradeOrdersQuery = ctx.db
+      .query("tradeOrders")
+      .withIndex("by_user_createdAt", (q: any) => q.eq("userId", args.userId))
+      .order("desc");
+    const tradeOrders = await deletePaginated(
+      ctx,
+      tradeOrdersQuery,
+      (row: any) => row.connectionId === args.connectionId,
+      maxDeletes,
+    );
+
+    const tradeExecutionsQuery = ctx.db
+      .query("tradeExecutions")
+      .withIndex("by_user_executedAt", (q: any) => q.eq("userId", args.userId))
+      .order("desc");
+    const tradeExecutions = await deletePaginated(
+      ctx,
+      tradeExecutionsQuery,
+      (row: any) => row.connectionId === args.connectionId,
+      maxDeletes,
+    );
+
+    const tradeOrdersHistoryQuery = ctx.db
+      .query("tradeOrdersHistory")
+      .withIndex("by_user_createdAt", (q: any) => q.eq("userId", args.userId))
+      .order("desc");
+    const tradeOrdersHistory = await deletePaginated(
+      ctx,
+      tradeOrdersHistoryQuery,
+      (row: any) => row.connectionId === args.connectionId,
+      maxDeletes,
+    );
+
+    const tradePositionsQuery = ctx.db
+      .query("tradePositions")
+      .withIndex("by_user_openedAt", (q: any) => q.eq("userId", args.userId))
+      .order("desc");
+    const tradePositions = await deletePaginated(
+      ctx,
+      tradePositionsQuery,
+      (row: any) => row.connectionId === args.connectionId,
+      maxDeletes,
+    );
+
+    let tradeRealizationEvents = 0;
+    if (accountIds.length > 0) {
+      for (const accountId of accountIds) {
+        const eventsQuery = ctx.db
+          .query("tradeRealizationEvents")
+          .withIndex("by_org_user_accountId_closedAt", (q: any) =>
+            q
+              .eq("organizationId", args.organizationId)
+              .eq("userId", args.userId)
+              .eq("accountId", accountId),
+          )
+          .order("desc");
+        tradeRealizationEvents += await deletePaginated(
+          ctx,
+          eventsQuery,
+          (row: any) => row.connectionId === args.connectionId,
+          maxDeletes,
+        );
+      }
+    }
+
+    let tradeAccountStates = 0;
+    if (accountIds.length > 0) {
+      for (const accountId of accountIds) {
+        const stateRow = await ctx.db
+          .query("tradeAccountStates")
+          .withIndex("by_org_user_accountId", (q: any) =>
+            q
+              .eq("organizationId", args.organizationId)
+              .eq("userId", args.userId)
+              .eq("accountId", accountId),
+          )
+          .first();
+        if (stateRow && stateRow.connectionId === args.connectionId) {
+          await ctx.db.delete(stateRow._id);
+          tradeAccountStates += 1;
+        }
+      }
+    }
+
+    const deleteIdeaGroup = async (groupId: any): Promise<{ events: number; notes: number }> => {
+      const eventsQuery = ctx.db
+        .query("tradeIdeaEvents")
+        .withIndex("by_user_tradeIdeaGroupId", (q: any) =>
+          q.eq("userId", args.userId).eq("tradeIdeaGroupId", groupId),
+        );
+      const notesQuery = ctx.db
+        .query("tradeIdeaNotes")
+        .withIndex("by_user_tradeIdeaGroupId", (q: any) =>
+          q.eq("userId", args.userId).eq("tradeIdeaGroupId", groupId),
+        );
+      const events = await deleteAll(ctx, eventsQuery, () => true);
+      const notes = await deleteAll(ctx, notesQuery, () => true);
+      return { events, notes };
+    };
+
+    let tradeIdeaGroups = 0;
+    let tradeIdeaEvents = 0;
+    let tradeIdeaNotes = 0;
+
+    for (const status of ["open", "closed"] as const) {
+      if (tradeIdeaGroups >= maxDeletes) break;
+      const rows = await ctx.db
+        .query("tradeIdeaGroups")
+        .withIndex("by_user_status_openedAt", (q: any) =>
+          q.eq("userId", args.userId).eq("status", status),
+        )
+        .order("desc")
+        .take(maxDeletes);
+      for (const group of rows as any[]) {
+        if (group.connectionId !== args.connectionId) continue;
+        const res = await deleteIdeaGroup(group._id);
+        tradeIdeaEvents += res.events;
+        tradeIdeaNotes += res.notes;
+        await ctx.db.delete(group._id);
+        tradeIdeaGroups += 1;
+        if (tradeIdeaGroups >= maxDeletes) break;
+      }
+    }
+
+    return {
+      tradeOrders,
+      tradeExecutions,
+      tradeOrdersHistory,
+      tradePositions,
+      tradeRealizationEvents,
+      tradeAccountStates,
+      tradeIdeaGroups,
+      tradeIdeaEvents,
+      tradeIdeaNotes,
+    };
+  },
+});

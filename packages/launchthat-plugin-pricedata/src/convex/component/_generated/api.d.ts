@@ -554,6 +554,30 @@ export type Mounts = {
   };
   tradelocker: {
     actions: {
+      fetchAccountState: FunctionReference<
+        "action",
+        "public",
+        {
+          accNum: number;
+          accessToken: string;
+          accountId: string;
+          baseUrl: string;
+          developerKey?: string;
+          refreshToken?: string;
+        },
+        {
+          accountState: any;
+          error?: string;
+          ok: boolean;
+          refreshed?: {
+            accessToken: string;
+            expireDateMs?: number;
+            refreshToken: string;
+          };
+          status: number;
+          textPreview?: string;
+        }
+      >;
       fetchAllAccounts: FunctionReference<
         "action",
         "public",

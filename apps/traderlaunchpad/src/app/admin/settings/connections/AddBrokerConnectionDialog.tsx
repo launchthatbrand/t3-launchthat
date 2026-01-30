@@ -25,6 +25,43 @@ type ProviderOption = {
   enabled: boolean;
 };
 
+const providerLogoConfig: Record<
+  ProviderKey,
+  { initials: string; className: string }
+> = {
+  tradelocker: {
+    initials: "TL",
+    className: "bg-blue-500/20 text-blue-200",
+  },
+  mt4: {
+    initials: "M4",
+    className: "bg-emerald-500/20 text-emerald-200",
+  },
+  mt5: {
+    initials: "M5",
+    className: "bg-purple-500/20 text-purple-200",
+  },
+  binance: {
+    initials: "BN",
+    className: "bg-amber-500/20 text-amber-200",
+  },
+};
+
+const ProviderLogo = ({ provider }: { provider: ProviderKey }) => {
+  const config = providerLogoConfig[provider];
+  return (
+    <div
+      className={cn(
+        "flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 text-xs font-semibold tracking-wide",
+        config.className,
+      )}
+      aria-hidden="true"
+    >
+      {config.initials}
+    </div>
+  );
+};
+
 const providers: Array<ProviderOption> = [
   {
     key: "tradelocker",
@@ -119,7 +156,13 @@ export function AddBrokerConnectionDialog(props: {
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-xl overflow-hidden">
+        <DialogContent
+          className="max-w-3xl overflow-hidden h-full max-h-4/6"
+          onInteractOutside={(event) => event.preventDefault()}
+          onPointerDownOutside={(event) => event.preventDefault()}
+          onFocusOutside={(event) => event.preventDefault()}
+          onEscapeKeyDown={(event) => event.preventDefault()}
+        >
           <AnimatePresence mode="wait" initial={false} custom={direction}>
             <motion.div
               key={stepKey}
@@ -160,9 +203,12 @@ export function AddBrokerConnectionDialog(props: {
                               : "cursor-not-allowed opacity-60 hover:bg-card/50",
                           )}
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="text-sm font-semibold text-foreground/90">
-                              {p.label}
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <ProviderLogo provider={p.key} />
+                              <div className="text-sm font-semibold text-foreground/90">
+                                {p.label}
+                              </div>
                             </div>
                             {!p.enabled ? (
                               <span className="rounded-md border border-border/40 bg-background/40 px-2 py-0.5 text-[11px] text-muted-foreground">
@@ -198,13 +244,6 @@ export function AddBrokerConnectionDialog(props: {
                       Back
                     </Button>
                   </div>
-
-                  <DialogHeader>
-                    <DialogTitle>Connect TradeLocker</DialogTitle>
-                    <DialogDescription>
-                      Enter your TradeLocker credentials to fetch accounts, then select one to connect.
-                    </DialogDescription>
-                  </DialogHeader>
 
                   <TradeLockerConnectFlow
                     onCancel={handleBack}

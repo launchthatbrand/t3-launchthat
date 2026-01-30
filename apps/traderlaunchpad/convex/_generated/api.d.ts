@@ -2120,6 +2120,12 @@ export declare const components: {
           { organizationId: string; userId: string },
           null
         >;
+        deleteConnectionAccountsByConnectionId: FunctionReference<
+          "mutation",
+          "internal",
+          { connectionId: string; organizationId: string; userId: string },
+          { deleted: number }
+        >;
         setConnectionSelectedAccount: FunctionReference<
           "mutation",
           "internal",
@@ -2609,6 +2615,28 @@ export declare const components: {
             ordersPatched: number;
             positionsPatched: number;
             tradeIdeaGroupsPatched: number;
+          }
+        >;
+        deleteTradeDataForConnection: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            accountIds?: Array<string>;
+            connectionId: string;
+            maxDeletesPerTable?: number;
+            organizationId: string;
+            userId: string;
+          },
+          {
+            tradeAccountStates: number;
+            tradeExecutions: number;
+            tradeIdeaEvents: number;
+            tradeIdeaGroups: number;
+            tradeIdeaNotes: number;
+            tradeOrders: number;
+            tradeOrdersHistory: number;
+            tradePositions: number;
+            tradeRealizationEvents: number;
           }
         >;
         upsertTradeAccountState: FunctionReference<
@@ -6492,6 +6520,30 @@ export declare const components: {
     };
     tradelocker: {
       actions: {
+        fetchAccountState: FunctionReference<
+          "action",
+          "internal",
+          {
+            accNum: number;
+            accessToken: string;
+            accountId: string;
+            baseUrl: string;
+            developerKey?: string;
+            refreshToken?: string;
+          },
+          {
+            accountState: any;
+            error?: string;
+            ok: boolean;
+            refreshed?: {
+              accessToken: string;
+              expireDateMs?: number;
+              refreshToken: string;
+            };
+            status: number;
+            textPreview?: string;
+          }
+        >;
         fetchAllAccounts: FunctionReference<
           "action",
           "internal",

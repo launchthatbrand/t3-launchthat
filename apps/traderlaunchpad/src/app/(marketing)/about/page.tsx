@@ -6,7 +6,9 @@ import {
   Code2,
   HeartHandshake,
   LineChart,
+  MessageSquare,
   ShieldCheck,
+  Trophy,
   Users,
 } from "lucide-react";
 
@@ -43,11 +45,107 @@ export default async function AboutPage() {
             <p className="text-muted-foreground mx-auto mt-6 max-w-2xl text-center text-lg font-medium md:text-xl">
               TraderLaunchpad started as a personal challenge: build a journal that didn't just log trades, but actually helped find an edge—without the premium price tag.
             </p>
+
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+              <Link href={primaryCtaHref} className="inline-block">
+                <span className="relative inline-flex h-12 min-w-[190px] items-center justify-center rounded-[1.75rem] border border-neutral-200 bg-white px-5 font-semibold text-black transition-transform hover:scale-105 dark:border-slate-800">
+                  <ShineBorder
+                    borderWidth={2}
+                    duration={12}
+                    shineColor={["#f97316", "#fb923c", "#f97316"]}
+                    className="rounded-[inherit]"
+                  />
+                  <span className="relative z-10 flex w-full items-center justify-between gap-4 px-1">
+                    <span className="w-full">{primaryCtaLabel}</span>
+                    <span className="flex min-h-8 min-w-8 items-center justify-center rounded-full bg-black text-white">
+                      <ArrowRight className="h-4 w-4" />
+                    </span>
+                  </span>
+                </span>
+              </Link>
+              
+              <Link 
+                href="https://discord.gg/placeholder" 
+                target="_blank"
+                className="border-foreground/10 bg-foreground/5 text-foreground/80 hover:bg-foreground/10 hover:text-foreground inline-flex h-12 items-center justify-center gap-2 rounded-full border px-6 text-sm font-medium transition-colors backdrop-blur-sm"
+              >
+                <MessageSquare className="h-4 w-4" />
+                Join the Discord
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Social Proof / Stats Strip */}
+        <section className="border-y border-white/5 bg-white/5 py-8 backdrop-blur-sm mt-16">
+          <div className="container mx-auto max-w-7xl px-4">
+            <div className="grid grid-cols-2 gap-8 md:grid-cols-4 text-center">
+              <div className="space-y-1">
+                <div className="text-2xl font-bold text-foreground">10+ Years</div>
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Trading Experience</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-2xl font-bold text-foreground">100%</div>
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Verified Data</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-2xl font-bold text-foreground">Multi-Broker</div>
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">US & Offshore</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-2xl font-bold text-foreground">Community</div>
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Roadmap Voting</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Platform Preview (Visual Proof) */}
+        <section className="relative container mx-auto mt-16 max-w-6xl px-4 md:mt-24">
+          <div className="relative mx-auto aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-sm md:rounded-2xl">
+            <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/10 via-transparent to-transparent" />
+            
+            {/* Placeholder for actual screenshot - stylized glassmorphism layout */}
+            <div className="flex h-full flex-col p-4 md:p-8">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="h-8 w-8 rounded-full bg-white/10 animate-pulse" />
+                <div className="h-4 w-32 rounded-full bg-white/10" />
+                <div className="ml-auto h-8 w-24 rounded-full bg-orange-500/20" />
+              </div>
+              <div className="grid grid-cols-12 gap-4 h-full">
+                <div className="col-span-3 hidden md:block space-y-4">
+                  <div className="h-12 w-full rounded-lg bg-white/5" />
+                  <div className="h-12 w-full rounded-lg bg-white/5" />
+                  <div className="h-12 w-full rounded-lg bg-white/5" />
+                </div>
+                <div className="col-span-12 md:col-span-9 grid grid-rows-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="rounded-xl bg-white/5 border border-white/10 p-4" />
+                    <div className="rounded-xl bg-white/5 border border-white/10 p-4" />
+                    <div className="rounded-xl bg-white/5 border border-white/10 p-4" />
+                  </div>
+                  <div className="rounded-xl bg-white/5 border border-white/10 p-6 flex items-center justify-center">
+                    <div className="text-center space-y-2">
+                      <LineChart className="h-12 w-12 mx-auto text-orange-500/50" />
+                      <p className="text-sm text-muted-foreground">Detailed edge analysis & equity curves</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Overlay Label */}
+            <div className="absolute bottom-4 left-4 right-4 md:bottom-8 md:left-8">
+              <div className="inline-flex items-center gap-2 rounded-full bg-black/80 px-3 py-1 text-xs font-medium text-white backdrop-blur-md border border-white/10">
+                <ShieldCheck className="h-3 w-3 text-orange-500" />
+                Live Broker Sync • No Manual Entry
+              </div>
+            </div>
           </div>
         </section>
 
         {/* The Origin Story */}
-        <section className="relative container mx-auto mt-16 max-w-5xl px-4 md:mt-24">
+        <section className="relative container mx-auto mt-24 max-w-5xl px-4">
           <div className="grid gap-12 md:grid-cols-2 md:items-center">
             <div className="space-y-6">
               <div className="inline-flex items-center gap-2 text-sm font-semibold text-orange-500">
@@ -149,12 +247,12 @@ export default async function AboutPage() {
             <Card className="border-foreground/10 bg-foreground/3 hover:border-foreground/20 hover:bg-foreground/6 overflow-hidden rounded-3xl border p-8 backdrop-blur-md transition-colors duration-300">
               <div className="flex items-center gap-3">
                 <div className="border-foreground/10 bg-foreground/5 flex h-10 w-10 items-center justify-center rounded-2xl border backdrop-blur-sm text-orange-500">
-                  <Users className="h-5 w-5" />
+                  <Trophy className="h-5 w-5" />
                 </div>
-                <div className="text-sm font-semibold">Community Driven</div>
+                <div className="text-sm font-semibold">For Prop Challengers</div>
               </div>
               <div className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                The roadmap isn't secret. Everyone votes on features—from new metrics to AI agents. We're building a hub for traders, by traders, where mentorship communities can thrive.
+                Perfect for passing evaluations. Track your drawdown limits and daily loss rules automatically across multiple accounts to keep your funding journey on track.
               </div>
             </Card>
           </div>

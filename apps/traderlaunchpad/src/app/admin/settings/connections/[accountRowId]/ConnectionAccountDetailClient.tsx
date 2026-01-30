@@ -12,6 +12,7 @@ import { api } from "@convex-config/_generated/api";
 import { usePathname } from "next/navigation";
 import { Checkbox } from "@acme/ui/checkbox";
 import { Label } from "@acme/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@acme/ui/dialog";
 
 type UnknownRecord = Record<string, unknown>;
 interface ConnectionAccountResult {
@@ -60,6 +61,8 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
     const [busy, setBusy] = React.useState<string | null>(null);
     const [error, setError] = React.useState<string | null>(null);
     const [includeDeveloperKey, setIncludeDeveloperKey] = React.useState(true);
+    const [showDisconnectDialog, setShowDisconnectDialog] = React.useState(false);
+    const [deleteDataOnDisconnect, setDeleteDataOnDisconnect] = React.useState(false);
 
     const data: ConnectionAccountResult | null | undefined = (() => {
         if (dataRaw === undefined) return undefined;
@@ -114,7 +117,11 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
         setBusy("disconnect");
         setError(null);
         try {
-            await disconnect({});
+            if (isPlatform) {
+                await disconnect({});
+            } else {
+                await disconnect({ deleteData: deleteDataOnDisconnect });
+            }
         } catch (e) {
             setError(e instanceof Error ? e.message : String(e));
         } finally {
@@ -263,7 +270,13 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
                             type="button"
                             variant="outline"
                             className="h-9 text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-300 dark:hover:text-red-200"
-                            onClick={handleDisconnect}
+                            onClick={() => {
+                                if (isPlatform) {
+                                    void handleDisconnect();
+                                } else {
+                                    setShowDisconnectDialog(true);
+                                }
+                            }}
                             disabled={busy !== null}
                         >
                             {busy === "disconnect" ? "Disconnecting…" : "Disconnect"}
@@ -274,6 +287,52 @@ export function ConnectionAccountDetailClient(props: { accountRowId: string }) {
                         <div className="rounded-lg border border-border/40 bg-background/40 p-3 text-sm text-red-600 dark:text-rose-200">
                             {error}
                         </div>
+                    ) : null}
+
+                    {!isPlatform ? (
+                        <Dialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
+                            <DialogContent
+                                className="max-w-lg"
+                                onInteractOutside={(event) => event.preventDefault()}
+                            onPointerDownOutside={(event) => event.preventDefault()}
+                            onFocusOutside={(event) => event.preventDefault()}
+                                onEscapeKeyDown={(event) => event.preventDefault()}
+                            >
+                                <DialogHeader>
+                                    <DialogTitle>Disconnect TradeLocker</DialogTitle>
+                                    <DialogDescription>
+                                        Disconnecting will stop syncs. You can optionally remove imported broker data.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2 rounded-md border border-border/40 bg-background/40 px-3 py-2 text-xs text-muted-foreground">
+                                        <Checkbox
+                                            id="tl-delete-data-detail"
+                                            checked={deleteDataOnDisconnect}
+                                            onCheckedChange={(v) => setDeleteDataOnDisconnect(Boolean(v))}
+                                        />
+                                        <Label htmlFor="tl-delete-data-detail" className="cursor-pointer text-xs text-muted-foreground">
+                                            Delete imported broker data (trades, orders, positions, account state).
+                                        </Label>
+                                    </div>
+                                    <div className="flex items-center justify-end gap-2">
+                                        <Button variant="outline" onClick={() => setShowDisconnectDialog(false)}>
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            className="bg-red-600 text-white hover:bg-red-700"
+                                            onClick={async () => {
+                                                await handleDisconnect();
+                                                setShowDisconnectDialog(false);
+                                            }}
+                                            disabled={busy !== null}
+                                        >
+                                            {busy === "disconnect" ? "Disconnecting…" : "Disconnect"}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
                     ) : null}
 
                     <details className="rounded-lg border border-border/40 bg-background/40 p-3">
