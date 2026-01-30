@@ -83,6 +83,12 @@ interface AffiliateAdminView {
     updatedBy?: string;
   } | null;
   directDownlineCount: number;
+  directDownline: Array<{
+    userId: string;
+    name: string;
+    joinedAt: number;
+    createdSource: string;
+  }>;
   profile: AffiliateProfile | null;
   stats: AffiliateStats;
   benefits: AffiliateBenefit[];
@@ -112,6 +118,14 @@ interface AffiliateAdminView {
 const formatUsd = (cents: number): string => {
   const v = Math.round(cents) / 100;
   return `$${v.toFixed(2)}`;
+};
+
+const stripClerkIssuerPrefix = (userKey: string): string => {
+  const s = String(userKey ?? "").trim();
+  const pipeIdx = s.indexOf("|");
+  if (pipeIdx === -1) return s;
+  const tail = s.slice(pipeIdx + 1).trim();
+  return tail || s;
 };
 
 export default function PlatformAffiliateDetailPage() {
@@ -162,6 +176,49 @@ export default function PlatformAffiliateDetailPage() {
       );
     });
   }, [recruitFilter, recruitSearch, view]);
+
+  const downlineRows = React.useMemo(() => {
+    return Array.isArray(view?.directDownline) ? view.directDownline : [];
+  }, [view]);
+
+  const downlineColumns = React.useMemo<
+    ColumnDefinition<{ userId: string; name: string; joinedAt: number; createdSource: string }>[]
+  >(
+    () => [
+      {
+        id: "name",
+        header: "User",
+        accessorKey: "name",
+        cell: (r: { userId: string; name: string; joinedAt: number; createdSource: string }) => (
+          <div className="space-y-1">
+            <div className="text-sm font-semibold">{r.name}</div>
+            <div className="text-muted-foreground text-xs font-mono">
+              {stripClerkIssuerPrefix(r.userId)}
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: "joinedAt",
+        header: "Joined",
+        accessorKey: "joinedAt",
+        cell: (r: { userId: string; name: string; joinedAt: number; createdSource: string }) => (
+          <div className="whitespace-nowrap text-xs">
+            {r.joinedAt ? new Date(r.joinedAt).toLocaleDateString() : "—"}
+          </div>
+        ),
+      },
+      {
+        id: "source",
+        header: "Source",
+        accessorKey: "createdSource",
+        cell: (r: { userId: string; name: string; joinedAt: number; createdSource: string }) => (
+          <div className="text-muted-foreground text-xs">{r.createdSource || "—"}</div>
+        ),
+      },
+    ],
+    [],
+  );
 
   const recruitColumns = React.useMemo<
     ColumnDefinition<{
@@ -336,7 +393,7 @@ export default function PlatformAffiliateDetailPage() {
             <div className="rounded-lg border bg-card p-3">
               <div className="text-muted-foreground text-xs">Sponsor</div>
               <div className="mt-1 text-sm font-semibold">
-                {sponsorLink?.sponsorUserId ? sponsorLink.sponsorUserId : "—"}
+                {sponsorLink?.sponsorUserId ? stripClerkIssuerPrefix(sponsorLink.sponsorUserId) : "—"}
               </div>
               <div className="text-muted-foreground mt-1 text-xs">
                 {sponsorLink?.createdAt ? new Date(sponsorLink.createdAt).toLocaleString() : ""}
@@ -398,6 +455,28 @@ export default function PlatformAffiliateDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {view ? (
+        <Card className="overflow-hidden">
+          <CardHeader className="border-b p-4">
+            <CardTitle className="text-base">Direct downline</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 p-3">
+            <EntityList
+              data={downlineRows}
+              columns={downlineColumns}
+              isLoading={view === undefined}
+              defaultViewMode="list"
+              viewModes={[]}
+              enableSearch={false}
+              getRowId={(r) => r.userId}
+              emptyState={
+                <div className="text-muted-foreground text-sm">No direct downline yet.</div>
+              }
+            />
+          </CardContent>
+        </Card>
+      ) : null}
 
       {view ? (
         <Card className="overflow-hidden">

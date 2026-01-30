@@ -179,7 +179,7 @@ export const getUpcomingSubscriptionDueCentsForUser = action({
     if (!userId) throw new Error("Missing userId");
 
     const stripe = createStripeClient(secretKey);
-    const customerId = await ctx.runQuery(internalUntyped.getStripeCustomerIdForUser, { userId });
+    const customerId = await ctx.runQuery(internalUntyped.internal.getStripeCustomerIdForUser, { userId });
     if (!customerId) return { ok: true, dueCents: 0 };
 
     // Take the first active subscription and compute upcoming invoice.
@@ -224,7 +224,7 @@ export const applyCustomerBalanceCredit = action({
     const currency = normalizeCurrency(args.currency);
 
     const stripe = createStripeClient(secretKey);
-    const customerId = await ctx.runQuery(internalUntyped.getStripeCustomerIdForUser, { userId });
+    const customerId = await ctx.runQuery(internalUntyped.internal.getStripeCustomerIdForUser, { userId });
     if (!customerId) throw new Error("No stripe customer for user");
 
     // Customer balance: negative amount is a credit (reduces amount due).

@@ -250,6 +250,7 @@ export const listAffiliateCreditEventsForUser = query({
       externalEventId: v.optional(v.string()),
       createdAt: v.number(),
       referredUserId: v.optional(v.string()),
+      referrerUserId: v.optional(v.string()),
       conversionId: v.optional(v.string()),
     }),
   ),
@@ -274,6 +275,7 @@ export const listAffiliateCreditEventsForUser = query({
       externalEventId: typeof row.externalEventId === "string" ? row.externalEventId : undefined,
       createdAt: typeof row.createdAt === "number" ? Number(row.createdAt) : 0,
       referredUserId: typeof row.referredUserId === "string" ? row.referredUserId : undefined,
+      referrerUserId: typeof row.referrerUserId === "string" ? row.referrerUserId : undefined,
       conversionId: typeof row.conversionId === "string" ? row.conversionId : undefined,
     }));
   },

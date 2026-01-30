@@ -26,6 +26,11 @@ export async function GET(
     .query(api.shortlinks.queries.resolveShortlinkByCode, { code })
     .catch(() => null);
 
+  // Best-effort: track click count for analytics. Do not block redirect.
+  void convex
+    .mutation(api.shortlinks.mutations.trackShortlinkClick, { code })
+    .catch(() => null);
+
   const resolvedObj: unknown = resolved;
   const path =
     resolvedObj && typeof resolvedObj === "object" && "path" in resolvedObj

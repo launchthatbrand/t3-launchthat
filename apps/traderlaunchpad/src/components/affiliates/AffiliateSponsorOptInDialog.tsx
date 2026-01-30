@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { usePathname } from "next/navigation";
 
 import { api } from "@convex-config/_generated/api";
+import { useConvexAuth } from "convex/react";
 
 import { Button } from "@acme/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@acme/ui/dialog";
@@ -26,7 +27,11 @@ const readCookie = (key: string): string | null => {
 
 export const AffiliateSponsorOptInDialog = () => {
   const pathname = usePathname();
-  const sponsorLink = useQuery(api.traderlaunchpad.affiliates.getMySponsorLink, {});
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const sponsorLink = useQuery(
+    api.traderlaunchpad.affiliates.getMySponsorLink,
+    isAuthenticated && !isLoading ? {} : "skip",
+  );
   const join = useMutation(api.traderlaunchpad.affiliates.joinMySponsorNetwork);
 
   const [open, setOpen] = React.useState(false);
@@ -36,6 +41,7 @@ export const AffiliateSponsorOptInDialog = () => {
   React.useEffect(() => {
     if (pathname.startsWith("/platform")) return;
     if (pathname.startsWith("/admin")) return;
+    if (!isAuthenticated || isLoading) return;
 
     // Only prompt if logged in (query resolved to null or object) and not already linked.
     if (sponsorLink === undefined) return; // loading
@@ -51,7 +57,7 @@ export const AffiliateSponsorOptInDialog = () => {
 
     setReferralCode(normalized);
     setOpen(true);
-  }, [pathname, sponsorLink]);
+  }, [isAuthenticated, isLoading, pathname, sponsorLink]);
 
   if (!referralCode) return null;
 

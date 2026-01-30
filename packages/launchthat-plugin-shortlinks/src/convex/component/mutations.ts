@@ -209,3 +209,36 @@ export const upsertSettings = mutation({
   },
 });
 
+export const trackClickByCode = mutation({
+  args: {
+    appKey: v.string(),
+    code: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const appKey = normalizeAppKey(args.appKey);
+    const code = String(args.code ?? "").trim();
+    if (!appKey) throw new Error("Invalid appKey");
+    if (!code) throw new Error("Invalid code");
+
+    const row = await ctx.db
+      .query("shortlinks")
+      .withIndex("by_code", (q) => q.eq("code", code))
+      .first();
+    if (!row) return null;
+    if (row.appKey !== appKey) return null;
+    if (typeof row.disabledAt === "number" && row.disabledAt > 0) return null;
+    if (typeof row.expiresAt === "number" && row.expiresAt > 0 && row.expiresAt < Date.now()) {
+      return null;
+    }
+
+    const now = Date.now();
+    const nextClickCount =
+      typeof row.clickCount === "number" && Number.isFinite(row.clickCount)
+        ? Math.max(0, Math.floor(row.clickCount) + 1)
+        : 1;
+    await ctx.db.patch(row._id, { clickCount: nextClickCount, lastAccessAt: now });
+    return null;
+  },
+});
+

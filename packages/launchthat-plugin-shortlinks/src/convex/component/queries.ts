@@ -95,3 +95,70 @@ export const getSettings = query({
   },
 });
 
+export const listByCreator = query({
+  args: {
+    appKey: v.string(),
+    kind: v.string(),
+    createdByUserId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      code: v.string(),
+      appKey: v.string(),
+      path: v.string(),
+      kind: v.optional(v.string()),
+      targetId: v.optional(v.string()),
+      createdAt: v.number(),
+      createdByUserId: v.optional(v.string()),
+      expiresAt: v.optional(v.number()),
+      disabledAt: v.optional(v.number()),
+      clickCount: v.optional(v.number()),
+      lastAccessAt: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const appKey = normalizeAppKey(args.appKey);
+    const kind = String(args.kind ?? "").trim();
+    const createdByUserId = String(args.createdByUserId ?? "").trim();
+    if (!appKey || !kind || !createdByUserId) return [];
+    const limitRaw = typeof args.limit === "number" ? args.limit : 50;
+    const limit = Math.max(1, Math.min(500, Math.floor(limitRaw)));
+
+    const rows = await ctx.db
+      .query("shortlinks")
+      .withIndex(
+        "by_appKey_and_kind_and_createdByUserId_and_createdAt",
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (q: any) =>
+          q.eq("appKey", appKey).eq("kind", kind).eq("createdByUserId", createdByUserId),
+      )
+      .order("desc")
+      .take(limit);
+
+    const now = Date.now();
+    return rows
+      .filter((row: any) => {
+        if (typeof row.disabledAt === "number" && row.disabledAt > 0) return false;
+        if (typeof row.expiresAt === "number" && row.expiresAt > 0 && row.expiresAt < now) {
+          return false;
+        }
+        return true;
+      })
+      .map((row: any) => ({
+        code: row.code,
+        appKey: row.appKey,
+        path: row.path,
+        kind: row.kind ? row.kind : undefined,
+        targetId: row.targetId ? row.targetId : undefined,
+        createdAt: typeof row.createdAt === "number" ? Number(row.createdAt) : 0,
+        createdByUserId:
+          typeof row.createdByUserId === "string" ? String(row.createdByUserId) : undefined,
+        expiresAt: typeof row.expiresAt === "number" ? Number(row.expiresAt) : undefined,
+        disabledAt: typeof row.disabledAt === "number" ? Number(row.disabledAt) : undefined,
+        clickCount: typeof row.clickCount === "number" ? Number(row.clickCount) : undefined,
+        lastAccessAt: typeof row.lastAccessAt === "number" ? Number(row.lastAccessAt) : undefined,
+      }));
+  },
+});
+

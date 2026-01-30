@@ -2,6 +2,8 @@
 
 import * as React from "react";
 
+import Image from "next/image";
+
 import { AffiliateDashboardCard, AffiliateReferralLink } from "launchthat-plugin-affiliates/frontend";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
@@ -12,6 +14,7 @@ import { Checkbox } from "@acme/ui/checkbox";
 import type { ColumnDefinition } from "@acme/ui/entity-list/types";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { Input } from "@acme/ui/input";
+import { Textarea } from "@acme/ui/textarea";
 import { api } from "@convex-config/_generated/api";
 
 const formatUsd = (cents: number): string => {
@@ -19,19 +22,99 @@ const formatUsd = (cents: number): string => {
   return `$${v.toFixed(2)}`;
 };
 
-const TERMS_VERSION = "v1" as const;
+const stripClerkIssuerPrefix = (userKey: unknown): string => {
+  const s = typeof userKey === "string" ? userKey.trim() : "";
+  const pipeIdx = s.indexOf("|");
+  if (pipeIdx === -1) return s;
+  const tail = s.slice(pipeIdx + 1).trim();
+  return tail || s;
+};
+
+const buildAffiliateUrl = (args: {
+  baseOrigin: string;
+  landingPath: string;
+  referralCode: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmContent?: string;
+}): string | null => {
+  try {
+    const base = new URL(args.baseOrigin);
+    const path = args.landingPath.startsWith("/") ? args.landingPath : `/${args.landingPath}`;
+    base.pathname = path;
+    base.searchParams.set("ref", args.referralCode);
+    if (args.utmSource) base.searchParams.set("utm_source", args.utmSource);
+    if (args.utmMedium) base.searchParams.set("utm_medium", args.utmMedium);
+    if (args.utmCampaign) base.searchParams.set("utm_campaign", args.utmCampaign);
+    if (args.utmContent) base.searchParams.set("utm_content", args.utmContent);
+    return base.toString();
+  } catch {
+    return null;
+  }
+};
+
+interface AffiliateDashboard {
+  profile: { userId: string; referralCode: string; status: "active" | "disabled" } | null;
+  stats: {
+    userId: string;
+    referralCode: string | null;
+    clicks30d: number;
+    signups30d: number;
+    activations30d: number;
+    conversions30d: number;
+    creditBalanceCents: number;
+  };
+}
+
+interface AffiliatePayoutSettings {
+  ok: boolean;
+  userId: string | null;
+  payoutAccount:
+    | null
+    | { userId: string; provider: string; connectAccountId: string; status: string };
+  payoutPreference:
+    | null
+    | { userId: string; policy: string; currency: string; minPayoutCents?: number };
+  creditBalanceCents: number;
+  upcomingSubscriptionDueCents: number;
+}
+
+const TERMS_VERSION = "v1";
 
 export default function AdminAffiliatesPage() {
-  const getDashboard = useAction(api.traderlaunchpad.affiliates.getMyAffiliateDashboard);
-  const getPayoutSettings = useAction(api.traderlaunchpad.affiliates.getMyAffiliatePayoutSettings);
-  const createOnboardingLink = useAction(
-    api.traderlaunchpad.affiliates.createMyAffiliatePayoutOnboardingLink,
-  );
-  const disconnectPayouts = useAction(api.traderlaunchpad.affiliates.disconnectMyAffiliatePayoutAccount);
+  const getDashboard = useAction(api.traderlaunchpad.affiliates.getMyAffiliateDashboard) as (
+    args: Record<string, never>,
+  ) => Promise<AffiliateDashboard | null>;
+  const getPayoutSettings = useAction(api.traderlaunchpad.affiliates.getMyAffiliatePayoutSettings) as (
+    args: Record<string, never>,
+  ) => Promise<AffiliatePayoutSettings>;
+  const createOnboardingLink = useAction(api.traderlaunchpad.affiliates.createMyAffiliatePayoutOnboardingLink) as (
+    args: { refreshUrl: string; returnUrl: string },
+  ) => Promise<{ url?: string }>;
+  const disconnectPayouts = useAction(api.traderlaunchpad.affiliates.disconnectMyAffiliatePayoutAccount) as (
+    args: { deleteRemote: boolean },
+  ) => Promise<{ ok: boolean }>;
   const becomeAffiliate = useMutation(api.traderlaunchpad.affiliates.becomeAffiliate);
   const setPayoutPreference = useMutation(api.traderlaunchpad.affiliates.setMyAffiliatePayoutPreference);
+  const createShareLink = useMutation(api.traderlaunchpad.affiliates.createMyAffiliateShareLink);
 
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+
+  const sponsorLink = useQuery(
+    api.traderlaunchpad.affiliates.getMySponsorLink,
+    !authLoading && isAuthenticated ? {} : "skip",
+  ) as
+    | {
+        userId: string;
+        sponsorUserId: string;
+        createdAt: number;
+        createdSource: string;
+        updatedAt?: number;
+        updatedBy?: string;
+      }
+    | null
+    | undefined;
 
   const recruits = useQuery(
     api.traderlaunchpad.affiliates.listMyRecruits,
@@ -46,24 +129,66 @@ export default function AdminAffiliatesPage() {
     }[]
     | undefined;
 
+  const directDownline = useQuery(
+    api.traderlaunchpad.affiliates.listMyDirectDownline,
+    !authLoading && isAuthenticated ? { limit: 250 } : "skip",
+  ) as
+    | {
+      userId: string;
+      name: string;
+      joinedAt: number;
+      createdSource: string;
+    }[]
+    | undefined;
+
   const creditEvents = useQuery(
     api.traderlaunchpad.affiliates.listMyCreditEvents,
     !authLoading && isAuthenticated ? { limit: 200 } : "skip",
   ) as
     | {
+      kind?: string;
       amountCents: number;
       currency: string;
       reason: string;
+      externalEventId?: string;
       createdAt: number;
       referredUserId?: string;
+      referrerUserId?: string;
       conversionId?: string;
     }[]
     | undefined;
 
-  const [data, setData] = React.useState<Awaited<ReturnType<typeof getDashboard>> | null>(null);
-  const [payout, setPayout] = React.useState<Awaited<ReturnType<typeof getPayoutSettings>> | null>(
-    null,
-  );
+  const topPaths = useQuery(
+    api.traderlaunchpad.affiliates.getMyTopLandingPaths,
+    !authLoading && isAuthenticated ? { daysBack: 30, limit: 5 } : "skip",
+  ) as
+    | {
+      userId: string;
+      referralCode: string | null;
+      daysBack: number;
+      totalClicks: number;
+      topLandingPaths: { path: string; clicks: number }[];
+    }
+    | undefined;
+
+  const shareLinks = useQuery(
+    api.traderlaunchpad.affiliates.listMyAffiliateShareLinks,
+    !authLoading && isAuthenticated ? { limit: 50 } : "skip",
+  ) as
+    | {
+      code: string;
+      url?: string;
+      path: string;
+      createdAt: number;
+      clickCount?: number;
+      lastAccessAt?: number;
+      campaign: string;
+      templateId: string;
+    }[]
+    | undefined;
+
+  const [data, setData] = React.useState<AffiliateDashboard | null>(null);
+  const [payout, setPayout] = React.useState<AffiliatePayoutSettings | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [payoutLoading, setPayoutLoading] = React.useState(true);
   const [baseOrigin, setBaseOrigin] = React.useState<string>("http://localhost:3000");
@@ -116,28 +241,140 @@ export default function AdminAffiliatesPage() {
     }
     refresh();
     refreshPayout();
-  }, [authLoading, isAuthenticated, refresh]);
+  }, [authLoading, isAuthenticated, refresh, refreshPayout]);
 
   const referralCode = data?.profile?.referralCode ?? null;
 
   const referralUrl = React.useMemo(() => {
     if (!referralCode) return null;
-    try {
-      const base = new URL(baseOrigin);
-      const path = landingPath.startsWith("/") ? landingPath : `/${landingPath}`;
-      base.pathname = path;
-      base.searchParams.set("ref", referralCode);
-      return base.toString();
-    } catch {
-      return null;
-    }
+    return buildAffiliateUrl({ baseOrigin, landingPath, referralCode });
   }, [baseOrigin, landingPath, referralCode]);
+
+  const [utmCampaign, setUtmCampaign] = React.useState<string>("affiliate");
+  const utmLink = React.useMemo(() => {
+    if (!referralCode) return null;
+    return buildAffiliateUrl({
+      baseOrigin,
+      landingPath,
+      referralCode,
+      utmSource: "affiliate",
+      utmMedium: "share",
+      utmCampaign: utmCampaign.trim() || "affiliate",
+    });
+  }, [baseOrigin, landingPath, referralCode, utmCampaign]);
+
+  const [shortUrl, setShortUrl] = React.useState<string | null>(null);
+  const shareUrl = shortUrl ?? utmLink ?? referralUrl;
+
+  const [qrDataUrl, setQrDataUrl] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    const target = shareUrl;
+    if (!target) {
+      setQrDataUrl(null);
+      return;
+    }
+    void (async () => {
+      try {
+        const mod = await import("qrcode");
+        const dataUrl = await mod.toDataURL(target, { margin: 1, width: 256 });
+        setQrDataUrl(dataUrl);
+      } catch (err: unknown) {
+        console.error("[AdminAffiliatesPage] qr generation failed", err);
+        setQrDataUrl(null);
+      }
+    })();
+  }, [shareUrl]);
+
+  const copyText = React.useCallback(async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (err: unknown) {
+      console.error("[AdminAffiliatesPage] clipboard write failed", err);
+    }
+  }, []);
+
+  const shareTemplates = React.useMemo(() => {
+    const safeUrl = shareUrl ?? "";
+    return [
+      {
+        id: "x",
+        label: "X / Twitter",
+        text: `Track your trades with TraderLaunchpad. Free to start.\n\n${safeUrl}`,
+      },
+      {
+        id: "linkedin",
+        label: "LinkedIn",
+        text: `If you’re journaling trades in spreadsheets, this is a big upgrade.\n\nTry TraderLaunchpad:\n${safeUrl}`,
+      },
+      {
+        id: "sms",
+        label: "SMS",
+        text: `Try TraderLaunchpad: ${safeUrl}`,
+      },
+      {
+        id: "discord",
+        label: "Discord",
+        text: `Sharing a trading journal tool I’ve been using: ${safeUrl}`,
+      },
+      {
+        id: "email",
+        label: "Email",
+        text:
+          `Subject: Trading journal that actually makes reviewing easy\n\n` +
+          `Hey — sharing TraderLaunchpad. It’s been useful for reviewing trades and spotting patterns.\n\n` +
+          `Link: ${safeUrl}\n`,
+      },
+    ];
+  }, [shareUrl]);
+
+  const [selectedTemplateId, setSelectedTemplateId] = React.useState<string>("x");
+  const selectedTemplate = React.useMemo(() => {
+    const found = shareTemplates.find((t) => t.id === selectedTemplateId);
+    if (found) return found;
+    return { id: "x", label: "X / Twitter", text: "" };
+  }, [selectedTemplateId, shareTemplates]);
+
+  const openTwitter = React.useCallback(() => {
+    if (typeof window === "undefined") return;
+    const intent = new URL("https://twitter.com/intent/tweet");
+    intent.searchParams.set("text", selectedTemplate.text);
+    window.open(intent.toString(), "_blank", "noopener,noreferrer");
+  }, [selectedTemplate.text]);
+
+  const openLinkedIn = React.useCallback(() => {
+    if (typeof window === "undefined") return;
+    const url = shareUrl;
+    if (!url) return;
+    const intent = new URL("https://www.linkedin.com/sharing/share-offsite/");
+    intent.searchParams.set("url", url);
+    window.open(intent.toString(), "_blank", "noopener,noreferrer");
+  }, [shareUrl]);
+
+  const directEarnings30d = React.useMemo(() => {
+    const rows = Array.isArray(creditEvents) ? creditEvents : [];
+    const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    let sum = 0;
+    for (const e of rows) {
+      if (typeof e.createdAt !== "number" || e.createdAt < since) continue;
+      if (e.kind === "commission_direct") sum += e.amountCents;
+    }
+    return sum;
+  }, [creditEvents]);
+
+  const sponsorOverrideEarnings30d = React.useMemo(() => {
+    const rows = Array.isArray(creditEvents) ? creditEvents : [];
+    const since = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    let sum = 0;
+    for (const e of rows) {
+      if (typeof e.createdAt !== "number" || e.createdAt < since) continue;
+      if (e.kind === "commission_sponsor_override") sum += e.amountCents;
+    }
+    return sum;
+  }, [creditEvents]);
 
   const handleCopy = React.useCallback(() => {
     if (!referralUrl) return;
-    if (typeof navigator === "undefined" || !navigator.clipboard) return;
-    navigator.clipboard
-      .writeText(referralUrl)
+    copyText(referralUrl)
       .then(() => {
         setCopyLabel("Copied");
         setTimeout(() => setCopyLabel("Copy"), 1200);
@@ -145,7 +382,39 @@ export default function AdminAffiliatesPage() {
       .catch((err: unknown) => {
         console.error("[AdminAffiliatesPage] clipboard copy failed", err);
       });
-  }, [referralUrl]);
+  }, [copyText, referralUrl]);
+
+  const [shareLoading, setShareLoading] = React.useState(false);
+  const [shareError, setShareError] = React.useState<string | null>(null);
+  const handleGenerateShortlink = React.useCallback(() => {
+    if (!isAuthenticated || authLoading) return;
+    setShareLoading(true);
+    setShareError(null);
+    setShortUrl(null);
+    createShareLink({
+      landingPath,
+      campaign: utmCampaign.trim() || "affiliate",
+      templateId: selectedTemplateId,
+    })
+      .then((res) => {
+        const urlFromServer = typeof res.url === "string" && res.url ? res.url : null;
+        const url = urlFromServer ?? `${baseOrigin}/s/${res.code}`;
+        setShortUrl(url);
+      })
+      .catch((err: unknown) => {
+        console.error("[AdminAffiliatesPage] createMyAffiliateShareLink failed", err);
+        setShareError("Failed to generate short link. Please try again.");
+      })
+      .finally(() => setShareLoading(false));
+  }, [
+    authLoading,
+    baseOrigin,
+    createShareLink,
+    isAuthenticated,
+    landingPath,
+    selectedTemplateId,
+    utmCampaign,
+  ]);
 
   const handleBecomeAffiliate = React.useCallback(() => {
     if (!acceptedTerms) return;
@@ -168,7 +437,7 @@ export default function AdminAffiliatesPage() {
       returnUrl: `${window.location.origin}/admin/affiliates`,
     })
       .then((res) => {
-        if (res?.url) window.location.href = res.url;
+        if (res.url) window.location.href = res.url;
         else setPayoutError("Failed to start onboarding.");
       })
       .catch((err: unknown) => {
@@ -203,8 +472,9 @@ export default function AdminAffiliatesPage() {
   const handleSetMinPayout = React.useCallback(
     (next: number) => {
       const policy =
-        (payout?.payoutPreference?.policy as "payout_only" | "apply_to_subscription_then_payout") ??
-        "payout_only";
+        payout?.payoutPreference?.policy === "apply_to_subscription_then_payout"
+          ? "apply_to_subscription_then_payout"
+          : "payout_only";
       setPayoutError(null);
       setPayoutPreference({ policy, minPayoutCents: next })
         .then(() => refreshPayout())
@@ -216,15 +486,251 @@ export default function AdminAffiliatesPage() {
     [payout?.payoutPreference?.policy, refreshPayout, setPayoutPreference],
   );
 
-  const payoutPolicy = (payout?.payoutPreference?.policy ?? "payout_only") as
-    | "payout_only"
-    | "apply_to_subscription_then_payout";
+  const payoutPolicy =
+    payout?.payoutPreference?.policy === "apply_to_subscription_then_payout"
+      ? "apply_to_subscription_then_payout"
+      : "payout_only";
   const minPayoutCents = payout?.payoutPreference?.minPayoutCents ?? 0;
   const payoutAccountStatus = payout?.payoutAccount?.status ?? null;
 
   const recruitRows = React.useMemo(() => {
     return Array.isArray(recruits) ? recruits : [];
   }, [recruits]);
+
+  const downlineRows = React.useMemo(() => {
+    return Array.isArray(directDownline) ? directDownline : [];
+  }, [directDownline]);
+
+  const shareLinkRows = React.useMemo(() => {
+    return Array.isArray(shareLinks) ? shareLinks : [];
+  }, [shareLinks]);
+
+  const shareLinkRowsWithMetrics = React.useMemo(() => {
+    const recruitsArr = Array.isArray(recruits) ? recruits : [];
+    const creditsArr = Array.isArray(creditEvents) ? creditEvents : [];
+    return shareLinkRows.map((l) => {
+      const since = typeof l.createdAt === "number" ? l.createdAt : 0;
+      const signups = recruitsArr.filter((r) => typeof r.attributedAt === "number" && r.attributedAt >= since).length;
+      const activations = recruitsArr.filter((r) => typeof r.activatedAt === "number" && r.activatedAt >= since).length;
+      const paid = recruitsArr.filter((r) => typeof r.firstPaidConversionAt === "number" && r.firstPaidConversionAt >= since).length;
+      const earningsCents = creditsArr.reduce((sum, e) => {
+        if (typeof e.createdAt !== "number" || e.createdAt < since) return sum;
+        return sum + (typeof e.amountCents === "number" ? e.amountCents : 0);
+      }, 0);
+      return { ...l, signups, activations, paid, earningsCents };
+    });
+  }, [creditEvents, recruits, shareLinkRows]);
+
+  const downlineColumns = React.useMemo<
+    ColumnDefinition<{ userId: string; name: string; joinedAt: number; createdSource: string }>[]
+  >(
+    () => [
+      {
+        id: "name",
+        header: "User",
+        accessorKey: "name",
+        cell: (r: { userId: string; name: string; joinedAt: number; createdSource: string }) => (
+          <div className="space-y-1">
+            <div className="text-sm font-semibold">{r.name}</div>
+            <div className="text-muted-foreground text-xs font-mono">
+              {stripClerkIssuerPrefix(r.userId)}
+            </div>
+          </div>
+        ),
+        sortable: true,
+      },
+      {
+        id: "joinedAt",
+        header: "Joined",
+        accessorKey: "joinedAt",
+        cell: (r: { userId: string; name: string; joinedAt: number; createdSource: string }) => (
+          <div className="whitespace-nowrap text-xs">
+            {r.joinedAt ? new Date(r.joinedAt).toLocaleDateString() : "—"}
+          </div>
+        ),
+        sortable: true,
+      },
+      {
+        id: "source",
+        header: "Source",
+        accessorKey: "createdSource",
+        cell: (r: { userId: string; name: string; joinedAt: number; createdSource: string }) => (
+          <div className="text-muted-foreground text-xs">{r.createdSource || "—"}</div>
+        ),
+        sortable: true,
+      },
+    ],
+    [],
+  );
+
+  const shareLinkColumns = React.useMemo<
+    ColumnDefinition<{
+      code: string;
+      url?: string;
+      path: string;
+      createdAt: number;
+      clickCount?: number;
+      lastAccessAt?: number;
+      campaign: string;
+      templateId: string;
+      signups: number;
+      activations: number;
+      paid: number;
+      earningsCents: number;
+    }>[]
+  >(
+    () => [
+      {
+        id: "url",
+        header: "Link",
+        accessorKey: "code",
+        cell: (r: {
+          code: string;
+          url?: string;
+          path: string;
+          createdAt: number;
+          clickCount?: number;
+          lastAccessAt?: number;
+          campaign: string;
+          templateId: string;
+        }) => {
+          const url = r.url ?? `${baseOrigin}/s/${r.code}`;
+          return (
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="truncate font-mono text-xs">{url}</div>
+                <div className="text-muted-foreground truncate text-[10px]">{r.path}</div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  copyText(url).catch((err: unknown) => {
+                    console.error("[AdminAffiliatesPage] copy shortlink failed", err);
+                  })
+                }
+              >
+                Copy
+              </Button>
+            </div>
+          );
+        },
+      },
+      {
+        id: "campaign",
+        header: "Campaign",
+        accessorKey: "campaign",
+        cell: (r: {
+          code: string;
+          url?: string;
+          path: string;
+          createdAt: number;
+          clickCount?: number;
+          lastAccessAt?: number;
+          campaign: string;
+          templateId: string;
+        }) => <div className="text-xs">{r.campaign || "—"}</div>,
+      },
+      {
+        id: "template",
+        header: "Template",
+        accessorKey: "templateId",
+        cell: (r: {
+          code: string;
+          url?: string;
+          path: string;
+          createdAt: number;
+          clickCount?: number;
+          lastAccessAt?: number;
+          campaign: string;
+          templateId: string;
+        }) => <div className="text-xs">{r.templateId || "—"}</div>,
+      },
+      {
+        id: "createdAt",
+        header: "Created",
+        accessorKey: "createdAt",
+        cell: (r: {
+          code: string;
+          url?: string;
+          path: string;
+          createdAt: number;
+          clickCount?: number;
+          lastAccessAt?: number;
+          campaign: string;
+          templateId: string;
+        }) => (
+          <div className="whitespace-nowrap text-xs">
+            {r.createdAt ? new Date(r.createdAt).toLocaleString() : "—"}
+          </div>
+        ),
+        sortable: true,
+      },
+      {
+        id: "clicks",
+        header: "Clicks",
+        accessorKey: "clickCount",
+        cell: (r: {
+          code: string;
+          url?: string;
+          path: string;
+          createdAt: number;
+          clickCount?: number;
+          lastAccessAt?: number;
+          campaign: string;
+          templateId: string;
+        }) => <div className="text-xs">{typeof r.clickCount === "number" ? r.clickCount : 0}</div>,
+        sortable: true,
+      },
+      {
+        id: "signups",
+        header: "Signups",
+        accessorKey: "signups",
+        cell: (r: { signups: number }) => <div className="text-xs">{r.signups}</div>,
+        sortable: true,
+      },
+      {
+        id: "paid",
+        header: "Paid",
+        accessorKey: "paid",
+        cell: (r: { paid: number }) => <div className="text-xs">{r.paid}</div>,
+        sortable: true,
+      },
+      {
+        id: "earnings",
+        header: "Earnings",
+        accessorKey: "earningsCents",
+        cell: (r: { earningsCents: number }) => (
+          <div className="font-mono text-xs">{formatUsd(r.earningsCents)}</div>
+        ),
+        sortable: true,
+      },
+      {
+        id: "lastAccessAt",
+        header: "Last clicked",
+        accessorKey: "lastAccessAt",
+        cell: (r: {
+          code: string;
+          url?: string;
+          path: string;
+          createdAt: number;
+          clickCount?: number;
+          lastAccessAt?: number;
+          campaign: string;
+          templateId: string;
+        }) => (
+          <div className="whitespace-nowrap text-xs">
+            {typeof r.lastAccessAt === "number" && r.lastAccessAt > 0
+              ? new Date(r.lastAccessAt).toLocaleString()
+              : "—"}
+          </div>
+        ),
+        sortable: true,
+      },
+    ],
+    [baseOrigin, copyText],
+  );
 
   const creditRows = React.useMemo(() => {
     return Array.isArray(creditEvents) ? creditEvents : [];
@@ -413,7 +919,7 @@ export default function AdminAffiliatesPage() {
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Your referral link</CardTitle>
+                <CardTitle className="text-base">Share kit</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-2">
@@ -423,6 +929,18 @@ export default function AdminAffiliatesPage() {
                     onChange={(e) => setLandingPath(e.target.value)}
                     placeholder="/"
                   />
+                </div>
+
+                <div className="grid gap-2">
+                  <div className="text-muted-foreground text-xs">Campaign</div>
+                  <Input
+                    value={utmCampaign}
+                    onChange={(e) => setUtmCampaign(e.target.value)}
+                    placeholder="affiliate"
+                  />
+                  <div className="text-muted-foreground text-xs">
+                    Used to build UTM links so you can test which content converts best.
+                  </div>
                 </div>
 
                 <div className="grid gap-2">
@@ -438,6 +956,22 @@ export default function AdminAffiliatesPage() {
                       {copyLabel}
                     </Button>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Input value={utmLink ?? ""} readOnly />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        if (!utmLink) return;
+                        copyText(utmLink).catch((err: unknown) => {
+                          console.error("[AdminAffiliatesPage] copy UTM link failed", err);
+                        });
+                      }}
+                      disabled={!utmLink}
+                    >
+                      Copy UTM link
+                    </Button>
+                  </div>
                   {referralCode ? (
                     <div className="text-muted-foreground text-xs">
                       Or share:
@@ -448,6 +982,118 @@ export default function AdminAffiliatesPage() {
                   ) : null}
                 </div>
 
+                <div className="grid gap-2">
+                  <div className="text-muted-foreground text-xs">Tracked short link</div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      onClick={handleGenerateShortlink}
+                      disabled={!referralCode || shareLoading}
+                    >
+                      {shareLoading ? "Generating…" : "Generate short link"}
+                    </Button>
+                    {shortUrl ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          copyText(shortUrl).catch((err: unknown) => {
+                            console.error("[AdminAffiliatesPage] copy shortUrl failed", err);
+                          })
+                        }
+                      >
+                        Copy short link
+                      </Button>
+                    ) : null}
+                  </div>
+                  <Input value={shortUrl ?? ""} readOnly placeholder={`${baseOrigin}/s/...`} />
+                  {shareError ? <div className="text-sm text-destructive">{shareError}</div> : null}
+                  <div className="text-muted-foreground text-xs">
+                    Use this link in posts. Clicks will be tracked on the shortlink itself.
+                  </div>
+                </div>
+
+                <div className="grid gap-2">
+                  <div className="text-muted-foreground text-xs">Template</div>
+                  <div className="flex flex-wrap gap-2">
+                    {shareTemplates.map((t) => (
+                      <Button
+                        key={t.id}
+                        type="button"
+                        variant={selectedTemplateId === t.id ? "default" : "outline"}
+                        onClick={() => setSelectedTemplateId(t.id)}
+                      >
+                        {t.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <Textarea value={selectedTemplate.text} readOnly className="min-h-[120px]" />
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        copyText(selectedTemplate.text).catch((err: unknown) => {
+                          console.error("[AdminAffiliatesPage] copy template failed", err);
+                        });
+                      }}
+                    >
+                      Copy text
+                    </Button>
+                    <Button type="button" variant="outline" onClick={openTwitter} disabled={!selectedTemplate.text}>
+                      Open X
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={openLinkedIn}
+                      disabled={!shareUrl}
+                    >
+                      Open LinkedIn
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        const url = shareUrl;
+                        if (!url) return;
+                        const shareFn: unknown = (navigator as unknown as { share?: unknown }).share;
+                        if (typeof shareFn === "function") {
+                          (shareFn as (data: { text: string; url: string }) => Promise<void>)({
+                            text: selectedTemplate.text,
+                            url,
+                          }).catch((err: unknown) => {
+                            console.error("[AdminAffiliatesPage] navigator.share failed", err);
+                          });
+                          return;
+                        }
+                        copyText(url).catch((err: unknown) => {
+                          console.error("[AdminAffiliatesPage] copy shareUrl failed", err);
+                        });
+                      }}
+                      disabled={!shareUrl}
+                    >
+                      Share…
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid gap-2">
+                  <div className="text-muted-foreground text-xs">QR code</div>
+                  {qrDataUrl ? (
+                    <Image
+                      src={qrDataUrl}
+                      alt="Affiliate QR code"
+                      width={160}
+                      height={160}
+                      unoptimized
+                      className="h-40 w-40 rounded-md border bg-white p-2"
+                    />
+                  ) : (
+                    <div className="text-muted-foreground text-xs">QR not available.</div>
+                  )}
+                </div>
+
                 <div className="rounded-lg border bg-card p-3 text-sm">
                   <div className="text-muted-foreground text-xs">Credit balance</div>
                   <div className="mt-1 font-semibold">{formatUsd(data.stats.creditBalanceCents)}</div>
@@ -455,23 +1101,88 @@ export default function AdminAffiliatesPage() {
               </CardContent>
             </Card>
 
-            <AffiliateDashboardCard
-              title="Performance"
-              stats={{
-                clicks30d: data.stats.clicks30d,
-                signups30d: data.stats.signups30d,
-                activations30d: data.stats.activations30d,
-                conversions30d: data.stats.conversions30d,
-                creditBalanceCents: data.stats.creditBalanceCents,
-              }}
-              className="rounded-xl border bg-background p-4"
-              footer={
-                <div className="text-muted-foreground text-xs">
-                  Rewards are granted automatically based on activations and paid conversions.
-                </div>
-              }
-            />
+            <div className="space-y-6">
+              <AffiliateDashboardCard
+                title="Performance"
+                stats={{
+                  clicks30d: data.stats.clicks30d,
+                  signups30d: data.stats.signups30d,
+                  activations30d: data.stats.activations30d,
+                  conversions30d: data.stats.conversions30d,
+                  creditBalanceCents: data.stats.creditBalanceCents,
+                }}
+                className="rounded-xl border bg-background p-4"
+                footer={
+                  <div className="text-muted-foreground text-xs">
+                    Rewards are granted automatically based on activations and paid conversions.
+                  </div>
+                }
+              />
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Earnings (30d)</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded-lg border bg-card p-3">
+                    <div className="text-muted-foreground text-xs">Direct commissions</div>
+                    <div className="mt-1 text-sm font-semibold">{formatUsd(directEarnings30d)}</div>
+                  </div>
+                  <div className="rounded-lg border bg-card p-3">
+                    <div className="text-muted-foreground text-xs">Sponsor overrides</div>
+                    <div className="mt-1 text-sm font-semibold">{formatUsd(sponsorOverrideEarnings30d)}</div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Your sponsor (upline)</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {sponsorLink === undefined ? (
+                    <div className="text-muted-foreground text-sm">Loading…</div>
+                  ) : sponsorLink ? (
+                    <>
+                      <div className="text-sm font-semibold">
+                        {stripClerkIssuerPrefix(sponsorLink.sponsorUserId)}
+                      </div>
+                      <div className="text-muted-foreground text-xs">
+                        Joined{" "}
+                        {sponsorLink.createdAt
+                          ? new Date(sponsorLink.createdAt).toLocaleString()
+                          : "—"}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-muted-foreground text-sm">No sponsor linked.</div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
+
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b p-4">
+              <CardTitle className="text-base">Your share links</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3">
+              <EntityList
+                data={shareLinkRowsWithMetrics}
+                columns={shareLinkColumns}
+                isLoading={shareLinks === undefined}
+                defaultViewMode="list"
+                viewModes={[]}
+                enableSearch={true}
+                getRowId={(r) => r.code}
+                emptyState={
+                  <div className="text-muted-foreground text-sm">
+                    No share links yet. Generate one from the Share kit to start tracking per-post clicks.
+                  </div>
+                }
+              />
+            </CardContent>
+          </Card>
 
           <Card className="overflow-hidden">
             <CardHeader className="border-b p-4">
@@ -577,9 +1288,36 @@ export default function AdminAffiliatesPage() {
 
           <Card className="overflow-hidden">
             <CardHeader className="border-b p-4">
-              <CardTitle className="text-base">Recruited users</CardTitle>
+              <CardTitle className="text-base">Network (MLM): direct downline</CardTitle>
             </CardHeader>
             <CardContent className="p-3">
+              <div className="text-muted-foreground mb-3 text-xs">
+                These users explicitly opted into joining your sponsor network. This is separate from signup
+                attribution.
+              </div>
+              <EntityList
+                data={downlineRows}
+                columns={downlineColumns}
+                isLoading={directDownline === undefined}
+                defaultViewMode="list"
+                viewModes={[]}
+                enableSearch={true}
+                getRowId={(r) => r.userId}
+                emptyState={
+                  <div className="text-muted-foreground text-sm">No direct downline yet.</div>
+                }
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden">
+            <CardHeader className="border-b p-4">
+              <CardTitle className="text-base">Attributed signups</CardTitle>
+            </CardHeader>
+            <CardContent className="p-3">
+              <div className="text-muted-foreground mb-3 text-xs">
+                Users attributed to your referral code during signup (marketing attribution window).
+              </div>
               <EntityList
                 data={recruitRows}
                 columns={recruitColumns}
@@ -599,9 +1337,27 @@ export default function AdminAffiliatesPage() {
 
           <Card className="overflow-hidden">
             <CardHeader className="border-b p-4">
-              <CardTitle className="text-base">Credit events</CardTitle>
+              <CardTitle className="text-base">Earnings ledger</CardTitle>
             </CardHeader>
             <CardContent className="p-3">
+              {topPaths ? (
+                <div className="mb-3 rounded-lg border bg-card p-3">
+                  <div className="text-muted-foreground text-xs">
+                    Top landing paths (last {topPaths.daysBack}d)
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {topPaths.topLandingPaths.length ? (
+                      topPaths.topLandingPaths.map((p) => (
+                        <Badge key={p.path} variant="secondary">
+                          {p.path} · {p.clicks}
+                        </Badge>
+                      ))
+                    ) : (
+                      <div className="text-muted-foreground text-xs">No click data yet.</div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
               <EntityList
                 data={creditRows}
                 columns={[
@@ -610,11 +1366,14 @@ export default function AdminAffiliatesPage() {
                     header: "Date",
                     accessorKey: "createdAt",
                     cell: (e: {
+                      kind?: string;
                       amountCents: number;
                       currency: string;
                       reason: string;
+                      externalEventId?: string;
                       createdAt: number;
                       referredUserId?: string;
+                      referrerUserId?: string;
                       conversionId?: string;
                     }) => (
                       <div className="whitespace-nowrap text-xs">
@@ -627,15 +1386,27 @@ export default function AdminAffiliatesPage() {
                     header: "Amount",
                     accessorKey: "amountCents",
                     cell: (e: {
+                      kind?: string;
                       amountCents: number;
                       currency: string;
                       reason: string;
+                      externalEventId?: string;
                       createdAt: number;
                       referredUserId?: string;
+                      referrerUserId?: string;
                       conversionId?: string;
                     }) => (
-                      <div className="font-mono text-xs">
-                        {formatUsd(e.amountCents)} {e.currency}
+                      <div className="space-y-1">
+                        <div className="font-mono text-xs">
+                          {formatUsd(e.amountCents)} {e.currency}
+                        </div>
+                        <div className="text-muted-foreground text-[10px]">
+                          {e.kind === "commission_direct"
+                            ? "Direct commission"
+                            : e.kind === "commission_sponsor_override"
+                              ? `Sponsor override (child: ${stripClerkIssuerPrefix(String(e.referrerUserId ?? ""))})`
+                              : (e.kind ?? "—")}
+                        </div>
                       </div>
                     ),
                   },
@@ -644,18 +1415,26 @@ export default function AdminAffiliatesPage() {
                     header: "Reason",
                     accessorKey: "reason",
                     cell: (e: {
+                      kind?: string;
                       amountCents: number;
                       currency: string;
                       reason: string;
+                      externalEventId?: string;
                       createdAt: number;
                       referredUserId?: string;
+                      referrerUserId?: string;
                       conversionId?: string;
                     }) => (
-                      <div className="text-sm">
+                      <div className="space-y-1 text-sm">
                         <div className="font-medium">{e.reason}</div>
                         <div className="text-muted-foreground text-xs font-mono">
-                          {e.referredUserId ?? "—"}
+                          {e.referredUserId ? stripClerkIssuerPrefix(e.referredUserId) : "—"}
                         </div>
+                        {e.externalEventId ? (
+                          <div className="text-muted-foreground text-[10px] font-mono">
+                            {String(e.externalEventId)}
+                          </div>
+                        ) : null}
                       </div>
                     ),
                   },

@@ -46,6 +46,12 @@ export type Mounts = {
       },
       { code: string }
     >;
+    trackClickByCode: FunctionReference<
+      "mutation",
+      "public",
+      { appKey: string; code: string },
+      null
+    >;
     upsertSettings: FunctionReference<
       "mutation",
       "public",
@@ -80,6 +86,24 @@ export type Mounts = {
       "public",
       { appKey: string },
       { alphabet: string; codeLength: number; domain: string; enabled: boolean }
+    >;
+    listByCreator: FunctionReference<
+      "query",
+      "public",
+      { appKey: string; createdByUserId: string; kind: string; limit?: number },
+      Array<{
+        appKey: string;
+        clickCount?: number;
+        code: string;
+        createdAt: number;
+        createdByUserId?: string;
+        disabledAt?: number;
+        expiresAt?: number;
+        kind?: string;
+        lastAccessAt?: number;
+        path: string;
+        targetId?: string;
+      }>
     >;
   };
 };

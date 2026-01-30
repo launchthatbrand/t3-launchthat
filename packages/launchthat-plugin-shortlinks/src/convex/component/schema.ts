@@ -28,7 +28,13 @@ export default defineSchema({
     .index("by_code", ["code"])
     .index("by_appKey_and_code", ["appKey", "code"])
     .index("by_appKey_and_path", ["appKey", "path"])
-    .index("by_appKey_and_kind_and_targetId", ["appKey", "kind", "targetId"]),
+    .index("by_appKey_and_kind_and_targetId", ["appKey", "kind", "targetId"])
+    .index("by_appKey_and_kind_and_createdByUserId_and_createdAt", [
+      "appKey",
+      "kind",
+      "createdByUserId",
+      "createdAt",
+    ]),
 
   shortlinkSettings: defineTable({
     appKey: v.string(),

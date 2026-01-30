@@ -206,6 +206,14 @@ export const getAffiliateAdminView = query({
       }),
     ),
     directDownlineCount: v.number(),
+    directDownline: v.array(
+      v.object({
+        userId: v.string(),
+        name: v.string(),
+        joinedAt: v.number(),
+        createdSource: v.string(),
+      }),
+    ),
     profile: v.union(
       v.null(),
       v.object({
@@ -323,7 +331,8 @@ export const getAffiliateAdminView = query({
       componentsUntyped.launchthat_affiliates.network.queries.listDirectDownlineForSponsor,
       { sponsorUserId: userId, limit: 5000 },
     );
-    const directDownlineCount = Array.isArray(downlineUnknown) ? downlineUnknown.length : 0;
+    const downlineRaw = Array.isArray(downlineUnknown) ? (downlineUnknown as any[]) : [];
+    const directDownlineCount = downlineRaw.length;
 
     const profileUnknown = await ctx.runQuery(
       componentsUntyped.launchthat_affiliates.admin.getAffiliateProfileByUserId,
@@ -361,17 +370,40 @@ export const getAffiliateAdminView = query({
     );
     const recruitsRaw = Array.isArray(recruitsUnknown) ? (recruitsUnknown as any[]) : [];
 
-    const resolveDisplayName = async (clerkId: string): Promise<string> => {
-      const normalized = String(clerkId ?? "").trim();
+    const stripClerkIssuerPrefix = (userKey: string): string => {
+      const s = String(userKey ?? "").trim();
+      const pipeIdx = s.indexOf("|");
+      if (pipeIdx === -1) return s;
+      const tail = s.slice(pipeIdx + 1).trim();
+      return tail || s;
+    };
+
+    const resolveDisplayName = async (userKey: string): Promise<string> => {
+      const normalized = String(userKey ?? "").trim();
       if (!normalized) return "User";
-      const u = await ctx.db
+      const clerkId = stripClerkIssuerPrefix(normalized);
+
+      const byClerk = await ctx.db
         .query("users")
-        .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", normalized))
+        .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", clerkId))
         .first();
-      const name =
-        u && typeof (u as any).name === "string" ? String((u as any).name).trim() : "";
-      if (name) return name;
-      return `User ${normalized.slice(-6)}`;
+      const name1 =
+        byClerk && typeof (byClerk as any).name === "string"
+          ? String((byClerk as any).name).trim()
+          : "";
+      if (name1) return name1;
+
+      const byToken = await ctx.db
+        .query("users")
+        .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", normalized))
+        .first();
+      const name2 =
+        byToken && typeof (byToken as any).name === "string"
+          ? String((byToken as any).name).trim()
+          : "";
+      if (name2) return name2;
+
+      return `User ${clerkId.slice(-6)}`;
     };
 
     const recruits: Array<{
@@ -392,6 +424,23 @@ export const getAffiliateAdminView = query({
         activatedAt: typeof r?.activatedAt === "number" ? Number(r.activatedAt) : undefined,
         firstPaidConversionAt:
           typeof r?.firstPaidConversionAt === "number" ? Number(r.firstPaidConversionAt) : undefined,
+      });
+    }
+
+    const directDownline: Array<{
+      userId: string;
+      name: string;
+      joinedAt: number;
+      createdSource: string;
+    }> = [];
+    for (const r of downlineRaw) {
+      const downlineUserId = String(r?.userId ?? "").trim();
+      if (!downlineUserId) continue;
+      directDownline.push({
+        userId: downlineUserId,
+        name: await resolveDisplayName(downlineUserId),
+        joinedAt: typeof r?.createdAt === "number" ? Number(r.createdAt) : 0,
+        createdSource: String(r?.createdSource ?? ""),
       });
     }
 
@@ -430,6 +479,7 @@ export const getAffiliateAdminView = query({
       userId,
       sponsorLink,
       directDownlineCount,
+      directDownline,
       profile,
       stats,
       benefits,

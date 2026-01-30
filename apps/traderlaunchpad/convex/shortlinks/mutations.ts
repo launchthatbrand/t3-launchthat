@@ -83,3 +83,19 @@ export const upsertShortlinkSettings = mutation({
   },
 });
 
+export const trackShortlinkClick = mutation({
+  args: {
+    code: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const code = String(args.code ?? "").trim();
+    if (!code) return null;
+    await ctx.runMutation(components.launchthat_shortlinks.mutations.trackClickByCode, {
+      appKey: APP_KEY,
+      code,
+    });
+    return null;
+  },
+});
+

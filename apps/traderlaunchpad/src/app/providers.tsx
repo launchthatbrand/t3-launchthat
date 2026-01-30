@@ -75,6 +75,7 @@ export function Providers({ children, tenant, host }: ProvidersProps) {
       <TenantProvider value={tenant}>
         <HostProvider host={host}>
           <TenantConvexProvider convexUrl={convexUrl} nodeEnv={env.NODE_ENV}>
+            <AffiliateSponsorOptInDialog />
             <JoinCodeProvider>
               <PushNotificationsClient />
               <DataModeProvider>

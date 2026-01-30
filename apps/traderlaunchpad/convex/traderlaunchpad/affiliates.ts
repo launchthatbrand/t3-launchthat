@@ -16,6 +16,38 @@ const readUserKey = async (ctx: any): Promise<string | null> => {
   return subject || null;
 };
 
+const stripClerkIssuerPrefix = (userKey: string): string => {
+  const s = String(userKey ?? "").trim();
+  const pipeIdx = s.indexOf("|");
+  if (pipeIdx === -1) return s;
+  const tail = s.slice(pipeIdx + 1).trim();
+  return tail || s;
+};
+
+const resolveUserDisplayName = async (ctx: any, userKey: string): Promise<string> => {
+  const normalized = String(userKey ?? "").trim();
+  if (!normalized) return "User";
+  const clerkId = stripClerkIssuerPrefix(normalized);
+
+  // Prefer clerkId lookup.
+  const byClerk = await ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", clerkId))
+    .first();
+  const name1 = byClerk && typeof (byClerk as any).name === "string" ? String((byClerk as any).name).trim() : "";
+  if (name1) return name1;
+
+  // Fallback to tokenIdentifier lookup (for `issuer|user_x` keys).
+  const byToken = await ctx.db
+    .query("users")
+    .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", normalized))
+    .first();
+  const name2 = byToken && typeof (byToken as any).name === "string" ? String((byToken as any).name).trim() : "";
+  if (name2) return name2;
+
+  return `User ${clerkId.slice(-6)}`;
+};
+
 export const recordClick = mutation({
   args: {
     referralCode: v.string(),
@@ -237,20 +269,6 @@ export const listMyRecruits = query({
     );
     const rows = Array.isArray(rowsUnknown) ? (rowsUnknown as any[]) : [];
 
-    const resolveDisplayName = async (clerkId: string): Promise<string> => {
-      const normalized = String(clerkId ?? "").trim();
-      if (!normalized) return "User";
-      const u = await ctx.db
-        .query("users")
-        .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", normalized))
-        .first();
-      const name =
-        u && typeof (u as any).name === "string" ? String((u as any).name).trim() : "";
-      if (name) return name;
-      // Fallback: anonymized label (no email).
-      return `User ${normalized.slice(-6)}`;
-    };
-
     const out: Array<{
       referredUserId: string;
       name: string;
@@ -262,7 +280,7 @@ export const listMyRecruits = query({
     for (const r of rows) {
       const referredUserId = String(r?.referredUserId ?? "").trim();
       if (!referredUserId) continue;
-      const name = await resolveDisplayName(referredUserId);
+      const name = await resolveUserDisplayName(ctx as any, referredUserId);
       out.push({
         referredUserId,
         name,
@@ -279,17 +297,213 @@ export const listMyRecruits = query({
   },
 });
 
+export const listMyDirectDownline = query({
+  args: { limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      userId: v.string(),
+      name: v.string(),
+      joinedAt: v.number(),
+      createdSource: v.string(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const sponsorUserId = await readUserKey(ctx);
+    if (!sponsorUserId) throw new Error("Unauthorized");
+    const limitRaw = typeof args.limit === "number" ? args.limit : 250;
+    const limit = Math.max(1, Math.min(5000, Math.floor(limitRaw)));
+
+    const rowsUnknown: any = await ctx.runQuery(
+      componentsUntyped.launchthat_affiliates.network.queries.listDirectDownlineForSponsor,
+      { sponsorUserId, limit },
+    );
+    const rows = Array.isArray(rowsUnknown) ? (rowsUnknown as any[]) : [];
+
+    const out: Array<{ userId: string; name: string; joinedAt: number; createdSource: string }> = [];
+    for (const r of rows) {
+      const userId = String(r?.userId ?? "").trim();
+      if (!userId) continue;
+      out.push({
+        userId,
+        name: await resolveUserDisplayName(ctx as any, userId),
+        joinedAt: typeof r?.createdAt === "number" ? Number(r.createdAt) : 0,
+        createdSource: String(r?.createdSource ?? ""),
+      });
+    }
+    return out;
+  },
+});
+
+export const getMyTopLandingPaths = query({
+  args: { daysBack: v.optional(v.number()), limit: v.optional(v.number()) },
+  returns: v.object({
+    userId: v.string(),
+    referralCode: v.union(v.string(), v.null()),
+    daysBack: v.number(),
+    totalClicks: v.number(),
+    topLandingPaths: v.array(v.object({ path: v.string(), clicks: v.number() })),
+  }),
+  handler: async (ctx, args) => {
+    const userId = await readUserKey(ctx);
+    if (!userId) throw new Error("Unauthorized");
+    const res: any = await ctx.runQuery(
+      componentsUntyped.launchthat_affiliates.analytics.queries.getTopLandingPathsForUser,
+      {
+        userId,
+        daysBack: typeof args.daysBack === "number" ? args.daysBack : undefined,
+        limit: typeof args.limit === "number" ? args.limit : undefined,
+      },
+    );
+    return res as any;
+  },
+});
+
+const normalizeLandingPath = (raw: string): string => {
+  const s = String(raw ?? "").trim();
+  if (!s) return "/";
+  if (!s.startsWith("/")) return "/";
+  if (s.length > 1024) return "/";
+  return s;
+};
+
+const buildSharePath = (args: {
+  landingPath: string;
+  referralCode: string;
+  campaign: string;
+  templateId: string;
+}): string => {
+  const base = new URL("http://example.local" + normalizeLandingPath(args.landingPath));
+  base.searchParams.set("ref", String(args.referralCode ?? "").trim());
+  base.searchParams.set("utm_source", "affiliate");
+  base.searchParams.set("utm_medium", "share");
+  base.searchParams.set("utm_campaign", String(args.campaign ?? "").trim() || "affiliate");
+  base.searchParams.set("utm_content", String(args.templateId ?? "").trim() || "default");
+  return base.pathname + base.search;
+};
+
+export const createMyAffiliateShareLink = mutation({
+  args: {
+    landingPath: v.string(),
+    campaign: v.string(),
+    templateId: v.string(),
+  },
+  returns: v.object({
+    code: v.string(),
+    url: v.optional(v.string()),
+    path: v.string(),
+    campaign: v.string(),
+    templateId: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const userId = await readUserKey(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    const profile: any = await ctx.runQuery(
+      componentsUntyped.launchthat_affiliates.profiles.getAffiliateProfileByUserId,
+      { userId },
+    );
+    const referralCode =
+      profile?.status === "active" && typeof profile?.referralCode === "string"
+        ? String(profile.referralCode).trim()
+        : "";
+    if (!referralCode) throw new Error("Affiliate profile required");
+
+    const landingPath = normalizeLandingPath(args.landingPath);
+    const campaign = String(args.campaign ?? "").trim() || "affiliate";
+    const templateId = String(args.templateId ?? "").trim() || "default";
+    const path = buildSharePath({ landingPath, referralCode, campaign, templateId });
+
+    const targetId = `affiliateShare:${userId}:${templateId}:${campaign}:${landingPath}`;
+    const out: any = await ctx.runMutation(apiUntyped.shortlinks.mutations.createShortlink, {
+      path,
+      kind: "affiliate_share",
+      targetId,
+    });
+
+    return {
+      code: String(out?.code ?? ""),
+      url: typeof out?.url === "string" ? out.url : undefined,
+      path,
+      campaign,
+      templateId,
+    };
+  },
+});
+
+export const listMyAffiliateShareLinks = query({
+  args: { limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      code: v.string(),
+      url: v.optional(v.string()),
+      path: v.string(),
+      createdAt: v.number(),
+      clickCount: v.optional(v.number()),
+      lastAccessAt: v.optional(v.number()),
+      campaign: v.string(),
+      templateId: v.string(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const userId = await readUserKey(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    const limitRaw = typeof args.limit === "number" ? args.limit : 50;
+    const limit = Math.max(1, Math.min(200, Math.floor(limitRaw)));
+
+    const settings: any = await ctx.runQuery(apiUntyped.shortlinks.queries.getPublicShortlinkSettings, {});
+    const domain = typeof settings?.domain === "string" ? settings.domain.trim() : "";
+
+    const rowsUnknown: any = await ctx.runQuery(apiUntyped.shortlinks.queries.listMyShortlinksByKind, {
+      kind: "affiliate_share",
+      limit,
+    });
+    const rows = Array.isArray(rowsUnknown) ? (rowsUnknown as any[]) : [];
+
+    const out: any[] = [];
+    for (const r of rows) {
+      const code = String(r?.code ?? "").trim();
+      const path = String(r?.path ?? "").trim();
+      const createdAt = typeof r?.createdAt === "number" ? Number(r.createdAt) : 0;
+      const clickCount = typeof r?.clickCount === "number" ? Number(r.clickCount) : undefined;
+      const lastAccessAt = typeof r?.lastAccessAt === "number" ? Number(r.lastAccessAt) : undefined;
+      if (!code || !path) continue;
+
+      // Parse metadata from the stored path.
+      const u = new URL("http://example.local" + path);
+      const campaign = u.searchParams.get("utm_campaign") ?? "affiliate";
+      const templateId = u.searchParams.get("utm_content") ?? "default";
+
+      out.push({
+        code,
+        url: domain ? `https://${domain}/s/${code}` : undefined,
+        path,
+        createdAt,
+        clickCount,
+        lastAccessAt,
+        campaign,
+        templateId,
+      });
+    }
+
+    return out;
+  },
+});
+
 export const listMyCreditEvents = query({
   args: {
     limit: v.optional(v.number()),
   },
   returns: v.array(
     v.object({
+      kind: v.optional(v.string()),
       amountCents: v.number(),
       currency: v.string(),
       reason: v.string(),
+      externalEventId: v.optional(v.string()),
       createdAt: v.number(),
       referredUserId: v.optional(v.string()),
+      referrerUserId: v.optional(v.string()),
       conversionId: v.optional(v.string()),
     }),
   ),

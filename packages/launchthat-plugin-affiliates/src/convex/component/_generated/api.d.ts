@@ -9,6 +9,7 @@
  */
 
 import type * as admin from "../admin.js";
+import type * as analytics_queries from "../analytics/queries.js";
 import type * as conversions from "../conversions.js";
 import type * as credit_actions from "../credit/actions.js";
 import type * as credit_queries from "../credit/queries.js";
@@ -38,6 +39,7 @@ import type {
  */
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
+  "analytics/queries": typeof analytics_queries;
   conversions: typeof conversions;
   "credit/actions": typeof credit_actions;
   "credit/queries": typeof credit_queries;
@@ -107,6 +109,7 @@ export type Mounts = {
         kind?: string;
         reason: string;
         referredUserId?: string;
+        referrerUserId?: string;
       }>
     >;
     listAffiliateLogs: FunctionReference<
@@ -190,6 +193,22 @@ export type Mounts = {
         updatedAt: number;
       }
     >;
+  };
+  analytics: {
+    queries: {
+      getTopLandingPathsForUser: FunctionReference<
+        "query",
+        "public",
+        { daysBack?: number; limit?: number; userId: string },
+        {
+          daysBack: number;
+          referralCode: string | null;
+          topLandingPaths: Array<{ clicks: number; path: string }>;
+          totalClicks: number;
+          userId: string;
+        }
+      >;
+    };
   };
   conversions: {
     recordPaidConversion: FunctionReference<

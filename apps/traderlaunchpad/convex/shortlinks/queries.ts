@@ -42,3 +42,45 @@ export const getPublicShortlinkSettings = query({
   },
 });
 
+export const listMyShortlinksByKind = query({
+  args: {
+    kind: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      code: v.string(),
+      path: v.string(),
+      kind: v.optional(v.string()),
+      targetId: v.optional(v.string()),
+      createdAt: v.number(),
+      createdByUserId: v.optional(v.string()),
+      clickCount: v.optional(v.number()),
+      lastAccessAt: v.optional(v.number()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    const userId =
+      typeof identity?.tokenIdentifier === "string"
+        ? identity.tokenIdentifier.trim()
+        : typeof identity?.subject === "string"
+          ? identity.subject.trim()
+          : "";
+    if (!userId) return [];
+
+    const kind = String(args.kind ?? "").trim();
+    if (!kind) return [];
+    const limitRaw = typeof args.limit === "number" ? args.limit : 50;
+    const limit = Math.max(1, Math.min(200, Math.floor(limitRaw)));
+
+    const rows = await ctx.runQuery(components.launchthat_shortlinks.queries.listByCreator, {
+      appKey: APP_KEY,
+      kind,
+      createdByUserId: userId,
+      limit,
+    });
+    return Array.isArray(rows) ? (rows as any[]) : [];
+  },
+});
+

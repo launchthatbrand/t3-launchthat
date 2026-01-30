@@ -4800,6 +4800,7 @@ export declare const components: {
           kind?: string;
           reason: string;
           referredUserId?: string;
+          referrerUserId?: string;
         }>
       >;
       listAffiliateLogs: FunctionReference<
@@ -4883,6 +4884,22 @@ export declare const components: {
           updatedAt: number;
         }
       >;
+    };
+    analytics: {
+      queries: {
+        getTopLandingPathsForUser: FunctionReference<
+          "query",
+          "internal",
+          { daysBack?: number; limit?: number; userId: string },
+          {
+            daysBack: number;
+            referralCode: string | null;
+            topLandingPaths: Array<{ clicks: number; path: string }>;
+            totalClicks: number;
+            userId: string;
+          }
+        >;
+      };
     };
     conversions: {
       recordPaidConversion: FunctionReference<
@@ -7828,6 +7845,12 @@ export declare const components: {
         },
         { code: string }
       >;
+      trackClickByCode: FunctionReference<
+        "mutation",
+        "internal",
+        { appKey: string; code: string },
+        null
+      >;
       upsertSettings: FunctionReference<
         "mutation",
         "internal",
@@ -7867,6 +7890,29 @@ export declare const components: {
           domain: string;
           enabled: boolean;
         }
+      >;
+      listByCreator: FunctionReference<
+        "query",
+        "internal",
+        {
+          appKey: string;
+          createdByUserId: string;
+          kind: string;
+          limit?: number;
+        },
+        Array<{
+          appKey: string;
+          clickCount?: number;
+          code: string;
+          createdAt: number;
+          createdByUserId?: string;
+          disabledAt?: number;
+          expiresAt?: number;
+          kind?: string;
+          lastAccessAt?: number;
+          path: string;
+          targetId?: string;
+        }>
       >;
     };
   };
