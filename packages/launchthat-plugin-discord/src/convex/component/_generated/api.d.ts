@@ -401,8 +401,8 @@ export type Mounts = {
         { code: string; state: string },
         {
           discordUserId: string;
-          guildId: string;
-          organizationId: string;
+          guildId: string | null;
+          organizationId?: string;
           userId: string;
         }
       >;
@@ -411,7 +411,7 @@ export type Mounts = {
         "public",
         {
           callbackPath: string;
-          organizationId: string;
+          organizationId?: string;
           returnTo: string;
           userId: string;
         },
@@ -442,7 +442,7 @@ export type Mounts = {
           callbackPath?: string;
           codeVerifier: string;
           kind: "org_install" | "user_link";
-          organizationId: string;
+          organizationId?: string;
           returnTo: string;
           userId?: string;
         } | null
@@ -454,7 +454,7 @@ export type Mounts = {
           callbackPath?: string;
           codeVerifier: string;
           kind: "org_install" | "user_link";
-          organizationId: string;
+          organizationId?: string;
           returnTo: string;
           state: string;
           userId?: string;
@@ -472,7 +472,7 @@ export type Mounts = {
           codeVerifier: string;
           createdAt: number;
           kind: "org_install" | "user_link";
-          organizationId: string;
+          organizationId?: string;
           returnTo: string;
           userId?: string;
         } | null
@@ -956,13 +956,13 @@ export type Mounts = {
       linkUser: FunctionReference<
         "mutation",
         "public",
-        { discordUserId: string; organizationId: string; userId: string },
+        { discordUserId: string; organizationId?: string; userId: string },
         null
       >;
       unlinkUser: FunctionReference<
         "mutation",
         "public",
-        { organizationId: string; userId: string },
+        { organizationId?: string; userId: string },
         null
       >;
     };
@@ -978,6 +978,16 @@ export type Mounts = {
         "public",
         { organizationId: string; userId: string },
         { discordUserId: string; linkedAt: number } | null
+      >;
+      getUserLinkForUser: FunctionReference<
+        "query",
+        "public",
+        { userId: string },
+        {
+          discordUserId: string;
+          linkedAt: number;
+          organizationId?: string;
+        } | null
       >;
     };
   };

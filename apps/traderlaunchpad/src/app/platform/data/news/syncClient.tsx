@@ -4,6 +4,13 @@ import * as React from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@acme/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -63,6 +70,10 @@ export default function PlatformNewsSyncClient() {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [lastRunResult, setLastRunResult] = React.useState<unknown>(null);
+  const [editingSource, setEditingSource] = React.useState<SourceRow | null>(null);
+  const [editCadenceSeconds, setEditCadenceSeconds] = React.useState<number>(0);
+  const [editBusy, setEditBusy] = React.useState(false);
+  const [editError, setEditError] = React.useState<string | null>(null);
 
   const [settingsBusy, setSettingsBusy] = React.useState(false);
   const [settingsError, setSettingsError] = React.useState<string | null>(null);
@@ -88,6 +99,31 @@ export default function PlatformNewsSyncClient() {
   React.useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  React.useEffect(() => {
+    if (!editingSource) return;
+    setEditCadenceSeconds(editingSource.cadenceSeconds);
+    setEditError(null);
+  }, [editingSource]);
+
+  const handleSaveCadence = async () => {
+    if (!editingSource) return;
+    setEditError(null);
+    setEditBusy(true);
+    try {
+      const cadenceSeconds = Math.max(60, Math.floor(editCadenceSeconds));
+      await updateSource({
+        sourceId: editingSource._id,
+        cadenceSeconds,
+      });
+      await refresh();
+      setEditingSource(null);
+    } catch (e) {
+      setEditError(e instanceof Error ? e.message : "Failed to update cadence");
+    } finally {
+      setEditBusy(false);
+    }
+  };
 
   React.useEffect(() => {
     const map = parsingSettings?.assetAliasMap ?? null;
@@ -413,6 +449,14 @@ export default function PlatformNewsSyncClient() {
                         type="button"
                         variant="outline"
                         size="sm"
+                        onClick={() => setEditingSource(s)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={() =>
                           void (async () => {
                             setError(null);
@@ -473,6 +517,47 @@ export default function PlatformNewsSyncClient() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog
+        open={Boolean(editingSource)}
+        onOpenChange={(open) => (open ? null : setEditingSource(null))}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit cadence</DialogTitle>
+            <DialogDescription>
+              Update how often this news source is synced.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-xs text-muted-foreground">
+              {editingSource?.label || editingSource?.sourceKey}
+            </div>
+            <div className="grid gap-2">
+              <Label>Cadence (seconds)</Label>
+              <Input
+                inputMode="numeric"
+                value={String(editCadenceSeconds || "")}
+                onChange={(e) => setEditCadenceSeconds(Number(e.target.value || 0))}
+              />
+            </div>
+            {editError ? <div className="text-sm text-red-600">{editError}</div> : null}
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditingSource(null)}
+                disabled={editBusy}
+              >
+                Cancel
+              </Button>
+              <Button type="button" onClick={handleSaveCadence} disabled={editBusy}>
+                {editBusy ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {lastRunResult ? (
         <Card>

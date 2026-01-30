@@ -22,6 +22,29 @@ export const getUserLink = query({
   },
 });
 
+export const getUserLinkForUser = query({
+  args: { userId: v.string() },
+  returns: v.union(
+    v.object({
+      discordUserId: v.string(),
+      linkedAt: v.number(),
+      organizationId: v.optional(v.string()),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const link = await ctx.db
+      .query("userLinks")
+      .withIndex("by_userId", (q: any) => q.eq("userId", args.userId))
+      .unique();
+    if (!link) return null;
+    return {
+      discordUserId: link.discordUserId,
+      linkedAt: link.linkedAt,
+      organizationId: link.organizationId,
+    };
+  },
+});
 export const getUserIdByDiscordUserId = query({
   args: { organizationId: v.string(), discordUserId: v.string() },
   returns: v.union(

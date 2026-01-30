@@ -7199,8 +7199,8 @@ export declare const components: {
           { code: string; state: string },
           {
             discordUserId: string;
-            guildId: string;
-            organizationId: string;
+            guildId: string | null;
+            organizationId?: string;
             userId: string;
           }
         >;
@@ -7209,7 +7209,7 @@ export declare const components: {
           "internal",
           {
             callbackPath: string;
-            organizationId: string;
+            organizationId?: string;
             returnTo: string;
             userId: string;
           },
@@ -7240,7 +7240,7 @@ export declare const components: {
             callbackPath?: string;
             codeVerifier: string;
             kind: "org_install" | "user_link";
-            organizationId: string;
+            organizationId?: string;
             returnTo: string;
             userId?: string;
           } | null
@@ -7252,7 +7252,7 @@ export declare const components: {
             callbackPath?: string;
             codeVerifier: string;
             kind: "org_install" | "user_link";
-            organizationId: string;
+            organizationId?: string;
             returnTo: string;
             state: string;
             userId?: string;
@@ -7270,7 +7270,7 @@ export declare const components: {
             codeVerifier: string;
             createdAt: number;
             kind: "org_install" | "user_link";
-            organizationId: string;
+            organizationId?: string;
             returnTo: string;
             userId?: string;
           } | null
@@ -7765,13 +7765,13 @@ export declare const components: {
         linkUser: FunctionReference<
           "mutation",
           "internal",
-          { discordUserId: string; organizationId: string; userId: string },
+          { discordUserId: string; organizationId?: string; userId: string },
           null
         >;
         unlinkUser: FunctionReference<
           "mutation",
           "internal",
-          { organizationId: string; userId: string },
+          { organizationId?: string; userId: string },
           null
         >;
       };
@@ -7787,6 +7787,16 @@ export declare const components: {
           "internal",
           { organizationId: string; userId: string },
           { discordUserId: string; linkedAt: number } | null
+        >;
+        getUserLinkForUser: FunctionReference<
+          "query",
+          "internal",
+          { userId: string },
+          {
+            discordUserId: string;
+            linkedAt: number;
+            organizationId?: string;
+          } | null
         >;
       };
     };

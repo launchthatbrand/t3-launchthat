@@ -157,6 +157,38 @@ export const getMyDiscordStreamingOrgs = query({
   },
 });
 
+export const getMyDiscordUserLink = query({
+  args: {},
+  returns: v.object({
+    linkedDiscordUserId: v.union(v.string(), v.null()),
+    linkedAt: v.union(v.number(), v.null()),
+    inviteUrl: v.union(v.string(), v.null()),
+    guildId: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx) => {
+    const userId = await resolveViewerUserId(ctx);
+    const link = await ctx.runQuery(discordUserLinksQueries.getUserLinkForUser, {
+      userId,
+    });
+    const linkedDiscordUserId =
+      typeof link?.discordUserId === "string" && link.discordUserId.trim()
+        ? link.discordUserId.trim()
+        : null;
+    const linkedAt = typeof link?.linkedAt === "number" ? link.linkedAt : null;
+    const inviteUrlRaw =
+      (process.env.TRADERLAUNCHPAD_DISCORD_INVITE_URL ??
+        process.env.NEXT_PUBLIC_TRADERLAUNCHPAD_DISCORD_INVITE_URL ??
+        "").trim();
+    const inviteUrl = inviteUrlRaw ? inviteUrlRaw : null;
+    const guildIdRaw =
+      (process.env.TRADERLAUNCHPAD_DISCORD_GUILD_ID ??
+        process.env.DISCORD_GLOBAL_GUILD_ID ??
+        "").trim();
+    const guildId = guildIdRaw ? guildIdRaw : null;
+    return { linkedDiscordUserId, linkedAt, inviteUrl, guildId };
+  },
+});
+
 export const listSymbolOptions = query({
   args: { organizationId: v.optional(v.string()), limit: v.optional(v.number()) },
   returns: v.array(v.string()),

@@ -1,18 +1,19 @@
 "use client";
 
 import * as React from "react";
+
+import { FileTextIcon, LayoutDashboardIcon, RefreshCcwIcon } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileTextIcon, LayoutDashboardIcon, RefreshCcwIcon } from "lucide-react";
-
-import { Tabs, TabsList, TabsTrigger } from "@acme/ui/tabs";
 
 export default function PlatformNewsLayout(props: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   const activeTab = React.useMemo(() => {
-    if (pathname.startsWith("/platform/news/logs")) return "logs";
-    if (pathname.startsWith("/platform/news/sync")) return "sync";
+    if (pathname.startsWith("/platform/data/news/logs")) return "logs";
+    if (pathname.startsWith("/platform/data/news/sync")) return "sync";
     return "dashboard";
   }, [pathname]);
 
@@ -33,19 +34,19 @@ export default function PlatformNewsLayout(props: { children: React.ReactNode })
         <Tabs value={activeTab} className="w-full">
           <TabsList className="grid w-full max-w-2xl grid-cols-3">
             <TabsTrigger value="dashboard" asChild>
-              <Link href="/platform/news">
+              <Link href="/platform/data/news">
                 <LayoutDashboardIcon className="mr-2 h-4 w-4" />
                 Dashboard
               </Link>
             </TabsTrigger>
             <TabsTrigger value="sync" asChild>
-              <Link href="/platform/news/sync">
+              <Link href="/platform/data/news/sync">
                 <RefreshCcwIcon className="mr-2 h-4 w-4" />
                 Sync
               </Link>
             </TabsTrigger>
             <TabsTrigger value="logs" asChild>
-              <Link href="/platform/news/logs">
+              <Link href="/platform/data/news/logs">
                 <FileTextIcon className="mr-2 h-4 w-4" />
                 Logs
               </Link>

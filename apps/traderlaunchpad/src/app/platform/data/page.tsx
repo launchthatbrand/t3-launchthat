@@ -1,8 +1,5 @@
-"use client";
-
-import { PlatformDataChartClient } from "./PlatformDataChartClient";
+import { redirect } from "next/navigation";
 
 export default function PlatformDataPage() {
-  return <PlatformDataChartClient />;
+  redirect("/platform/data/price");
 }
-

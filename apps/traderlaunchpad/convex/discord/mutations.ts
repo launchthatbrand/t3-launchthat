@@ -158,10 +158,10 @@ export const unlinkMyDiscordLink = mutation({
     const organizationId =
       typeof args.organizationId === "string" && args.organizationId.trim()
         ? args.organizationId.trim()
-        : resolveOrganizationId();
+        : null;
     const userId = await resolveViewerUserId(ctx);
     await ctx.runMutation(discordUserLinksMutations.unlinkUser, {
-      organizationId,
+      organizationId: organizationId ?? undefined,
       userId,
     });
     return null;
@@ -175,18 +175,20 @@ export const disconnectMyDiscordStreaming = mutation({
     const organizationId =
       typeof args.organizationId === "string" && args.organizationId.trim()
         ? args.organizationId.trim()
-        : resolveOrganizationId();
+        : null;
     const userId = await resolveViewerUserId(ctx);
 
     await ctx.runMutation(discordUserLinksMutations.unlinkUser, {
-      organizationId,
+      organizationId: organizationId ?? undefined,
       userId,
     });
-    await ctx.runMutation(discordUserStreamingMutations.setUserStreamingEnabled, {
-      organizationId,
-      userId,
-      enabled: false,
-    });
+    if (organizationId) {
+      await ctx.runMutation(discordUserStreamingMutations.setUserStreamingEnabled, {
+        organizationId,
+        userId,
+        enabled: false,
+      });
+    }
     return null;
   },
 });

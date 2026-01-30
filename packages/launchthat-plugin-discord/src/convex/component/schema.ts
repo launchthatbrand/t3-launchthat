@@ -288,7 +288,7 @@ export default defineSchema({
     ]),
 
   userLinks: defineTable({
-    organizationId: v.string(),
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     discordUserId: v.string(),
     linkedAt: v.number(),
@@ -297,7 +297,8 @@ export default defineSchema({
     .index("by_organizationId_and_discordUserId", [
       "organizationId",
       "discordUserId",
-    ]),
+    ])
+    .index("by_userId", ["userId"]),
 
   userStreamingPrefs: defineTable({
     organizationId: v.string(),
@@ -404,7 +405,7 @@ export default defineSchema({
     .index("by_enabled_and_nextRunAt", ["enabled", "nextRunAt"]),
 
   oauthStates: defineTable({
-    organizationId: v.string(),
+    organizationId: v.optional(v.string()),
     userId: v.optional(v.string()),
     state: v.string(),
     codeVerifier: v.string(),

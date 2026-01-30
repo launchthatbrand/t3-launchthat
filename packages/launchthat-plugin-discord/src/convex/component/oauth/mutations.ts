@@ -3,7 +3,7 @@ import { mutation } from "../server";
 
 export const createOauthState = mutation({
   args: {
-    organizationId: v.string(),
+    organizationId: v.optional(v.string()),
     kind: v.union(v.literal("org_install"), v.literal("user_link")),
     userId: v.optional(v.string()),
     state: v.string(),
@@ -31,7 +31,7 @@ export const consumeOauthState = mutation({
   args: { state: v.string() },
   returns: v.union(
     v.object({
-      organizationId: v.string(),
+      organizationId: v.optional(v.string()),
       kind: v.union(v.literal("org_install"), v.literal("user_link")),
       userId: v.optional(v.string()),
       codeVerifier: v.string(),

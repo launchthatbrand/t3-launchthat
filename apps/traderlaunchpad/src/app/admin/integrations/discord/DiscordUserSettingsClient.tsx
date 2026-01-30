@@ -66,6 +66,7 @@ export function DiscordUserSettingsClient() {
   const disconnectMyDiscordStreaming = useMutation(
     api.discord.mutations.disconnectMyDiscordStreaming,
   );
+  const unlinkMyDiscordLink = useMutation(api.discord.mutations.unlinkMyDiscordLink);
   const setMyDiscordStreamingEnabled = useMutation(
     api.discord.mutations.setMyDiscordStreamingEnabled,
   );
@@ -89,6 +90,18 @@ export function DiscordUserSettingsClient() {
     api.discord.queries.getMyDiscordStreamingOrgs,
     organizationIds.length > 0 ? { organizationIds } : "skip",
   ) as StreamingStatusRow[] | undefined;
+
+  const userLink = useQuery(
+    api.discord.queries.getMyDiscordUserLink,
+    organizationIds.length === 0 ? {} : "skip",
+  ) as
+    | {
+        linkedDiscordUserId: string | null;
+        linkedAt: number | null;
+        inviteUrl: string | null;
+        guildId: string | null;
+      }
+    | undefined;
 
   const statusByOrgId = React.useMemo(() => {
     const map = new Map<string, StreamingStatusRow>();
@@ -163,12 +176,15 @@ export function DiscordUserSettingsClient() {
     router,
   ]);
 
-  const handleConnect = async (organizationId: string) => {
+  const handleConnect = async (organizationId?: string | null) => {
     if (typeof window === "undefined") return;
-    setLinkBusyForOrg(organizationId);
+    setLinkBusyForOrg(organizationId ?? "user");
     try {
       const returnTo = stripOauthParams(window.location.href);
-      const result = (await startUserLink({ organizationId, returnTo })) as {
+      const result = (await startUserLink({
+        organizationId: organizationId ?? undefined,
+        returnTo,
+      })) as {
         url: string;
         state: string;
       };
@@ -181,10 +197,15 @@ export function DiscordUserSettingsClient() {
     }
   };
 
-  const handleDisconnect = async (organizationId: string) => {
-    setDisconnectBusyForOrg(organizationId);
+  const handleDisconnect = async (organizationId?: string | null) => {
+    const key = organizationId ?? "user";
+    setDisconnectBusyForOrg(key);
     try {
-      await disconnectMyDiscordStreaming({ organizationId });
+      if (organizationId) {
+        await disconnectMyDiscordStreaming({ organizationId });
+      } else {
+        await unlinkMyDiscordLink({});
+      }
       toast.success("Disconnected.");
     } catch (err) {
       toast.error(
@@ -228,14 +249,57 @@ export function DiscordUserSettingsClient() {
   }
 
   if (visibleOrgs.length === 0) {
+    const isLinked = Boolean(userLink?.linkedDiscordUserId);
+    const inviteUrl = normalizeInviteUrl(userLink?.inviteUrl ?? null);
     return (
       <div className="space-y-4">
         <Card className="border-border/60 bg-card/70 backdrop-blur">
           <CardHeader>
             <CardTitle>Discord</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            You’re not a member of any organizations yet.
+          <CardContent className="space-y-4 text-sm text-muted-foreground">
+            <div>
+              Connect your Discord account to join the TraderLaunchpad server and
+              enable your account for future features.
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {!isLinked ? (
+                <Button
+                  onClick={() => void handleConnect(null)}
+                  disabled={linkBusyForOrg === "user"}
+                >
+                  Connect Discord
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => void handleDisconnect(null)}
+                  disabled={disconnectBusyForOrg === "user"}
+                >
+                  Disconnect
+                </Button>
+              )}
+              {inviteUrl ? (
+                <Button
+                  variant="outline"
+                  onClick={() => window.open(inviteUrl, "_blank")}
+                >
+                  Join TraderLaunchpad Discord
+                </Button>
+              ) : null}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {isLinked ? (
+                <>
+                  Linked as{" "}
+                  <span className="font-mono">
+                    {userLink?.linkedDiscordUserId ?? "Unknown"}
+                  </span>
+                </>
+              ) : (
+                "Not linked yet."
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

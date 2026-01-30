@@ -18,12 +18,12 @@ import { usePathname } from "next/navigation";
 
 type ProviderKey = "tradelocker" | "mt4" | "mt5" | "binance";
 
-type ProviderOption = {
+interface ProviderOption {
   key: ProviderKey;
   label: string;
   description: string;
   enabled: boolean;
-};
+}
 
 const providerLogoConfig: Record<
   ProviderKey,
@@ -62,7 +62,7 @@ const ProviderLogo = ({ provider }: { provider: ProviderKey }) => {
   );
 };
 
-const providers: Array<ProviderOption> = [
+const providers: ProviderOption[] = [
   {
     key: "tradelocker",
     label: "TradeLocker",

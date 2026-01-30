@@ -39,7 +39,7 @@ type StartConnectResult = {
   debugTokens?: DebugTokens;
 };
 
-type FlowStep = "broker" | "credentials" | "account" | "sync" | "summary";
+type FlowStep = "broker" | "credentials" | "terms" | "account" | "sync" | "summary";
 
 type BrokerOption = {
   id: string;
@@ -60,6 +60,7 @@ const brokerOptions: BrokerOption[] = [
 const steps: Array<{ id: FlowStep; label: string }> = [
   { id: "broker", label: "Broker" },
   { id: "credentials", label: "Credentials" },
+  { id: "terms", label: "Terms" },
   { id: "account", label: "Account" },
   { id: "sync", label: "Sync" },
   { id: "summary", label: "Summary" },
@@ -160,6 +161,7 @@ export function TradeLockerConnectFlow(props: {
   const [selectedAccountId, setSelectedAccountId] = React.useState("");
   const [selectedAccNum, setSelectedAccNum] = React.useState<string>("");
   const [accountStatePreview, setAccountStatePreview] = React.useState<unknown>(null);
+  const [acceptedTerms, setAcceptedTerms] = React.useState(false);
 
   const [debugReturnTokens, setDebugReturnTokens] = React.useState(false);
   const [debugTokens, setDebugTokens] = React.useState<DebugTokens | null>(null);
@@ -201,6 +203,7 @@ export function TradeLockerConnectFlow(props: {
     setSyncStatus("Preparing sync…");
     setSyncProgress(8);
     setAccountStatePreview(null);
+    setAcceptedTerms(false);
   };
 
   const stepIndex = steps.findIndex((s) => s.id === step);
@@ -259,7 +262,7 @@ export function TradeLockerConnectFlow(props: {
           refreshToken: res.debugTokens.refreshToken,
         });
       }
-      setStepWithDirection("account");
+      setStepWithDirection("terms");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -377,13 +380,7 @@ export function TradeLockerConnectFlow(props: {
     );
   }, [resolvedAccountState]);
 
-  React.useEffect(() => {
-    if (step !== "summary") return;
-    const timer = setTimeout(() => {
-      props.onSuccess?.();
-    }, 2600);
-    return () => clearTimeout(timer);
-  }, [step, props.onSuccess]);
+  // Summary step should only close on explicit user action.
 
   const slideVariants = {
     enter: (dir: 1 | -1) => ({
@@ -430,17 +427,17 @@ export function TradeLockerConnectFlow(props: {
   }, [step, marketingSlides.length]);
 
   return (
-    <div className="space-y-5 rounded-2xl border border-white/10 bg-linear-to-b from-white/5 via-black/20 to-black/30 p-5 shadow-2xl shadow-black/30 sm:p-6">
+    <div className="space-y-5 rounded-2xl border border-border/20 bg-linear-to-b from-background via-card/60 to-card/80 p-5 shadow-2xl shadow-black/10 sm:p-6">
       <div className="space-y-2">
-        <div className="text-base font-semibold text-white/90 sm:text-lg">
+        <div className="text-base font-semibold text-foreground/90 sm:text-lg">
           Connect TradeLocker
         </div>
-        <div className="text-xs text-white/55 sm:text-sm">
+        <div className="text-xs text-muted-foreground sm:text-sm">
           Connect your broker, sync trades, and see a quick performance summary.
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 text-[11px] text-white/50 sm:gap-3">
+      <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground sm:gap-3">
         {steps.map((s, idx) => {
           const active = idx === stepIndex;
           const completed = idx < stepIndex;
@@ -448,9 +445,9 @@ export function TradeLockerConnectFlow(props: {
             <div
               key={s.id}
               className={cn(
-                "rounded-full border border-white/10 px-2.5 py-1",
-                active && "border-white/50 bg-white/10 text-white",
-                completed && "border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
+                "rounded-full border border-border/40 px-2.5 py-1",
+                active && "border-border/70 bg-background text-foreground",
+                completed && "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200",
               )}
             >
               {s.label}
@@ -502,7 +499,7 @@ export function TradeLockerConnectFlow(props: {
                       ))}
                     </SelectContent>
                   </Select>
-                  <div className="text-[11px] text-white/45 sm:text-xs">
+                  <div className="text-[11px] text-muted-foreground sm:text-xs">
                     {brokerOptions.find((b) => b.id === selectedBrokerId)?.description ??
                       "Select a supported TradeLocker broker."}
                   </div>
@@ -561,7 +558,7 @@ export function TradeLockerConnectFlow(props: {
                   />
                   <Label
                     htmlFor="tl-debug-return-tokens"
-                    className="cursor-pointer text-xs text-white/60"
+                    className="cursor-pointer text-xs text-muted-foreground"
                   >
                     Dev only: return raw tokens (for copy/debug)
                   </Label>
@@ -583,6 +580,57 @@ export function TradeLockerConnectFlow(props: {
                   className="h-10"
                   onClick={() => setStepWithDirection("broker")}
                   disabled={connecting}
+                >
+                  Back
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {step === "terms" ? (
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <div className="text-sm font-semibold text-foreground/85 sm:text-base">
+                  Terms & security
+                </div>
+                <div className="text-xs text-muted-foreground sm:text-sm">
+                  We never store your password. Your connection is encrypted and used for read-only
+                  syncing. Because most brokers do not use OAuth, entering passwords anywhere carries
+                  risk. Please keep your browser clean of sketchy extensions, rotate your password
+                  frequently, and update it in TraderLaunchpad by reconnecting.
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-border/40 bg-card/60 p-3">
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    id="tl-terms"
+                    checked={acceptedTerms}
+                    onCheckedChange={(v) => setAcceptedTerms(Boolean(v))}
+                  />
+                  <Label
+                    htmlFor="tl-terms"
+                    className="cursor-pointer text-xs text-muted-foreground sm:text-sm"
+                  >
+                    I understand the risks and agree to these terms.
+                  </Label>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button
+                  type="button"
+                  className="h-10 bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={() => setStepWithDirection("account")}
+                  disabled={!acceptedTerms}
+                >
+                  Continue
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10"
+                  onClick={() => setStepWithDirection("credentials")}
                 >
                   Back
                 </Button>
@@ -623,7 +671,7 @@ export function TradeLockerConnectFlow(props: {
                     disabled={Boolean(selectedMeta?.accNum)}
                   />
                   {selectedMeta?.accNum ? (
-                    <div className="text-[11px] text-white/45 sm:text-xs">
+                    <div className="text-[11px] text-muted-foreground sm:text-xs">
                       Auto-filled from your selected account.
                     </div>
                   ) : null}
@@ -655,18 +703,18 @@ export function TradeLockerConnectFlow(props: {
           {step === "sync" ? (
             <div className="space-y-5">
               <div className="space-y-2">
-                <div className="text-sm font-semibold text-white/80 sm:text-base">
+                <div className="text-sm font-semibold text-foreground/80 sm:text-base">
                   Importing your trades
                 </div>
-                <div className="text-xs text-white/55 sm:text-sm">{syncStatus}</div>
+                <div className="text-xs text-muted-foreground sm:text-sm">{syncStatus}</div>
                 <Progress value={syncProgress} className="h-2.5" />
               </div>
 
-              <div className="rounded-xl border border-white/10 bg-linear-to-r from-white/5 via-black/20 to-black/20 p-4 sm:p-5">
-                <div className="text-xs text-white/60 sm:text-sm">
+              <div className="rounded-xl border border-border/40 bg-linear-to-r from-background via-card/70 to-card/80 p-4 sm:p-5">
+                <div className="text-xs text-muted-foreground sm:text-sm">
                   While we sync, explore:
                 </div>
-                <div className="mt-3 min-h-[140px] rounded-lg border border-white/10 bg-black/30 p-4 sm:min-h-[180px] sm:p-5">
+                <div className="mt-3 min-h-[140px] rounded-lg border border-border/40 bg-card/80 p-4 sm:min-h-[180px] sm:p-5">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={slideIndex}
@@ -676,10 +724,10 @@ export function TradeLockerConnectFlow(props: {
                       transition={{ duration: 0.35, ease: "easeOut" }}
                       className="space-y-2"
                     >
-                      <div className="text-base font-semibold text-white/90 sm:text-lg">
+                      <div className="text-base font-semibold text-foreground/90 sm:text-lg">
                         {marketingSlides[slideIndex]?.title}
                       </div>
-                      <div className="text-xs text-white/60 sm:text-sm">
+                      <div className="text-xs text-muted-foreground sm:text-sm">
                         {marketingSlides[slideIndex]?.description}
                       </div>
                       {marketingSlides[slideIndex]?.href ? (
@@ -688,7 +736,7 @@ export function TradeLockerConnectFlow(props: {
                             href={marketingSlides[slideIndex]?.href}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs font-semibold text-orange-300 hover:text-orange-200 sm:text-sm"
+                            className="text-xs font-semibold text-orange-600 hover:text-orange-700 dark:text-orange-300 dark:hover:text-orange-200 sm:text-sm"
                           >
                             Open feature in new tab
                           </a>
@@ -700,7 +748,7 @@ export function TradeLockerConnectFlow(props: {
               </div>
 
               {syncError ? (
-                <div className="rounded-lg border border-white/10 bg-black/30 p-3 text-sm text-rose-200">
+                <div className="rounded-lg border border-border/40 bg-card/70 p-3 text-sm text-destructive">
                   {syncError}
                 </div>
               ) : null}
@@ -731,58 +779,58 @@ export function TradeLockerConnectFlow(props: {
 
           {step === "summary" ? (
             <div className="space-y-5">
-              <div className="text-sm font-semibold text-white/80 sm:text-base">
+              <div className="text-sm font-semibold text-foreground/80 sm:text-base">
                 Import complete
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                  <div className="text-[11px] text-white/50">Win rate</div>
-                  <div className="mt-1 text-lg font-semibold text-white/90 sm:text-xl">
+                <div className="rounded-lg border border-border/40 bg-card/70 p-3">
+                  <div className="text-[11px] text-muted-foreground">Win rate</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground/90 sm:text-xl">
                     {summaryRaw ? `${Math.round(summaryRaw.winRate * 100)}%` : "—"}
                   </div>
                 </div>
-                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                  <div className="text-[11px] text-white/50">Total PnL</div>
-                  <div className="mt-1 text-lg font-semibold text-white/90 sm:text-xl">
+                <div className="rounded-lg border border-border/40 bg-card/70 p-3">
+                  <div className="text-[11px] text-muted-foreground">Total PnL</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground/90 sm:text-xl">
                     {summaryRaw ? summaryRaw.totalPnl.toFixed(2) : "—"}
                   </div>
                 </div>
-                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                  <div className="text-[11px] text-white/50">Closed trades</div>
-                  <div className="mt-1 text-lg font-semibold text-white/90 sm:text-xl">
+                <div className="rounded-lg border border-border/40 bg-card/70 p-3">
+                  <div className="text-[11px] text-muted-foreground">Closed trades</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground/90 sm:text-xl">
                     {summaryRaw ? summaryRaw.closedTrades.toLocaleString() : "—"}
                   </div>
                 </div>
-                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                  <div className="text-[11px] text-white/50">Avg win</div>
-                  <div className="mt-1 text-lg font-semibold text-white/90 sm:text-xl">
+                <div className="rounded-lg border border-border/40 bg-card/70 p-3">
+                  <div className="text-[11px] text-muted-foreground">Avg win</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground/90 sm:text-xl">
                     {summaryRaw ? summaryRaw.avgWin.toFixed(2) : "—"}
                   </div>
                 </div>
-                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                  <div className="text-[11px] text-white/50">Avg loss</div>
-                  <div className="mt-1 text-lg font-semibold text-white/90 sm:text-xl">
+                <div className="rounded-lg border border-border/40 bg-card/70 p-3">
+                  <div className="text-[11px] text-muted-foreground">Avg loss</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground/90 sm:text-xl">
                     {summaryRaw ? summaryRaw.avgLoss.toFixed(2) : "—"}
                   </div>
                 </div>
-                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                  <div className="text-[11px] text-white/50">Expectancy</div>
-                  <div className="mt-1 text-lg font-semibold text-white/90 sm:text-xl">
+                <div className="rounded-lg border border-border/40 bg-card/70 p-3">
+                  <div className="text-[11px] text-muted-foreground">Expectancy</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground/90 sm:text-xl">
                     {summaryRaw ? summaryRaw.expectancy.toFixed(2) : "—"}
                   </div>
                 </div>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                  <div className="text-[11px] text-white/50">Balance</div>
-                  <div className="mt-1 text-lg font-semibold text-white/90 sm:text-xl">
+                <div className="rounded-lg border border-border/40 bg-card/70 p-3">
+                  <div className="text-[11px] text-muted-foreground">Balance</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground/90 sm:text-xl">
                     {balance !== null ? balance.toFixed(2) : "—"}
                   </div>
                 </div>
-                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                  <div className="text-[11px] text-white/50">Equity</div>
-                  <div className="mt-1 text-lg font-semibold text-white/90 sm:text-xl">
+                <div className="rounded-lg border border-border/40 bg-card/70 p-3">
+                  <div className="text-[11px] text-muted-foreground">Equity</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground/90 sm:text-xl">
                     {equity !== null ? equity.toFixed(2) : "—"}
                   </div>
                 </div>
@@ -794,8 +842,8 @@ export function TradeLockerConnectFlow(props: {
                   className="h-10 bg-orange-600 text-white hover:bg-orange-700"
                   asChild
                 >
-                  <Link href="/admin/journal" target="_blank" rel="noreferrer">
-                    View full journal
+                  <Link href="/admin/journal" onClick={() => props.onSuccess?.()}>
+                    Continue to journal
                   </Link>
                 </Button>
                 <Button
@@ -813,9 +861,9 @@ export function TradeLockerConnectFlow(props: {
       </AnimatePresence>
 
       {isDev && debugTokens ? (
-        <div className="space-y-2 rounded-lg border border-white/10 bg-black/10 p-3">
+        <div className="space-y-2 rounded-lg border border-border/40 bg-card/60 p-3">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-xs font-semibold text-white/70">
+            <div className="text-xs font-semibold text-foreground/70">
               Debug tokens (dev)
             </div>
             <Button
@@ -830,9 +878,9 @@ export function TradeLockerConnectFlow(props: {
 
           <div className="grid gap-2 md:grid-cols-2">
             <div className="space-y-1.5">
-              <div className="text-[11px] text-white/50">Access token</div>
+              <div className="text-[11px] text-muted-foreground">Access token</div>
               <div className="flex items-center gap-2">
-                <div className="flex-1 overflow-hidden text-ellipsis rounded-md border border-white/10 bg-black/20 px-2 py-1 font-mono text-[11px] text-white/70">
+                <div className="flex-1 overflow-hidden text-ellipsis rounded-md border border-border/40 bg-background/40 px-2 py-1 font-mono text-[11px] text-foreground/80">
                   {revealDebugTokens
                     ? debugTokens.accessToken
                     : `${debugTokens.accessToken.slice(0, 18)}…${debugTokens.accessToken.slice(-10)}`}
@@ -849,9 +897,9 @@ export function TradeLockerConnectFlow(props: {
             </div>
 
             <div className="space-y-1.5">
-              <div className="text-[11px] text-white/50">Refresh token</div>
+              <div className="text-[11px] text-muted-foreground">Refresh token</div>
               <div className="flex items-center gap-2">
-                <div className="flex-1 overflow-hidden text-ellipsis rounded-md border border-white/10 bg-black/20 px-2 py-1 font-mono text-[11px] text-white/70">
+                <div className="flex-1 overflow-hidden text-ellipsis rounded-md border border-border/40 bg-background/40 px-2 py-1 font-mono text-[11px] text-foreground/80">
                   {revealDebugTokens
                     ? debugTokens.refreshToken
                     : `${debugTokens.refreshToken.slice(0, 18)}…${debugTokens.refreshToken.slice(-10)}`}
@@ -871,7 +919,7 @@ export function TradeLockerConnectFlow(props: {
       ) : null}
 
       {error ? (
-        <div className="rounded-lg border border-white/10 bg-black/30 p-3 text-sm text-rose-200">
+        <div className="rounded-lg border border-border/40 bg-card/70 p-3 text-sm text-destructive">
           {error}
         </div>
       ) : null}

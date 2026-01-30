@@ -80,6 +80,30 @@ const verifyGuildMembership = async (args: {
   );
 };
 
+const addGuildMember = async (args: {
+  botToken: string;
+  guildId: string;
+  discordUserId: string;
+  accessToken: string;
+}): Promise<boolean> => {
+  const res = await fetch(
+    `https://discord.com/api/v10/guilds/${encodeURIComponent(args.guildId)}/members/${encodeURIComponent(args.discordUserId)}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bot ${args.botToken}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ access_token: args.accessToken }),
+    },
+  );
+  if (res.status === 204 || res.status === 201) return true;
+  if (res.status === 409) return true; // already a member
+  const text = await res.text().catch(() => "");
+  console.log("[discord.addGuildMember] failed", res.status, text.slice(0, 300));
+  return false;
+};
+
 export const listGuildChannels = action({
   args: {
     organizationId: v.optional(v.string()),
@@ -806,7 +830,7 @@ export const startUserLink = action({
     const organizationId =
       typeof args.organizationId === "string" && args.organizationId.trim()
         ? args.organizationId.trim()
-        : resolveOrganizationId();
+        : null;
     const userId = await resolveViewerUserId(ctx);
 
     const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "";
@@ -817,9 +841,11 @@ export const startUserLink = action({
       callbackPath: "/auth/discord/link/callback",
     });
 
-    const orgConfig = await ctx.runQuery(discordOrgConfigQueries.getOrgConfig, {
-      organizationId,
-    });
+    const orgConfig = organizationId
+      ? await ctx.runQuery(discordOrgConfigQueries.getOrgConfig, {
+          organizationId,
+        })
+      : null;
 
     const botMode =
       orgConfig?.botMode === "custom" ? ("custom" as const) : ("global" as const);
@@ -827,11 +853,11 @@ export const startUserLink = action({
     const clientId =
       botMode === "custom"
         ? (typeof orgConfig?.customClientId === "string" && orgConfig.customClientId.trim()) ||
-        (typeof orgConfig?.clientId === "string" && orgConfig.clientId.trim()) ||
-        ""
+          (typeof orgConfig?.clientId === "string" && orgConfig.clientId.trim()) ||
+          ""
         : (process.env.DISCORD_GLOBAL_CLIENT_ID ??
-          process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID ??
-          "").trim();
+            process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID ??
+            "").trim();
 
     if (!clientId) {
       throw new Error(
@@ -843,7 +869,7 @@ export const startUserLink = action({
 
     const state = randomState();
     await ctx.runMutation(discordOauthMutations.createOauthState, {
-      organizationId,
+      organizationId: organizationId ?? undefined,
       kind: "user_link",
       userId,
       state,
@@ -852,7 +878,9 @@ export const startUserLink = action({
       callbackPath: "/auth/discord/link/callback",
     });
 
-    const scope = encodeURIComponent("identify");
+    const scope = encodeURIComponent(
+      organizationId ? "identify" : "identify guilds.join",
+    );
     const url =
       `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(clientId)}` +
       `&response_type=code` +
@@ -868,10 +896,10 @@ export const startUserLink = action({
 export const completeUserLink = action({
   args: { state: v.string(), code: v.string() },
   returns: v.object({
-    organizationId: v.string(),
+    organizationId: v.union(v.string(), v.null()),
     userId: v.string(),
     discordUserId: v.string(),
-    guildId: v.string(),
+    guildId: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
     const viewerUserId = await resolveViewerUserId(ctx);
@@ -888,10 +916,13 @@ export const completeUserLink = action({
       throw new Error("Invalid or expired Discord link state");
     }
 
-    const organizationId = String(consumed.organizationId ?? "");
+    const organizationIdRaw =
+      typeof consumed.organizationId === "string" && consumed.organizationId.trim()
+        ? consumed.organizationId.trim()
+        : null;
     const userId = typeof consumed.userId === "string" ? consumed.userId : "";
-    if (!organizationId || !userId) {
-      throw new Error("Missing organizationId/userId for user_link");
+    if (!userId) {
+      throw new Error("Missing userId for user_link");
     }
 
     const callbackPath =
@@ -906,23 +937,25 @@ export const completeUserLink = action({
       callbackPath,
     });
 
-    const secrets = await ctx.runQuery(discordOrgConfigInternalQueries.getOrgConfigSecrets, {
-      organizationId,
-    });
-    if (!secrets) throw new Error("Discord org config missing");
+    const secrets = organizationIdRaw
+      ? await ctx.runQuery(discordOrgConfigInternalQueries.getOrgConfigSecrets, {
+          organizationId: organizationIdRaw,
+        })
+      : null;
+    if (organizationIdRaw && !secrets) throw new Error("Discord org config missing");
 
     const creds = await resolveDiscordCredentials({
-      botMode: secrets.botMode === "custom" ? "custom" : "global",
+      botMode: secrets?.botMode === "custom" ? "custom" : "global",
       globalClientId: process.env.DISCORD_GLOBAL_CLIENT_ID,
       globalClientSecret: process.env.DISCORD_GLOBAL_CLIENT_SECRET,
       globalBotToken: process.env.DISCORD_GLOBAL_BOT_TOKEN,
       secretsKey: process.env.DISCORD_SECRETS_KEY,
-      customClientId: secrets.customClientId,
-      clientId: secrets.clientId,
-      customClientSecretEncrypted: secrets.customClientSecretEncrypted,
-      clientSecretEncrypted: secrets.clientSecretEncrypted,
-      customBotTokenEncrypted: secrets.customBotTokenEncrypted,
-      botTokenEncrypted: secrets.botTokenEncrypted,
+      customClientId: secrets?.customClientId,
+      clientId: secrets?.clientId,
+      customClientSecretEncrypted: secrets?.customClientSecretEncrypted,
+      clientSecretEncrypted: secrets?.clientSecretEncrypted,
+      customBotTokenEncrypted: secrets?.customBotTokenEncrypted,
+      botTokenEncrypted: secrets?.botTokenEncrypted,
     });
 
     const token = await exchangeDiscordCode({
@@ -933,44 +966,63 @@ export const completeUserLink = action({
     });
     const discordUserId = await fetchDiscordUser(token.accessToken);
 
-    const guildConnectionsUnknown = await ctx.runQuery(
-      discordGuildConnectionQueries.listGuildConnectionsForOrg,
-      { organizationId },
-    );
-    const guilds = Array.isArray(guildConnectionsUnknown)
-      ? guildConnectionsUnknown
-      : [];
-    const primaryGuild = guilds
-      .slice()
-      .sort((a: any, b: any) => Number(b?.connectedAt ?? 0) - Number(a?.connectedAt ?? 0))[0];
-    const guildId =
-      typeof primaryGuild?.guildId === "string" ? primaryGuild.guildId.trim() : "";
-    if (!guildId) {
-      throw new Error("No Discord guild connected for this organization");
-    }
-
-    const isMember = await verifyGuildMembership({
-      botToken: creds.botToken,
-      guildId,
-      discordUserId,
-    });
-    if (!isMember) {
-      throw new Error(
-        "You must join the organization Discord server before connecting streaming.",
+    let guildId: string | null = null;
+    if (organizationIdRaw) {
+      const guildConnectionsUnknown = await ctx.runQuery(
+        discordGuildConnectionQueries.listGuildConnectionsForOrg,
+        { organizationId: organizationIdRaw },
       );
+      const guilds = Array.isArray(guildConnectionsUnknown)
+        ? guildConnectionsUnknown
+        : [];
+      const primaryGuild = guilds
+        .slice()
+        .sort((a: any, b: any) => Number(b?.connectedAt ?? 0) - Number(a?.connectedAt ?? 0))[0];
+      guildId =
+        typeof primaryGuild?.guildId === "string" ? primaryGuild.guildId.trim() : null;
+      if (!guildId) {
+        throw new Error("No Discord guild connected for this organization");
+      }
+
+      const isMember = await verifyGuildMembership({
+        botToken: creds.botToken,
+        guildId,
+        discordUserId,
+      });
+      if (!isMember) {
+        throw new Error(
+          "You must join the organization Discord server before connecting streaming.",
+        );
+      }
+    } else {
+      const envGuildId =
+        (process.env.TRADERLAUNCHPAD_DISCORD_GUILD_ID ??
+          process.env.DISCORD_GLOBAL_GUILD_ID ??
+          "").trim();
+      guildId = envGuildId || null;
+      if (guildId && creds.botToken) {
+        await addGuildMember({
+          botToken: creds.botToken,
+          guildId,
+          discordUserId,
+          accessToken: token.accessToken,
+        });
+      }
     }
 
     await ctx.runMutation(discordUserLinksMutations.linkUser, {
-      organizationId,
+      organizationId: organizationIdRaw ?? undefined,
       userId,
       discordUserId,
     });
-    await ctx.runMutation(discordUserStreamingMutations.setUserStreamingEnabled, {
-      organizationId,
-      userId,
-      enabled: true,
-    });
+    if (organizationIdRaw) {
+      await ctx.runMutation(discordUserStreamingMutations.setUserStreamingEnabled, {
+        organizationId: organizationIdRaw,
+        userId,
+        enabled: true,
+      });
+    }
 
-    return { organizationId, userId, discordUserId, guildId };
+    return { organizationId: organizationIdRaw, userId, discordUserId, guildId };
   },
 });

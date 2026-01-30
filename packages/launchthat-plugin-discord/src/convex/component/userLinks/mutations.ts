@@ -3,18 +3,23 @@ import { mutation } from "../server";
 
 export const linkUser = mutation({
   args: {
-    organizationId: v.string(),
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     discordUserId: v.string(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("userLinks")
-      .withIndex("by_organizationId_and_userId", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
-      )
-      .unique();
+    const existing = args.organizationId
+      ? await ctx.db
+          .query("userLinks")
+          .withIndex("by_organizationId_and_userId", (q: any) =>
+            q.eq("organizationId", args.organizationId).eq("userId", args.userId),
+          )
+          .unique()
+      : await ctx.db
+          .query("userLinks")
+          .withIndex("by_userId", (q: any) => q.eq("userId", args.userId))
+          .unique();
 
     if (existing) {
       await ctx.db.patch(existing._id, {
@@ -36,17 +41,22 @@ export const linkUser = mutation({
 
 export const unlinkUser = mutation({
   args: {
-    organizationId: v.string(),
+    organizationId: v.optional(v.string()),
     userId: v.string(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const existing = await ctx.db
-      .query("userLinks")
-      .withIndex("by_organizationId_and_userId", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
-      )
-      .unique();
+    const existing = args.organizationId
+      ? await ctx.db
+          .query("userLinks")
+          .withIndex("by_organizationId_and_userId", (q: any) =>
+            q.eq("organizationId", args.organizationId).eq("userId", args.userId),
+          )
+          .unique()
+      : await ctx.db
+          .query("userLinks")
+          .withIndex("by_userId", (q: any) => q.eq("userId", args.userId))
+          .unique();
     if (existing) {
       await ctx.db.delete(existing._id);
     }
