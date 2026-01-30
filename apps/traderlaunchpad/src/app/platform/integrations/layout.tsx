@@ -14,6 +14,7 @@ export default function PlatformIntegrationsLayout(props: {
   const pathname = usePathname();
 
   const activeTab = React.useMemo(() => {
+    if (pathname.startsWith("/platform/integrations/discord")) return "discord";
     if (pathname.startsWith("/platform/integrations/clients")) return "clients";
     if (pathname.startsWith("/platform/integrations/connections")) return "connections";
     if (pathname.startsWith("/platform/integrations/audit")) return "audit";
@@ -42,9 +43,12 @@ export default function PlatformIntegrationsLayout(props: {
       </div>
 
       <Tabs value={activeTab} className="w-full">
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
+        <TabsList className="grid w-full max-w-2xl grid-cols-5">
           <TabsTrigger value="overview" asChild>
             <Link href="/platform/integrations">Overview</Link>
+          </TabsTrigger>
+          <TabsTrigger value="discord" asChild>
+            <Link href="/platform/integrations/discord">Discord</Link>
           </TabsTrigger>
           <TabsTrigger value="clients" asChild>
             <Link href="/platform/integrations/clients">Clients</Link>

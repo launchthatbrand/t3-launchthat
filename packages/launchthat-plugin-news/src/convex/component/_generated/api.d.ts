@@ -249,10 +249,12 @@ export type Mounts = {
           config?: any;
           cursor?: any;
           enabled?: boolean;
+          kind?: string;
           label?: string;
           nextRunAt?: number;
           overlapSeconds?: number;
           sourceId: string;
+          sourceKey?: string;
         },
         { ok: boolean }
       >;

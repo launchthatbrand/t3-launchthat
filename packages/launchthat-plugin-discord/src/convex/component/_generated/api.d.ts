@@ -36,6 +36,37 @@ import type * as orgConfigs_internalQueries from "../orgConfigs/internalQueries.
 import type * as orgConfigs_migrations from "../orgConfigs/migrations.js";
 import type * as orgConfigs_mutations from "../orgConfigs/mutations.js";
 import type * as orgConfigs_queries from "../orgConfigs/queries.js";
+import type * as platformAutomations_index from "../platformAutomations/index.js";
+import type * as platformAutomations_mutations from "../platformAutomations/mutations.js";
+import type * as platformAutomations_queries from "../platformAutomations/queries.js";
+import type * as platformConfigs_index from "../platformConfigs/index.js";
+import type * as platformConfigs_internalQueries from "../platformConfigs/internalQueries.js";
+import type * as platformConfigs_mutations from "../platformConfigs/mutations.js";
+import type * as platformConfigs_queries from "../platformConfigs/queries.js";
+import type * as platformEvents_index from "../platformEvents/index.js";
+import type * as platformEvents_mutations from "../platformEvents/mutations.js";
+import type * as platformEvents_queries from "../platformEvents/queries.js";
+import type * as platformGuildConnections_index from "../platformGuildConnections/index.js";
+import type * as platformGuildConnections_mutations from "../platformGuildConnections/mutations.js";
+import type * as platformGuildConnections_queries from "../platformGuildConnections/queries.js";
+import type * as platformGuildSettings_index from "../platformGuildSettings/index.js";
+import type * as platformGuildSettings_mutations from "../platformGuildSettings/mutations.js";
+import type * as platformGuildSettings_queries from "../platformGuildSettings/queries.js";
+import type * as platformOauth_index from "../platformOauth/index.js";
+import type * as platformOauth_mutations from "../platformOauth/mutations.js";
+import type * as platformOauth_queries from "../platformOauth/queries.js";
+import type * as platformRouting_index from "../platformRouting/index.js";
+import type * as platformRouting_mutations from "../platformRouting/mutations.js";
+import type * as platformRouting_queries from "../platformRouting/queries.js";
+import type * as platformTemplates_index from "../platformTemplates/index.js";
+import type * as platformTemplates_mutations from "../platformTemplates/mutations.js";
+import type * as platformTemplates_queries from "../platformTemplates/queries.js";
+import type * as platformUserLinks_index from "../platformUserLinks/index.js";
+import type * as platformUserLinks_mutations from "../platformUserLinks/mutations.js";
+import type * as platformUserLinks_queries from "../platformUserLinks/queries.js";
+import type * as platformUserStreaming_index from "../platformUserStreaming/index.js";
+import type * as platformUserStreaming_mutations from "../platformUserStreaming/mutations.js";
+import type * as platformUserStreaming_queries from "../platformUserStreaming/queries.js";
 import type * as roleRules_index from "../roleRules/index.js";
 import type * as roleRules_mutations from "../roleRules/mutations.js";
 import type * as roleRules_queries from "../roleRules/queries.js";
@@ -102,6 +133,37 @@ declare const fullApi: ApiFromModules<{
   "orgConfigs/migrations": typeof orgConfigs_migrations;
   "orgConfigs/mutations": typeof orgConfigs_mutations;
   "orgConfigs/queries": typeof orgConfigs_queries;
+  "platformAutomations/index": typeof platformAutomations_index;
+  "platformAutomations/mutations": typeof platformAutomations_mutations;
+  "platformAutomations/queries": typeof platformAutomations_queries;
+  "platformConfigs/index": typeof platformConfigs_index;
+  "platformConfigs/internalQueries": typeof platformConfigs_internalQueries;
+  "platformConfigs/mutations": typeof platformConfigs_mutations;
+  "platformConfigs/queries": typeof platformConfigs_queries;
+  "platformEvents/index": typeof platformEvents_index;
+  "platformEvents/mutations": typeof platformEvents_mutations;
+  "platformEvents/queries": typeof platformEvents_queries;
+  "platformGuildConnections/index": typeof platformGuildConnections_index;
+  "platformGuildConnections/mutations": typeof platformGuildConnections_mutations;
+  "platformGuildConnections/queries": typeof platformGuildConnections_queries;
+  "platformGuildSettings/index": typeof platformGuildSettings_index;
+  "platformGuildSettings/mutations": typeof platformGuildSettings_mutations;
+  "platformGuildSettings/queries": typeof platformGuildSettings_queries;
+  "platformOauth/index": typeof platformOauth_index;
+  "platformOauth/mutations": typeof platformOauth_mutations;
+  "platformOauth/queries": typeof platformOauth_queries;
+  "platformRouting/index": typeof platformRouting_index;
+  "platformRouting/mutations": typeof platformRouting_mutations;
+  "platformRouting/queries": typeof platformRouting_queries;
+  "platformTemplates/index": typeof platformTemplates_index;
+  "platformTemplates/mutations": typeof platformTemplates_mutations;
+  "platformTemplates/queries": typeof platformTemplates_queries;
+  "platformUserLinks/index": typeof platformUserLinks_index;
+  "platformUserLinks/mutations": typeof platformUserLinks_mutations;
+  "platformUserLinks/queries": typeof platformUserLinks_queries;
+  "platformUserStreaming/index": typeof platformUserStreaming_index;
+  "platformUserStreaming/mutations": typeof platformUserStreaming_mutations;
+  "platformUserStreaming/queries": typeof platformUserStreaming_queries;
   "roleRules/index": typeof roleRules_index;
   "roleRules/mutations": typeof roleRules_mutations;
   "roleRules/queries": typeof roleRules_queries;
@@ -546,6 +608,571 @@ export type Mounts = {
       >;
     };
   };
+  platformAutomations: {
+    mutations: {
+      createAutomation: FunctionReference<
+        "mutation",
+        "public",
+        {
+          action: { config: any; type: "send_message" };
+          conditions?: any;
+          enabled: boolean;
+          guildId: string;
+          name: string;
+          trigger: { config: any; type: "schedule" | "event" };
+        },
+        string
+      >;
+      deleteAutomation: FunctionReference<
+        "mutation",
+        "public",
+        { automationId: string },
+        null
+      >;
+      markAutomationRun: FunctionReference<
+        "mutation",
+        "public",
+        {
+          automationId: string;
+          cursor?: string;
+          lastRunAt?: number;
+          nextRunAt?: number;
+        },
+        null
+      >;
+      updateAutomation: FunctionReference<
+        "mutation",
+        "public",
+        {
+          action?: { config: any; type: "send_message" };
+          automationId: string;
+          conditions?: any;
+          enabled?: boolean;
+          name?: string;
+          trigger?: { config: any; type: "schedule" | "event" };
+        },
+        null
+      >;
+    };
+    queries: {
+      listAutomations: FunctionReference<
+        "query",
+        "public",
+        { guildId: string },
+        Array<{
+          action: any;
+          conditions?: any;
+          createdAt: number;
+          enabled: boolean;
+          guildId: string;
+          id: string;
+          name: string;
+          nextRunAt?: number;
+          state?: any;
+          trigger: any;
+          updatedAt: number;
+        }>
+      >;
+      listDueAutomations: FunctionReference<
+        "query",
+        "public",
+        { limit?: number; now: number },
+        Array<{
+          action: any;
+          conditions?: any;
+          createdAt: number;
+          enabled: boolean;
+          guildId: string;
+          id: string;
+          name: string;
+          nextRunAt?: number;
+          state?: any;
+          trigger: any;
+          updatedAt: number;
+        }>
+      >;
+    };
+  };
+  platformConfigs: {
+    internalQueries: {
+      getPlatformConfigSecrets: FunctionReference<
+        "query",
+        "public",
+        {},
+        {
+          botMode: "global" | "custom";
+          customBotTokenEncrypted?: string;
+          customClientId?: string;
+          customClientSecretEncrypted?: string;
+          enabled: boolean;
+        } | null
+      >;
+    };
+    mutations: {
+      upsertPlatformConfig: FunctionReference<
+        "mutation",
+        "public",
+        {
+          botMode: "global" | "custom";
+          customBotTokenEncrypted?: string;
+          customClientId?: string;
+          customClientSecretEncrypted?: string;
+          enabled: boolean;
+        },
+        null
+      >;
+    };
+    queries: {
+      getPlatformConfig: FunctionReference<
+        "query",
+        "public",
+        {},
+        {
+          botMode: "global" | "custom";
+          connectedAt: number;
+          customClientId?: string;
+          enabled: boolean;
+          hasBotToken: boolean;
+          hasClientSecret: boolean;
+          lastError?: string;
+          lastValidatedAt?: number;
+        } | null
+      >;
+    };
+  };
+  platformEvents: {
+    mutations: {
+      emitEvent: FunctionReference<
+        "mutation",
+        "public",
+        {
+          dedupeKey?: string;
+          eventKey: string;
+          guildId?: string;
+          payloadJson: string;
+        },
+        null
+      >;
+    };
+    queries: {
+      listRecentEvents: FunctionReference<
+        "query",
+        "public",
+        { eventKey?: string; guildId?: string; limit?: number },
+        Array<{
+          createdAt: number;
+          dedupeKey?: string;
+          eventKey: string;
+          guildId?: string;
+          id: string;
+          payloadJson: string;
+        }>
+      >;
+    };
+  };
+  platformGuildConnections: {
+    mutations: {
+      deleteGuildConnection: FunctionReference<
+        "mutation",
+        "public",
+        { guildId: string },
+        null
+      >;
+      upsertGuildConnection: FunctionReference<
+        "mutation",
+        "public",
+        {
+          botModeAtConnect: "global" | "custom";
+          connectedAt: number;
+          guildId: string;
+          guildName?: string;
+        },
+        null
+      >;
+    };
+    queries: {
+      getGuildConnectionByGuildId: FunctionReference<
+        "query",
+        "public",
+        { guildId: string },
+        null | {
+          botModeAtConnect: "global" | "custom";
+          connectedAt: number;
+          guildId: string;
+          guildName?: string;
+        }
+      >;
+      listGuildConnections: FunctionReference<
+        "query",
+        "public",
+        {},
+        Array<{
+          botModeAtConnect: "global" | "custom";
+          connectedAt: number;
+          guildId: string;
+          guildName?: string;
+        }>
+      >;
+    };
+  };
+  platformGuildSettings: {
+    mutations: {
+      upsertGuildSettings: FunctionReference<
+        "mutation",
+        "public",
+        {
+          announcementChannelId?: string;
+          announcementEventKeys?: Array<string>;
+          approvedMemberRoleId?: string;
+          courseUpdatesChannelId?: string;
+          escalationConfidenceThreshold?: number;
+          escalationKeywords?: Array<string>;
+          guildId: string;
+          inviteUrl?: string;
+          memberTradesChannelId?: string;
+          memberTradesTemplateId?: string;
+          mentorTradesChannelId?: string;
+          mentorTradesTemplateId?: string;
+          supportAiDisabledMessageEnabled?: boolean;
+          supportAiDisabledMessageText?: string;
+          supportAiEnabled: boolean;
+          supportForumChannelId?: string;
+          supportPrivateIntakeChannelId?: string;
+          supportStaffRoleId?: string;
+          threadReplyCooldownMs?: number;
+        },
+        null
+      >;
+    };
+    queries: {
+      getGuildSettings: FunctionReference<
+        "query",
+        "public",
+        { guildId: string },
+        null | {
+          announcementChannelId?: string;
+          announcementEventKeys?: Array<string>;
+          approvedMemberRoleId?: string;
+          courseUpdatesChannelId?: string;
+          escalationConfidenceThreshold?: number;
+          escalationKeywords?: Array<string>;
+          guildId: string;
+          inviteUrl?: string;
+          memberTradesChannelId?: string;
+          memberTradesTemplateId?: string;
+          mentorTradesChannelId?: string;
+          mentorTradesTemplateId?: string;
+          supportAiDisabledMessageEnabled?: boolean;
+          supportAiDisabledMessageText?: string;
+          supportAiEnabled: boolean;
+          supportForumChannelId?: string;
+          supportPrivateIntakeChannelId?: string;
+          supportStaffRoleId?: string;
+          threadReplyCooldownMs?: number;
+          updatedAt: number;
+        }
+      >;
+    };
+  };
+  platformOauth: {
+    mutations: {
+      consumeOauthState: FunctionReference<
+        "mutation",
+        "public",
+        { state: string },
+        {
+          callbackPath?: string;
+          codeVerifier: string;
+          kind: "org_install" | "user_link";
+          returnTo: string;
+          userId?: string;
+        } | null
+      >;
+      createOauthState: FunctionReference<
+        "mutation",
+        "public",
+        {
+          callbackPath?: string;
+          codeVerifier: string;
+          kind: "org_install" | "user_link";
+          returnTo: string;
+          state: string;
+          userId?: string;
+        },
+        null
+      >;
+    };
+    queries: {
+      peekOauthState: FunctionReference<
+        "query",
+        "public",
+        { state: string },
+        {
+          kind: "org_install" | "user_link";
+          returnTo: string;
+          userId?: string;
+        } | null
+      >;
+    };
+  };
+  platformRouting: {
+    mutations: {
+      replaceRoutingRules: FunctionReference<
+        "mutation",
+        "public",
+        {
+          guildId: string;
+          kind: "trade_feed";
+          rules: Array<{
+            channelId: string;
+            channelKind?: "mentors" | "members";
+            conditions?: {
+              actorRoles?: Array<string>;
+              symbols?: Array<string>;
+            };
+            enabled: boolean;
+            order: number;
+            priority: number;
+          }>;
+        },
+        null
+      >;
+      upsertRoutingRuleSet: FunctionReference<
+        "mutation",
+        "public",
+        {
+          guildId: string;
+          kind: "trade_feed";
+          matchStrategy: "first_match" | "multi_cast" | "priority";
+        },
+        null
+      >;
+    };
+    queries: {
+      getRoutingRuleSet: FunctionReference<
+        "query",
+        "public",
+        { guildId: string; kind: "trade_feed" },
+        null | {
+          guildId: string;
+          kind: "trade_feed";
+          matchStrategy: "first_match" | "multi_cast" | "priority";
+          updatedAt: number;
+        }
+      >;
+      listRoutingRules: FunctionReference<
+        "query",
+        "public",
+        { guildId: string; kind: "trade_feed" },
+        Array<{
+          channelId: string;
+          conditions?: { actorRoles?: Array<string>; symbols?: Array<string> };
+          enabled: boolean;
+          id: string;
+          order: number;
+          priority: number;
+        }>
+      >;
+      resolveChannelsForEvent: FunctionReference<
+        "query",
+        "public",
+        {
+          actorRole: string;
+          guildId: string;
+          kind: "trade_feed";
+          symbol: string;
+        },
+        Array<string>
+      >;
+      resolveTradeFeedChannel: FunctionReference<
+        "query",
+        "public",
+        { channelKind: "mentors" | "members"; guildId: string },
+        string | null
+      >;
+    };
+  };
+  platformTemplates: {
+    mutations: {
+      createTemplate: FunctionReference<
+        "mutation",
+        "public",
+        {
+          description?: string;
+          guildId?: string;
+          kind: string;
+          name: string;
+          template: string;
+          templateJson?: string;
+        },
+        string
+      >;
+      deleteTemplate: FunctionReference<
+        "mutation",
+        "public",
+        { templateId: string },
+        null
+      >;
+      updateTemplate: FunctionReference<
+        "mutation",
+        "public",
+        {
+          description?: string;
+          name?: string;
+          template?: string;
+          templateId: string;
+          templateJson?: string;
+        },
+        null
+      >;
+      upsertTemplate: FunctionReference<
+        "mutation",
+        "public",
+        {
+          description?: string;
+          guildId?: string;
+          kind: string;
+          name?: string;
+          template: string;
+          templateJson?: string;
+        },
+        null
+      >;
+    };
+    queries: {
+      getTemplate: FunctionReference<
+        "query",
+        "public",
+        { guildId?: string; kind: string },
+        null | { template: string; updatedAt: number }
+      >;
+      getTemplateById: FunctionReference<
+        "query",
+        "public",
+        { templateId: string },
+        null | {
+          _id: string;
+          createdAt?: number;
+          description?: string;
+          guildId?: string;
+          kind: string;
+          name?: string;
+          template: string;
+          templateJson?: string;
+          updatedAt: number;
+        }
+      >;
+      listTemplates: FunctionReference<
+        "query",
+        "public",
+        { guildId?: string; kind: string },
+        Array<{
+          _id: string;
+          createdAt?: number;
+          description?: string;
+          guildId?: string;
+          kind: string;
+          name?: string;
+          scope: "platform" | "guild";
+          template: string;
+          templateJson?: string;
+          updatedAt: number;
+        }>
+      >;
+      renderTradeIdeaMessage: FunctionReference<
+        "query",
+        "public",
+        {
+          avgEntryPrice?: number;
+          closedAt?: number;
+          direction: "long" | "short";
+          fees?: number;
+          guildId?: string;
+          netQty: number;
+          openedAt?: number;
+          realizedPnl?: number;
+          status: "open" | "closed";
+          symbol: string;
+          templateId?: string;
+        },
+        { content: string }
+      >;
+    };
+  };
+  platformUserLinks: {
+    mutations: {
+      linkUser: FunctionReference<
+        "mutation",
+        "public",
+        {
+          discordAvatar?: string;
+          discordDiscriminator?: string;
+          discordGlobalName?: string;
+          discordUserId: string;
+          discordUsername?: string;
+          userId: string;
+        },
+        null
+      >;
+      unlinkUser: FunctionReference<
+        "mutation",
+        "public",
+        { userId: string },
+        null
+      >;
+    };
+    queries: {
+      getUserIdByDiscordUserId: FunctionReference<
+        "query",
+        "public",
+        { discordUserId: string },
+        {
+          discordAvatar?: string;
+          discordDiscriminator?: string;
+          discordGlobalName?: string;
+          discordUsername?: string;
+          linkedAt: number;
+          userId: string;
+        } | null
+      >;
+      getUserLink: FunctionReference<
+        "query",
+        "public",
+        { userId: string },
+        {
+          discordAvatar?: string;
+          discordDiscriminator?: string;
+          discordGlobalName?: string;
+          discordUserId: string;
+          discordUsername?: string;
+          linkedAt: number;
+        } | null
+      >;
+    };
+  };
+  platformUserStreaming: {
+    mutations: {
+      setUserStreamingEnabled: FunctionReference<
+        "mutation",
+        "public",
+        { enabled: boolean; userId: string },
+        null
+      >;
+    };
+    queries: {
+      getUserStreamingPrefs: FunctionReference<
+        "query",
+        "public",
+        { userId: string },
+        null | {
+          disabledAt?: number;
+          enabled: boolean;
+          enabledAt?: number;
+          updatedAt: number;
+        }
+      >;
+    };
+  };
   roleRules: {
     mutations: {
       replaceMarketingTagRoleRules: FunctionReference<
@@ -956,7 +1583,15 @@ export type Mounts = {
       linkUser: FunctionReference<
         "mutation",
         "public",
-        { discordUserId: string; organizationId?: string; userId: string },
+        {
+          discordAvatar?: string;
+          discordDiscriminator?: string;
+          discordGlobalName?: string;
+          discordUserId: string;
+          discordUsername?: string;
+          organizationId?: string;
+          userId: string;
+        },
         null
       >;
       unlinkUser: FunctionReference<
@@ -971,20 +1606,38 @@ export type Mounts = {
         "query",
         "public",
         { discordUserId: string; organizationId: string },
-        { linkedAt: number; userId: string } | null
+        {
+          discordAvatar?: string;
+          discordDiscriminator?: string;
+          discordGlobalName?: string;
+          discordUsername?: string;
+          linkedAt: number;
+          userId: string;
+        } | null
       >;
       getUserLink: FunctionReference<
         "query",
         "public",
         { organizationId: string; userId: string },
-        { discordUserId: string; linkedAt: number } | null
+        {
+          discordAvatar?: string;
+          discordDiscriminator?: string;
+          discordGlobalName?: string;
+          discordUserId: string;
+          discordUsername?: string;
+          linkedAt: number;
+        } | null
       >;
       getUserLinkForUser: FunctionReference<
         "query",
         "public",
         { userId: string },
         {
+          discordAvatar?: string;
+          discordDiscriminator?: string;
+          discordGlobalName?: string;
           discordUserId: string;
+          discordUsername?: string;
           linkedAt: number;
           organizationId?: string;
         } | null

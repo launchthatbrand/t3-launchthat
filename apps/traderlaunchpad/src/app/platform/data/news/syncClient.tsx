@@ -45,6 +45,119 @@ interface SourceRow {
   config: unknown;
 }
 
+type SourceFormState = {
+  sourceKey: string;
+  feedType: "rss_headlines" | "rss_economic";
+  label: string;
+  url: string;
+  cadenceSeconds: number;
+};
+
+const parseFeedType = (source: SourceRow): "rss_headlines" | "rss_economic" => {
+  const config = source.config as Record<string, unknown> | null;
+  const hint =
+    config && typeof config.eventTypeHint === "string" ? config.eventTypeHint : "";
+  return hint === "economic" ? "rss_economic" : "rss_headlines";
+};
+
+const parseUrl = (source: SourceRow): string => {
+  const config = source.config as Record<string, unknown> | null;
+  return config && typeof config.url === "string" ? config.url : "";
+};
+
+const toFormState = (source: SourceRow): SourceFormState => ({
+  sourceKey: source.sourceKey,
+  feedType: parseFeedType(source),
+  label: source.label ?? "",
+  url: parseUrl(source),
+  cadenceSeconds: source.cadenceSeconds ?? 600,
+});
+
+const SourceForm = ({
+  form,
+  onChange,
+  onSubmit,
+  onCancel,
+  submitLabel,
+  busy,
+  error,
+}: {
+  form: SourceFormState;
+  onChange: (next: SourceFormState) => void;
+  onSubmit: () => void;
+  onCancel?: () => void;
+  submitLabel: string;
+  busy: boolean;
+  error: string | null;
+}) => {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-2">
+        <Label>Feed type</Label>
+        <Select
+          value={form.feedType}
+          onValueChange={(v) => onChange({ ...form, feedType: v as SourceFormState["feedType"] })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="rss_headlines">RSS — Headlines</SelectItem>
+            <SelectItem value="rss_economic">RSS — Economic calendar</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid gap-2">
+        <Label>sourceKey</Label>
+        <Input
+          value={form.sourceKey}
+          onChange={(e) => onChange({ ...form, sourceKey: e.target.value })}
+          placeholder="e.g. forexfactory"
+        />
+      </div>
+      <div className="grid gap-2 md:col-span-2">
+        <Label>URL</Label>
+        <Input
+          value={form.url}
+          onChange={(e) => onChange({ ...form, url: e.target.value })}
+          placeholder="https://..."
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label>Label (optional)</Label>
+        <Input
+          value={form.label}
+          onChange={(e) => onChange({ ...form, label: e.target.value })}
+          placeholder="Human label"
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label>Cadence (seconds)</Label>
+        <Input
+          inputMode="numeric"
+          value={String(form.cadenceSeconds)}
+          onChange={(e) =>
+            onChange({ ...form, cadenceSeconds: Number(e.target.value || 0) })
+          }
+        />
+      </div>
+      <div className="md:col-span-2 flex items-center justify-between gap-3">
+        {error ? <div className="text-sm text-red-600">{error}</div> : <div />}
+        <div className="flex items-center gap-2">
+          {onCancel ? (
+            <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>
+              Cancel
+            </Button>
+          ) : null}
+          <Button type="button" onClick={onSubmit} disabled={busy}>
+            {busy ? "Saving..." : submitLabel}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function PlatformNewsSyncClient() {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
   const listSources = useAction(api.platform.newsAdmin.listSources);
@@ -71,7 +184,7 @@ export default function PlatformNewsSyncClient() {
   const [error, setError] = React.useState<string | null>(null);
   const [lastRunResult, setLastRunResult] = React.useState<unknown>(null);
   const [editingSource, setEditingSource] = React.useState<SourceRow | null>(null);
-  const [editCadenceSeconds, setEditCadenceSeconds] = React.useState<number>(0);
+  const [editForm, setEditForm] = React.useState<SourceFormState | null>(null);
   const [editBusy, setEditBusy] = React.useState(false);
   const [editError, setEditError] = React.useState<string | null>(null);
 
@@ -79,9 +192,9 @@ export default function PlatformNewsSyncClient() {
   const [settingsError, setSettingsError] = React.useState<string | null>(null);
   const [aliases, setAliases] = React.useState<AliasRow[]>([]);
 
-  const [form, setForm] = React.useState({
+  const [form, setForm] = React.useState<SourceFormState>({
     sourceKey: "",
-    feedType: "rss_headlines" as "rss_headlines" | "rss_economic",
+    feedType: "rss_headlines",
     label: "",
     url: "",
     cadenceSeconds: 600,
@@ -102,19 +215,28 @@ export default function PlatformNewsSyncClient() {
 
   React.useEffect(() => {
     if (!editingSource) return;
-    setEditCadenceSeconds(editingSource.cadenceSeconds);
+    setEditForm(toFormState(editingSource));
     setEditError(null);
   }, [editingSource]);
 
-  const handleSaveCadence = async () => {
-    if (!editingSource) return;
+  const handleSaveEdit = async () => {
+    if (!editingSource || !editForm) return;
     setEditError(null);
     setEditBusy(true);
     try {
-      const cadenceSeconds = Math.max(60, Math.floor(editCadenceSeconds));
+      const cadenceSeconds = Math.max(60, Math.floor(editForm.cadenceSeconds));
+      const eventTypeHint = editForm.feedType === "rss_economic" ? "economic" : "headline";
       await updateSource({
         sourceId: editingSource._id,
+        sourceKey: editForm.sourceKey.trim(),
+        kind: "rss",
+        label: editForm.label.trim() || undefined,
         cadenceSeconds,
+        config: {
+          url: editForm.url.trim(),
+          label: editForm.label.trim() || undefined,
+          eventTypeHint,
+        },
       });
       await refresh();
       setEditingSource(null);
@@ -189,64 +311,15 @@ export default function PlatformNewsSyncClient() {
         <CardHeader>
           <CardTitle>New source</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="grid gap-2">
-            <Label>Feed type</Label>
-            <Select
-              value={form.feedType}
-              onValueChange={(v) =>
-                setForm((s) => ({ ...s, feedType: v as "rss_headlines" | "rss_economic" }))
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="rss_headlines">RSS — Headlines</SelectItem>
-                <SelectItem value="rss_economic">RSS — Economic calendar</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label>sourceKey</Label>
-            <Input
-              value={form.sourceKey}
-              onChange={(e) => setForm((s) => ({ ...s, sourceKey: e.target.value }))}
-              placeholder="e.g. forexfactory"
-            />
-          </div>
-          <div className="grid gap-2 md:col-span-2">
-            <Label>URL</Label>
-            <Input
-              value={form.url}
-              onChange={(e) => setForm((s) => ({ ...s, url: e.target.value }))}
-              placeholder="https://..."
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label>Label (optional)</Label>
-            <Input
-              value={form.label}
-              onChange={(e) => setForm((s) => ({ ...s, label: e.target.value }))}
-              placeholder="Human label"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label>Cadence (seconds)</Label>
-            <Input
-              inputMode="numeric"
-              value={String(form.cadenceSeconds)}
-              onChange={(e) =>
-                setForm((s) => ({ ...s, cadenceSeconds: Number(e.target.value || 0) }))
-              }
-            />
-          </div>
-          <div className="md:col-span-2 flex items-center justify-between gap-3">
-            {error ? <div className="text-sm text-red-600">{error}</div> : <div />}
-            <Button type="button" onClick={handleCreate} disabled={busy}>
-              {busy ? "Creating..." : "Add source"}
-            </Button>
-          </div>
+        <CardContent>
+          <SourceForm
+            form={form}
+            onChange={setForm}
+            onSubmit={handleCreate}
+            submitLabel="Add source"
+            busy={busy}
+            error={error}
+          />
         </CardContent>
       </Card>
 
@@ -524,38 +597,22 @@ export default function PlatformNewsSyncClient() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit cadence</DialogTitle>
+            <DialogTitle>Edit source</DialogTitle>
             <DialogDescription>
-              Update how often this news source is synced.
+              Update the same fields used when creating a source.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="text-xs text-muted-foreground">
-              {editingSource?.label || editingSource?.sourceKey}
-            </div>
-            <div className="grid gap-2">
-              <Label>Cadence (seconds)</Label>
-              <Input
-                inputMode="numeric"
-                value={String(editCadenceSeconds || "")}
-                onChange={(e) => setEditCadenceSeconds(Number(e.target.value || 0))}
-              />
-            </div>
-            {editError ? <div className="text-sm text-red-600">{editError}</div> : null}
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setEditingSource(null)}
-                disabled={editBusy}
-              >
-                Cancel
-              </Button>
-              <Button type="button" onClick={handleSaveCadence} disabled={editBusy}>
-                {editBusy ? "Saving..." : "Save"}
-              </Button>
-            </div>
-          </div>
+          {editForm ? (
+            <SourceForm
+              form={editForm}
+              onChange={setEditForm}
+              onSubmit={handleSaveEdit}
+              onCancel={() => setEditingSource(null)}
+              submitLabel="Save changes"
+              busy={editBusy}
+              error={editError}
+            />
+          ) : null}
         </DialogContent>
       </Dialog>
 

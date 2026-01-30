@@ -1,6 +1,6 @@
 "use node";
 
-import { exchangeDiscordCode, fetchDiscordUser } from "launchthat-plugin-discord/runtime/oauth";
+import { exchangeDiscordCode } from "launchthat-plugin-discord/runtime/oauth";
 import { discordJson, discordMultipart } from "launchthat-plugin-discord/runtime/discordApi";
 import { resolveOrganizationId, resolveViewerUserId } from "../traderlaunchpad/lib/resolve";
 
@@ -102,6 +102,37 @@ const addGuildMember = async (args: {
   const text = await res.text().catch(() => "");
   console.log("[discord.addGuildMember] failed", res.status, text.slice(0, 300));
   return false;
+};
+
+const fetchDiscordProfile = async (accessToken: string) => {
+  const res = await fetch("https://discord.com/api/v10/users/@me", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "me_failed");
+    throw new Error(
+      `Discord /users/@me failed: ${res.status} ${text}`.slice(0, 400),
+    );
+  }
+  const meJson = (await res.json()) as {
+    id?: string;
+    username?: string;
+    discriminator?: string;
+    avatar?: string;
+    global_name?: string;
+  };
+  const discordUserId = typeof meJson?.id === "string" ? meJson.id : "";
+  if (!discordUserId) {
+    throw new Error("Discord user id missing from /users/@me");
+  }
+  return {
+    discordUserId,
+    username: typeof meJson.username === "string" ? meJson.username : undefined,
+    discriminator:
+      typeof meJson.discriminator === "string" ? meJson.discriminator : undefined,
+    avatar: typeof meJson.avatar === "string" ? meJson.avatar : undefined,
+    globalName: typeof meJson.global_name === "string" ? meJson.global_name : undefined,
+  };
 };
 
 export const listGuildChannels = action({
@@ -964,7 +995,7 @@ export const completeUserLink = action({
       code: args.code,
       redirectUri: String(redirect.redirectUri ?? ""),
     });
-    const discordUserId = await fetchDiscordUser(token.accessToken);
+    const profile = await fetchDiscordProfile(token.accessToken);
 
     let guildId: string | null = null;
     if (organizationIdRaw) {
@@ -987,7 +1018,7 @@ export const completeUserLink = action({
       const isMember = await verifyGuildMembership({
         botToken: creds.botToken,
         guildId,
-        discordUserId,
+        discordUserId: profile.discordUserId,
       });
       if (!isMember) {
         throw new Error(
@@ -1004,7 +1035,7 @@ export const completeUserLink = action({
         await addGuildMember({
           botToken: creds.botToken,
           guildId,
-          discordUserId,
+          discordUserId: profile.discordUserId,
           accessToken: token.accessToken,
         });
       }
@@ -1013,7 +1044,11 @@ export const completeUserLink = action({
     await ctx.runMutation(discordUserLinksMutations.linkUser, {
       organizationId: organizationIdRaw ?? undefined,
       userId,
-      discordUserId,
+      discordUserId: profile.discordUserId,
+      discordUsername: profile.username,
+      discordDiscriminator: profile.discriminator,
+      discordGlobalName: profile.globalName,
+      discordAvatar: profile.avatar,
     });
     if (organizationIdRaw) {
       await ctx.runMutation(discordUserStreamingMutations.setUserStreamingEnabled, {
@@ -1023,6 +1058,11 @@ export const completeUserLink = action({
       });
     }
 
-    return { organizationId: organizationIdRaw, userId, discordUserId, guildId };
+    return {
+      organizationId: organizationIdRaw,
+      userId,
+      discordUserId: profile.discordUserId,
+      guildId,
+    };
   },
 });

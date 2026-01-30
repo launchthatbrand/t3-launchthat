@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { query } from "../server";
 
 export const getUserLink = query({
-  args: { organizationId: v.string(), userId: v.string() },
+  args: { userId: v.string() },
   returns: v.union(
     v.object({
       discordUserId: v.string(),
@@ -16,10 +16,8 @@ export const getUserLink = query({
   ),
   handler: async (ctx, args) => {
     const link = await ctx.db
-      .query("userLinks")
-      .withIndex("by_organizationId_and_userId", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("userId", args.userId),
-      )
+      .query("platformUserLinks")
+      .withIndex("by_userId", (q: any) => q.eq("userId", args.userId))
       .unique();
     if (!link) return null;
     return {
@@ -33,39 +31,8 @@ export const getUserLink = query({
   },
 });
 
-export const getUserLinkForUser = query({
-  args: { userId: v.string() },
-  returns: v.union(
-    v.object({
-      discordUserId: v.string(),
-      linkedAt: v.number(),
-      organizationId: v.optional(v.string()),
-      discordUsername: v.optional(v.string()),
-      discordDiscriminator: v.optional(v.string()),
-      discordGlobalName: v.optional(v.string()),
-      discordAvatar: v.optional(v.string()),
-    }),
-    v.null(),
-  ),
-  handler: async (ctx, args) => {
-    const link = await ctx.db
-      .query("userLinks")
-      .withIndex("by_userId", (q: any) => q.eq("userId", args.userId))
-      .unique();
-    if (!link) return null;
-    return {
-      discordUserId: link.discordUserId,
-      linkedAt: link.linkedAt,
-      organizationId: link.organizationId,
-      discordUsername: link.discordUsername,
-      discordDiscriminator: link.discordDiscriminator,
-      discordGlobalName: link.discordGlobalName,
-      discordAvatar: link.discordAvatar,
-    };
-  },
-});
 export const getUserIdByDiscordUserId = query({
-  args: { organizationId: v.string(), discordUserId: v.string() },
+  args: { discordUserId: v.string() },
   returns: v.union(
     v.object({
       userId: v.string(),
@@ -79,9 +46,9 @@ export const getUserIdByDiscordUserId = query({
   ),
   handler: async (ctx, args) => {
     const link = await ctx.db
-      .query("userLinks")
-      .withIndex("by_organizationId_and_discordUserId", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("discordUserId", args.discordUserId),
+      .query("platformUserLinks")
+      .withIndex("by_discordUserId", (q: any) =>
+        q.eq("discordUserId", args.discordUserId),
       )
       .unique();
     if (!link) return null;
@@ -95,6 +62,3 @@ export const getUserIdByDiscordUserId = query({
     };
   },
 });
-
-
-

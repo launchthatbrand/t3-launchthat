@@ -58,6 +58,8 @@ export const createSource = mutation({
 export const updateSource = mutation({
   args: {
     sourceId: v.id("newsSources"),
+    sourceKey: v.optional(v.string()),
+    kind: v.optional(v.string()),
     label: v.optional(v.string()),
     cadenceSeconds: v.optional(v.number()),
     overlapSeconds: v.optional(v.number()),
@@ -71,6 +73,23 @@ export const updateSource = mutation({
     const row = await ctx.db.get(args.sourceId);
     if (!row) throw new Error("Source not found");
     const patch: Record<string, unknown> = { updatedAt: Date.now() };
+    if (args.sourceKey !== undefined) {
+      const sourceKey = args.sourceKey.trim();
+      if (!sourceKey) throw new Error("Missing sourceKey");
+      const existing = await ctx.db
+        .query("newsSources")
+        .withIndex("by_sourceKey", (q) => q.eq("sourceKey", sourceKey))
+        .first();
+      if (existing && existing._id !== args.sourceId) {
+        throw new Error("sourceKey already exists");
+      }
+      patch.sourceKey = sourceKey;
+    }
+    if (args.kind !== undefined) {
+      const kind = args.kind.trim();
+      if (!kind) throw new Error("Missing kind");
+      patch.kind = kind;
+    }
     if (args.label !== undefined) patch.label = args.label;
     if (args.cadenceSeconds !== undefined)
       patch.cadenceSeconds = clampCadenceSeconds(Number(args.cadenceSeconds));

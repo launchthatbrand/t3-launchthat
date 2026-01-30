@@ -47,6 +47,8 @@ export const createSource = action({
 export const updateSource = action({
   args: {
     sourceId: v.any(),
+    sourceKey: v.optional(v.string()),
+    kind: v.optional(v.string()),
     label: v.optional(v.string()),
     cadenceSeconds: v.optional(v.number()),
     overlapSeconds: v.optional(v.number()),

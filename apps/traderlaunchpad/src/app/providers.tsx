@@ -25,6 +25,7 @@ import { TenantProvider } from "~/context/TenantContext";
 import { useConvexAuth } from "convex/react";
 import { ConvexUserEnsurer } from "~/app/ConvexUserEnsurer";
 import { AffiliateSponsorOptInDialog } from "~/components/affiliates/AffiliateSponsorOptInDialog";
+import { DiscordJoinDialog } from "~/components/discord/DiscordJoinDialog";
 import { TenantConvexProvider } from "launchthat-plugin-core-tenant/next/components/tenant-convex-provider";
 import { PushNotificationsClient } from "~/components/pwa/PushNotificationsClient";
 import { JoinCodeProvider } from "~/components/join/JoinCodeProvider";
@@ -59,6 +60,7 @@ export function Providers({ children, tenant, host }: ProvidersProps) {
             <HostProvider host={host}>
               <ConvexUserEnsurer />
               <AffiliateSponsorOptInDialog />
+              <DiscordJoinDialog />
               <JoinCodeProvider>
                 <PushNotificationsClient />
                 <DataModeProvider>
@@ -76,6 +78,7 @@ export function Providers({ children, tenant, host }: ProvidersProps) {
         <HostProvider host={host}>
           <TenantConvexProvider convexUrl={convexUrl} nodeEnv={env.NODE_ENV}>
             <AffiliateSponsorOptInDialog />
+            <DiscordJoinDialog />
             <JoinCodeProvider>
               <PushNotificationsClient />
               <DataModeProvider>

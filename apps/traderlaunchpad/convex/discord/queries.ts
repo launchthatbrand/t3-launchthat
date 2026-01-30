@@ -59,6 +59,10 @@ export const getMyDiscordStreamingOrgs = query({
       inviteUrl: v.union(v.string(), v.null()),
       linkedDiscordUserId: v.union(v.string(), v.null()),
       linkedAt: v.union(v.number(), v.null()),
+      linkedUsername: v.union(v.string(), v.null()),
+      linkedDiscriminator: v.union(v.string(), v.null()),
+      linkedGlobalName: v.union(v.string(), v.null()),
+      linkedAvatar: v.union(v.string(), v.null()),
       streamingEnabled: v.boolean(),
       streamingUpdatedAt: v.union(v.number(), v.null()),
     }),
@@ -78,6 +82,10 @@ export const getMyDiscordStreamingOrgs = query({
       inviteUrl: string | null;
       linkedDiscordUserId: string | null;
       linkedAt: number | null;
+      linkedUsername: string | null;
+      linkedDiscriminator: string | null;
+      linkedGlobalName: string | null;
+      linkedAvatar: string | null;
       streamingEnabled: boolean;
       streamingUpdatedAt: number | null;
     }[] = [];
@@ -148,6 +156,16 @@ export const getMyDiscordStreamingOrgs = query({
         inviteUrl,
         linkedDiscordUserId,
         linkedAt,
+        linkedUsername:
+          typeof link?.discordUsername === "string" ? link.discordUsername : null,
+        linkedDiscriminator:
+          typeof link?.discordDiscriminator === "string"
+            ? link.discordDiscriminator
+            : null,
+        linkedGlobalName:
+          typeof link?.discordGlobalName === "string" ? link.discordGlobalName : null,
+        linkedAvatar:
+          typeof link?.discordAvatar === "string" ? link.discordAvatar : null,
         streamingEnabled,
         streamingUpdatedAt,
       });
@@ -164,6 +182,15 @@ export const getMyDiscordUserLink = query({
     linkedAt: v.union(v.number(), v.null()),
     inviteUrl: v.union(v.string(), v.null()),
     guildId: v.union(v.string(), v.null()),
+    profile: v.union(
+      v.object({
+        username: v.union(v.string(), v.null()),
+        discriminator: v.union(v.string(), v.null()),
+        globalName: v.union(v.string(), v.null()),
+        avatar: v.union(v.string(), v.null()),
+      }),
+      v.null(),
+    ),
   }),
   handler: async (ctx) => {
     const userId = await resolveViewerUserId(ctx);
@@ -176,16 +203,29 @@ export const getMyDiscordUserLink = query({
         : null;
     const linkedAt = typeof link?.linkedAt === "number" ? link.linkedAt : null;
     const inviteUrlRaw =
-      (process.env.TRADERLAUNCHPAD_DISCORD_INVITE_URL ??
-        process.env.NEXT_PUBLIC_TRADERLAUNCHPAD_DISCORD_INVITE_URL ??
+      (process.env.TDRLP_DISCORD_INVITE_URL ??
+        process.env.NEXT_PUBLIC_TDRLP_DISCORD_INVITE_URL ??
         "").trim();
     const inviteUrl = inviteUrlRaw ? inviteUrlRaw : null;
     const guildIdRaw =
-      (process.env.TRADERLAUNCHPAD_DISCORD_GUILD_ID ??
+      (process.env.TDRLP_DISCORD_GUILD_ID ??
         process.env.DISCORD_GLOBAL_GUILD_ID ??
         "").trim();
     const guildId = guildIdRaw ? guildIdRaw : null;
-    return { linkedDiscordUserId, linkedAt, inviteUrl, guildId };
+    const profile = link
+      ? {
+          username:
+            typeof link.discordUsername === "string" ? link.discordUsername : null,
+          discriminator:
+            typeof link.discordDiscriminator === "string"
+              ? link.discordDiscriminator
+              : null,
+          globalName:
+            typeof link.discordGlobalName === "string" ? link.discordGlobalName : null,
+          avatar: typeof link.discordAvatar === "string" ? link.discordAvatar : null,
+        }
+      : null;
+    return { linkedDiscordUserId, linkedAt, inviteUrl, guildId, profile };
   },
 });
 
@@ -209,8 +249,8 @@ export const listSymbolOptions = query({
     });
     const symbols = Array.isArray(rows)
       ? rows
-          .map((r: any) => String(r?.symbol ?? "").trim().toUpperCase())
-          .filter(Boolean)
+        .map((r: any) => String(r?.symbol ?? "").trim().toUpperCase())
+        .filter(Boolean)
       : [];
     return Array.from(new Set(symbols));
   },

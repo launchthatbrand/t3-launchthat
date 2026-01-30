@@ -1,8 +1,8 @@
-import { v } from "convex/values";
+import { exchangeDiscordCode, fetchDiscordUser } from "../../../runtime/oauth";
 
 import { action } from "../server";
-import { exchangeDiscordCode, fetchDiscordUser } from "../../../runtime/oauth";
 import { resolveDiscordCredentials } from "../../../runtime/credentials";
+import { v } from "convex/values";
 
 /* eslint-disable
   @typescript-eslint/no-explicit-any,
@@ -130,8 +130,8 @@ export const completeUserLink = action({
 
     const secrets = organizationId
       ? await ctx.runQuery(api.orgConfigs.internalQueries.getOrgConfigSecrets, {
-          organizationId,
-        })
+        organizationId,
+      })
       : null;
     if (organizationId && !secrets) throw new Error("Discord org config missing");
 
@@ -183,7 +183,7 @@ export const completeUserLink = action({
       }
     } else {
       const envGuildId =
-        (process.env.TRADERLAUNCHPAD_DISCORD_GUILD_ID ??
+        (process.env.TDRLP_DISCORD_GUILD_ID ??
           process.env.DISCORD_GLOBAL_GUILD_ID ??
           "").trim();
       guildId = envGuildId || null;
