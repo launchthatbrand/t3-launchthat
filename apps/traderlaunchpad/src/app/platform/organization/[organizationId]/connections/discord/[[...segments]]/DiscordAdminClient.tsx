@@ -3,9 +3,11 @@
 import React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useAction } from "convex/react";
 
 import { api } from "@convex-config/_generated/api";
 import { DiscordAdminRouter } from "launchthat-plugin-discord/frontend/discord";
+import { useDiscordBotInstallCallback } from "~/components/discord/useDiscordBotInstallCallback";
 
 interface PlatformDiscordAdminClientProps {
   organizationId: string;
@@ -13,12 +15,34 @@ interface PlatformDiscordAdminClientProps {
 
 export function PlatformDiscordAdminClient({ organizationId }: PlatformDiscordAdminClientProps) {
   const params = useParams<{ segments?: string | string[] }>();
+  const completeBotInstall = useAction(api.discord.actions.completeBotInstall);
   const rawSegments = params.segments;
   const segments = Array.isArray(rawSegments)
     ? rawSegments
     : rawSegments
       ? [rawSegments]
       : [];
+  const firstSegment = segments[0];
+  const normalizedSegments =
+    firstSegment &&
+    firstSegment !== "guilds" &&
+    firstSegment !== "connections" &&
+    firstSegment !== "overview" &&
+    firstSegment !== "templates" &&
+    firstSegment !== "automations" &&
+    firstSegment !== "audit" &&
+    firstSegment !== "link"
+      ? ["guilds", firstSegment, ...segments.slice(1)]
+      : segments;
+
+  const basePath = `/platform/organization/${encodeURIComponent(organizationId)}/connections/discord`;
+
+  useDiscordBotInstallCallback({
+    basePath,
+    onComplete: async ({ state, guildId }) => {
+      await completeBotInstall({ state, guildId });
+    },
+  });
 
   const templateContexts = React.useMemo(
     () => [
@@ -68,9 +92,9 @@ export function PlatformDiscordAdminClient({ organizationId }: PlatformDiscordAd
 
   return (
     <DiscordAdminRouter
-      segments={segments}
+      segments={normalizedSegments}
       organizationId={organizationId}
-      basePath={`/platform/organization/${encodeURIComponent(organizationId)}/connections/discord`}
+      basePath={basePath}
       LinkComponent={Link}
       templateContexts={templateContexts}
       defaultTemplateKind="tradeidea"

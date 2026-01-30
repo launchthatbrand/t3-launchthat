@@ -1,4 +1,5 @@
 import { exchangeDiscordCode, fetchDiscordUser } from "../../../runtime/oauth";
+import { verifyGuildMembership } from "../../../runtime/discordHelpers";
 
 import { action } from "../server";
 import { resolveDiscordCredentials } from "../../../runtime/credentials";
@@ -26,25 +27,9 @@ const randomState = (): string => {
     .join("");
 };
 
-const verifyGuildMembership = async (args: {
-  botToken: string;
-  guildId: string;
-  discordUserId: string;
-}): Promise<boolean> => {
-  const res = await fetch(
-    `https://discord.com/api/v10/guilds/${encodeURIComponent(args.guildId)}/members/${encodeURIComponent(args.discordUserId)}`,
-    {
-      headers: { Authorization: `Bot ${args.botToken}` },
-    },
-  );
-  if (res.status === 404) return false;
-  if (res.ok) return true;
-  const text = await res.text().catch(() => "");
-  throw new Error(`Discord membership check failed: ${res.status} ${text}`.slice(0, 400));
-};
-
 export const startUserLink = action({
   args: {
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
     organizationId: v.optional(v.string()),
     userId: v.string(),
     returnTo: v.string(),
@@ -60,7 +45,11 @@ export const startUserLink = action({
     });
 
     const state = randomState();
+    const scope =
+      args.scope ??
+      (typeof args.organizationId === "string" && args.organizationId ? "org" : "platform");
     await ctx.runMutation(api.oauth.mutations.createOauthState, {
+      scope,
       organizationId: args.organizationId,
       kind: "user_link",
       userId: args.userId,
@@ -76,14 +65,14 @@ export const startUserLink = action({
       "";
     if (!clientId) throw new Error("Missing DISCORD_GLOBAL_CLIENT_ID");
 
-    const scope = encodeURIComponent(
+    const oauthScope = encodeURIComponent(
       args.organizationId ? "identify" : "identify guilds.join",
     );
     const url =
       `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(clientId)}` +
       `&response_type=code` +
       `&redirect_uri=${encodeURIComponent((redirect as any).redirectUri)}` +
-      `&scope=${scope}` +
+      `&scope=${oauthScope}` +
       `&state=${encodeURIComponent(state)}` +
       `&prompt=consent`;
 
@@ -109,6 +98,7 @@ export const completeUserLink = action({
     if (!consumed || consumed.kind !== "user_link") {
       throw new Error("Invalid or expired Discord link state");
     }
+    const scope = consumed.scope === "platform" ? "platform" : "org";
     const organizationId =
       typeof consumed.organizationId === "string" && consumed.organizationId.trim()
         ? String(consumed.organizationId)
@@ -128,12 +118,15 @@ export const completeUserLink = action({
       callbackPath,
     });
 
-    const secrets = organizationId
+    const secrets = scope === "org" && organizationId
       ? await ctx.runQuery(api.orgConfigs.internalQueries.getOrgConfigSecrets, {
+        scope,
         organizationId,
       })
       : null;
-    if (organizationId && !secrets) throw new Error("Discord org config missing");
+    if (scope === "org" && organizationId && !secrets) {
+      throw new Error("Discord org config missing");
+    }
 
     const creds = await resolveDiscordCredentials({
       botMode: secrets?.botMode === "custom" ? "custom" : "global",
@@ -158,10 +151,10 @@ export const completeUserLink = action({
     const discordUserId = await fetchDiscordUser(token.accessToken);
 
     let guildId: string | null = null;
-    if (organizationId) {
+    if (scope === "org" && organizationId) {
       const guildsUnknown = await ctx.runQuery(
         api.guildConnections.queries.listGuildConnectionsForOrg,
-        { organizationId },
+        { scope, organizationId },
       );
       const guilds = Array.isArray(guildsUnknown) ? guildsUnknown : [];
       const primaryGuild = guilds
@@ -190,12 +183,14 @@ export const completeUserLink = action({
     }
 
     await ctx.runMutation(api.userLinks.mutations.linkUser, {
+      scope,
       organizationId: organizationId || undefined,
       userId,
       discordUserId,
     });
-    if (organizationId) {
+    if (scope === "org" && organizationId) {
       await ctx.runMutation(api.userStreaming.mutations.setUserStreamingEnabled, {
+        scope,
         organizationId,
         userId,
         enabled: true,

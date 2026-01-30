@@ -22,6 +22,7 @@ const cx = (...classes: Array<string | undefined | false>) =>
   classes.filter(Boolean).join(" ");
 
 type SettingsFormState = {
+  autoJoinEnabled: boolean;
   supportAiEnabled: boolean;
   mentorTradesChannelId: string;
   memberTradesChannelId: string;
@@ -30,6 +31,7 @@ type SettingsFormState = {
 };
 
 const defaultState: SettingsFormState = {
+  autoJoinEnabled: false,
   supportAiEnabled: true,
   mentorTradesChannelId: "",
   memberTradesChannelId: "",
@@ -60,6 +62,7 @@ export function DiscordGuildSettingsPage({
   React.useEffect(() => {
     if (!settings) return;
     setState({
+      autoJoinEnabled: settings.autoJoinEnabled ?? false,
       supportAiEnabled: settings.supportAiEnabled ?? true,
       mentorTradesChannelId: settings.mentorTradesChannelId ?? "",
       memberTradesChannelId: settings.memberTradesChannelId ?? "",
@@ -74,6 +77,7 @@ export function DiscordGuildSettingsPage({
       await upsertGuildSettings({
         ...(organizationId ? { organizationId } : {}),
         guildId,
+        autoJoinEnabled: state.autoJoinEnabled,
         supportAiEnabled: state.supportAiEnabled,
         approvedMemberRoleId: settings?.approvedMemberRoleId ?? undefined,
         supportForumChannelId: settings?.supportForumChannelId ?? undefined,
@@ -123,6 +127,35 @@ export function DiscordGuildSettingsPage({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
+        <Card className={ui?.cardClassName}>
+          <CardHeader className={ui?.cardHeaderClassName}>
+            <CardTitle className={ui?.cardTitleClassName}>
+              Membership
+            </CardTitle>
+          </CardHeader>
+          <CardContent className={cx("space-y-4", ui?.cardContentClassName)}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-foreground text-sm font-medium">
+                  Auto-join server
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  Add users to this guild during OAuth when they connect.
+                </p>
+              </div>
+              <Switch
+                checked={state.autoJoinEnabled}
+                onCheckedChange={(checked) =>
+                  setState((prev) => ({
+                    ...prev,
+                    autoJoinEnabled: checked,
+                  }))
+                }
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className={ui?.cardClassName}>
           <CardHeader className={ui?.cardHeaderClassName}>
             <CardTitle className={ui?.cardTitleClassName}>

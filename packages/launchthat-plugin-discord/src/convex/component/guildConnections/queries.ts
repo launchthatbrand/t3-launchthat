@@ -3,7 +3,10 @@ import { v } from "convex/values";
 import { query } from "../server";
 
 export const listGuildConnectionsForOrg = query({
-  args: { organizationId: v.string() },
+  args: {
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
+  },
   returns: v.array(
     v.object({
       guildId: v.string(),
@@ -13,10 +16,13 @@ export const listGuildConnectionsForOrg = query({
     }),
   ),
   handler: async (ctx, args) => {
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) return [];
     const rows = await ctx.db
       .query("guildConnections")
-      .withIndex("by_organizationId", (q: any) =>
-        q.eq("organizationId", args.organizationId),
+      .withIndex(scope === "org" ? "by_organizationId" : "by_scope", (q: any) =>
+        scope === "org" ? q.eq("organizationId", organizationId) : q.eq("scope", scope),
       )
       .collect();
 
@@ -32,11 +38,12 @@ export const listGuildConnectionsForOrg = query({
 });
 
 export const getGuildConnectionByGuildId = query({
-  args: { guildId: v.string() },
+  args: { guildId: v.string(), scope: v.optional(v.union(v.literal("org"), v.literal("platform"))) },
   returns: v.union(
     v.null(),
     v.object({
-      organizationId: v.string(),
+      scope: v.union(v.literal("org"), v.literal("platform")),
+      organizationId: v.optional(v.string()),
       guildId: v.string(),
       guildName: v.optional(v.string()),
       botModeAtConnect: v.union(v.literal("global"), v.literal("custom")),
@@ -44,13 +51,17 @@ export const getGuildConnectionByGuildId = query({
     }),
   ),
   handler: async (ctx, args) => {
+    const scope = args.scope ?? "org";
     const row = await ctx.db
       .query("guildConnections")
-      .withIndex("by_guildId", (q: any) => q.eq("guildId", args.guildId))
+      .withIndex("by_scope_and_guildId", (q: any) =>
+        q.eq("scope", scope).eq("guildId", args.guildId),
+      )
       .first();
     if (!row) return null;
     return {
-      organizationId: String((row as any).organizationId ?? ""),
+      scope: (row as any).scope === "platform" ? ("platform" as const) : ("org" as const),
+      organizationId: (row as any).organizationId,
       guildId: String((row as any).guildId ?? ""),
       guildName:
         typeof (row as any).guildName === "string"

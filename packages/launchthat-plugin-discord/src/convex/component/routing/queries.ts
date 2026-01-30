@@ -6,7 +6,8 @@ import { resolveChannelsForEventFromRules } from "../../../runtime/routing";
 const resolveTradeFeedChannelLegacy = async (
   ctx: any,
   args: {
-    organizationId: string;
+    scope: "org" | "platform";
+    organizationId?: string;
     guildId: string;
     channelKind: "mentors" | "members";
   },
@@ -14,10 +15,10 @@ const resolveTradeFeedChannelLegacy = async (
   const rule = await ctx.db
     .query("routingRules")
     .withIndex(
-      "by_organizationId_and_guildId_and_kind_and_channelKind",
+      "by_scope_and_guildId_and_kind_and_channelKind",
       (q: any) =>
         q
-          .eq("organizationId", args.organizationId)
+          .eq("scope", args.scope)
           .eq("guildId", args.guildId)
           .eq("kind", "trade_feed")
           .eq("channelKind", args.channelKind),
@@ -30,8 +31,8 @@ const resolveTradeFeedChannelLegacy = async (
 
   const settings = await ctx.db
     .query("guildSettings")
-    .withIndex("by_organizationId_and_guildId", (q: any) =>
-      q.eq("organizationId", args.organizationId).eq("guildId", args.guildId),
+    .withIndex("by_scope_and_organizationId_and_guildId", (q: any) =>
+      q.eq("scope", args.scope).eq("organizationId", args.organizationId).eq("guildId", args.guildId),
     )
     .unique();
 
@@ -51,26 +52,37 @@ const resolveTradeFeedChannelLegacy = async (
 
 export const resolveTradeFeedChannel = query({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     guildId: v.string(),
     channelKind: v.union(v.literal("mentors"), v.literal("members")),
   },
   returns: v.union(v.string(), v.null()),
   handler: async (ctx, args) => {
-    return await resolveTradeFeedChannelLegacy(ctx, args);
+    const scope = (args.scope ?? "org") as "org" | "platform";
+    const organizationId =
+      typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) return null;
+    return await resolveTradeFeedChannelLegacy(ctx, {
+      ...args,
+      scope,
+      organizationId,
+    });
   },
 });
 
 export const getRoutingRuleSet = query({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     guildId: v.string(),
     kind: v.union(v.literal("trade_feed")),
   },
   returns: v.union(
     v.null(),
     v.object({
-      organizationId: v.string(),
+      scope: v.union(v.literal("org"), v.literal("platform")),
+      organizationId: v.optional(v.string()),
       guildId: v.string(),
       kind: v.union(v.literal("trade_feed")),
       matchStrategy: v.union(
@@ -82,18 +94,19 @@ export const getRoutingRuleSet = query({
     }),
   ),
   handler: async (ctx, args) => {
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) return null;
     const row = await ctx.db
       .query("routingRuleSets")
-      .withIndex("by_organizationId_and_guildId_and_kind", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("guildId", args.guildId)
-          .eq("kind", args.kind),
+      .withIndex("by_scope_and_organizationId_and_guildId_and_kind", (q: any) =>
+        q.eq("scope", scope).eq("organizationId", organizationId).eq("guildId", args.guildId).eq("kind", args.kind),
       )
       .unique();
     if (!row) return null;
     return {
-      organizationId: String((row as any).organizationId ?? ""),
+      scope: (row as any).scope === "platform" ? ("platform" as const) : ("org" as const),
+      organizationId: (row as any).organizationId,
       guildId: String((row as any).guildId ?? ""),
       kind: "trade_feed" as const,
       matchStrategy:
@@ -109,7 +122,8 @@ export const getRoutingRuleSet = query({
 
 export const listRoutingRules = query({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     guildId: v.string(),
     kind: v.union(v.literal("trade_feed")),
   },
@@ -129,13 +143,13 @@ export const listRoutingRules = query({
     }),
   ),
   handler: async (ctx, args) => {
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) return [];
     const rows = await ctx.db
       .query("routingRules")
-      .withIndex("by_organizationId_and_guildId_and_kind", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("guildId", args.guildId)
-          .eq("kind", args.kind),
+      .withIndex("by_scope_and_organizationId_and_guildId_and_kind", (q: any) =>
+        q.eq("scope", scope).eq("organizationId", organizationId).eq("guildId", args.guildId).eq("kind", args.kind),
       )
       .collect();
 
@@ -165,7 +179,8 @@ export const listRoutingRules = query({
 
 export const resolveChannelsForEvent = query({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     guildId: v.string(),
     kind: v.union(v.literal("trade_feed")),
     actorRole: v.string(),
@@ -173,13 +188,13 @@ export const resolveChannelsForEvent = query({
   },
   returns: v.array(v.string()),
   handler: async (ctx, args) => {
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) return [];
     const ruleSet = await ctx.db
       .query("routingRuleSets")
-      .withIndex("by_organizationId_and_guildId_and_kind", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("guildId", args.guildId)
-          .eq("kind", args.kind),
+      .withIndex("by_scope_and_organizationId_and_guildId_and_kind", (q: any) =>
+        q.eq("scope", scope).eq("organizationId", organizationId).eq("guildId", args.guildId).eq("kind", args.kind),
       )
       .unique();
 
@@ -192,11 +207,8 @@ export const resolveChannelsForEvent = query({
 
     const rules = await ctx.db
       .query("routingRules")
-      .withIndex("by_organizationId_and_guildId_and_kind", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("guildId", args.guildId)
-          .eq("kind", args.kind),
+      .withIndex("by_scope_and_organizationId_and_guildId_and_kind", (q: any) =>
+        q.eq("scope", scope).eq("organizationId", organizationId).eq("guildId", args.guildId).eq("kind", args.kind),
       )
       .collect();
 

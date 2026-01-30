@@ -4,9 +4,11 @@ import { mutation } from "../server";
 
 export const upsertGuildSettings = mutation({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     guildId: v.string(),
     inviteUrl: v.optional(v.string()),
+    autoJoinEnabled: v.optional(v.boolean()),
     approvedMemberRoleId: v.optional(v.string()),
     supportAiEnabled: v.boolean(),
     supportForumChannelId: v.optional(v.string()),
@@ -28,17 +30,24 @@ export const upsertGuildSettings = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const now = Date.now();
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) {
+      throw new Error("organizationId is required when scope=org");
+    }
     const existing = await ctx.db
       .query("guildSettings")
-      .withIndex("by_organizationId_and_guildId", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("guildId", args.guildId),
+      .withIndex("by_scope_and_organizationId_and_guildId", (q: any) =>
+        q.eq("scope", scope).eq("organizationId", organizationId).eq("guildId", args.guildId),
       )
       .first();
 
     const patch = {
-      organizationId: args.organizationId,
+      scope,
+      organizationId,
       guildId: args.guildId,
       inviteUrl: args.inviteUrl,
+      autoJoinEnabled: args.autoJoinEnabled,
       approvedMemberRoleId: args.approvedMemberRoleId,
       supportAiEnabled: args.supportAiEnabled,
       supportForumChannelId: args.supportForumChannelId,
@@ -54,8 +63,8 @@ export const upsertGuildSettings = mutation({
       announcementEventKeys: args.announcementEventKeys,
       mentorTradesChannelId: args.mentorTradesChannelId,
       memberTradesChannelId: args.memberTradesChannelId,
-    mentorTradesTemplateId: args.mentorTradesTemplateId,
-    memberTradesTemplateId: args.memberTradesTemplateId,
+      mentorTradesTemplateId: args.mentorTradesTemplateId,
+      memberTradesTemplateId: args.memberTradesTemplateId,
       updatedAt: now,
     };
 

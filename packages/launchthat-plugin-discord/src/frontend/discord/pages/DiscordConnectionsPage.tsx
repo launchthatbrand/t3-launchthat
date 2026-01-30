@@ -74,7 +74,7 @@ export function DiscordConnectionsPage({
           </p>
         </div>
         <Button onClick={handleConnect} className={ui?.buttonClassName}>
-          Connect Discord
+          Install bot
         </Button>
       </div>
 
@@ -129,8 +129,7 @@ export function DiscordConnectionsPage({
                 ui?.emptyStateClassName,
               )}
             >
-              No guilds connected yet. Click “Connect Discord” to install the
-              bot.
+              No guilds connected yet. Click “Install bot” to connect a server.
             </CardContent>
           </Card>
         ) : null}

@@ -6943,7 +6943,8 @@ export declare const components: {
             enabled: boolean;
             guildId: string;
             name: string;
-            organizationId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
             trigger: { config: any; type: "schedule" | "event" };
           },
           string
@@ -6951,7 +6952,11 @@ export declare const components: {
         deleteAutomation: FunctionReference<
           "mutation",
           "internal",
-          { automationId: string; organizationId: string },
+          {
+            automationId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
+          },
           null
         >;
         markAutomationRun: FunctionReference<
@@ -6962,7 +6967,8 @@ export declare const components: {
             cursor?: string;
             lastRunAt?: number;
             nextRunAt?: number;
-            organizationId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
           },
           null
         >;
@@ -6975,7 +6981,8 @@ export declare const components: {
             conditions?: any;
             enabled?: boolean;
             name?: string;
-            organizationId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
             trigger?: { config: any; type: "schedule" | "event" };
           },
           null
@@ -6985,7 +6992,11 @@ export declare const components: {
         listAutomations: FunctionReference<
           "query",
           "internal",
-          { guildId: string; organizationId: string },
+          {
+            guildId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
+          },
           Array<{
             action: any;
             conditions?: any;
@@ -6995,7 +7006,8 @@ export declare const components: {
             id: string;
             name: string;
             nextRunAt?: number;
-            organizationId: string;
+            organizationId?: string;
+            scope: "org" | "platform";
             state?: any;
             trigger: any;
             updatedAt: number;
@@ -7004,7 +7016,12 @@ export declare const components: {
         listDueAutomations: FunctionReference<
           "query",
           "internal",
-          { limit?: number; now: number; organizationId?: string },
+          {
+            limit?: number;
+            now: number;
+            organizationId?: string;
+            scope?: "org" | "platform";
+          },
           Array<{
             action: any;
             conditions?: any;
@@ -7063,8 +7080,9 @@ export declare const components: {
             dedupeKey?: string;
             eventKey: string;
             guildId?: string;
-            organizationId: string;
+            organizationId?: string;
             payloadJson: string;
+            scope?: "org" | "platform";
           },
           null
         >;
@@ -7077,7 +7095,8 @@ export declare const components: {
             eventKey?: string;
             guildId?: string;
             limit?: number;
-            organizationId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
           },
           Array<{
             createdAt: number;
@@ -7085,8 +7104,9 @@ export declare const components: {
             eventKey: string;
             guildId?: string;
             id: string;
-            organizationId: string;
+            organizationId?: string;
             payloadJson: string;
+            scope: "org" | "platform";
           }>
         >;
       };
@@ -7096,7 +7116,11 @@ export declare const components: {
         deleteGuildConnection: FunctionReference<
           "mutation",
           "internal",
-          { guildId: string; organizationId: string },
+          {
+            guildId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
+          },
           null
         >;
         upsertGuildConnection: FunctionReference<
@@ -7107,7 +7131,8 @@ export declare const components: {
             connectedAt: number;
             guildId: string;
             guildName?: string;
-            organizationId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
           },
           null
         >;
@@ -7116,19 +7141,20 @@ export declare const components: {
         getGuildConnectionByGuildId: FunctionReference<
           "query",
           "internal",
-          { guildId: string },
+          { guildId: string; scope?: "org" | "platform" },
           null | {
             botModeAtConnect: "global" | "custom";
             connectedAt: number;
             guildId: string;
             guildName?: string;
-            organizationId: string;
+            organizationId?: string;
+            scope: "org" | "platform";
           }
         >;
         listGuildConnectionsForOrg: FunctionReference<
           "query",
           "internal",
-          { organizationId: string },
+          { organizationId?: string; scope?: "org" | "platform" },
           Array<{
             botModeAtConnect: "global" | "custom";
             connectedAt: number;
@@ -7147,6 +7173,7 @@ export declare const components: {
             announcementChannelId?: string;
             announcementEventKeys?: Array<string>;
             approvedMemberRoleId?: string;
+            autoJoinEnabled?: boolean;
             courseUpdatesChannelId?: string;
             escalationConfidenceThreshold?: number;
             escalationKeywords?: Array<string>;
@@ -7156,7 +7183,8 @@ export declare const components: {
             memberTradesTemplateId?: string;
             mentorTradesChannelId?: string;
             mentorTradesTemplateId?: string;
-            organizationId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
             supportAiDisabledMessageEnabled?: boolean;
             supportAiDisabledMessageText?: string;
             supportAiEnabled: boolean;
@@ -7172,11 +7200,16 @@ export declare const components: {
         getGuildSettings: FunctionReference<
           "query",
           "internal",
-          { guildId: string; organizationId: string },
+          {
+            guildId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
+          },
           null | {
             announcementChannelId?: string;
             announcementEventKeys?: Array<string>;
             approvedMemberRoleId?: string;
+            autoJoinEnabled?: boolean;
             courseUpdatesChannelId?: string;
             escalationConfidenceThreshold?: number;
             escalationKeywords?: Array<string>;
@@ -7186,7 +7219,8 @@ export declare const components: {
             memberTradesTemplateId?: string;
             mentorTradesChannelId?: string;
             mentorTradesTemplateId?: string;
-            organizationId: string;
+            organizationId?: string;
+            scope: "org" | "platform";
             supportAiDisabledMessageEnabled?: boolean;
             supportAiDisabledMessageText?: string;
             supportAiEnabled: boolean;
@@ -7219,6 +7253,7 @@ export declare const components: {
             callbackPath: string;
             organizationId?: string;
             returnTo: string;
+            scope?: "org" | "platform";
             userId: string;
           },
           { state: string; url: string }
@@ -7250,6 +7285,7 @@ export declare const components: {
             kind: "org_install" | "user_link";
             organizationId?: string;
             returnTo: string;
+            scope: "org" | "platform";
             userId?: string;
           } | null
         >;
@@ -7262,6 +7298,7 @@ export declare const components: {
             kind: "org_install" | "user_link";
             organizationId?: string;
             returnTo: string;
+            scope?: "org" | "platform";
             state: string;
             userId?: string;
           },
@@ -7280,6 +7317,7 @@ export declare const components: {
             kind: "org_install" | "user_link";
             organizationId?: string;
             returnTo: string;
+            scope: "org" | "platform";
             userId?: string;
           } | null
         >;
@@ -7290,7 +7328,7 @@ export declare const components: {
         getOrgConfigSecrets: FunctionReference<
           "query",
           "internal",
-          { organizationId: string },
+          { organizationId?: string; scope?: "org" | "platform" },
           {
             botMode: "global" | "custom";
             botTokenEncrypted?: string;
@@ -7301,11 +7339,22 @@ export declare const components: {
             customClientSecretEncrypted?: string;
             enabled: boolean;
             guildId?: string;
-            organizationId: string;
+            organizationId?: string;
+            scope: "org" | "platform";
           } | null
         >;
       };
       mutations: {
+        setOrgEnabled: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            enabled: boolean;
+            organizationId?: string;
+            scope?: "org" | "platform";
+          },
+          null
+        >;
         upsertOrgConfig: FunctionReference<
           "mutation",
           "internal",
@@ -7315,7 +7364,8 @@ export declare const components: {
             clientSecretEncrypted: string;
             enabled: boolean;
             guildId: string;
-            organizationId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
           },
           null
         >;
@@ -7328,7 +7378,8 @@ export declare const components: {
             customClientId?: string;
             customClientSecretEncrypted?: string;
             enabled: boolean;
-            organizationId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
           },
           null
         >;
@@ -7337,7 +7388,7 @@ export declare const components: {
         getOrgConfig: FunctionReference<
           "query",
           "internal",
-          { organizationId: string },
+          { organizationId?: string; scope?: "org" | "platform" },
           {
             botMode: "global" | "custom";
             connectedAt: number;
@@ -7347,576 +7398,9 @@ export declare const components: {
             hasClientSecret: boolean;
             lastError?: string;
             lastValidatedAt?: number;
-            organizationId: string;
+            organizationId?: string;
+            scope: "org" | "platform";
           } | null
-        >;
-      };
-    };
-    platformAutomations: {
-      mutations: {
-        createAutomation: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            action: { config: any; type: "send_message" };
-            conditions?: any;
-            enabled: boolean;
-            guildId: string;
-            name: string;
-            trigger: { config: any; type: "schedule" | "event" };
-          },
-          string
-        >;
-        deleteAutomation: FunctionReference<
-          "mutation",
-          "internal",
-          { automationId: string },
-          null
-        >;
-        markAutomationRun: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            automationId: string;
-            cursor?: string;
-            lastRunAt?: number;
-            nextRunAt?: number;
-          },
-          null
-        >;
-        updateAutomation: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            action?: { config: any; type: "send_message" };
-            automationId: string;
-            conditions?: any;
-            enabled?: boolean;
-            name?: string;
-            trigger?: { config: any; type: "schedule" | "event" };
-          },
-          null
-        >;
-      };
-      queries: {
-        listAutomations: FunctionReference<
-          "query",
-          "internal",
-          { guildId: string },
-          Array<{
-            action: any;
-            conditions?: any;
-            createdAt: number;
-            enabled: boolean;
-            guildId: string;
-            id: string;
-            name: string;
-            nextRunAt?: number;
-            state?: any;
-            trigger: any;
-            updatedAt: number;
-          }>
-        >;
-        listDueAutomations: FunctionReference<
-          "query",
-          "internal",
-          { limit?: number; now: number },
-          Array<{
-            action: any;
-            conditions?: any;
-            createdAt: number;
-            enabled: boolean;
-            guildId: string;
-            id: string;
-            name: string;
-            nextRunAt?: number;
-            state?: any;
-            trigger: any;
-            updatedAt: number;
-          }>
-        >;
-      };
-    };
-    platformConfigs: {
-      internalQueries: {
-        getPlatformConfigSecrets: FunctionReference<
-          "query",
-          "internal",
-          {},
-          {
-            botMode: "global" | "custom";
-            customBotTokenEncrypted?: string;
-            customClientId?: string;
-            customClientSecretEncrypted?: string;
-            enabled: boolean;
-          } | null
-        >;
-      };
-      mutations: {
-        upsertPlatformConfig: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            botMode: "global" | "custom";
-            customBotTokenEncrypted?: string;
-            customClientId?: string;
-            customClientSecretEncrypted?: string;
-            enabled: boolean;
-          },
-          null
-        >;
-      };
-      queries: {
-        getPlatformConfig: FunctionReference<
-          "query",
-          "internal",
-          {},
-          {
-            botMode: "global" | "custom";
-            connectedAt: number;
-            customClientId?: string;
-            enabled: boolean;
-            hasBotToken: boolean;
-            hasClientSecret: boolean;
-            lastError?: string;
-            lastValidatedAt?: number;
-          } | null
-        >;
-      };
-    };
-    platformEvents: {
-      mutations: {
-        emitEvent: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            dedupeKey?: string;
-            eventKey: string;
-            guildId?: string;
-            payloadJson: string;
-          },
-          null
-        >;
-      };
-      queries: {
-        listRecentEvents: FunctionReference<
-          "query",
-          "internal",
-          { eventKey?: string; guildId?: string; limit?: number },
-          Array<{
-            createdAt: number;
-            dedupeKey?: string;
-            eventKey: string;
-            guildId?: string;
-            id: string;
-            payloadJson: string;
-          }>
-        >;
-      };
-    };
-    platformGuildConnections: {
-      mutations: {
-        deleteGuildConnection: FunctionReference<
-          "mutation",
-          "internal",
-          { guildId: string },
-          null
-        >;
-        upsertGuildConnection: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            botModeAtConnect: "global" | "custom";
-            connectedAt: number;
-            guildId: string;
-            guildName?: string;
-          },
-          null
-        >;
-      };
-      queries: {
-        getGuildConnectionByGuildId: FunctionReference<
-          "query",
-          "internal",
-          { guildId: string },
-          null | {
-            botModeAtConnect: "global" | "custom";
-            connectedAt: number;
-            guildId: string;
-            guildName?: string;
-          }
-        >;
-        listGuildConnections: FunctionReference<
-          "query",
-          "internal",
-          {},
-          Array<{
-            botModeAtConnect: "global" | "custom";
-            connectedAt: number;
-            guildId: string;
-            guildName?: string;
-          }>
-        >;
-      };
-    };
-    platformGuildSettings: {
-      mutations: {
-        upsertGuildSettings: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            announcementChannelId?: string;
-            announcementEventKeys?: Array<string>;
-            approvedMemberRoleId?: string;
-            courseUpdatesChannelId?: string;
-            escalationConfidenceThreshold?: number;
-            escalationKeywords?: Array<string>;
-            guildId: string;
-            inviteUrl?: string;
-            memberTradesChannelId?: string;
-            memberTradesTemplateId?: string;
-            mentorTradesChannelId?: string;
-            mentorTradesTemplateId?: string;
-            supportAiDisabledMessageEnabled?: boolean;
-            supportAiDisabledMessageText?: string;
-            supportAiEnabled: boolean;
-            supportForumChannelId?: string;
-            supportPrivateIntakeChannelId?: string;
-            supportStaffRoleId?: string;
-            threadReplyCooldownMs?: number;
-          },
-          null
-        >;
-      };
-      queries: {
-        getGuildSettings: FunctionReference<
-          "query",
-          "internal",
-          { guildId: string },
-          null | {
-            announcementChannelId?: string;
-            announcementEventKeys?: Array<string>;
-            approvedMemberRoleId?: string;
-            courseUpdatesChannelId?: string;
-            escalationConfidenceThreshold?: number;
-            escalationKeywords?: Array<string>;
-            guildId: string;
-            inviteUrl?: string;
-            memberTradesChannelId?: string;
-            memberTradesTemplateId?: string;
-            mentorTradesChannelId?: string;
-            mentorTradesTemplateId?: string;
-            supportAiDisabledMessageEnabled?: boolean;
-            supportAiDisabledMessageText?: string;
-            supportAiEnabled: boolean;
-            supportForumChannelId?: string;
-            supportPrivateIntakeChannelId?: string;
-            supportStaffRoleId?: string;
-            threadReplyCooldownMs?: number;
-            updatedAt: number;
-          }
-        >;
-      };
-    };
-    platformOauth: {
-      mutations: {
-        consumeOauthState: FunctionReference<
-          "mutation",
-          "internal",
-          { state: string },
-          {
-            callbackPath?: string;
-            codeVerifier: string;
-            kind: "org_install" | "user_link";
-            returnTo: string;
-            userId?: string;
-          } | null
-        >;
-        createOauthState: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            callbackPath?: string;
-            codeVerifier: string;
-            kind: "org_install" | "user_link";
-            returnTo: string;
-            state: string;
-            userId?: string;
-          },
-          null
-        >;
-      };
-      queries: {
-        peekOauthState: FunctionReference<
-          "query",
-          "internal",
-          { state: string },
-          {
-            kind: "org_install" | "user_link";
-            returnTo: string;
-            userId?: string;
-          } | null
-        >;
-      };
-    };
-    platformRouting: {
-      mutations: {
-        replaceRoutingRules: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            guildId: string;
-            kind: "trade_feed";
-            rules: Array<{
-              channelId: string;
-              channelKind?: "mentors" | "members";
-              conditions?: {
-                actorRoles?: Array<string>;
-                symbols?: Array<string>;
-              };
-              enabled: boolean;
-              order: number;
-              priority: number;
-            }>;
-          },
-          null
-        >;
-        upsertRoutingRuleSet: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            guildId: string;
-            kind: "trade_feed";
-            matchStrategy: "first_match" | "multi_cast" | "priority";
-          },
-          null
-        >;
-      };
-      queries: {
-        getRoutingRuleSet: FunctionReference<
-          "query",
-          "internal",
-          { guildId: string; kind: "trade_feed" },
-          null | {
-            guildId: string;
-            kind: "trade_feed";
-            matchStrategy: "first_match" | "multi_cast" | "priority";
-            updatedAt: number;
-          }
-        >;
-        listRoutingRules: FunctionReference<
-          "query",
-          "internal",
-          { guildId: string; kind: "trade_feed" },
-          Array<{
-            channelId: string;
-            conditions?: {
-              actorRoles?: Array<string>;
-              symbols?: Array<string>;
-            };
-            enabled: boolean;
-            id: string;
-            order: number;
-            priority: number;
-          }>
-        >;
-        resolveChannelsForEvent: FunctionReference<
-          "query",
-          "internal",
-          {
-            actorRole: string;
-            guildId: string;
-            kind: "trade_feed";
-            symbol: string;
-          },
-          Array<string>
-        >;
-        resolveTradeFeedChannel: FunctionReference<
-          "query",
-          "internal",
-          { channelKind: "mentors" | "members"; guildId: string },
-          string | null
-        >;
-      };
-    };
-    platformTemplates: {
-      mutations: {
-        createTemplate: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            description?: string;
-            guildId?: string;
-            kind: string;
-            name: string;
-            template: string;
-            templateJson?: string;
-          },
-          string
-        >;
-        deleteTemplate: FunctionReference<
-          "mutation",
-          "internal",
-          { templateId: string },
-          null
-        >;
-        updateTemplate: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            description?: string;
-            name?: string;
-            template?: string;
-            templateId: string;
-            templateJson?: string;
-          },
-          null
-        >;
-        upsertTemplate: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            description?: string;
-            guildId?: string;
-            kind: string;
-            name?: string;
-            template: string;
-            templateJson?: string;
-          },
-          null
-        >;
-      };
-      queries: {
-        getTemplate: FunctionReference<
-          "query",
-          "internal",
-          { guildId?: string; kind: string },
-          null | { template: string; updatedAt: number }
-        >;
-        getTemplateById: FunctionReference<
-          "query",
-          "internal",
-          { templateId: string },
-          null | {
-            _id: string;
-            createdAt?: number;
-            description?: string;
-            guildId?: string;
-            kind: string;
-            name?: string;
-            template: string;
-            templateJson?: string;
-            updatedAt: number;
-          }
-        >;
-        listTemplates: FunctionReference<
-          "query",
-          "internal",
-          { guildId?: string; kind: string },
-          Array<{
-            _id: string;
-            createdAt?: number;
-            description?: string;
-            guildId?: string;
-            kind: string;
-            name?: string;
-            scope: "platform" | "guild";
-            template: string;
-            templateJson?: string;
-            updatedAt: number;
-          }>
-        >;
-        renderTradeIdeaMessage: FunctionReference<
-          "query",
-          "internal",
-          {
-            avgEntryPrice?: number;
-            closedAt?: number;
-            direction: "long" | "short";
-            fees?: number;
-            guildId?: string;
-            netQty: number;
-            openedAt?: number;
-            realizedPnl?: number;
-            status: "open" | "closed";
-            symbol: string;
-            templateId?: string;
-          },
-          { content: string }
-        >;
-      };
-    };
-    platformUserLinks: {
-      mutations: {
-        linkUser: FunctionReference<
-          "mutation",
-          "internal",
-          {
-            discordAvatar?: string;
-            discordDiscriminator?: string;
-            discordGlobalName?: string;
-            discordUserId: string;
-            discordUsername?: string;
-            userId: string;
-          },
-          null
-        >;
-        unlinkUser: FunctionReference<
-          "mutation",
-          "internal",
-          { userId: string },
-          null
-        >;
-      };
-      queries: {
-        getUserIdByDiscordUserId: FunctionReference<
-          "query",
-          "internal",
-          { discordUserId: string },
-          {
-            discordAvatar?: string;
-            discordDiscriminator?: string;
-            discordGlobalName?: string;
-            discordUsername?: string;
-            linkedAt: number;
-            userId: string;
-          } | null
-        >;
-        getUserLink: FunctionReference<
-          "query",
-          "internal",
-          { userId: string },
-          {
-            discordAvatar?: string;
-            discordDiscriminator?: string;
-            discordGlobalName?: string;
-            discordUserId: string;
-            discordUsername?: string;
-            linkedAt: number;
-          } | null
-        >;
-      };
-    };
-    platformUserStreaming: {
-      mutations: {
-        setUserStreamingEnabled: FunctionReference<
-          "mutation",
-          "internal",
-          { enabled: boolean; userId: string },
-          null
-        >;
-      };
-      queries: {
-        getUserStreamingPrefs: FunctionReference<
-          "query",
-          "internal",
-          { userId: string },
-          null | {
-            disabledAt?: number;
-            enabled: boolean;
-            enabledAt?: number;
-            updatedAt: number;
-          }
         >;
       };
     };
@@ -8013,7 +7497,7 @@ export declare const components: {
           {
             guildId: string;
             kind: "trade_feed";
-            organizationId: string;
+            organizationId?: string;
             rules: Array<{
               channelId: string;
               channelKind?: "mentors" | "members";
@@ -8025,6 +7509,7 @@ export declare const components: {
               order: number;
               priority: number;
             }>;
+            scope?: "org" | "platform";
           },
           null
         >;
@@ -8035,7 +7520,8 @@ export declare const components: {
             guildId: string;
             kind: "trade_feed";
             matchStrategy: "first_match" | "multi_cast" | "priority";
-            organizationId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
           },
           null
         >;
@@ -8044,19 +7530,30 @@ export declare const components: {
         getRoutingRuleSet: FunctionReference<
           "query",
           "internal",
-          { guildId: string; kind: "trade_feed"; organizationId: string },
+          {
+            guildId: string;
+            kind: "trade_feed";
+            organizationId?: string;
+            scope?: "org" | "platform";
+          },
           null | {
             guildId: string;
             kind: "trade_feed";
             matchStrategy: "first_match" | "multi_cast" | "priority";
-            organizationId: string;
+            organizationId?: string;
+            scope: "org" | "platform";
             updatedAt: number;
           }
         >;
         listRoutingRules: FunctionReference<
           "query",
           "internal",
-          { guildId: string; kind: "trade_feed"; organizationId: string },
+          {
+            guildId: string;
+            kind: "trade_feed";
+            organizationId?: string;
+            scope?: "org" | "platform";
+          },
           Array<{
             channelId: string;
             conditions?: {
@@ -8076,7 +7573,8 @@ export declare const components: {
             actorRole: string;
             guildId: string;
             kind: "trade_feed";
-            organizationId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
             symbol: string;
           },
           Array<string>
@@ -8087,7 +7585,8 @@ export declare const components: {
           {
             channelKind: "mentors" | "members";
             guildId: string;
-            organizationId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
           },
           string | null
         >;
@@ -8235,7 +7734,8 @@ export declare const components: {
             guildId?: string;
             kind: string;
             name: string;
-            organizationId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
             template: string;
             templateJson?: string;
           },
@@ -8244,7 +7744,11 @@ export declare const components: {
         deleteTemplate: FunctionReference<
           "mutation",
           "internal",
-          { organizationId: string; templateId: string },
+          {
+            organizationId?: string;
+            scope?: "org" | "platform";
+            templateId: string;
+          },
           null
         >;
         updateTemplate: FunctionReference<
@@ -8253,7 +7757,8 @@ export declare const components: {
           {
             description?: string;
             name?: string;
-            organizationId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
             template?: string;
             templateId: string;
             templateJson?: string;
@@ -8268,7 +7773,8 @@ export declare const components: {
             guildId?: string;
             kind: string;
             name?: string;
-            organizationId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
             template: string;
             templateJson?: string;
           },
@@ -8285,7 +7791,11 @@ export declare const components: {
         getTemplateById: FunctionReference<
           "query",
           "internal",
-          { organizationId: string; templateId: string },
+          {
+            organizationId?: string;
+            scope?: "org" | "platform";
+            templateId: string;
+          },
           null | {
             _id: string;
             createdAt?: number;
@@ -8301,7 +7811,12 @@ export declare const components: {
         listTemplates: FunctionReference<
           "query",
           "internal",
-          { guildId?: string; kind: string; organizationId: string },
+          {
+            guildId?: string;
+            kind: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
+          },
           Array<{
             _id: string;
             createdAt?: number;
@@ -8326,8 +7841,9 @@ export declare const components: {
             guildId?: string;
             netQty: number;
             openedAt?: number;
-            organizationId: string;
+            organizationId?: string;
             realizedPnl?: number;
+            scope?: "org" | "platform";
             status: "open" | "closed";
             symbol: string;
             templateId?: string;
@@ -8348,6 +7864,7 @@ export declare const components: {
             discordUserId: string;
             discordUsername?: string;
             organizationId?: string;
+            scope?: "org" | "platform";
             userId: string;
           },
           null
@@ -8355,7 +7872,11 @@ export declare const components: {
         unlinkUser: FunctionReference<
           "mutation",
           "internal",
-          { organizationId?: string; userId: string },
+          {
+            organizationId?: string;
+            scope?: "org" | "platform";
+            userId: string;
+          },
           null
         >;
       };
@@ -8363,7 +7884,11 @@ export declare const components: {
         getUserIdByDiscordUserId: FunctionReference<
           "query",
           "internal",
-          { discordUserId: string; organizationId: string },
+          {
+            discordUserId: string;
+            organizationId?: string;
+            scope?: "org" | "platform";
+          },
           {
             discordAvatar?: string;
             discordDiscriminator?: string;
@@ -8376,20 +7901,11 @@ export declare const components: {
         getUserLink: FunctionReference<
           "query",
           "internal",
-          { organizationId: string; userId: string },
           {
-            discordAvatar?: string;
-            discordDiscriminator?: string;
-            discordGlobalName?: string;
-            discordUserId: string;
-            discordUsername?: string;
-            linkedAt: number;
-          } | null
-        >;
-        getUserLinkForUser: FunctionReference<
-          "query",
-          "internal",
-          { userId: string },
+            organizationId?: string;
+            scope?: "org" | "platform";
+            userId: string;
+          },
           {
             discordAvatar?: string;
             discordDiscriminator?: string;
@@ -8398,6 +7914,22 @@ export declare const components: {
             discordUsername?: string;
             linkedAt: number;
             organizationId?: string;
+            scope: "org" | "platform";
+          } | null
+        >;
+        getUserLinkForUser: FunctionReference<
+          "query",
+          "internal",
+          { scope?: "org" | "platform"; userId: string },
+          {
+            discordAvatar?: string;
+            discordDiscriminator?: string;
+            discordGlobalName?: string;
+            discordUserId: string;
+            discordUsername?: string;
+            linkedAt: number;
+            organizationId?: string;
+            scope: "org" | "platform";
           } | null
         >;
       };
@@ -8407,7 +7939,12 @@ export declare const components: {
         setUserStreamingEnabled: FunctionReference<
           "mutation",
           "internal",
-          { enabled: boolean; organizationId: string; userId: string },
+          {
+            enabled: boolean;
+            organizationId?: string;
+            scope?: "org" | "platform";
+            userId: string;
+          },
           null
         >;
       };
@@ -8415,7 +7952,11 @@ export declare const components: {
         getUserStreamingPrefs: FunctionReference<
           "query",
           "internal",
-          { organizationId: string; userId: string },
+          {
+            organizationId?: string;
+            scope?: "org" | "platform";
+            userId: string;
+          },
           null | {
             disabledAt?: number;
             enabled: boolean;

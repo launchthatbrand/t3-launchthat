@@ -682,14 +682,14 @@ export default async function HomePage() {
             <div>
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-200">
                 <Code className="h-3.5 w-3.5" />
-                Free for your site
+                Free embeddable widgets
               </div>
               <h2 className="text-foreground text-3xl font-bold tracking-tight md:text-4xl">
-                Embeddable widgets that pay you back
+                Economic calendar + widgets that pay you back
               </h2>
               <p className="text-muted-foreground mt-4 text-lg">
-                Add our professional Economic Calendar, News Feed, or Profile
-                Cards to your website for free.
+                Drop the free Economic Calendar, News Feed, or Profile Cards on
+                your site in minutes. No API keys required.
               </p>
 
               <div className="mt-8 space-y-6">
@@ -699,11 +699,11 @@ export default async function HomePage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-foreground">
-                      Economic Calendar & News
+                      Economic Calendar & news widgets
                     </h3>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Keep your visitors engaged with real-time forex news and
-                      event data. No API keys required.
+                      Keep your visitors engaged with real-time forex events and
+                      headlines using our free widgets.
                     </p>
                   </div>
                 </div>
@@ -714,12 +714,12 @@ export default async function HomePage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-foreground">
-                      Automatic Affiliate Tracking
+                      Affiliate credit on every click-through
                     </h3>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Add your referral code to the widget config. If a visitor
-                      clicks through and signs up, you get the credit (and the
-                      commission).
+                      Add your referral code to the widget config. If anyone
+                      clicks through and signs up, you get the affiliate credit
+                      (and the commission).
                     </p>
                   </div>
                 </div>

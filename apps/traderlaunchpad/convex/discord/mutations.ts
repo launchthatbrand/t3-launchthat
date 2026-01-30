@@ -12,6 +12,8 @@ const discordUserLinksMutations = components.launchthat_discord.userLinks
   .mutations as any;
 const discordUserStreamingMutations = components.launchthat_discord.userStreaming
   .mutations as any;
+const discordOrgConfigMutations = components.launchthat_discord.orgConfigs
+  .mutations as any;
 const discordRoutingMutations = components.launchthat_discord.routing.mutations as any;
 const discordAutomationsMutations = components.launchthat_discord.automations
   .mutations as any;
@@ -23,6 +25,7 @@ export const upsertGuildSettings = mutation({
     guildId: v.string(),
     approvedMemberRoleId: v.optional(v.string()),
     supportAiEnabled: v.boolean(),
+    autoJoinEnabled: v.optional(v.boolean()),
     supportForumChannelId: v.optional(v.string()),
     supportPrivateIntakeChannelId: v.optional(v.string()),
     supportStaffRoleId: v.optional(v.string()),
@@ -205,6 +208,24 @@ export const setMyDiscordStreamingEnabled = mutation({
     await ctx.runMutation(discordUserStreamingMutations.setUserStreamingEnabled, {
       organizationId,
       userId,
+      enabled: args.enabled,
+    });
+    return null;
+  },
+});
+
+export const setOrgDiscordEnabled = mutation({
+  args: { organizationId: v.optional(v.string()), enabled: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const organizationId =
+      typeof args.organizationId === "string" && args.organizationId.trim()
+        ? args.organizationId.trim()
+        : resolveOrganizationId();
+    await resolveViewerUserId(ctx);
+    await ctx.runMutation(discordOrgConfigMutations.setOrgEnabled, {
+      scope: "org",
+      organizationId,
       enabled: args.enabled,
     });
     return null;

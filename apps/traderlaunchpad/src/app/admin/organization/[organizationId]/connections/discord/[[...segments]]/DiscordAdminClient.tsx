@@ -3,12 +3,15 @@
 import React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useAction } from "convex/react";
 
 import { api } from "@convex-config/_generated/api";
 import { DiscordAdminRouter } from "launchthat-plugin-discord/frontend/discord";
+import { useDiscordBotInstallCallback } from "~/components/discord/useDiscordBotInstallCallback";
 
 export function AdminOrgDiscordAdminClient(props: { organizationId: string }) {
   const params = useParams<{ segments?: string | string[] }>();
+  const completeBotInstall = useAction(api.discord.actions.completeBotInstall);
   const rawSegments = params.segments;
   const segments = Array.isArray(rawSegments)
     ? rawSegments
@@ -98,11 +101,18 @@ export function AdminOrgDiscordAdminClient(props: { organizationId: string }) {
     [],
   );
 
+  const basePath = `/admin/organization/${encodeURIComponent(props.organizationId)}/connections/discord`;
+
+  useDiscordBotInstallCallback({
+    basePath,
+    onComplete: ({ state, guildId }) => completeBotInstall({ state, guildId }),
+  });
+
   return (
     <DiscordAdminRouter
       segments={segments}
       organizationId={props.organizationId}
-      basePath={`/admin/organization/${encodeURIComponent(props.organizationId)}/connections/discord`}
+      basePath={basePath}
       LinkComponent={Link}
       templateContexts={templateContexts}
       defaultTemplateKind="tradeidea"

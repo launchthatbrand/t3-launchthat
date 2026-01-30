@@ -2,18 +2,16 @@
 
 import React from "react";
 import Link from "next/link";
-import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { useAction } from "convex/react";
 
 import { api } from "@convex-config/_generated/api";
 import { DiscordAdminRouter } from "launchthat-plugin-discord/frontend/discord";
+import { useDiscordBotInstallCallback } from "~/components/discord/useDiscordBotInstallCallback";
 
 export function PlatformDiscordAdminClient() {
   const pathname = usePathname();
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const completeBotInstall = useAction(api.platformDiscord.actions.completeBotInstall);
-  const handledInstallRef = React.useRef<string | null>(null);
 
   const params = useParams<{ segments?: string | string[] }>();
   const rawSegments = params.segments;
@@ -23,28 +21,10 @@ export function PlatformDiscordAdminClient() {
       ? [rawSegments]
       : [];
 
-  React.useEffect(() => {
-    const guildId = searchParams.get("guild_id");
-    const state = searchParams.get("state");
-    const error = searchParams.get("error");
-    if (error) {
-      router.replace("/platform/integrations/discord/connections");
-      return;
-    }
-    if (!guildId || !state) return;
-
-    const key = `${state}::${guildId}`;
-    if (handledInstallRef.current === key) return;
-    handledInstallRef.current = key;
-
-    void (async () => {
-      try {
-        await completeBotInstall({ state, guildId });
-      } finally {
-        router.replace("/platform/integrations/discord/connections");
-      }
-    })();
-  }, [completeBotInstall, router, searchParams]);
+  useDiscordBotInstallCallback({
+    basePath: "/platform/integrations/discord",
+    onComplete: ({ state, guildId }) => completeBotInstall({ state, guildId }),
+  });
 
   const templateContexts = React.useMemo(
     () => [

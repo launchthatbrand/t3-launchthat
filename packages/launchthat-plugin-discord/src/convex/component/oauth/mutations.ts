@@ -3,6 +3,7 @@ import { mutation } from "../server";
 
 export const createOauthState = mutation({
   args: {
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
     organizationId: v.optional(v.string()),
     kind: v.union(v.literal("org_install"), v.literal("user_link")),
     userId: v.optional(v.string()),
@@ -13,7 +14,9 @@ export const createOauthState = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const scope = args.scope ?? "org";
     await ctx.db.insert("oauthStates", {
+      scope,
       organizationId: args.organizationId,
       kind: args.kind,
       userId: args.userId,
@@ -31,6 +34,7 @@ export const consumeOauthState = mutation({
   args: { state: v.string() },
   returns: v.union(
     v.object({
+      scope: v.union(v.literal("org"), v.literal("platform")),
       organizationId: v.optional(v.string()),
       kind: v.union(v.literal("org_install"), v.literal("user_link")),
       userId: v.optional(v.string()),
@@ -48,6 +52,7 @@ export const consumeOauthState = mutation({
     if (!row) return null;
     await ctx.db.delete(row._id);
     return {
+      scope: row.scope === "platform" ? ("platform" as const) : ("org" as const),
       organizationId: row.organizationId,
       kind: row.kind,
       userId: row.userId,

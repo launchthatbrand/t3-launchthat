@@ -15,15 +15,5 @@ export * as routing from "./routing";
 export * as templates from "./templates";
 export * as events from "./events";
 export * as automations from "./automations";
-export * as platformConfigs from "./platformConfigs";
-export * as platformGuildConnections from "./platformGuildConnections";
-export * as platformGuildSettings from "./platformGuildSettings";
-export * as platformRouting from "./platformRouting";
-export * as platformTemplates from "./platformTemplates";
-export * as platformEvents from "./platformEvents";
-export * as platformAutomations from "./platformAutomations";
-export * as platformOauth from "./platformOauth";
-export * as platformUserLinks from "./platformUserLinks";
-export * as platformUserStreaming from "./platformUserStreaming";
 
 

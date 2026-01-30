@@ -14,6 +14,7 @@
 
 import { exchangeDiscordCode } from "launchthat-plugin-discord/runtime/oauth";
 import { discordJson } from "launchthat-plugin-discord/runtime/discordApi";
+import { addGuildMember, fetchDiscordProfile } from "launchthat-plugin-discord/runtime";
 import { resolveViewerUserId } from "../traderlaunchpad/lib/resolve";
 
 import { action } from "../_generated/server";
@@ -25,18 +26,17 @@ const discordOauthMutations = components.launchthat_discord.oauth.mutations as a
 const discordOauthQueries = components.launchthat_discord.oauth.queries as any;
 const discordOauthHelperQueries =
   components.launchthat_discord.oauth.helpers.queries as any;
-const platformGuildConnectionMutations =
-  components.launchthat_discord.platformGuildConnections.mutations as any;
-const platformGuildConnectionQueries =
-  components.launchthat_discord.platformGuildConnections.queries as any;
-const platformConfigMutations =
-  components.launchthat_discord.platformConfigs.mutations as any;
-const platformConfigInternalQueries =
-  components.launchthat_discord.platformConfigs.internalQueries as any;
-const platformUserLinksMutations =
-  components.launchthat_discord.platformUserLinks.mutations as any;
-const platformUserStreamingMutations =
-  components.launchthat_discord.platformUserStreaming.mutations as any;
+const guildConnectionMutations =
+  components.launchthat_discord.guildConnections.mutations as any;
+const guildConnectionQueries =
+  components.launchthat_discord.guildConnections.queries as any;
+const configMutations = components.launchthat_discord.orgConfigs.mutations as any;
+const configInternalQueries =
+  components.launchthat_discord.orgConfigs.internalQueries as any;
+const userLinksMutations =
+  components.launchthat_discord.userLinks.mutations as any;
+const userStreamingMutations =
+  components.launchthat_discord.userStreaming.mutations as any;
 
 const randomState = (): string => {
   const c: any = (globalThis as any).crypto;
@@ -67,66 +67,11 @@ const ensureViewerOrDev = async (ctx: any): Promise<string | null> => {
   }
 };
 
-const addGuildMember = async (args: {
-  botToken: string;
-  guildId: string;
-  discordUserId: string;
-  accessToken: string;
-}): Promise<boolean> => {
-  const res = await fetch(
-    `https://discord.com/api/v10/guilds/${encodeURIComponent(args.guildId)}/members/${encodeURIComponent(args.discordUserId)}`,
-    {
-      method: "PUT",
-      headers: {
-        Authorization: `Bot ${args.botToken}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ access_token: args.accessToken }),
-    },
-  );
-  if (res.status === 204 || res.status === 201) return true;
-  if (res.status === 409) return true;
-  const text = await res.text().catch(() => "");
-  console.log("[platformDiscord.addGuildMember] failed", res.status, text.slice(0, 300));
-  return false;
-};
-
-const fetchDiscordProfile = async (accessToken: string) => {
-  const res = await fetch("https://discord.com/api/v10/users/@me", {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "me_failed");
-    throw new Error(
-      `Discord /users/@me failed: ${res.status} ${text}`.slice(0, 400),
-    );
-  }
-  const meJson = (await res.json()) as {
-    id?: string;
-    username?: string;
-    discriminator?: string;
-    avatar?: string;
-    global_name?: string;
-  };
-  const discordUserId = typeof meJson?.id === "string" ? meJson.id : "";
-  if (!discordUserId) {
-    throw new Error("Discord user id missing from /users/@me");
-  }
-  return {
-    discordUserId,
-    username: typeof meJson.username === "string" ? meJson.username : undefined,
-    discriminator:
-      typeof meJson.discriminator === "string" ? meJson.discriminator : undefined,
-    avatar: typeof meJson.avatar === "string" ? meJson.avatar : undefined,
-    globalName:
-      typeof meJson.global_name === "string" ? meJson.global_name : undefined,
-  };
-};
 
 const getPlatformCredentials = async (ctx: any) => {
   const platformSecrets = (await ctx.runQuery(
-    platformConfigInternalQueries.getPlatformConfigSecrets,
-    {},
+    configInternalQueries.getOrgConfigSecrets,
+    { scope: "platform" },
   )) as
     | {
         enabled: boolean;
@@ -281,8 +226,8 @@ const buildTemplatePreview = async (ctx: any, args: {
 
   if (!template && templateId) {
     const row = await ctx.runQuery(
-      components.launchthat_discord.platformTemplates.queries.getTemplateById as any,
-      { templateId },
+      components.launchthat_discord.templates.queries.getTemplateById as any,
+      { scope: "platform", organizationId: undefined, templateId },
     );
     template = typeof (row as any)?.template === "string" ? String((row as any).template) : "";
   }
@@ -419,7 +364,7 @@ export const completeBotInstall = action({
     const consumed = await ctx.runMutation(discordOauthMutations.consumeOauthState, {
       state: args.state,
     });
-    if (!consumed || consumed.kind !== "org_install") {
+    if (!consumed || consumed.kind !== "org_install" || consumed.scope !== "platform") {
       throw new Error("Invalid or expired Discord install state");
     }
 
@@ -440,14 +385,18 @@ export const completeBotInstall = action({
       }
     }
 
-    await ctx.runMutation(platformGuildConnectionMutations.upsertGuildConnection, {
+    await ctx.runMutation(guildConnectionMutations.upsertGuildConnection, {
+      scope: "platform",
+      organizationId: undefined,
       guildId,
       guildName,
       botModeAtConnect: "global",
       connectedAt: Date.now(),
     });
 
-    await ctx.runMutation(platformConfigMutations.upsertPlatformConfig, {
+    await ctx.runMutation(configMutations.upsertOrgConfigV2, {
+      scope: "platform",
+      organizationId: undefined,
       enabled: true,
       botMode: "global",
       customClientId: undefined,
@@ -483,6 +432,7 @@ export const startBotInstall = action({
 
     const state = randomState();
     await ctx.runMutation(discordOauthMutations.createOauthState, {
+      scope: "platform",
       organizationId: undefined,
       kind: "org_install",
       userId: undefined,
@@ -518,7 +468,9 @@ export const disconnectGuild = action({
   returns: v.null(),
   handler: async (ctx, args) => {
     await ensureViewerOrDev(ctx);
-    await ctx.runMutation(platformGuildConnectionMutations.deleteGuildConnection, {
+    await ctx.runMutation(guildConnectionMutations.deleteGuildConnection, {
+      scope: "platform",
+      organizationId: undefined,
       guildId: args.guildId,
     });
     return null;
@@ -546,6 +498,7 @@ export const startUserLink = action({
 
     const state = randomState();
     await ctx.runMutation(discordOauthMutations.createOauthState, {
+      scope: "platform",
       organizationId: undefined,
       kind: "user_link",
       userId,
@@ -586,13 +539,13 @@ export const completeUserLink = action({
   handler: async (ctx, args) => {
     const viewerUserId = (await ensureViewerOrDev(ctx)) ?? "";
     const peek = await ctx.runQuery(discordOauthQueries.peekOauthState, { state: args.state });
-    if (peek?.organizationId) {
+    if (peek?.organizationId || peek?.scope !== "platform") {
       throw new Error("Invalid or expired Discord link state");
     }
     const consumed = await ctx.runMutation(discordOauthMutations.consumeOauthState, {
       state: args.state,
     });
-    if (!consumed || consumed.kind !== "user_link") {
+    if (!consumed || consumed.kind !== "user_link" || consumed.scope !== "platform") {
       throw new Error("Invalid or expired Discord link state");
     }
     const userId = typeof consumed.userId === "string" ? consumed.userId : "";
@@ -626,8 +579,8 @@ export const completeUserLink = action({
     const profile = await fetchDiscordProfile(token.accessToken);
 
     const guildConnections = await ctx.runQuery(
-      platformGuildConnectionQueries.listGuildConnections,
-      {},
+      guildConnectionQueries.listGuildConnectionsForOrg,
+      { scope: "platform", organizationId: undefined },
     );
     const guilds = Array.isArray(guildConnections) ? guildConnections : [];
     const primaryGuild = guilds
@@ -659,7 +612,8 @@ export const completeUserLink = action({
       });
     }
 
-    await ctx.runMutation(platformUserLinksMutations.linkUser, {
+    await ctx.runMutation(userLinksMutations.linkUser, {
+      scope: "platform",
       userId: effectiveUserId,
       discordUserId: profile.discordUserId,
       discordUsername: profile.username,
@@ -668,7 +622,8 @@ export const completeUserLink = action({
       discordAvatar: profile.avatar,
     });
 
-    await ctx.runMutation(platformUserStreamingMutations.setUserStreamingEnabled, {
+    await ctx.runMutation(userStreamingMutations.setUserStreamingEnabled, {
+      scope: "platform",
       userId: effectiveUserId,
       enabled: true,
     });

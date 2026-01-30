@@ -6,10 +6,14 @@ import { query } from "../server";
  * exposed to clients directly (they are referenced via `components.*`), so this is safe.
  */
 export const getOrgConfigSecrets = query({
-  args: { organizationId: v.string() },
+  args: {
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
+  },
   returns: v.union(
     v.object({
-      organizationId: v.string(),
+      scope: v.union(v.literal("org"), v.literal("platform")),
+      organizationId: v.optional(v.string()),
       enabled: v.boolean(),
       botMode: v.union(v.literal("global"), v.literal("custom")),
       // Legacy fields (may be absent after migration)
@@ -25,14 +29,18 @@ export const getOrgConfigSecrets = query({
     v.null(),
   ),
   handler: async (ctx, args) => {
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) return null;
     const config = await ctx.db
       .query("orgConfigs")
-      .withIndex("by_organizationId", (q: any) =>
-        q.eq("organizationId", args.organizationId),
+      .withIndex("by_scope_and_organizationId", (q: any) =>
+        q.eq("scope", scope).eq("organizationId", organizationId),
       )
       .unique();
     if (!config) return null;
     return {
+      scope: config.scope === "platform" ? ("platform" as const) : ("org" as const),
       organizationId: config.organizationId,
       enabled: config.enabled,
       botMode: config.botMode === "custom" ? ("custom" as const) : ("global" as const),

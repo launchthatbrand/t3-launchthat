@@ -4,7 +4,8 @@ import { mutation } from "../server";
 
 export const createTemplate = mutation({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     guildId: v.optional(v.string()),
     kind: v.string(),
     name: v.string(),
@@ -15,8 +16,14 @@ export const createTemplate = mutation({
   returns: v.id("messageTemplates"),
   handler: async (ctx, args) => {
     const now = Date.now();
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) {
+      throw new Error("organizationId is required when scope=org");
+    }
     return await ctx.db.insert("messageTemplates", {
-      organizationId: args.organizationId,
+      scope,
+      organizationId,
       guildId: args.guildId,
       kind: args.kind,
       name: args.name,
@@ -31,7 +38,8 @@ export const createTemplate = mutation({
 
 export const updateTemplate = mutation({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     templateId: v.id("messageTemplates"),
     name: v.optional(v.string()),
     description: v.optional(v.string()),
@@ -41,7 +49,15 @@ export const updateTemplate = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const row = await ctx.db.get(args.templateId);
-    if (!row || row.organizationId !== args.organizationId) {
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) {
+      throw new Error("organizationId is required when scope=org");
+    }
+    if (!row || row.scope !== scope) {
+      throw new Error("Template not found");
+    }
+    if (scope === "org" && row.organizationId !== organizationId) {
       throw new Error("Template not found");
     }
     await ctx.db.patch(args.templateId, {
@@ -59,13 +75,20 @@ export const updateTemplate = mutation({
 
 export const deleteTemplate = mutation({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     templateId: v.id("messageTemplates"),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const row = await ctx.db.get(args.templateId);
-    if (!row || row.organizationId !== args.organizationId) {
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) return null;
+    if (!row || row.scope !== scope) {
+      return null;
+    }
+    if (scope === "org" && row.organizationId !== organizationId) {
       return null;
     }
     await ctx.db.delete(args.templateId);
@@ -75,7 +98,8 @@ export const deleteTemplate = mutation({
 
 export const upsertTemplate = mutation({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     guildId: v.optional(v.string()),
     kind: v.string(),
     name: v.optional(v.string()),
@@ -85,14 +109,20 @@ export const upsertTemplate = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) {
+      throw new Error("organizationId is required when scope=org");
+    }
     const guildId = args.guildId ?? undefined;
     const existing = await ctx.db
       .query("messageTemplates")
-      .withIndex("by_organizationId_and_guildId_and_kind", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("guildId", guildId)
-          .eq("kind", args.kind),
+      .withIndex(
+        scope === "org" ? "by_organizationId_and_guildId_and_kind" : "by_scope_and_guildId_and_kind",
+        (q: any) =>
+          scope === "org"
+            ? q.eq("organizationId", organizationId).eq("guildId", guildId).eq("kind", args.kind)
+            : q.eq("scope", scope).eq("guildId", guildId).eq("kind", args.kind),
       )
       .first();
 
@@ -117,7 +147,8 @@ export const upsertTemplate = mutation({
     }
 
     await ctx.db.insert("messageTemplates", {
-      organizationId: args.organizationId,
+      scope,
+      organizationId,
       guildId: args.guildId,
       kind: args.kind,
       name: typeof args.name === "string" ? args.name : "Default template",

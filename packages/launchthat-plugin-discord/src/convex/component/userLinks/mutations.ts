@@ -3,6 +3,7 @@ import { mutation } from "../server";
 
 export const linkUser = mutation({
   args: {
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
     organizationId: v.optional(v.string()),
     userId: v.string(),
     discordUserId: v.string(),
@@ -13,17 +14,21 @@ export const linkUser = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const existing = args.organizationId
-      ? await ctx.db
-          .query("userLinks")
-          .withIndex("by_organizationId_and_userId", (q: any) =>
-            q.eq("organizationId", args.organizationId).eq("userId", args.userId),
-          )
-          .unique()
-      : await ctx.db
-          .query("userLinks")
-          .withIndex("by_userId", (q: any) => q.eq("userId", args.userId))
-          .unique();
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) {
+      throw new Error("organizationId is required when scope=org");
+    }
+    const existing = await ctx.db
+      .query("userLinks")
+      .withIndex(
+        scope === "org" ? "by_organizationId_and_userId" : "by_scope_and_userId",
+        (q: any) =>
+          scope === "org"
+            ? q.eq("organizationId", organizationId).eq("userId", args.userId)
+            : q.eq("scope", scope).eq("userId", args.userId),
+      )
+      .unique();
 
     if (existing) {
       await ctx.db.patch(existing._id, {
@@ -38,7 +43,8 @@ export const linkUser = mutation({
     }
 
     await ctx.db.insert("userLinks", {
-      organizationId: args.organizationId,
+      scope,
+      organizationId,
       userId: args.userId,
       discordUserId: args.discordUserId,
       discordUsername: args.discordUsername,
@@ -53,22 +59,27 @@ export const linkUser = mutation({
 
 export const unlinkUser = mutation({
   args: {
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
     organizationId: v.optional(v.string()),
     userId: v.string(),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const existing = args.organizationId
-      ? await ctx.db
-          .query("userLinks")
-          .withIndex("by_organizationId_and_userId", (q: any) =>
-            q.eq("organizationId", args.organizationId).eq("userId", args.userId),
-          )
-          .unique()
-      : await ctx.db
-          .query("userLinks")
-          .withIndex("by_userId", (q: any) => q.eq("userId", args.userId))
-          .unique();
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) {
+      throw new Error("organizationId is required when scope=org");
+    }
+    const existing = await ctx.db
+      .query("userLinks")
+      .withIndex(
+        scope === "org" ? "by_organizationId_and_userId" : "by_scope_and_userId",
+        (q: any) =>
+          scope === "org"
+            ? q.eq("organizationId", organizationId).eq("userId", args.userId)
+            : q.eq("scope", scope).eq("userId", args.userId),
+      )
+      .unique();
     if (existing) {
       await ctx.db.delete(existing._id);
     }

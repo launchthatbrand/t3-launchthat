@@ -4,25 +4,27 @@ import { components } from "../_generated/api";
 import { mutation } from "../_generated/server";
 import { resolveViewerUserId } from "../traderlaunchpad/lib/resolve";
 
-const platformGuildSettingsMutations =
-  components.launchthat_discord.platformGuildSettings.mutations as any;
-const platformTemplatesMutations = components.launchthat_discord.platformTemplates
-  .mutations as any;
-const platformUserLinksMutations =
-  components.launchthat_discord.platformUserLinks.mutations as any;
-const platformUserStreamingMutations =
-  components.launchthat_discord.platformUserStreaming.mutations as any;
-const platformRoutingMutations =
-  components.launchthat_discord.platformRouting.mutations as any;
-const platformAutomationsMutations =
-  components.launchthat_discord.platformAutomations.mutations as any;
-const platformEventsMutations = components.launchthat_discord.platformEvents.mutations as any;
+const guildSettingsMutations =
+  components.launchthat_discord.guildSettings.mutations as any;
+const templatesMutations = components.launchthat_discord.templates.mutations as any;
+const userLinksMutations =
+  components.launchthat_discord.userLinks.mutations as any;
+const userStreamingMutations =
+  components.launchthat_discord.userStreaming.mutations as any;
+const routingMutations =
+  components.launchthat_discord.routing.mutations as any;
+const automationsMutations =
+  components.launchthat_discord.automations.mutations as any;
+const eventsMutations = components.launchthat_discord.events.mutations as any;
+const orgConfigMutations =
+  components.launchthat_discord.orgConfigs.mutations as any;
 
 export const upsertGuildSettings = mutation({
   args: {
     guildId: v.string(),
     approvedMemberRoleId: v.optional(v.string()),
     supportAiEnabled: v.boolean(),
+    autoJoinEnabled: v.optional(v.boolean()),
     supportForumChannelId: v.optional(v.string()),
     supportPrivateIntakeChannelId: v.optional(v.string()),
     supportStaffRoleId: v.optional(v.string()),
@@ -43,7 +45,9 @@ export const upsertGuildSettings = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     await resolveViewerUserId(ctx);
-    await ctx.runMutation(platformGuildSettingsMutations.upsertGuildSettings, {
+    await ctx.runMutation(guildSettingsMutations.upsertGuildSettings, {
+      scope: "platform",
+      organizationId: undefined,
       ...args,
     });
     return null;
@@ -62,7 +66,9 @@ export const upsertTemplate = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     await resolveViewerUserId(ctx);
-    await ctx.runMutation(platformTemplatesMutations.upsertTemplate, {
+    await ctx.runMutation(templatesMutations.upsertTemplate, {
+      scope: "platform",
+      organizationId: undefined,
       ...args,
     });
     return null;
@@ -81,12 +87,11 @@ export const createTemplate = mutation({
   returns: v.string(),
   handler: async (ctx, args) => {
     await resolveViewerUserId(ctx);
-    const templateId = await ctx.runMutation(
-      platformTemplatesMutations.createTemplate,
-      {
-        ...args,
-      },
-    );
+    const templateId = await ctx.runMutation(templatesMutations.createTemplate, {
+      scope: "platform",
+      organizationId: undefined,
+      ...args,
+    });
     return String(templateId);
   },
 });
@@ -102,7 +107,9 @@ export const updateTemplate = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     await resolveViewerUserId(ctx);
-    await ctx.runMutation(platformTemplatesMutations.updateTemplate, {
+    await ctx.runMutation(templatesMutations.updateTemplate, {
+      scope: "platform",
+      organizationId: undefined,
       ...args,
     });
     return null;
@@ -116,7 +123,9 @@ export const deleteTemplate = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     await resolveViewerUserId(ctx);
-    await ctx.runMutation(platformTemplatesMutations.deleteTemplate, {
+    await ctx.runMutation(templatesMutations.deleteTemplate, {
+      scope: "platform",
+      organizationId: undefined,
       ...args,
     });
     return null;
@@ -128,8 +137,24 @@ export const unlinkMyDiscordLink = mutation({
   returns: v.null(),
   handler: async (ctx) => {
     const userId = await resolveViewerUserId(ctx);
-    await ctx.runMutation(platformUserLinksMutations.unlinkUser, {
+    await ctx.runMutation(userLinksMutations.unlinkUser, {
+      scope: "platform",
+      organizationId: undefined,
       userId,
+    });
+    return null;
+  },
+});
+
+export const setOrgDiscordEnabled = mutation({
+  args: { organizationId: v.optional(v.string()), enabled: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await resolveViewerUserId(ctx);
+    await ctx.runMutation(orgConfigMutations.setOrgEnabled, {
+      scope: "platform",
+      organizationId: undefined,
+      enabled: args.enabled,
     });
     return null;
   },
@@ -140,10 +165,14 @@ export const disconnectMyDiscordStreaming = mutation({
   returns: v.null(),
   handler: async (ctx) => {
     const userId = await resolveViewerUserId(ctx);
-    await ctx.runMutation(platformUserLinksMutations.unlinkUser, {
+    await ctx.runMutation(userLinksMutations.unlinkUser, {
+      scope: "platform",
+      organizationId: undefined,
       userId,
     });
-    await ctx.runMutation(platformUserStreamingMutations.setUserStreamingEnabled, {
+    await ctx.runMutation(userStreamingMutations.setUserStreamingEnabled, {
+      scope: "platform",
+      organizationId: undefined,
       userId,
       enabled: false,
     });
@@ -156,7 +185,9 @@ export const setMyDiscordStreamingEnabled = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await resolveViewerUserId(ctx);
-    await ctx.runMutation(platformUserStreamingMutations.setUserStreamingEnabled, {
+    await ctx.runMutation(userStreamingMutations.setUserStreamingEnabled, {
+      scope: "platform",
+      organizationId: undefined,
       userId,
       enabled: args.enabled,
     });
@@ -177,7 +208,9 @@ export const upsertRoutingRuleSet = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     await resolveViewerUserId(ctx);
-    await ctx.runMutation(platformRoutingMutations.upsertRoutingRuleSet, {
+    await ctx.runMutation(routingMutations.upsertRoutingRuleSet, {
+      scope: "platform",
+      organizationId: undefined,
       guildId: args.guildId,
       kind: args.kind,
       matchStrategy: args.matchStrategy,
@@ -211,7 +244,9 @@ export const replaceRoutingRules = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     await resolveViewerUserId(ctx);
-    await ctx.runMutation(platformRoutingMutations.replaceRoutingRules, {
+    await ctx.runMutation(routingMutations.replaceRoutingRules, {
+      scope: "platform",
+      organizationId: undefined,
       guildId: args.guildId,
       kind: args.kind,
       rules: args.rules,
@@ -238,10 +273,11 @@ export const createAutomation = mutation({
   returns: v.string(),
   handler: async (ctx, args) => {
     await resolveViewerUserId(ctx);
-    const automationId = await ctx.runMutation(
-      platformAutomationsMutations.createAutomation,
-      { ...args },
-    );
+    const automationId = await ctx.runMutation(automationsMutations.createAutomation, {
+      scope: "platform",
+      organizationId: undefined,
+      ...args,
+    });
     return String(automationId);
   },
 });
@@ -268,7 +304,9 @@ export const updateAutomation = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     await resolveViewerUserId(ctx);
-    await ctx.runMutation(platformAutomationsMutations.updateAutomation, {
+    await ctx.runMutation(automationsMutations.updateAutomation, {
+      scope: "platform",
+      organizationId: undefined,
       ...args,
     });
     return null;
@@ -282,7 +320,9 @@ export const deleteAutomation = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     await resolveViewerUserId(ctx);
-    await ctx.runMutation(platformAutomationsMutations.deleteAutomation, {
+    await ctx.runMutation(automationsMutations.deleteAutomation, {
+      scope: "platform",
+      organizationId: undefined,
       ...args,
     });
     return null;
@@ -299,7 +339,9 @@ export const markAutomationRun = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     await resolveViewerUserId(ctx);
-    await ctx.runMutation(platformAutomationsMutations.markAutomationRun, {
+    await ctx.runMutation(automationsMutations.markAutomationRun, {
+      scope: "platform",
+      organizationId: undefined,
       ...args,
     });
     return null;
@@ -316,7 +358,9 @@ export const emitEvent = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     await resolveViewerUserId(ctx);
-    await ctx.runMutation(platformEventsMutations.emitEvent, {
+    await ctx.runMutation(eventsMutations.emitEvent, {
+      scope: "platform",
+      organizationId: undefined,
       guildId: args.guildId,
       eventKey: args.eventKey,
       payloadJson: args.payloadJson,

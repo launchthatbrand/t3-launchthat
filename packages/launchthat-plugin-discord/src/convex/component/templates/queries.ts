@@ -40,7 +40,8 @@ const normalizeTemplateRow = (row: any, scope: "org" | "guild") => {
 
 export const listTemplates = query({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     guildId: v.optional(v.string()),
     kind: v.string(),
   },
@@ -59,13 +60,19 @@ export const listTemplates = query({
     }),
   ),
   handler: async (ctx, args) => {
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) return [];
     const orgRows = await ctx.db
       .query("messageTemplates")
-      .withIndex("by_organizationId_and_guildId_and_kind_and_updatedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("guildId", undefined)
-          .eq("kind", args.kind),
+      .withIndex(
+        scope === "org"
+          ? "by_organizationId_and_guildId_and_kind_and_updatedAt"
+          : "by_scope_and_guildId_and_kind_and_updatedAt",
+        (q: any) =>
+          scope === "org"
+            ? q.eq("organizationId", organizationId).eq("guildId", undefined).eq("kind", args.kind)
+            : q.eq("scope", scope).eq("guildId", undefined).eq("kind", args.kind),
       )
       .order("desc")
       .collect();
@@ -76,12 +83,13 @@ export const listTemplates = query({
       const guildRows = await ctx.db
         .query("messageTemplates")
         .withIndex(
-          "by_organizationId_and_guildId_and_kind_and_updatedAt",
+          scope === "org"
+            ? "by_organizationId_and_guildId_and_kind_and_updatedAt"
+            : "by_scope_and_guildId_and_kind_and_updatedAt",
           (q: any) =>
-            q
-              .eq("organizationId", args.organizationId)
-              .eq("guildId", args.guildId)
-              .eq("kind", args.kind),
+            scope === "org"
+              ? q.eq("organizationId", organizationId).eq("guildId", args.guildId).eq("kind", args.kind)
+              : q.eq("scope", scope).eq("guildId", args.guildId).eq("kind", args.kind),
         )
         .order("desc")
         .collect();
@@ -96,7 +104,8 @@ export const listTemplates = query({
 
 export const getTemplateById = query({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     templateId: v.id("messageTemplates"),
   },
   returns: v.union(
@@ -115,7 +124,10 @@ export const getTemplateById = query({
   ),
   handler: async (ctx, args) => {
     const row = await ctx.db.get(args.templateId);
-    if (!row || row.organizationId !== args.organizationId) return null;
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (!row || row.scope !== scope) return null;
+    if (scope === "org" && row.organizationId !== organizationId) return null;
     return {
       _id: row._id,
       name: typeof row.name === "string" ? row.name : undefined,
@@ -134,7 +146,10 @@ export const getTemplateById = query({
 const resolveTemplateContent = async (ctx: any, args: any) => {
   if (args.templateId) {
     const row = await ctx.db.get(args.templateId);
-    if (row && row.organizationId === args.organizationId) {
+    if (row && row.scope === args.scope) {
+      if (args.scope === "org" && row.organizationId !== args.organizationId) {
+        return null;
+      }
       return String(row.template ?? "");
     }
   }
@@ -142,11 +157,14 @@ const resolveTemplateContent = async (ctx: any, args: any) => {
   if (args.guildId) {
     const guildRow = await ctx.db
       .query("messageTemplates")
-      .withIndex("by_organizationId_and_guildId_and_kind_and_updatedAt", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("guildId", args.guildId)
-          .eq("kind", "tradeidea"),
+      .withIndex(
+        args.scope === "org"
+          ? "by_organizationId_and_guildId_and_kind_and_updatedAt"
+          : "by_scope_and_guildId_and_kind_and_updatedAt",
+        (q: any) =>
+          args.scope === "org"
+            ? q.eq("organizationId", args.organizationId).eq("guildId", args.guildId).eq("kind", "tradeidea")
+            : q.eq("scope", args.scope).eq("guildId", args.guildId).eq("kind", "tradeidea"),
       )
       .order("desc")
       .first();
@@ -157,11 +175,14 @@ const resolveTemplateContent = async (ctx: any, args: any) => {
 
   const orgRow = await ctx.db
     .query("messageTemplates")
-    .withIndex("by_organizationId_and_guildId_and_kind_and_updatedAt", (q: any) =>
-      q
-        .eq("organizationId", args.organizationId)
-        .eq("guildId", undefined)
-        .eq("kind", "tradeidea"),
+    .withIndex(
+      args.scope === "org"
+        ? "by_organizationId_and_guildId_and_kind_and_updatedAt"
+        : "by_scope_and_guildId_and_kind_and_updatedAt",
+      (q: any) =>
+        args.scope === "org"
+          ? q.eq("organizationId", args.organizationId).eq("guildId", undefined).eq("kind", "tradeidea")
+          : q.eq("scope", args.scope).eq("guildId", undefined).eq("kind", "tradeidea"),
     )
     .order("desc")
     .first();
@@ -175,7 +196,8 @@ const resolveTemplateContent = async (ctx: any, args: any) => {
 
 export const renderTradeIdeaMessage = query({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     guildId: v.optional(v.string()),
     templateId: v.optional(v.id("messageTemplates")),
     symbol: v.string(),
@@ -190,8 +212,11 @@ export const renderTradeIdeaMessage = query({
   },
   returns: v.object({ content: v.string() }),
   handler: async (ctx, args) => {
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
     const template = await resolveTemplateContent(ctx, {
-      organizationId: args.organizationId,
+      scope,
+      organizationId,
       guildId: args.guildId ?? undefined,
       templateId: args.templateId,
     });

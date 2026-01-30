@@ -92,12 +92,13 @@ export const getMyDiscordStreamingOrgs = query({
 
     for (const organizationId of orgIds) {
       const orgConfig = await ctx.runQuery(discordOrgConfigQueries.getOrgConfig, {
+        scope: "org",
         organizationId,
       });
 
       const guildConnections = await ctx.runQuery(
         discordGuildConnectionsQueries.listGuildConnectionsForOrg,
-        { organizationId },
+        { scope: "org", organizationId },
       );
       const guilds = Array.isArray(guildConnections) ? guildConnections : [];
       const primaryGuild = guilds
@@ -112,15 +113,18 @@ export const getMyDiscordStreamingOrgs = query({
           ? primaryGuild.guildName.trim()
           : null;
 
-      // Treat “guild connected” as enabled even if org config isn’t set yet.
-      const discordEnabled = Boolean(orgConfig?.enabled) || Boolean(guildId);
+      // If org config exists, respect its enabled flag; otherwise fallback to guild.
+      const discordEnabled = orgConfig
+        ? Boolean(orgConfig.enabled)
+        : Boolean(guildId);
 
       const guildSettings =
         guildId && discordEnabled
           ? await ctx.runQuery(discordGuildSettingsQueries.getGuildSettings, {
-            organizationId,
-            guildId,
-          })
+              scope: "org",
+              organizationId,
+              guildId,
+            })
           : null;
       const inviteUrl =
         typeof guildSettings?.inviteUrl === "string" && guildSettings.inviteUrl.trim()
@@ -128,6 +132,7 @@ export const getMyDiscordStreamingOrgs = query({
           : null;
 
       const link = await ctx.runQuery(discordUserLinksQueries.getUserLink, {
+        scope: "org",
         organizationId,
         userId,
       });
@@ -138,6 +143,7 @@ export const getMyDiscordStreamingOrgs = query({
       const linkedAt = typeof link?.linkedAt === "number" ? link.linkedAt : null;
 
       const prefs = await ctx.runQuery(discordUserStreamingQueries.getUserStreamingPrefs, {
+        scope: "org",
         organizationId,
         userId,
       });
@@ -195,6 +201,7 @@ export const getMyDiscordUserLink = query({
   handler: async (ctx) => {
     const userId = await resolveViewerUserId(ctx);
     const link = await ctx.runQuery(discordUserLinksQueries.getUserLinkForUser, {
+      scope: "platform",
       userId,
     });
     const linkedDiscordUserId =

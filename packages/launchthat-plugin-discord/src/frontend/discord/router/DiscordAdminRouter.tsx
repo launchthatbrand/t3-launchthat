@@ -69,6 +69,13 @@ export function DiscordAdminRouter({
               </Link>
             </TabsTrigger>
           ) : null}
+          {isFocusedGuild ? (
+            <TabsTrigger value="settings" asChild>
+              <Link href={getDiscordAdminRoute(scopedBasePath, ["settings"])}>
+                Settings
+              </Link>
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger value="templates" asChild>
             <Link href={getDiscordAdminRoute(scopedBasePath, ["templates"])}>
               Templates
@@ -123,6 +130,15 @@ export function DiscordAdminRouter({
           guildId={isFocusedGuild ? focusedGuildId : undefined}
           templateContexts={templateContexts}
           defaultTemplateKind={defaultTemplateKind}
+          ui={ui}
+        />
+      ) : null}
+      {segment === "settings" && isFocusedGuild && focusedGuildId ? (
+        <DiscordGuildSettingsPage
+          api={api}
+          organizationId={organizationId}
+          guildId={focusedGuildId}
+          basePath={scopedBasePath}
           ui={ui}
         />
       ) : null}

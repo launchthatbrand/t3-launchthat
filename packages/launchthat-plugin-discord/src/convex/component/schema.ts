@@ -3,7 +3,8 @@ import { v } from "convex/values";
 
 export default defineSchema({
   orgConfigs: defineTable({
-    organizationId: v.string(),
+    scope: v.union(v.literal("org"), v.literal("platform")),
+    organizationId: v.optional(v.string()),
     enabled: v.boolean(),
 
     /**
@@ -30,10 +31,14 @@ export default defineSchema({
     connectedAt: v.number(),
     lastValidatedAt: v.optional(v.number()),
     lastError: v.optional(v.string()),
-  }).index("by_organizationId", ["organizationId"]),
+  })
+    .index("by_organizationId", ["organizationId"])
+    .index("by_scope_and_organizationId", ["scope", "organizationId"])
+    .index("by_scope", ["scope"]),
 
   guildConnections: defineTable({
-    organizationId: v.string(),
+    scope: v.union(v.literal("org"), v.literal("platform")),
+    organizationId: v.optional(v.string()),
     guildId: v.string(),
     guildName: v.optional(v.string()),
     botModeAtConnect: v.union(v.literal("global"), v.literal("custom")),
@@ -41,14 +46,20 @@ export default defineSchema({
   })
     .index("by_organizationId", ["organizationId"])
     .index("by_guildId", ["guildId"])
-    .index("by_organizationId_and_guildId", ["organizationId", "guildId"]),
+    .index("by_organizationId_and_guildId", ["organizationId", "guildId"])
+    .index("by_scope", ["scope"])
+    .index("by_scope_and_guildId", ["scope", "guildId"])
+    .index("by_scope_and_organizationId_and_guildId", ["scope", "organizationId", "guildId"]),
 
   guildSettings: defineTable({
-    organizationId: v.string(),
+    scope: v.union(v.literal("org"), v.literal("platform")),
+    organizationId: v.optional(v.string()),
     guildId: v.string(),
 
     // Optional: invite URL for “Join Discord” buttons in host apps.
     inviteUrl: v.optional(v.string()),
+    // If enabled, org users can be auto-added to the guild during OAuth.
+    autoJoinEnabled: v.optional(v.boolean()),
 
     // Member approvals (optional): choose a role that represents "approved".
     // The admin UI can use this to show "pending" members (missing the role) and to approve by assigning it.
@@ -83,10 +94,13 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_organizationId_and_guildId", ["organizationId", "guildId"])
-    .index("by_guildId", ["guildId"]),
+    .index("by_guildId", ["guildId"])
+    .index("by_scope_and_guildId", ["scope", "guildId"])
+    .index("by_scope_and_organizationId_and_guildId", ["scope", "organizationId", "guildId"]),
 
   routingRuleSets: defineTable({
-    organizationId: v.string(),
+    scope: v.union(v.literal("org"), v.literal("platform")),
+    organizationId: v.optional(v.string()),
     guildId: v.string(),
     kind: v.union(v.literal("trade_feed")),
     matchStrategy: v.union(
@@ -95,14 +109,23 @@ export default defineSchema({
       v.literal("priority"),
     ),
     updatedAt: v.number(),
-  }).index("by_organizationId_and_guildId_and_kind", [
-    "organizationId",
-    "guildId",
-    "kind",
-  ]),
+  })
+    .index("by_organizationId_and_guildId_and_kind", [
+      "organizationId",
+      "guildId",
+      "kind",
+    ])
+    .index("by_scope_and_guildId_and_kind", ["scope", "guildId", "kind"])
+    .index("by_scope_and_organizationId_and_guildId_and_kind", [
+      "scope",
+      "organizationId",
+      "guildId",
+      "kind",
+    ]),
 
   routingRules: defineTable({
-    organizationId: v.string(),
+    scope: v.union(v.literal("org"), v.literal("platform")),
+    organizationId: v.optional(v.string()),
     guildId: v.optional(v.string()),
     kind: v.union(v.literal("trade_feed")),
     // Legacy field (role-based routing). Kept optional for backwards compatibility.
@@ -146,10 +169,25 @@ export default defineSchema({
       "organizationId",
       "kind",
       "channelKind",
-    ]),
+    ])
+    .index("by_scope_and_guildId_and_kind", ["scope", "guildId", "kind"])
+    .index("by_scope_and_guildId_and_kind_and_channelKind", [
+      "scope",
+      "guildId",
+      "kind",
+      "channelKind",
+    ])
+    .index("by_scope_and_guildId_and_kind_and_order", [
+      "scope",
+      "guildId",
+      "kind",
+      "order",
+    ])
+    .index("by_scope_and_kind_and_channelKind", ["scope", "kind", "channelKind"]),
 
   messageTemplates: defineTable({
-    organizationId: v.string(),
+    scope: v.union(v.literal("org"), v.literal("platform")),
+    organizationId: v.optional(v.string()),
     guildId: v.optional(v.string()),
     kind: v.string(),
     name: v.optional(v.string()),
@@ -176,6 +214,15 @@ export default defineSchema({
     ])
     .index("by_organizationId_and_guildId_and_kind_and_updatedAt", [
       "organizationId",
+      "guildId",
+      "kind",
+      "updatedAt",
+    ])
+    .index("by_scope_and_kind", ["scope", "kind"])
+    .index("by_scope_and_guildId_and_kind", ["scope", "guildId", "kind"])
+    .index("by_scope_and_kind_and_updatedAt", ["scope", "kind", "updatedAt"])
+    .index("by_scope_and_guildId_and_kind_and_updatedAt", [
+      "scope",
       "guildId",
       "kind",
       "updatedAt",
@@ -238,6 +285,7 @@ export default defineSchema({
     .index("by_guildId_and_triggerMessageId", ["guildId", "triggerMessageId"]),
 
   discordApiLogs: defineTable({
+    scope: v.union(v.literal("org"), v.literal("platform")),
     organizationId: v.optional(v.string()),
     guildId: v.optional(v.string()),
     kind: v.string(), // e.g. "support_reply", "support_escalate"
@@ -247,7 +295,9 @@ export default defineSchema({
     retryAfterMs: v.optional(v.number()),
     error: v.optional(v.string()),
     createdAt: v.number(),
-  }).index("by_createdAt", ["createdAt"]),
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_scope_and_createdAt", ["scope", "createdAt"]),
 
   roleRules: defineTable({
     organizationId: v.string(),
@@ -288,6 +338,7 @@ export default defineSchema({
     ]),
 
   userLinks: defineTable({
+    scope: v.union(v.literal("org"), v.literal("platform")),
     organizationId: v.optional(v.string()),
     userId: v.string(),
     discordUserId: v.string(),
@@ -302,10 +353,13 @@ export default defineSchema({
       "organizationId",
       "discordUserId",
     ])
-    .index("by_userId", ["userId"]),
+    .index("by_userId", ["userId"])
+    .index("by_scope_and_userId", ["scope", "userId"])
+    .index("by_scope_and_discordUserId", ["scope", "discordUserId"]),
 
   userStreamingPrefs: defineTable({
-    organizationId: v.string(),
+    scope: v.union(v.literal("org"), v.literal("platform")),
+    organizationId: v.optional(v.string()),
     userId: v.string(),
     enabled: v.boolean(),
     enabledAt: v.optional(v.number()),
@@ -313,7 +367,9 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_organizationId_and_userId", ["organizationId", "userId"])
-    .index("by_organizationId_and_updatedAt", ["organizationId", "updatedAt"]),
+    .index("by_organizationId_and_updatedAt", ["organizationId", "updatedAt"])
+    .index("by_scope_and_userId", ["scope", "userId"])
+    .index("by_scope_and_updatedAt", ["scope", "updatedAt"]),
 
   userDeliveryStats: defineTable({
     organizationId: v.string(),
@@ -340,7 +396,8 @@ export default defineSchema({
    * Host apps emit events into this shared table.
    */
   discordEvents: defineTable({
-    organizationId: v.string(),
+    scope: v.union(v.literal("org"), v.literal("platform")),
+    organizationId: v.optional(v.string()),
     guildId: v.optional(v.string()),
     eventKey: v.string(),
     payloadJson: v.string(),
@@ -359,14 +416,24 @@ export default defineSchema({
       "eventKey",
       "createdAt",
     ])
-    .index("by_organizationId_and_dedupeKey", ["organizationId", "dedupeKey"]),
+    .index("by_organizationId_and_dedupeKey", ["organizationId", "dedupeKey"])
+    .index("by_scope_and_createdAt", ["scope", "createdAt"])
+    .index("by_scope_and_eventKey_and_createdAt", ["scope", "eventKey", "createdAt"])
+    .index("by_scope_and_guildId_and_eventKey_and_createdAt", [
+      "scope",
+      "guildId",
+      "eventKey",
+      "createdAt",
+    ])
+    .index("by_scope_and_dedupeKey", ["scope", "dedupeKey"]),
 
   /**
    * Zapier-like automation rules: WHEN (schedule/event) DO (send message).
    * The runner executes in the host app, but config/state is stored here.
    */
   discordAutomations: defineTable({
-    organizationId: v.string(),
+    scope: v.union(v.literal("org"), v.literal("platform")),
+    organizationId: v.optional(v.string()),
     guildId: v.string(),
     name: v.string(),
     enabled: v.boolean(),
@@ -406,9 +473,13 @@ export default defineSchema({
       "enabled",
       "nextRunAt",
     ])
-    .index("by_enabled_and_nextRunAt", ["enabled", "nextRunAt"]),
+    .index("by_enabled_and_nextRunAt", ["enabled", "nextRunAt"])
+    .index("by_scope_and_guildId", ["scope", "guildId"])
+    .index("by_scope_and_guildId_and_enabled", ["scope", "guildId", "enabled"])
+    .index("by_scope_and_enabled_and_nextRunAt", ["scope", "enabled", "nextRunAt"]),
 
   oauthStates: defineTable({
+    scope: v.union(v.literal("org"), v.literal("platform")),
     organizationId: v.optional(v.string()),
     userId: v.optional(v.string()),
     state: v.string(),
@@ -419,7 +490,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_state", ["state"])
-    .index("by_organizationId_and_createdAt", ["organizationId", "createdAt"]),
+    .index("by_organizationId_and_createdAt", ["organizationId", "createdAt"])
+    .index("by_scope_and_createdAt", ["scope", "createdAt"]),
 
   syncJobs: defineTable({
     organizationId: v.string(),
@@ -442,206 +514,4 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_status_and_createdAt", ["status", "createdAt"]),
 
-  /**
-   * Platform-scoped Discord configuration (separate from orgs).
-   */
-  platformConfigs: defineTable({
-    enabled: v.boolean(),
-    botMode: v.union(v.literal("global"), v.literal("custom")),
-    customClientId: v.optional(v.string()),
-    customClientSecretEncrypted: v.optional(v.string()),
-    customBotTokenEncrypted: v.optional(v.string()),
-    connectedAt: v.number(),
-    lastValidatedAt: v.optional(v.number()),
-    lastError: v.optional(v.string()),
-  }).index("by_connectedAt", ["connectedAt"]),
-
-  platformGuildConnections: defineTable({
-    guildId: v.string(),
-    guildName: v.optional(v.string()),
-    botModeAtConnect: v.union(v.literal("global"), v.literal("custom")),
-    connectedAt: v.number(),
-  })
-    .index("by_guildId", ["guildId"])
-    .index("by_connectedAt", ["connectedAt"]),
-
-  platformGuildSettings: defineTable({
-    guildId: v.string(),
-    inviteUrl: v.optional(v.string()),
-    approvedMemberRoleId: v.optional(v.string()),
-    supportAiEnabled: v.boolean(),
-    supportForumChannelId: v.optional(v.string()),
-    supportPrivateIntakeChannelId: v.optional(v.string()),
-    supportStaffRoleId: v.optional(v.string()),
-    escalationKeywords: v.optional(v.array(v.string())),
-    escalationConfidenceThreshold: v.optional(v.number()),
-    threadReplyCooldownMs: v.optional(v.number()),
-    supportAiDisabledMessageEnabled: v.optional(v.boolean()),
-    supportAiDisabledMessageText: v.optional(v.string()),
-    courseUpdatesChannelId: v.optional(v.string()),
-    announcementChannelId: v.optional(v.string()),
-    announcementEventKeys: v.optional(v.array(v.string())),
-    mentorTradesChannelId: v.optional(v.string()),
-    memberTradesChannelId: v.optional(v.string()),
-    mentorTradesTemplateId: v.optional(v.id("platformMessageTemplates")),
-    memberTradesTemplateId: v.optional(v.id("platformMessageTemplates")),
-    updatedAt: v.number(),
-  })
-    .index("by_guildId", ["guildId"])
-    .index("by_guildId_and_updatedAt", ["guildId", "updatedAt"]),
-
-  platformRoutingRuleSets: defineTable({
-    guildId: v.string(),
-    kind: v.union(v.literal("trade_feed")),
-    matchStrategy: v.union(
-      v.literal("first_match"),
-      v.literal("multi_cast"),
-      v.literal("priority"),
-    ),
-    updatedAt: v.number(),
-  }).index("by_guildId_and_kind", ["guildId", "kind"]),
-
-  platformRoutingRules: defineTable({
-    guildId: v.optional(v.string()),
-    kind: v.union(v.literal("trade_feed")),
-    channelKind: v.optional(
-      v.union(v.literal("mentors"), v.literal("members")),
-    ),
-    channelId: v.string(),
-    enabled: v.boolean(),
-    order: v.optional(v.number()),
-    priority: v.optional(v.number()),
-    conditions: v.optional(
-      v.object({
-        actorRoles: v.optional(v.array(v.string())),
-        symbols: v.optional(v.array(v.string())),
-      }),
-    ),
-    updatedAt: v.number(),
-  })
-    .index("by_guildId_and_kind", ["guildId", "kind"])
-    .index("by_guildId_and_kind_and_channelKind", ["guildId", "kind", "channelKind"])
-    .index("by_guildId_and_kind_and_order", ["guildId", "kind", "order"]),
-
-  platformMessageTemplates: defineTable({
-    guildId: v.optional(v.string()),
-    kind: v.string(),
-    name: v.optional(v.string()),
-    description: v.optional(v.string()),
-    template: v.string(),
-    templateJson: v.optional(v.string()),
-    createdAt: v.optional(v.number()),
-    updatedAt: v.number(),
-  })
-    .index("by_kind", ["kind"])
-    .index("by_guildId_and_kind", ["guildId", "kind"])
-    .index("by_kind_and_updatedAt", ["kind", "updatedAt"])
-    .index("by_guildId_and_kind_and_updatedAt", ["guildId", "kind", "updatedAt"]),
-
-  platformDiscordApiLogs: defineTable({
-    guildId: v.optional(v.string()),
-    kind: v.string(),
-    method: v.string(),
-    url: v.string(),
-    status: v.number(),
-    retryAfterMs: v.optional(v.number()),
-    error: v.optional(v.string()),
-    createdAt: v.number(),
-  }).index("by_createdAt", ["createdAt"]),
-
-  platformUserLinks: defineTable({
-    userId: v.string(),
-    discordUserId: v.string(),
-    discordUsername: v.optional(v.string()),
-    discordDiscriminator: v.optional(v.string()),
-    discordGlobalName: v.optional(v.string()),
-    discordAvatar: v.optional(v.string()),
-    linkedAt: v.number(),
-  })
-    .index("by_userId", ["userId"])
-    .index("by_discordUserId", ["discordUserId"]),
-
-  platformUserStreamingPrefs: defineTable({
-    userId: v.string(),
-    enabled: v.boolean(),
-    enabledAt: v.optional(v.number()),
-    disabledAt: v.optional(v.number()),
-    updatedAt: v.number(),
-  }).index("by_userId", ["userId"]),
-
-  platformDiscordEvents: defineTable({
-    guildId: v.optional(v.string()),
-    eventKey: v.string(),
-    payloadJson: v.string(),
-    dedupeKey: v.optional(v.string()),
-    createdAt: v.number(),
-  })
-    .index("by_createdAt", ["createdAt"])
-    .index("by_eventKey_and_createdAt", ["eventKey", "createdAt"])
-    .index("by_guildId_and_eventKey_and_createdAt", [
-      "guildId",
-      "eventKey",
-      "createdAt",
-    ])
-    .index("by_dedupeKey", ["dedupeKey"]),
-
-  platformDiscordAutomations: defineTable({
-    guildId: v.string(),
-    name: v.string(),
-    enabled: v.boolean(),
-    trigger: v.object({
-      type: v.union(v.literal("schedule"), v.literal("event")),
-      config: v.any(),
-    }),
-    conditions: v.optional(v.any()),
-    action: v.object({
-      type: v.literal("send_message"),
-      config: v.any(),
-    }),
-    state: v.optional(
-      v.object({
-        lastRunAt: v.optional(v.number()),
-        cursor: v.optional(v.string()),
-        nextRunAt: v.optional(v.number()),
-      }),
-    ),
-    nextRunAt: v.optional(v.number()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_guildId", ["guildId"])
-    .index("by_guildId_and_enabled", ["guildId", "enabled"])
-    .index("by_enabled_and_nextRunAt", ["enabled", "nextRunAt"]),
-
-  platformOauthStates: defineTable({
-    userId: v.optional(v.string()),
-    state: v.string(),
-    codeVerifier: v.string(),
-    returnTo: v.string(),
-    callbackPath: v.optional(v.string()),
-    kind: v.union(v.literal("org_install"), v.literal("user_link")),
-    createdAt: v.number(),
-  })
-    .index("by_state", ["state"])
-    .index("by_createdAt", ["createdAt"]),
-
-  platformSyncJobs: defineTable({
-    userId: v.string(),
-    reason: v.union(
-      v.literal("purchase"),
-      v.literal("tagChange"),
-      v.literal("manual"),
-    ),
-    payload: v.any(),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("processing"),
-      v.literal("done"),
-      v.literal("failed"),
-    ),
-    attempts: v.number(),
-    lastError: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }).index("by_status_and_createdAt", ["status", "createdAt"]),
 });

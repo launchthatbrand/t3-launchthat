@@ -4,7 +4,8 @@ import { upsertGuildConnection } from "../guildConnections/mutations";
 
 export const upsertOrgConfig = mutation({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     enabled: v.boolean(),
     clientId: v.string(),
     clientSecretEncrypted: v.string(),
@@ -14,6 +15,12 @@ export const upsertOrgConfig = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const now = Date.now();
+    const scope = args.scope ?? "org";
+    const organizationId =
+      typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) {
+      throw new Error("organizationId is required when scope=org");
+    }
 
     const looksEncrypted = (value: string): boolean =>
       value.startsWith("enc_v1:");
@@ -27,12 +34,14 @@ export const upsertOrgConfig = mutation({
     const guildId = args.guildId.trim();
     const existing = await ctx.db
       .query("orgConfigs")
-      .withIndex("by_organizationId", (q: any) =>
-        q.eq("organizationId", args.organizationId),
+      .withIndex("by_scope_and_organizationId", (q: any) =>
+        q.eq("scope", scope).eq("organizationId", organizationId),
       )
       .unique();
 
     const patch = {
+      scope,
+      organizationId,
       enabled: args.enabled,
       // Legacy fields (kept for migration/back-compat)
       clientId: args.clientId.trim(),
@@ -54,7 +63,7 @@ export const upsertOrgConfig = mutation({
       await ctx.db.patch(existing._id, patch);
       if (guildId) {
         await ctx.runMutation(upsertGuildConnection as any, {
-          organizationId: args.organizationId,
+          organizationId,
           guildId,
           guildName: undefined,
           botModeAtConnect: "custom",
@@ -65,12 +74,11 @@ export const upsertOrgConfig = mutation({
     }
 
     await ctx.db.insert("orgConfigs", {
-      organizationId: args.organizationId,
       ...patch,
     });
     if (guildId) {
       await ctx.runMutation(upsertGuildConnection as any, {
-        organizationId: args.organizationId,
+        organizationId,
         guildId,
         guildName: undefined,
         botModeAtConnect: "custom",
@@ -87,7 +95,8 @@ export const upsertOrgConfig = mutation({
  */
 export const upsertOrgConfigV2 = mutation({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     enabled: v.boolean(),
     botMode: v.union(v.literal("global"), v.literal("custom")),
     customClientId: v.optional(v.string()),
@@ -97,6 +106,12 @@ export const upsertOrgConfigV2 = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const now = Date.now();
+    const scope = args.scope ?? "org";
+    const organizationId =
+      typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) {
+      throw new Error("organizationId is required when scope=org");
+    }
 
     const looksEncrypted = (value: string): boolean => value.startsWith("enc_v1:");
 
@@ -122,12 +137,14 @@ export const upsertOrgConfigV2 = mutation({
 
     const existing = await ctx.db
       .query("orgConfigs")
-      .withIndex("by_organizationId", (q: any) =>
-        q.eq("organizationId", args.organizationId),
+      .withIndex("by_scope_and_organizationId", (q: any) =>
+        q.eq("scope", scope).eq("organizationId", organizationId),
       )
       .unique();
 
     const patch = {
+      scope,
+      organizationId,
       enabled: args.enabled,
       botMode: args.botMode,
       customClientId:
@@ -147,7 +164,54 @@ export const upsertOrgConfigV2 = mutation({
     }
 
     await ctx.db.insert("orgConfigs", {
-      organizationId: args.organizationId,
+      ...patch,
+    });
+    return null;
+  },
+});
+
+export const setOrgEnabled = mutation({
+  args: {
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
+    enabled: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const scope = args.scope ?? "org";
+    const organizationId =
+      typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) {
+      throw new Error("organizationId is required when scope=org");
+    }
+
+    const existing = await ctx.db
+      .query("orgConfigs")
+      .withIndex("by_scope_and_organizationId", (q: any) =>
+        q.eq("scope", scope).eq("organizationId", organizationId),
+      )
+      .unique();
+
+    const patch = {
+      scope,
+      organizationId,
+      enabled: args.enabled,
+      botMode: existing?.botMode ?? ("global" as const),
+      customClientId: existing?.customClientId,
+      customClientSecretEncrypted: existing?.customClientSecretEncrypted,
+      customBotTokenEncrypted: existing?.customBotTokenEncrypted,
+      connectedAt: existing?.connectedAt ?? now,
+      lastValidatedAt: now,
+      lastError: undefined,
+    };
+
+    if (existing) {
+      await ctx.db.patch(existing._id, patch);
+      return null;
+    }
+
+    await ctx.db.insert("orgConfigs", {
       ...patch,
     });
     return null;

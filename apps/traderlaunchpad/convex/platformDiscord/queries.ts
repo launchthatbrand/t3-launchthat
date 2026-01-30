@@ -12,25 +12,19 @@ import { components } from "../_generated/api";
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 
-const platformRoutingQueries = components.launchthat_discord.platformRouting
+const routingQueries = components.launchthat_discord.routing.queries as any;
+const templateQueries = components.launchthat_discord.templates.queries as any;
+const configQueries = components.launchthat_discord.orgConfigs.queries as any;
+const guildConnectionsQueries = components.launchthat_discord.guildConnections
   .queries as any;
-const platformTemplateQueries = components.launchthat_discord.platformTemplates
+const guildSettingsQueries = components.launchthat_discord.guildSettings
   .queries as any;
-const platformConfigQueries = components.launchthat_discord.platformConfigs
+const userLinksQueries = components.launchthat_discord.userLinks.queries as any;
+const userStreamingQueries =
+  components.launchthat_discord.userStreaming.queries as any;
+const automationsQueries = components.launchthat_discord.automations
   .queries as any;
-const platformGuildConnectionsQueries = components.launchthat_discord
-  .platformGuildConnections.queries as any;
-const platformGuildSettingsQueries = components.launchthat_discord
-  .platformGuildSettings.queries as any;
-const platformTemplatesQueries = components.launchthat_discord.platformTemplates
-  .queries as any;
-const platformUserLinksQueries = components.launchthat_discord.platformUserLinks
-  .queries as any;
-const platformUserStreamingQueries =
-  components.launchthat_discord.platformUserStreaming.queries as any;
-const platformAutomationsQueries = components.launchthat_discord.platformAutomations
-  .queries as any;
-const platformEventsQueries = components.launchthat_discord.platformEvents.queries as any;
+const eventsQueries = components.launchthat_discord.events.queries as any;
 
 const pricedataSources = (components as any).launchthat_pricedata?.sources?.queries as
   | any
@@ -62,7 +56,7 @@ export const getOrgConfig = query({
   returns: v.any(),
   handler: async (ctx) => {
     await ensureViewerOrDev(ctx);
-    return await ctx.runQuery(platformConfigQueries.getPlatformConfig, {});
+    return await ctx.runQuery(configQueries.getOrgConfig, { scope: "platform" });
   },
 });
 
@@ -72,8 +66,8 @@ export const listGuildConnectionsForOrg = query({
   handler: async (ctx) => {
     await ensureViewerOrDev(ctx);
     return await ctx.runQuery(
-      platformGuildConnectionsQueries.listGuildConnections,
-      {},
+      guildConnectionsQueries.listGuildConnectionsForOrg,
+      { scope: "platform", organizationId: undefined },
     );
   },
 });
@@ -83,7 +77,9 @@ export const getGuildSettings = query({
   returns: v.any(),
   handler: async (ctx, args) => {
     await ensureViewerOrDev(ctx);
-    return await ctx.runQuery(platformGuildSettingsQueries.getGuildSettings, {
+    return await ctx.runQuery(guildSettingsQueries.getGuildSettings, {
+      scope: "platform",
+      organizationId: undefined,
       guildId: args.guildId,
     });
   },
@@ -97,7 +93,9 @@ export const getTemplate = query({
   returns: v.any(),
   handler: async (ctx, args) => {
     await ensureViewerOrDev(ctx);
-    return await ctx.runQuery(platformTemplatesQueries.getTemplate, {
+    return await ctx.runQuery(templateQueries.getTemplate, {
+      scope: "platform",
+      organizationId: undefined,
       guildId: args.guildId,
       kind: args.kind,
     });
@@ -112,7 +110,9 @@ export const listTemplates = query({
   returns: v.any(),
   handler: async (ctx, args) => {
     await ensureViewerOrDev(ctx);
-    return await ctx.runQuery(platformTemplatesQueries.listTemplates, {
+    return await ctx.runQuery(templateQueries.listTemplates, {
+      scope: "platform",
+      organizationId: undefined,
       guildId: args.guildId,
       kind: args.kind,
     });
@@ -126,7 +126,9 @@ export const getTemplateById = query({
   returns: v.any(),
   handler: async (ctx, args) => {
     await ensureViewerOrDev(ctx);
-    return await ctx.runQuery(platformTemplatesQueries.getTemplateById, {
+    return await ctx.runQuery(templateQueries.getTemplateById, {
+      scope: "platform",
+      organizationId: undefined,
       templateId: args.templateId,
     });
   },
@@ -137,7 +139,8 @@ export const getMyDiscordLink = query({
   returns: v.any(),
   handler: async (ctx) => {
     const userId = (await ensureViewerOrDev(ctx)) ?? "local_dev";
-    return await ctx.runQuery(platformUserLinksQueries.getUserLink, {
+    return await ctx.runQuery(userLinksQueries.getUserLink, {
+      scope: "platform",
       userId,
     });
   },
@@ -164,7 +167,8 @@ export const getMyDiscordUserLink = query({
   }),
   handler: async (ctx) => {
     const userId = (await ensureViewerOrDev(ctx)) ?? "local_dev";
-    const link = await ctx.runQuery(platformUserLinksQueries.getUserLink, {
+    const link = await ctx.runQuery(userLinksQueries.getUserLink, {
+      scope: "platform",
       userId,
     });
     const linkedDiscordUserId =
@@ -174,8 +178,8 @@ export const getMyDiscordUserLink = query({
     const linkedAt = typeof link?.linkedAt === "number" ? link.linkedAt : null;
 
     const guildConnections = await ctx.runQuery(
-      platformGuildConnectionsQueries.listGuildConnections,
-      {},
+      guildConnectionsQueries.listGuildConnectionsForOrg,
+      { scope: "platform", organizationId: undefined },
     );
     const guilds = Array.isArray(guildConnections) ? guildConnections : [];
     const primaryGuild = guilds
@@ -187,7 +191,9 @@ export const getMyDiscordUserLink = query({
         : null;
     const guildSettings =
       guildId
-        ? await ctx.runQuery(platformGuildSettingsQueries.getGuildSettings, {
+        ? await ctx.runQuery(guildSettingsQueries.getGuildSettings, {
+            scope: "platform",
+            organizationId: undefined,
             guildId,
           })
         : null;
@@ -211,7 +217,9 @@ export const getMyDiscordUserLink = query({
         }
       : null;
 
-    const prefs = await ctx.runQuery(platformUserStreamingQueries.getUserStreamingPrefs, {
+    const prefs = await ctx.runQuery(userStreamingQueries.getUserStreamingPrefs, {
+      scope: "platform",
+      organizationId: undefined,
       userId,
     });
     const streamingEnabled =
@@ -267,7 +275,9 @@ export const getRoutingRuleSet = query({
   returns: v.any(),
   handler: async (ctx, args) => {
     await ensureViewerOrDev(ctx);
-    return await ctx.runQuery(platformRoutingQueries.getRoutingRuleSet, {
+    return await ctx.runQuery(routingQueries.getRoutingRuleSet, {
+      scope: "platform",
+      organizationId: undefined,
       guildId: args.guildId,
       kind: args.kind,
     });
@@ -282,7 +292,9 @@ export const listRoutingRules = query({
   returns: v.any(),
   handler: async (ctx, args) => {
     await ensureViewerOrDev(ctx);
-    return await ctx.runQuery(platformRoutingQueries.listRoutingRules, {
+    return await ctx.runQuery(routingQueries.listRoutingRules, {
+      scope: "platform",
+      organizationId: undefined,
       guildId: args.guildId,
       kind: args.kind,
     });
@@ -299,7 +311,9 @@ export const resolveChannelsForEvent = query({
   returns: v.array(v.string()),
   handler: async (ctx, args) => {
     await ensureViewerOrDev(ctx);
-    const result = await ctx.runQuery(platformRoutingQueries.resolveChannelsForEvent, {
+    const result = await ctx.runQuery(routingQueries.resolveChannelsForEvent, {
+      scope: "platform",
+      organizationId: undefined,
       guildId: args.guildId,
       kind: args.kind,
       actorRole: args.actorRole,
@@ -316,7 +330,9 @@ export const listAutomations = query({
   returns: v.any(),
   handler: async (ctx, args) => {
     await ensureViewerOrDev(ctx);
-    return await ctx.runQuery(platformAutomationsQueries.listAutomations, {
+    return await ctx.runQuery(automationsQueries.listAutomations, {
+      scope: "platform",
+      organizationId: undefined,
       guildId: args.guildId,
     });
   },
@@ -330,7 +346,9 @@ export const listDueAutomations = query({
   returns: v.any(),
   handler: async (ctx, args) => {
     await ensureViewerOrDev(ctx);
-    return await ctx.runQuery(platformAutomationsQueries.listDueAutomations, {
+    return await ctx.runQuery(automationsQueries.listDueAutomations, {
+      scope: "platform",
+      organizationId: undefined,
       now: args.now,
       limit: args.limit,
     });
@@ -346,7 +364,9 @@ export const listRecentEvents = query({
   returns: v.any(),
   handler: async (ctx, args) => {
     await resolveViewerUserId(ctx);
-    return await ctx.runQuery(platformEventsQueries.listRecentEvents, {
+    return await ctx.runQuery(eventsQueries.listRecentEvents, {
+      scope: "platform",
+      organizationId: undefined,
       guildId: args.guildId,
       eventKey: args.eventKey,
       limit: args.limit,
@@ -371,7 +391,9 @@ export const renderTradeIdeaMessage = query({
   returns: v.object({ content: v.string() }),
   handler: async (ctx, args) => {
     await resolveViewerUserId(ctx);
-    return await ctx.runQuery(platformTemplateQueries.renderTradeIdeaMessage, {
+    return await ctx.runQuery(templateQueries.renderTradeIdeaMessage, {
+      scope: "platform",
+      organizationId: undefined,
       guildId: args.guildId,
       templateId: args.templateId,
       symbol: args.symbol,

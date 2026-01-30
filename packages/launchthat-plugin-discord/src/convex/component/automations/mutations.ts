@@ -21,7 +21,8 @@ const computeNextRunAt = (args: {
 
 export const createAutomation = mutation({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     guildId: v.string(),
     name: v.string(),
     enabled: v.boolean(),
@@ -38,16 +39,18 @@ export const createAutomation = mutation({
   returns: v.id("discordAutomations"),
   handler: async (ctx, args) => {
     const now = Date.now();
+    const scope = args.scope ?? "org";
     const organizationId = norm(args.organizationId);
     const guildId = norm(args.guildId);
     const name = norm(args.name) || "Untitled automation";
 
-    if (!organizationId) throw new Error("Missing organizationId");
+    if (scope === "org" && !organizationId) throw new Error("Missing organizationId");
     if (!guildId) throw new Error("Missing guildId");
 
     const nextRunAt = args.enabled ? computeNextRunAt({ now, trigger: args.trigger }) : null;
 
     return await ctx.db.insert("discordAutomations", {
+      scope,
       organizationId,
       guildId,
       name,
@@ -69,7 +72,8 @@ export const createAutomation = mutation({
 
 export const updateAutomation = mutation({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     automationId: v.id("discordAutomations"),
     name: v.optional(v.string()),
     enabled: v.optional(v.boolean()),
@@ -90,7 +94,12 @@ export const updateAutomation = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const row = await ctx.db.get(args.automationId);
-    if (!row || row.organizationId !== args.organizationId) {
+    const scope = args.scope ?? "org";
+    const organizationId = norm(args.organizationId);
+    if (!row || row.scope !== scope) {
+      throw new Error("Automation not found");
+    }
+    if (scope === "org" && row.organizationId !== organizationId) {
       throw new Error("Automation not found");
     }
 
@@ -122,13 +131,17 @@ export const updateAutomation = mutation({
 
 export const deleteAutomation = mutation({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     automationId: v.id("discordAutomations"),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const row = await ctx.db.get(args.automationId);
-    if (!row || row.organizationId !== args.organizationId) return null;
+    const scope = args.scope ?? "org";
+    const organizationId = norm(args.organizationId);
+    if (!row || row.scope !== scope) return null;
+    if (scope === "org" && row.organizationId !== organizationId) return null;
     await ctx.db.delete(args.automationId);
     return null;
   },
@@ -136,7 +149,8 @@ export const deleteAutomation = mutation({
 
 export const markAutomationRun = mutation({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     automationId: v.id("discordAutomations"),
     lastRunAt: v.optional(v.number()),
     nextRunAt: v.optional(v.number()),
@@ -145,7 +159,12 @@ export const markAutomationRun = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const row = await ctx.db.get(args.automationId);
-    if (!row || row.organizationId !== args.organizationId) {
+    const scope = args.scope ?? "org";
+    const organizationId = norm(args.organizationId);
+    if (!row || row.scope !== scope) {
+      throw new Error("Automation not found");
+    }
+    if (scope === "org" && row.organizationId !== organizationId) {
       throw new Error("Automation not found");
     }
 

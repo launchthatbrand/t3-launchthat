@@ -4,13 +4,19 @@ import { query } from "../server";
 import type { Id } from "../_generated/dataModel";
 
 export const getGuildSettings = query({
-  args: { organizationId: v.string(), guildId: v.string() },
+  args: {
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
+    guildId: v.string(),
+  },
   returns: v.union(
     v.null(),
     v.object({
-      organizationId: v.string(),
+      scope: v.union(v.literal("org"), v.literal("platform")),
+      organizationId: v.optional(v.string()),
       guildId: v.string(),
       inviteUrl: v.optional(v.string()),
+      autoJoinEnabled: v.optional(v.boolean()),
       approvedMemberRoleId: v.optional(v.string()),
       supportAiEnabled: v.boolean(),
       supportForumChannelId: v.optional(v.string()),
@@ -32,19 +38,27 @@ export const getGuildSettings = query({
     }),
   ),
   handler: async (ctx, args) => {
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) return null;
     const row = await ctx.db
       .query("guildSettings")
-      .withIndex("by_organizationId_and_guildId", (q: any) =>
-        q.eq("organizationId", args.organizationId).eq("guildId", args.guildId),
+      .withIndex("by_scope_and_organizationId_and_guildId", (q: any) =>
+        q.eq("scope", scope).eq("organizationId", organizationId).eq("guildId", args.guildId),
       )
       .first();
     if (!row) return null;
     return {
-      organizationId: String((row as any).organizationId ?? ""),
+      scope: (row as any).scope === "platform" ? ("platform" as const) : ("org" as const),
+      organizationId: (row as any).organizationId,
       guildId: String((row as any).guildId ?? ""),
       inviteUrl:
         typeof (row as any).inviteUrl === "string"
           ? ((row as any).inviteUrl as string)
+          : undefined,
+      autoJoinEnabled:
+        typeof (row as any).autoJoinEnabled === "boolean"
+          ? ((row as any).autoJoinEnabled as boolean)
           : undefined,
       approvedMemberRoleId:
         typeof (row as any).approvedMemberRoleId === "string"

@@ -12,6 +12,7 @@ export const peekOauthState = query({
   args: { state: v.string() },
   returns: v.union(
     v.object({
+      scope: v.union(v.literal("org"), v.literal("platform")),
       organizationId: v.optional(v.string()),
       kind: v.union(v.literal("org_install"), v.literal("user_link")),
       userId: v.optional(v.string()),
@@ -29,6 +30,7 @@ export const peekOauthState = query({
       .unique();
     if (!row) return null;
     return {
+      scope: row.scope === "platform" ? ("platform" as const) : ("org" as const),
       organizationId: row.organizationId,
       kind: row.kind,
       userId: row.userId,

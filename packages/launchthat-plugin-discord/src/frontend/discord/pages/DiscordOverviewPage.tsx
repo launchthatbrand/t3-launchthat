@@ -1,11 +1,12 @@
 "use client";
 
 import React from "react";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 
 import { Badge } from "@acme/ui/badge";
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
+import { Switch } from "@acme/ui/switch";
 
 import type { DiscordPageProps } from "../types";
 import { getDiscordAdminRoute } from "../router/routes";
@@ -24,6 +25,7 @@ export function DiscordOverviewPage({
     api.queries.getOrgConfig,
     organizationId ? { organizationId } : {},
   );
+  const setOrgDiscordEnabled = useMutation(api.mutations.setOrgDiscordEnabled);
   const guildConnections = useQuery(
     api.queries.listGuildConnectionsForOrg,
     organizationId ? { organizationId } : {},
@@ -31,6 +33,7 @@ export function DiscordOverviewPage({
 
   const enabled = orgConfig?.enabled ?? false;
   const botMode = orgConfig?.botMode ?? "global";
+  const [settingEnabled, setSettingEnabled] = React.useState(false);
   const guildCount = Array.isArray(guildConnections)
     ? guildConnections.length
     : 0;
@@ -84,6 +87,21 @@ export function DiscordOverviewPage({
             >
               {enabled ? "Enabled" : "Disabled"}
             </Badge>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-muted-foreground text-sm">
+                Allow org Discord actions
+              </div>
+              <Switch
+                checked={enabled}
+                disabled={settingEnabled}
+                onCheckedChange={(checked) => {
+                  setSettingEnabled(true);
+                  void setOrgDiscordEnabled(
+                    organizationId ? { organizationId, enabled: checked } : { enabled: checked },
+                  ).finally(() => setSettingEnabled(false));
+                }}
+              />
+            </div>
             <p className="text-muted-foreground text-sm">
               Bot mode:{" "}
               <span className="text-foreground font-medium">{botMode}</span>

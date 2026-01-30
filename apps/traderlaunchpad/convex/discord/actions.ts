@@ -1,14 +1,17 @@
+/* eslint-disable no-restricted-properties */
+/* eslint-disable turbo/no-undeclared-env-vars */
 "use node";
 
-import { exchangeDiscordCode } from "launchthat-plugin-discord/runtime/oauth";
+import { addGuildMember, fetchDiscordProfile, verifyGuildMembership } from "launchthat-plugin-discord/runtime";
+import { api, components } from "../_generated/api";
 import { discordJson, discordMultipart } from "launchthat-plugin-discord/runtime/discordApi";
 import { resolveOrganizationId, resolveViewerUserId } from "../traderlaunchpad/lib/resolve";
 
 import { action } from "../_generated/server";
-import { api, components } from "../_generated/api";
+import { buildSnapshotPreview } from "../platform/test/helpers";
+import { exchangeDiscordCode } from "launchthat-plugin-discord/runtime/oauth";
 import { resolveDiscordCredentials } from "launchthat-plugin-discord/runtime/credentials";
 import { v } from "convex/values";
-import { buildSnapshotPreview } from "../platform/test/helpers";
 
 const discordOauthMutations = components.launchthat_discord.oauth.mutations as any;
 const discordOauthHelperQueries =
@@ -17,6 +20,8 @@ const discordGuildConnectionMutations =
   components.launchthat_discord.guildConnections.mutations as any;
 const discordGuildConnectionQueries =
   components.launchthat_discord.guildConnections.queries as any;
+const discordGuildSettingsQueries =
+  components.launchthat_discord.guildSettings.queries as any;
 const discordOrgConfigMutations =
   components.launchthat_discord.orgConfigs.mutations as any;
 const discordOrgConfigQueries =
@@ -61,79 +66,6 @@ const randomState = (): string => {
     .join("");
 };
 
-const verifyGuildMembership = async (args: {
-  botToken: string;
-  guildId: string;
-  discordUserId: string;
-}): Promise<boolean> => {
-  const res = await fetch(
-    `https://discord.com/api/v10/guilds/${encodeURIComponent(args.guildId)}/members/${encodeURIComponent(args.discordUserId)}`,
-    {
-      headers: { Authorization: `Bot ${args.botToken}` },
-    },
-  );
-  if (res.status === 404) return false;
-  if (res.ok) return true;
-  const text = await res.text().catch(() => "");
-  throw new Error(
-    `Discord membership check failed: ${res.status} ${text}`.slice(0, 400),
-  );
-};
-
-const addGuildMember = async (args: {
-  botToken: string;
-  guildId: string;
-  discordUserId: string;
-  accessToken: string;
-}): Promise<boolean> => {
-  const res = await fetch(
-    `https://discord.com/api/v10/guilds/${encodeURIComponent(args.guildId)}/members/${encodeURIComponent(args.discordUserId)}`,
-    {
-      method: "PUT",
-      headers: {
-        Authorization: `Bot ${args.botToken}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ access_token: args.accessToken }),
-    },
-  );
-  if (res.status === 204 || res.status === 201) return true;
-  if (res.status === 409) return true; // already a member
-  const text = await res.text().catch(() => "");
-  console.log("[discord.addGuildMember] failed", res.status, text.slice(0, 300));
-  return false;
-};
-
-const fetchDiscordProfile = async (accessToken: string) => {
-  const res = await fetch("https://discord.com/api/v10/users/@me", {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "me_failed");
-    throw new Error(
-      `Discord /users/@me failed: ${res.status} ${text}`.slice(0, 400),
-    );
-  }
-  const meJson = (await res.json()) as {
-    id?: string;
-    username?: string;
-    discriminator?: string;
-    avatar?: string;
-    global_name?: string;
-  };
-  const discordUserId = typeof meJson?.id === "string" ? meJson.id : "";
-  if (!discordUserId) {
-    throw new Error("Discord user id missing from /users/@me");
-  }
-  return {
-    discordUserId,
-    username: typeof meJson.username === "string" ? meJson.username : undefined,
-    discriminator:
-      typeof meJson.discriminator === "string" ? meJson.discriminator : undefined,
-    avatar: typeof meJson.avatar === "string" ? meJson.avatar : undefined,
-    globalName: typeof meJson.global_name === "string" ? meJson.global_name : undefined,
-  };
-};
 
 export const listGuildChannels = action({
   args: {
@@ -161,18 +93,18 @@ export const listGuildChannels = action({
 
     const orgSecrets = (await ctx.runQuery(
       discordOrgConfigInternalQueries.getOrgConfigSecrets,
-      { organizationId },
+      { scope: "org", organizationId },
     )) as
       | {
-          enabled: boolean;
-          botMode: "global" | "custom";
-          customClientId?: string;
-          customClientSecretEncrypted?: string;
-          customBotTokenEncrypted?: string;
-          clientId?: string;
-          clientSecretEncrypted?: string;
-          botTokenEncrypted?: string;
-        }
+        enabled: boolean;
+        botMode: "global" | "custom";
+        customClientId?: string;
+        customClientSecretEncrypted?: string;
+        customBotTokenEncrypted?: string;
+        clientId?: string;
+        clientSecretEncrypted?: string;
+        botTokenEncrypted?: string;
+      }
       | null;
 
     if (!orgSecrets?.enabled) {
@@ -261,18 +193,18 @@ export const sendTestDiscordMessage = action({
 
     const orgSecrets = (await ctx.runQuery(
       discordOrgConfigInternalQueries.getOrgConfigSecrets,
-      { organizationId },
+      { scope: "org", organizationId },
     )) as
       | {
-          enabled: boolean;
-          botMode: "global" | "custom";
-          customClientId?: string;
-          customClientSecretEncrypted?: string;
-          customBotTokenEncrypted?: string;
-          clientId?: string;
-          clientSecretEncrypted?: string;
-          botTokenEncrypted?: string;
-        }
+        enabled: boolean;
+        botMode: "global" | "custom";
+        customClientId?: string;
+        customClientSecretEncrypted?: string;
+        customBotTokenEncrypted?: string;
+        clientId?: string;
+        clientSecretEncrypted?: string;
+        botTokenEncrypted?: string;
+      }
       | null;
 
     if (!orgSecrets?.enabled) {
@@ -584,7 +516,7 @@ export const sendTemplateTest = action({
 
     const orgSecrets = (await ctx.runQuery(
       (components as any).launchthat_discord.orgConfigs.internalQueries.getOrgConfigSecrets,
-      { organizationId },
+      { scope: "org", organizationId },
     )) as any;
     if (!orgSecrets?.enabled) throw new Error("Discord is not enabled for this organization");
 
@@ -614,25 +546,25 @@ export const sendTemplateTest = action({
 
     const res = imageBase64
       ? await discordMultipart({
-          botToken,
-          method: "POST",
-          url: `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages`,
-          payloadJson: {
-            content: "",
-            embeds: [{ description: content, image: { url: `attachment://${filename}` } }],
-          },
-          file: {
-            name: filename,
-            bytes: new Uint8Array(Buffer.from(imageBase64, "base64")),
-            contentType,
-          },
-        })
+        botToken,
+        method: "POST",
+        url: `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages`,
+        payloadJson: {
+          content: "",
+          embeds: [{ description: content, image: { url: `attachment://${filename}` } }],
+        },
+        file: {
+          name: filename,
+          bytes: new Uint8Array(Buffer.from(imageBase64, "base64")),
+          contentType,
+        },
+      })
       : await discordJson({
-          botToken,
-          method: "POST",
-          url: `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages`,
-          body: { content },
-        });
+        botToken,
+        method: "POST",
+        url: `https://discord.com/api/v10/channels/${encodeURIComponent(channelId)}/messages`,
+        body: { content },
+      });
 
     if (!res.ok) {
       throw new Error(`Discord send failed (${res.status}): ${res.text.slice(0, 200)}`);
@@ -750,6 +682,7 @@ export const completeBotInstall = action({
     }
 
     await ctx.runMutation(discordGuildConnectionMutations.upsertGuildConnection, {
+      scope: "org",
       organizationId,
       guildId,
       guildName,
@@ -760,6 +693,7 @@ export const completeBotInstall = action({
     // Ensure org-level config is considered "enabled" once a guild is connected.
     // This is important for user-facing pages like /admin/integrations/discord.
     await ctx.runMutation(discordOrgConfigMutations.upsertOrgConfigV2, {
+      scope: "org",
       organizationId,
       enabled: true,
       botMode: "global",
@@ -801,6 +735,7 @@ export const startBotInstall = action({
 
     const state = randomState();
     await ctx.runMutation(discordOauthMutations.createOauthState, {
+      scope: "org",
       organizationId,
       kind: "org_install",
       userId: undefined,
@@ -841,6 +776,7 @@ export const disconnectGuild = action({
         : resolveOrganizationId();
     await resolveViewerUserId(ctx);
     await ctx.runMutation(discordGuildConnectionMutations.deleteGuildConnection, {
+      scope: "org",
       organizationId,
       guildId: args.guildId,
     });
@@ -874,8 +810,9 @@ export const startUserLink = action({
 
     const orgConfig = organizationId
       ? await ctx.runQuery(discordOrgConfigQueries.getOrgConfig, {
+          scope: "org",
           organizationId,
-        })
+      })
       : null;
 
     const botMode =
@@ -884,11 +821,11 @@ export const startUserLink = action({
     const clientId =
       botMode === "custom"
         ? (typeof orgConfig?.customClientId === "string" && orgConfig.customClientId.trim()) ||
-          (typeof orgConfig?.clientId === "string" && orgConfig.clientId.trim()) ||
-          ""
+        (typeof orgConfig?.clientId === "string" && orgConfig.clientId.trim()) ||
+        ""
         : (process.env.DISCORD_GLOBAL_CLIENT_ID ??
-            process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID ??
-            "").trim();
+          process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID ??
+          "").trim();
 
     if (!clientId) {
       throw new Error(
@@ -898,8 +835,34 @@ export const startUserLink = action({
       );
     }
 
+    let autoJoinEnabled = false;
+    if (organizationId) {
+      const guildConnections = await ctx.runQuery(
+        discordGuildConnectionQueries.listGuildConnectionsForOrg,
+        { scope: "org", organizationId },
+      );
+      const guilds = Array.isArray(guildConnections) ? guildConnections : [];
+      const primaryGuild = guilds
+        .slice()
+        .sort(
+          (a: any, b: any) => Number(b?.connectedAt ?? 0) - Number(a?.connectedAt ?? 0),
+        )[0];
+      const primaryGuildId =
+        typeof primaryGuild?.guildId === "string" ? primaryGuild.guildId.trim() : "";
+      if (primaryGuildId) {
+        const settings = await ctx.runQuery(discordGuildSettingsQueries.getGuildSettings, {
+          scope: "org",
+          organizationId,
+          guildId: primaryGuildId,
+        });
+        autoJoinEnabled = Boolean((settings as any)?.autoJoinEnabled);
+      }
+    }
+
     const state = randomState();
+    const scope = organizationId ? "org" : "platform";
     await ctx.runMutation(discordOauthMutations.createOauthState, {
+      scope,
       organizationId: organizationId ?? undefined,
       kind: "user_link",
       userId,
@@ -909,14 +872,18 @@ export const startUserLink = action({
       callbackPath: "/auth/discord/link/callback",
     });
 
-    const scope = encodeURIComponent(
-      organizationId ? "identify" : "identify guilds.join",
+    const oauthScope = encodeURIComponent(
+      organizationId
+        ? autoJoinEnabled
+          ? "identify guilds.join"
+          : "identify"
+        : "identify guilds.join",
     );
     const url =
       `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(clientId)}` +
       `&response_type=code` +
       `&redirect_uri=${encodeURIComponent(redirect.redirectUri)}` +
-      `&scope=${scope}` +
+      `&scope=${oauthScope}` +
       `&state=${encodeURIComponent(state)}` +
       `&prompt=consent`;
 
@@ -946,6 +913,7 @@ export const completeUserLink = action({
     if (!consumed || consumed.kind !== "user_link") {
       throw new Error("Invalid or expired Discord link state");
     }
+    const scope = consumed.scope === "platform" ? "platform" : "org";
 
     const organizationIdRaw =
       typeof consumed.organizationId === "string" && consumed.organizationId.trim()
@@ -968,12 +936,15 @@ export const completeUserLink = action({
       callbackPath,
     });
 
-    const secrets = organizationIdRaw
+    const secrets = scope === "org" && organizationIdRaw
       ? await ctx.runQuery(discordOrgConfigInternalQueries.getOrgConfigSecrets, {
-          organizationId: organizationIdRaw,
-        })
+        scope,
+        organizationId: organizationIdRaw,
+      })
       : null;
-    if (organizationIdRaw && !secrets) throw new Error("Discord org config missing");
+    if (scope === "org" && organizationIdRaw && !secrets) {
+      throw new Error("Discord org config missing");
+    }
 
     const creds = await resolveDiscordCredentials({
       botMode: secrets?.botMode === "custom" ? "custom" : "global",
@@ -998,10 +969,10 @@ export const completeUserLink = action({
     const profile = await fetchDiscordProfile(token.accessToken);
 
     let guildId: string | null = null;
-    if (organizationIdRaw) {
+    if (scope === "org" && organizationIdRaw) {
       const guildConnectionsUnknown = await ctx.runQuery(
         discordGuildConnectionQueries.listGuildConnectionsForOrg,
-        { organizationId: organizationIdRaw },
+        { scope, organizationId: organizationIdRaw },
       );
       const guilds = Array.isArray(guildConnectionsUnknown)
         ? guildConnectionsUnknown
@@ -1015,15 +986,39 @@ export const completeUserLink = action({
         throw new Error("No Discord guild connected for this organization");
       }
 
-      const isMember = await verifyGuildMembership({
-        botToken: creds.botToken,
-        guildId,
-        discordUserId: profile.discordUserId,
-      });
-      if (!isMember) {
-        throw new Error(
-          "You must join the organization Discord server before connecting streaming.",
-        );
+      const guildSettings = await ctx.runQuery(
+        discordGuildSettingsQueries.getGuildSettings,
+        { scope, organizationId: organizationIdRaw, guildId },
+      );
+      const autoJoinEnabled = Boolean((guildSettings as any)?.autoJoinEnabled);
+      if (autoJoinEnabled && creds.botToken) {
+        const added = await addGuildMember({
+          botToken: creds.botToken,
+          guildId,
+          discordUserId: profile.discordUserId,
+          accessToken: token.accessToken,
+        });
+        if (!added) {
+          const isMember = await verifyGuildMembership({
+            botToken: creds.botToken,
+            guildId,
+            discordUserId: profile.discordUserId,
+          });
+          if (!isMember) {
+            throw new Error("Failed to add you to the organization Discord server.");
+          }
+        }
+      } else {
+        const isMember = await verifyGuildMembership({
+          botToken: creds.botToken,
+          guildId,
+          discordUserId: profile.discordUserId,
+        });
+        if (!isMember) {
+          throw new Error(
+            "You must join the organization Discord server before connecting streaming.",
+          );
+        }
       }
     } else {
       const envGuildId =
@@ -1042,6 +1037,7 @@ export const completeUserLink = action({
     }
 
     await ctx.runMutation(discordUserLinksMutations.linkUser, {
+      scope,
       organizationId: organizationIdRaw ?? undefined,
       userId,
       discordUserId: profile.discordUserId,
@@ -1050,13 +1046,12 @@ export const completeUserLink = action({
       discordGlobalName: profile.globalName,
       discordAvatar: profile.avatar,
     });
-    if (organizationIdRaw) {
-      await ctx.runMutation(discordUserStreamingMutations.setUserStreamingEnabled, {
-        organizationId: organizationIdRaw,
-        userId,
-        enabled: true,
-      });
-    }
+    await ctx.runMutation(discordUserStreamingMutations.setUserStreamingEnabled, {
+      scope,
+      organizationId: organizationIdRaw ?? undefined,
+      userId,
+      enabled: true,
+    });
 
     return {
       organizationId: organizationIdRaw,

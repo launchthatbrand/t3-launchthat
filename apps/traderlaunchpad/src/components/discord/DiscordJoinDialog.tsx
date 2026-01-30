@@ -2,11 +2,12 @@
 
 import * as React from "react";
 import { useAction, useQuery, useConvexAuth } from "convex/react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@acme/ui/dialog";
 import { Button } from "@acme/ui/button";
 import { api } from "@convex-config/_generated/api";
+import { useDiscordOAuthCallback, stripDiscordOauthParams } from "./useDiscordOAuthCallback";
 
 const normalizeInviteUrl = (value: string | null): string | null => {
   const raw = typeof value === "string" ? value.trim() : "";
@@ -17,7 +18,6 @@ const normalizeInviteUrl = (value: string | null): string | null => {
 
 export const DiscordJoinDialog = () => {
   const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading } = useConvexAuth();
 
@@ -35,60 +35,20 @@ export const DiscordJoinDialog = () => {
   const [open, setOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
 
-  const oauthState = (searchParams.get("state") ?? "").trim();
-  const oauthCode = (searchParams.get("code") ?? "").trim();
-  const oauthError = (searchParams.get("error") ?? "").trim();
-  const oauthErrorDescription = (searchParams.get("error_description") ?? "").trim();
-  const oauthScope = (searchParams.get("discordScope") ?? "").trim();
-
-  const stripOauthParams = (url: string): string => {
-    const u = new URL(url);
-    u.searchParams.delete("state");
-    u.searchParams.delete("code");
-    u.searchParams.delete("error");
-    u.searchParams.delete("error_description");
-    u.searchParams.delete("guild_id");
-    u.searchParams.delete("discordScope");
-    return u.toString();
-  };
-
-  React.useEffect(() => {
-    if (!oauthState) return;
-    if (oauthScope && oauthScope !== "platform") return;
-    if (!isAuthenticated || isLoading) return;
-
-    const clearUrl = () => router.replace(stripOauthParams(window.location.href));
-
-    if (oauthError) {
-      clearUrl();
-      return;
-    }
-
-    if (!oauthCode) return;
-
-    void (async () => {
-      try {
-        await completePlatformUserLink({ state: oauthState, code: oauthCode });
-      } finally {
-        clearUrl();
-      }
-    })();
-  }, [
-    completePlatformUserLink,
-    isAuthenticated,
-    isLoading,
-    oauthCode,
-    oauthError,
-    oauthScope,
-    oauthState,
-    router,
-  ]);
+  useDiscordOAuthCallback({
+    scope: "platform",
+    onCompletePlatform: ({ state, code }) =>
+      completePlatformUserLink({ state, code }),
+    requireAuth: true,
+  });
 
   React.useEffect(() => {
     if (!isAuthenticated || isLoading) return;
     if (!platformLink) return;
     if (platformLink.linkedDiscordUserId) return;
     if (!platformLink.guildId && !platformLink.inviteUrl) return;
+    const oauthState = (searchParams.get("state") ?? "").trim();
+    const oauthCode = (searchParams.get("code") ?? "").trim();
     if (oauthState || oauthCode) return;
     if (
       pathname.startsWith("/sign-in") ||
@@ -119,7 +79,7 @@ export const DiscordJoinDialog = () => {
     if (busy) return;
     setBusy(true);
     try {
-      const url = new URL(window.location.href);
+      const url = new URL(stripDiscordOauthParams(window.location.href));
       url.searchParams.set("discordScope", "platform");
       const returnTo = url.toString();
       const result = (await startPlatformUserLink({ returnTo })) as { url?: string };

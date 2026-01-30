@@ -4,7 +4,8 @@ import { mutation } from "../server";
 
 export const upsertRoutingRuleSet = mutation({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     guildId: v.string(),
     kind: v.union(v.literal("trade_feed")),
     matchStrategy: v.union(
@@ -16,18 +17,21 @@ export const upsertRoutingRuleSet = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const now = Date.now();
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) {
+      throw new Error("organizationId is required when scope=org");
+    }
     const existing = await ctx.db
       .query("routingRuleSets")
-      .withIndex("by_organizationId_and_guildId_and_kind", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("guildId", args.guildId)
-          .eq("kind", args.kind),
+      .withIndex("by_scope_and_organizationId_and_guildId_and_kind", (q: any) =>
+        q.eq("scope", scope).eq("organizationId", organizationId).eq("guildId", args.guildId).eq("kind", args.kind),
       )
       .unique();
 
     const patch = {
-      organizationId: args.organizationId,
+      scope,
+      organizationId,
       guildId: args.guildId,
       kind: args.kind,
       matchStrategy: args.matchStrategy,
@@ -45,7 +49,8 @@ export const upsertRoutingRuleSet = mutation({
 
 export const replaceRoutingRules = mutation({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     guildId: v.string(),
     kind: v.union(v.literal("trade_feed")),
     rules: v.array(
@@ -70,14 +75,16 @@ export const replaceRoutingRules = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const now = Date.now();
+    const scope = args.scope ?? "org";
+    const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
+    if (scope === "org" && !organizationId) {
+      throw new Error("organizationId is required when scope=org");
+    }
 
     const existing = await ctx.db
       .query("routingRules")
-      .withIndex("by_organizationId_and_guildId_and_kind", (q: any) =>
-        q
-          .eq("organizationId", args.organizationId)
-          .eq("guildId", args.guildId)
-          .eq("kind", args.kind),
+      .withIndex("by_scope_and_organizationId_and_guildId_and_kind", (q: any) =>
+        q.eq("scope", scope).eq("organizationId", organizationId).eq("guildId", args.guildId).eq("kind", args.kind),
       )
       .collect();
 
@@ -87,7 +94,8 @@ export const replaceRoutingRules = mutation({
 
     for (const rule of args.rules) {
       await ctx.db.insert("routingRules", {
-        organizationId: args.organizationId,
+        scope,
+        organizationId,
         guildId: args.guildId,
         kind: args.kind,
         channelKind: rule.channelKind,

@@ -8,7 +8,7 @@
 
 import React from "react";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { api } from "@convex-config/_generated/api";
 import { Badge } from "@acme/ui/badge";
@@ -16,6 +16,7 @@ import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 import { Switch } from "@acme/ui/switch";
 import { toast } from "@acme/ui";
+import { useDiscordOAuthCallback } from "~/components/discord/useDiscordOAuthCallback";
 
 import { useTenant } from "~/context/TenantContext";
 
@@ -67,7 +68,6 @@ export function DiscordUserSettingsClient() {
   const tenant = useTenant();
   const isOrgMode = Boolean(tenant && tenant.slug !== "platform");
 
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
@@ -192,76 +192,27 @@ export function DiscordUserSettingsClient() {
   const handledLinkRef = React.useRef<string | null>(null);
   const unauthNotifiedRef = React.useRef(false);
 
-  const oauthState = (searchParams.get("state") ?? "").trim();
-  const oauthCode = (searchParams.get("code") ?? "").trim();
-  const oauthError = (searchParams.get("error") ?? "").trim();
-  const oauthErrorDescription = (
-    searchParams.get("error_description") ?? ""
-  ).trim();
-  const oauthScope = (searchParams.get("discordScope") ?? "").trim();
-
-  React.useEffect(() => {
-    if (!oauthState) return;
-    if (authLoading) return;
-    if (!isAuthenticated) {
+  useDiscordOAuthCallback({
+    scope: "any",
+    onCompletePlatform: ({ state, code }) =>
+      completePlatformUserLink({ state, code }),
+    onCompleteOrg: ({ state, code }) => {
+      return completeUserLink({ state, code }).then(() => undefined);
+    },
+    onAuthRequired: () => {
       if (!unauthNotifiedRef.current) {
         toast.error("Please sign in to finish connecting Discord.");
         unauthNotifiedRef.current = true;
       }
-      return;
-    }
-    unauthNotifiedRef.current = false;
-
-    // Always clear the URL after we handle it.
-    const clearUrl = () => router.replace(pathname);
-
-    if (oauthError) {
-      toast.error(
-        oauthErrorDescription
-          ? `Discord connect failed: ${oauthErrorDescription}`
-          : `Discord connect failed: ${oauthError}`,
-      );
-      clearUrl();
-      return;
-    }
-
-    if (!oauthCode) return;
-
-    const handledKey = `${oauthState}::${oauthCode}`;
-    if (handledLinkRef.current === handledKey) return;
-    handledLinkRef.current = handledKey;
-
-    void (async () => {
-      try {
-        if (oauthScope === "platform") {
-          await completePlatformUserLink({ state: oauthState, code: oauthCode });
-        } else {
-          await completeUserLink({ state: oauthState, code: oauthCode });
-        }
-        toast.success("Discord connected.");
-      } catch (err) {
-        toast.error(
-          err instanceof Error
-            ? err.message
-            : "Failed to complete Discord connect.",
-        );
-      } finally {
-        clearUrl();
-      }
-    })();
-  }, [
-    authLoading,
-    completeUserLink,
-    completePlatformUserLink,
-    isAuthenticated,
-    oauthCode,
-    oauthError,
-    oauthErrorDescription,
-    oauthState,
-    oauthScope,
-    pathname,
-    router,
-  ]);
+    },
+    onSuccess: () => {
+      unauthNotifiedRef.current = false;
+      toast.success("Discord connected.");
+    },
+    onError: (message) => {
+      toast.error(message || "Failed to complete Discord connect.");
+    },
+  });
 
   const buildReturnTo = (scope: "platform" | "org") => {
     const base = stripOauthParams(window.location.href);
@@ -446,7 +397,7 @@ export function DiscordUserSettingsClient() {
                 </Badge>
               </div>
               <div className="mt-1 text-xs text-muted-foreground">
-                Manage your platform-level Discord permissions.
+                Manage your platform Discord link and streaming preferences.
               </div>
             </div>
           </div>
@@ -474,7 +425,7 @@ export function DiscordUserSettingsClient() {
           <div className="flex flex-wrap gap-2">
             {!platformIsLinked ? (
               <Button disabled={platformBusy} onClick={() => void handleConnectPlatform()}>
-                Connect Discord
+                Link Discord
               </Button>
             ) : (
               <Button
@@ -491,7 +442,7 @@ export function DiscordUserSettingsClient() {
                 disabled={platformBusy}
                 onClick={() => window.open(platformInviteUrl, "_blank")}
               >
-                Join TraderLaunchpad Discord
+                Join server
               </Button>
             ) : null}
           </div>
@@ -546,6 +497,9 @@ export function DiscordUserSettingsClient() {
                       <div className="truncate text-base font-semibold">
                         {org.name}
                       </div>
+                      <Badge variant="secondary" className="border-border/40">
+                        Organization
+                      </Badge>
                       <Badge variant="secondary" className="border-border/40">
                         {org.userRole}
                       </Badge>
@@ -607,7 +561,7 @@ export function DiscordUserSettingsClient() {
                       disabled={!canConnect || isBusy}
                       onClick={() => void handleConnectOrg(org._id)}
                     >
-                      {canConnect ? "Connect" : "Unavailable"}
+                      {canConnect ? "Link Discord" : "Unavailable"}
                     </Button>
                   ) : (
                     <Button
@@ -625,15 +579,15 @@ export function DiscordUserSettingsClient() {
                       disabled={isBusy}
                       onClick={() => window.open(inviteUrl, "_blank")}
                     >
-                      Join org Discord
+                      Join server
                     </Button>
                   ) : null}
                 </div>
 
                 {!canConnect ? (
                   <div className="rounded-lg border border-border/60 bg-black/20 p-3 text-xs text-muted-foreground">
-                    Ask an org admin to enable Discord and connect a guild on{" "}
-                    <span className="font-medium">Admin → Connections → Discord</span>.
+                    Ask an org admin to enable Discord and connect a guild under{" "}
+                    <span className="font-medium">Connections → Discord</span>.
                   </div>
                 ) : null}
 

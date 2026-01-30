@@ -72,6 +72,7 @@ export const migrateLegacyOrgConfig = internalMutation({
 
     if (!existingConn) {
       await ctx.db.insert("guildConnections", {
+        scope: "org",
         organizationId: args.organizationId,
         guildId: legacyGuildId,
         guildName: undefined,

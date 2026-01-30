@@ -21,13 +21,15 @@ const normalizeRow = (row: any) => ({
 
 export const listAutomations = query({
   args: {
-    organizationId: v.string(),
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
+    organizationId: v.optional(v.string()),
     guildId: v.string(),
   },
   returns: v.array(
     v.object({
       id: v.string(),
-      organizationId: v.string(),
+      scope: v.union(v.literal("org"), v.literal("platform")),
+      organizationId: v.optional(v.string()),
       guildId: v.string(),
       name: v.string(),
       enabled: v.boolean(),
@@ -41,24 +43,33 @@ export const listAutomations = query({
     }),
   ),
   handler: async (ctx, args) => {
+    const scope = args.scope ?? "org";
     const organizationId = norm(args.organizationId);
     const guildId = norm(args.guildId);
-    if (!organizationId || !guildId) return [];
+    if (!guildId) return [];
+    if (scope === "org" && !organizationId) return [];
 
     const rows = await ctx.db
       .query("discordAutomations")
-      .withIndex("by_organizationId_and_guildId", (q: any) =>
-        q.eq("organizationId", organizationId).eq("guildId", guildId),
+      .withIndex("by_scope_and_guildId", (q: any) =>
+        q.eq("scope", scope).eq("guildId", guildId),
       )
       .order("desc")
       .collect();
 
-    return (rows ?? []).map(normalizeRow).sort((a, b) => b.updatedAt - a.updatedAt);
+    return (rows ?? [])
+      .map((row: any) => ({
+        ...normalizeRow(row),
+        scope: row.scope === "platform" ? ("platform" as const) : ("org" as const),
+        organizationId: row.organizationId,
+      }))
+      .sort((a, b) => b.updatedAt - a.updatedAt);
   },
 });
 
 export const listDueAutomations = query({
   args: {
+    scope: v.optional(v.union(v.literal("org"), v.literal("platform"))),
     organizationId: v.optional(v.string()),
     now: v.number(),
     limit: v.optional(v.number()),
@@ -83,10 +94,11 @@ export const listDueAutomations = query({
     const now = Number(args.now);
     const limitRaw = typeof args.limit === "number" ? args.limit : 50;
     const limit = Math.max(1, Math.min(200, Math.floor(limitRaw)));
+    const scope = args.scope ?? "org";
     const organizationId = norm(args.organizationId);
     if (!Number.isFinite(now)) return [];
 
-    const rows = await (organizationId
+    const rows = await (scope === "org" && organizationId
       ? ctx.db
           .query("discordAutomations")
           .withIndex("by_organizationId_and_enabled_and_nextRunAt", (q: any) =>
@@ -96,13 +108,17 @@ export const listDueAutomations = query({
           .take(limit)
       : ctx.db
           .query("discordAutomations")
-          .withIndex("by_enabled_and_nextRunAt", (q: any) =>
-            q.eq("enabled", true).lte("nextRunAt", now),
+          .withIndex("by_scope_and_enabled_and_nextRunAt", (q: any) =>
+            q.eq("scope", scope).eq("enabled", true).lte("nextRunAt", now),
           )
           .order("asc")
           .take(limit));
 
-    return (rows ?? []).map(normalizeRow);
+    return (rows ?? []).map((row: any) => ({
+      ...normalizeRow(row),
+      scope: row.scope === "platform" ? ("platform" as const) : ("org" as const),
+      organizationId: row.organizationId,
+    }));
   },
 });
 
