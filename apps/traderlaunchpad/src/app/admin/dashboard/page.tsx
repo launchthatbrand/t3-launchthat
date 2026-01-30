@@ -276,15 +276,17 @@ export default function AdminDashboardPage() {
   const isLive = dataMode.effectiveMode === "live";
   const activeAccount = useActiveAccount();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  const { permissions, isLoading: permissionsLoading } = useGlobalPermissions();
+  const { permissions, isLoading: permissionsLoading, isAdmin } = useGlobalPermissions();
   const shouldQuery = isAuthenticated && !authLoading;
   const tenant = useTenant();
   const isOrgMode = Boolean(tenant && tenant.slug !== "platform");
   const canStrategies =
+    Boolean(isAdmin) ||
     !permissionsLoading &&
     Boolean(permissions) &&
     isFeatureEnabled(permissions, "strategies");
   const canOrders =
+    Boolean(isAdmin) ||
     !permissionsLoading &&
     Boolean(permissions) &&
     isFeatureEnabled(permissions, "orders");

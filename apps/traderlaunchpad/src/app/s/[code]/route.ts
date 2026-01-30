@@ -43,19 +43,27 @@ export async function GET(
   }
 
   const reqUrl = new URL(req.url);
-  const forwardedProto = (req.headers.get("x-forwarded-proto") ?? "").trim();
-  const forwardedHost = (req.headers.get("x-forwarded-host") ?? "").trim();
-  const proto = (forwardedProto || reqUrl.protocol.replace(":", "") || "https").toLowerCase();
-  const host = (forwardedHost || req.headers.get("host") || reqUrl.host).trim().toLowerCase();
+  const forwardedProto = req.headers.get("x-forwarded-proto");
+  const forwardedHost = req.headers.get("x-forwarded-host");
+  const proto = (forwardedProto ?? reqUrl.protocol.replace(":", "")).trim().toLowerCase();
+  const host = (forwardedHost ?? req.headers.get("host") ?? reqUrl.host).trim().toLowerCase();
+
+  const maxAgeDays = 30;
+  const maxAgeSeconds = maxAgeDays * 24 * 60 * 60;
 
   // Local dev: preserve scheme/host exactly (avoid redirecting http -> https).
   if (host.startsWith("localhost") || host.startsWith("127.0.0.1")) {
-    return NextResponse.redirect(`${proto}://${host}${pathStr}`, 302);
+    const res = NextResponse.redirect(`${proto}://${host}${pathStr}`, 302);
+    // Persist shortlink code so we can attribute downstream events to a specific share link.
+    res.cookies.set("lt_aff_sl", code, { path: "/", maxAge: maxAgeSeconds, sameSite: "lax" });
+    return res;
   }
 
   // Deployed: always redirect to primary domain over https.
   const rootDomain = String(env.NEXT_PUBLIC_ROOT_DOMAIN || "traderlaunchpad.com").trim();
   const redirectTo = `https://${rootDomain}${pathStr}`;
-  return NextResponse.redirect(redirectTo, 302);
+  const res = NextResponse.redirect(redirectTo, 302);
+  res.cookies.set("lt_aff_sl", code, { path: "/", maxAge: maxAgeSeconds, sameSite: "lax" });
+  return res;
 }
 

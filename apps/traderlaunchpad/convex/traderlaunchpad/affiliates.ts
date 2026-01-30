@@ -48,6 +48,49 @@ const resolveUserDisplayName = async (ctx: any, userKey: string): Promise<string
   return `User ${clerkId.slice(-6)}`;
 };
 
+const resolveUserPublicInfo = async (
+  ctx: any,
+  userKey: string,
+): Promise<{ name: string; image?: string }> => {
+  const normalized = String(userKey ?? "").trim();
+  if (!normalized) return { name: "User" };
+  const clerkId = stripClerkIssuerPrefix(normalized);
+
+  const byClerk = await ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", clerkId))
+    .first();
+  const name1 =
+    byClerk && typeof (byClerk as any).name === "string" ? String((byClerk as any).name).trim() : "";
+  const username1 =
+    byClerk && typeof (byClerk as any).publicUsername === "string"
+      ? String((byClerk as any).publicUsername).trim()
+      : "";
+  const image1 =
+    byClerk && typeof (byClerk as any).image === "string" ? String((byClerk as any).image).trim() : "";
+  if (name1 || username1 || image1) {
+    return { name: name1 || username1 || `User ${clerkId.slice(-6)}`, image: image1 || undefined };
+  }
+
+  const byToken = await ctx.db
+    .query("users")
+    .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", normalized))
+    .first();
+  const name2 =
+    byToken && typeof (byToken as any).name === "string" ? String((byToken as any).name).trim() : "";
+  const username2 =
+    byToken && typeof (byToken as any).publicUsername === "string"
+      ? String((byToken as any).publicUsername).trim()
+      : "";
+  const image2 =
+    byToken && typeof (byToken as any).image === "string" ? String((byToken as any).image).trim() : "";
+  if (name2 || username2 || image2) {
+    return { name: name2 || username2 || `User ${clerkId.slice(-6)}`, image: image2 || undefined };
+  }
+
+  return { name: `User ${clerkId.slice(-6)}` };
+};
+
 export const recordClick = mutation({
   args: {
     referralCode: v.string(),
@@ -75,6 +118,8 @@ export const attributeMySignup = mutation({
   args: {
     visitorId: v.optional(v.string()),
     referralCode: v.optional(v.string()),
+    utmContent: v.optional(v.string()),
+    shortlinkCode: v.optional(v.string()),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
@@ -86,6 +131,8 @@ export const attributeMySignup = mutation({
         referredUserId,
         visitorId: args.visitorId,
         referralCode: args.referralCode,
+        utmContent: args.utmContent,
+        shortlinkCode: args.shortlinkCode,
       },
     );
   },
@@ -203,6 +250,8 @@ export const getMySponsorLink = query({
     v.object({
       userId: v.string(),
       sponsorUserId: v.string(),
+      sponsorName: v.string(),
+      sponsorImage: v.optional(v.string()),
       createdAt: v.number(),
       createdSource: v.string(),
       updatedAt: v.optional(v.number()),
@@ -216,7 +265,14 @@ export const getMySponsorLink = query({
       componentsUntyped.launchthat_affiliates.network.queries.getSponsorLinkForUser,
       { userId },
     );
-    return res ?? null;
+    if (!res) return null;
+    const sponsorUserId = String(res?.sponsorUserId ?? "").trim();
+    const sponsor = sponsorUserId ? await resolveUserPublicInfo(ctx as any, sponsorUserId) : { name: "User" };
+    return {
+      ...res,
+      sponsorName: sponsor.name,
+      sponsorImage: sponsor.image,
+    };
   },
 });
 
@@ -251,6 +307,8 @@ export const listMyRecruits = query({
       attributedAt: v.number(),
       activatedAt: v.optional(v.number()),
       firstPaidConversionAt: v.optional(v.number()),
+      utmContent: v.optional(v.string()),
+      shortlinkCode: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -275,6 +333,8 @@ export const listMyRecruits = query({
       attributedAt: number;
       activatedAt?: number;
       firstPaidConversionAt?: number;
+      utmContent?: string;
+      shortlinkCode?: string;
     }> = [];
 
     for (const r of rows) {
@@ -290,6 +350,8 @@ export const listMyRecruits = query({
           typeof r?.firstPaidConversionAt === "number"
             ? Number(r.firstPaidConversionAt)
             : undefined,
+        utmContent: typeof r?.utmContent === "string" ? String(r.utmContent) : undefined,
+        shortlinkCode: typeof r?.shortlinkCode === "string" ? String(r.shortlinkCode) : undefined,
       });
     }
 
@@ -505,6 +567,8 @@ export const listMyCreditEvents = query({
       referredUserId: v.optional(v.string()),
       referrerUserId: v.optional(v.string()),
       conversionId: v.optional(v.string()),
+      utmContent: v.optional(v.string()),
+      shortlinkCode: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -518,7 +582,20 @@ export const listMyCreditEvents = query({
       componentsUntyped.launchthat_affiliates.admin.listAffiliateCreditEventsForUser,
       { userId, limit },
     );
-    return Array.isArray(rowsUnknown) ? (rowsUnknown as any[]) : [];
+    const rows = Array.isArray(rowsUnknown) ? (rowsUnknown as any[]) : [];
+    return rows.map((row: any) => ({
+      kind: typeof row.kind === "string" ? row.kind : undefined,
+      amountCents: typeof row.amountCents === "number" ? Number(row.amountCents) : 0,
+      currency: String(row.currency ?? "USD"),
+      reason: String(row.reason ?? ""),
+      externalEventId: typeof row.externalEventId === "string" ? row.externalEventId : undefined,
+      createdAt: typeof row.createdAt === "number" ? Number(row.createdAt) : 0,
+      referredUserId: typeof row.referredUserId === "string" ? row.referredUserId : undefined,
+      referrerUserId: typeof row.referrerUserId === "string" ? row.referrerUserId : undefined,
+      conversionId: typeof row.conversionId === "string" ? row.conversionId : undefined,
+      utmContent: typeof row.utmContent === "string" ? row.utmContent : undefined,
+      shortlinkCode: typeof row.shortlinkCode === "string" ? row.shortlinkCode : undefined,
+    }));
   },
 });
 

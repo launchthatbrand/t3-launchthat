@@ -65,14 +65,16 @@ const isEntitledForType = (
   limits: unknown,
   type: "tradeIdeas" | "openPositions" | "orders",
 ): boolean => {
-  // Default to enabled to avoid accidental lockouts; platform admin can explicitly disable.
+  // MVP alpha: default locked. Access is granted via join codes or per-user entitlement settings.
   const raw = limits && typeof limits === "object" ? (limits as Record<string, unknown>) : {};
   const featuresRaw =
     raw.features && typeof raw.features === "object" ? (raw.features as Record<string, unknown>) : {};
 
-  const tradeIdeas = featuresRaw.tradeIdeas !== false;
-  const journal = featuresRaw.journal !== false;
-  const orders = featuresRaw.orders !== false;
+  // Explicit allowlist semantics: only `true` grants access.
+  // Back-compat: some records use `tradeIdeas`; newer ones use `strategies` as the toggle.
+  const tradeIdeas = featuresRaw.tradeIdeas === true || featuresRaw.strategies === true;
+  const journal = featuresRaw.journal === true;
+  const orders = featuresRaw.orders === true;
 
   if (type === "tradeIdeas") return tradeIdeas;
   if (type === "openPositions") return journal;

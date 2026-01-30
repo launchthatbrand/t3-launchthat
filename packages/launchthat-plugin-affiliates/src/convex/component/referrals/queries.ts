@@ -22,6 +22,8 @@ export const listMyReferredUsers = query({
       status: v.string(),
       activatedAt: v.optional(v.number()),
       firstPaidConversionAt: v.optional(v.number()),
+      utmContent: v.optional(v.string()),
+      shortlinkCode: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -55,6 +57,8 @@ export const listMyReferredUsers = query({
         typeof row?.firstPaidConversionAt === "number"
           ? Number(row.firstPaidConversionAt)
           : undefined,
+      utmContent: typeof row?.utmContent === "string" ? String(row.utmContent) : undefined,
+      shortlinkCode: typeof row?.shortlinkCode === "string" ? String(row.shortlinkCode) : undefined,
     }));
   },
 });

@@ -65,8 +65,9 @@ export default function AdminJournalSymbolPage() {
   const isOrgMode = Boolean(tenant && tenant.slug !== "platform");
   const organizationId = tenant?._id ?? "";
 
-  const { permissions, isLoading, isAuthenticated } = useGlobalPermissions();
-  const canAccess = Boolean(permissions && isFeatureEnabled(permissions, "openPositions"));
+  const { permissions, isLoading, isAuthenticated, isAdmin } = useGlobalPermissions();
+  const canAccess =
+    Boolean(isAdmin) || Boolean(permissions && isFeatureEnabled(permissions, "openPositions"));
   const shouldQuery = isAuthenticated && !isLoading && canAccess && Boolean(organizationId);
 
   const rawSymbol =

@@ -55,6 +55,13 @@ export const recordPaidConversion = mutation({
       return { ok: true, created: false, referrerUserId: null };
     }
 
+    const utmContent =
+      typeof (attribution as any).utmContent === "string" ? String((attribution as any).utmContent) : undefined;
+    const shortlinkCode =
+      typeof (attribution as any).shortlinkCode === "string"
+        ? String((attribution as any).shortlinkCode)
+        : undefined;
+
     const existing = await ctx.db
       .query("affiliateConversions")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -83,6 +90,8 @@ export const recordPaidConversion = mutation({
       externalId,
       referredUserId,
       referrerUserId,
+      utmContent,
+      shortlinkCode,
       amountCents: Math.max(0, Math.round(args.amountCents)),
       currency: String(args.currency ?? "USD").toUpperCase(),
       occurredAt,

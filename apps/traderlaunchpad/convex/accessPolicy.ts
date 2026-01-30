@@ -35,11 +35,11 @@ const visibilitySettingsValidator = v.object({
 });
 
 const defaultEntitlementFeatures = (): Record<EntitlementFeature, boolean> => ({
-  // Default to enabled to avoid accidental lockouts; platform admin can explicitly disable.
-  journal: true,
-  strategies: true,
-  analytics: true,
-  orders: true,
+  // MVP alpha: default locked. Access is granted via join codes or per-user entitlement settings.
+  journal: false,
+  strategies: false,
+  analytics: false,
+  orders: false,
 });
 
 const defaultVisibilitySettings = () => ({
@@ -65,10 +65,12 @@ const normalizeEntitlementFeaturesFromLimits = (
   if (!featuresRaw || typeof featuresRaw !== "object") return base;
   const f = featuresRaw as Record<string, unknown>;
   return {
-    journal: f.journal !== false,
-    strategies: f.strategies !== false,
-    analytics: f.analytics !== false,
-    orders: f.orders !== false,
+    // Explicit allowlist semantics: only `true` grants access.
+    // Back-compat: older records may use `tradeIdeas` instead of `strategies`.
+    journal: f.journal === true,
+    strategies: f.strategies === true || f.tradeIdeas === true,
+    analytics: f.analytics === true,
+    orders: f.orders === true,
   };
 };
 

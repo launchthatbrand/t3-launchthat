@@ -94,6 +94,8 @@ export const listReferredUsersForReferrer = query({
       attributedAt: v.number(),
       activatedAt: v.optional(v.number()),
       firstPaidConversionAt: v.optional(v.number()),
+      utmContent: v.optional(v.string()),
+      shortlinkCode: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -118,6 +120,8 @@ export const listReferredUsersForReferrer = query({
         typeof row?.firstPaidConversionAt === "number"
           ? Number(row.firstPaidConversionAt)
           : undefined,
+      utmContent: typeof row?.utmContent === "string" ? String(row.utmContent) : undefined,
+      shortlinkCode: typeof row?.shortlinkCode === "string" ? String(row.shortlinkCode) : undefined,
     }));
   },
 });
@@ -252,6 +256,8 @@ export const listAffiliateCreditEventsForUser = query({
       referredUserId: v.optional(v.string()),
       referrerUserId: v.optional(v.string()),
       conversionId: v.optional(v.string()),
+      utmContent: v.optional(v.string()),
+      shortlinkCode: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -277,6 +283,8 @@ export const listAffiliateCreditEventsForUser = query({
       referredUserId: typeof row.referredUserId === "string" ? row.referredUserId : undefined,
       referrerUserId: typeof row.referrerUserId === "string" ? row.referrerUserId : undefined,
       conversionId: typeof row.conversionId === "string" ? row.conversionId : undefined,
+      utmContent: typeof row.utmContent === "string" ? row.utmContent : undefined,
+      shortlinkCode: typeof row.shortlinkCode === "string" ? row.shortlinkCode : undefined,
     }));
   },
 });

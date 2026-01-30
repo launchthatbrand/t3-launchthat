@@ -175,8 +175,9 @@ export default function AdminJournalDashboardPage() {
 
   const dataMode = useDataMode();
   const activeAccount = useActiveAccount();
-  const { permissions, isLoading, isAuthenticated } = useGlobalPermissions();
-  const canAccess = Boolean(permissions && isFeatureEnabled(permissions, "openPositions"));
+  const { permissions, isLoading, isAuthenticated, isAdmin } = useGlobalPermissions();
+  const canAccess =
+    Boolean(isAdmin) || Boolean(permissions && isFeatureEnabled(permissions, "openPositions"));
   const shouldQuery = isAuthenticated && !isLoading && canAccess;
 
   const liveRowsRaw = useQuery(

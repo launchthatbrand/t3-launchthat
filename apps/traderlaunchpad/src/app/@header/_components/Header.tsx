@@ -14,18 +14,18 @@ export function Header() {
       name: "Features",
       link: "/#features",
     },
-    {
-      name: "Brokers",
-      link: "/brokers",
-    },
-    {
-      name: "Prop Firms",
-      link: "/firms",
-    },
-    {
-      name: "Leaderboards",
-      link: "/leaderboards",
-    },
+    // {
+    //   name: "Brokers",
+    //   link: "/brokers",
+    // },
+    // {
+    //   name: "Prop Firms",
+    //   link: "/firms",
+    // },
+    // {
+    //   name: "Leaderboards",
+    //   link: "/leaderboards",
+    // },
     {
       name: "Blog",
       link: "#blog",

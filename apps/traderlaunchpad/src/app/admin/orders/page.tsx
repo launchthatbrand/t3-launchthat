@@ -92,13 +92,15 @@ const formatDateTime = (tsMs: number | null): { date: string; time: string } => 
 
 export default function AdminOrdersPage() {
   const router = useRouter();
-  const { permissions, isLoading, isAuthenticated } = useGlobalPermissions();
+  const { permissions, isLoading, isAuthenticated, isAdmin } = useGlobalPermissions();
   const dataMode = useDataMode();
   const [tab, setTab] = React.useState<"filled" | "pending" | "positions">(
     "filled",
   );
-  const canOrders = Boolean(permissions && isFeatureEnabled(permissions, "orders"));
-  const canOpenPositions = Boolean(permissions && isFeatureEnabled(permissions, "openPositions"));
+  const canOrders =
+    Boolean(isAdmin) || Boolean(permissions && isFeatureEnabled(permissions, "orders"));
+  const canOpenPositions =
+    Boolean(isAdmin) || Boolean(permissions && isFeatureEnabled(permissions, "openPositions"));
   const shouldQueryOrders = isAuthenticated && !isLoading && canOrders;
   const shouldQueryPositions = isAuthenticated && !isLoading && canOpenPositions;
 

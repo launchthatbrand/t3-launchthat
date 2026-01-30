@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 type CaptureResult = {
   referralCode: string | null;
   visitorId: string | null;
+  utmContent: string | null;
+  shortlinkCode: string | null;
 };
 
 export type UseAffiliateRefCaptureOptions = {
@@ -18,6 +20,14 @@ export type UseAffiliateRefCaptureOptions = {
    * Cookie key for the visitor id. Default: "lt_aff_vid"
    */
   cookieVisitorKey?: string;
+  /**
+   * Cookie key for utm_content (share template id). Default: "lt_aff_utm_content"
+   */
+  cookieUtmContentKey?: string;
+  /**
+   * Cookie key for the shortlink code. Default: "lt_aff_sl"
+   */
+  cookieShortlinkKey?: string;
   /**
    * Cookie TTL in days. Default: 30
    */
@@ -74,11 +84,15 @@ export const useAffiliateRefCapture = (
   const param = options.param ?? "ref";
   const cookieRefKey = options.cookieRefKey ?? "lt_aff_ref";
   const cookieVisitorKey = options.cookieVisitorKey ?? "lt_aff_vid";
+  const cookieUtmContentKey = options.cookieUtmContentKey ?? "lt_aff_utm_content";
+  const cookieShortlinkKey = options.cookieShortlinkKey ?? "lt_aff_sl";
   const days = options.days ?? 30;
 
   const [state, setState] = useState<CaptureResult>({
     referralCode: null,
     visitorId: null,
+    utmContent: null,
+    shortlinkCode: null,
   });
 
   useEffect(() => {
@@ -87,6 +101,8 @@ export const useAffiliateRefCapture = (
     const url = new URL(window.location.href);
     const raw = url.searchParams.get(param) ?? "";
     const referralCode = raw ? normalizeReferralCode(raw) : "";
+    const utmContentRaw = (url.searchParams.get("utm_content") ?? "").trim();
+    const utmContent = utmContentRaw || "";
     const visitorId = getOrCreateVisitorId(cookieVisitorKey, days);
 
     if (referralCode) {
@@ -94,12 +110,20 @@ export const useAffiliateRefCapture = (
       options.onCapture?.({ referralCode, visitorId });
     }
 
+    if (utmContent) {
+      writeCookie(cookieUtmContentKey, utmContent, days);
+    }
+
     const cookieRef = readCookie(cookieRefKey);
+    const cookieUtmContent = readCookie(cookieUtmContentKey);
+    const cookieShortlink = readCookie(cookieShortlinkKey);
     setState({
       referralCode: cookieRef ? normalizeReferralCode(cookieRef) : null,
       visitorId,
+      utmContent: cookieUtmContent ? String(cookieUtmContent).trim() : null,
+      shortlinkCode: cookieShortlink ? String(cookieShortlink).trim() : null,
     });
-  }, [cookieRefKey, cookieVisitorKey, days, options, param]);
+  }, [cookieRefKey, cookieShortlinkKey, cookieUtmContentKey, cookieVisitorKey, days, options, param]);
 
   return useMemo(() => state, [state]);
 };

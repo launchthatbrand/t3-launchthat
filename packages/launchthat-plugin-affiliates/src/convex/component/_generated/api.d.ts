@@ -110,6 +110,8 @@ export type Mounts = {
         reason: string;
         referredUserId?: string;
         referrerUserId?: string;
+        shortlinkCode?: string;
+        utmContent?: string;
       }>
     >;
     listAffiliateLogs: FunctionReference<
@@ -171,6 +173,8 @@ export type Mounts = {
         attributedAt: number;
         firstPaidConversionAt?: number;
         referredUserId: string;
+        shortlinkCode?: string;
+        utmContent?: string;
       }>
     >;
     upsertProgramSettings: FunctionReference<
@@ -415,7 +419,9 @@ export type Mounts = {
           expiresAt: number;
           firstPaidConversionAt?: number;
           referredUserId: string;
+          shortlinkCode?: string;
           status: string;
+          utmContent?: string;
         }>
       >;
     };
@@ -470,6 +476,8 @@ export type Mounts = {
         nowMs?: number;
         referralCode?: string;
         referredUserId: string;
+        shortlinkCode?: string;
+        utmContent?: string;
         visitorId?: string;
       },
       null | {
@@ -477,6 +485,8 @@ export type Mounts = {
         referralCode: string;
         referredUserId: string;
         referrerUserId: string;
+        shortlinkCode?: string;
+        utmContent?: string;
       }
     >;
     markActivated: FunctionReference<

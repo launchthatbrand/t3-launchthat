@@ -254,8 +254,9 @@ export default function AdminTradeIdeaDetailPage() {
       : "";
   const tradeIdeaId = rawId ? decodeURIComponent(rawId) : "";
 
-  const { permissions, isLoading, isAuthenticated } = useGlobalPermissions();
-  const canAccess = Boolean(permissions && isFeatureEnabled(permissions, "strategies"));
+  const { permissions, isLoading, isAuthenticated, isAdmin } = useGlobalPermissions();
+  const canAccess =
+    Boolean(isAdmin) || Boolean(permissions && isFeatureEnabled(permissions, "strategies"));
   const shouldQuery = isAuthenticated && !isLoading && canAccess && Boolean(tradeIdeaId);
 
   const setSharing = useMutation(api.traderlaunchpad.mutations.setMyTradeIdeaSharing);

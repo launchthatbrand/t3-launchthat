@@ -28,5 +28,13 @@ crons.interval(
   {},
 );
 
+// User TradeLocker autosync (invite-only MVP).
+crons.interval(
+  "run_tradelocker_autosync",
+  { minutes: 1 },
+  internal.traderlaunchpad.autosync.runDueTradeLockerAutosync,
+  {},
+);
+
 export default crons;
 

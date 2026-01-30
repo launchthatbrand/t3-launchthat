@@ -47,8 +47,9 @@ export default function AdminTradeIdeasPage() {
   const router = useRouter();
   const dataMode = useDataMode();
   const isLive = dataMode.effectiveMode === "live";
-  const { permissions, isLoading, isAuthenticated } = useGlobalPermissions();
-  const canAccess = Boolean(permissions && isFeatureEnabled(permissions, "strategies"));
+  const { permissions, isLoading, isAuthenticated, isAdmin } = useGlobalPermissions();
+  const canAccess =
+    Boolean(isAdmin) || Boolean(permissions && isFeatureEnabled(permissions, "strategies"));
   const shouldQuery = isAuthenticated && !isLoading && canAccess;
 
   const liveIdeas = useQuery(

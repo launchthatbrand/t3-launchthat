@@ -172,6 +172,15 @@ export const recordCommissionDistributionFromPayment = mutation({
       };
     }
 
+    const utmContent =
+      typeof (attribution as any).utmContent === "string"
+        ? String((attribution as any).utmContent)
+        : undefined;
+    const shortlinkCode =
+      typeof (attribution as any).shortlinkCode === "string"
+        ? String((attribution as any).shortlinkCode)
+        : undefined;
+
     // Record conversion (gross revenue) once.
     const externalId = `${source}:${externalEventIdRaw}`;
     const conversionKind =
@@ -189,6 +198,8 @@ export const recordCommissionDistributionFromPayment = mutation({
         externalId,
         referredUserId,
         referrerUserId,
+        utmContent,
+        shortlinkCode,
         amountCents: grossAmountCents,
         currency,
         occurredAt,
@@ -236,6 +247,8 @@ export const recordCommissionDistributionFromPayment = mutation({
         source,
         referrerUserId,
         referredUserId,
+        utmContent,
+        shortlinkCode,
         createdAt: occurredAt,
       });
       created = true;
@@ -299,6 +312,8 @@ export const recordCommissionDistributionFromPayment = mutation({
                 source,
                 referrerUserId, // the direct affiliate (child)
                 referredUserId, // the buyer
+                utmContent,
+                shortlinkCode,
                 createdAt: occurredAt,
               });
               created = true;
@@ -395,6 +410,15 @@ export const recordCommissionFromPayment = mutation({
       return { ok: true, created: false, referrerUserId: null, grossAmountCents: 0, amountCents: 0 };
     }
 
+    const utmContent =
+      typeof (attribution as any).utmContent === "string"
+        ? String((attribution as any).utmContent)
+        : undefined;
+    const shortlinkCode =
+      typeof (attribution as any).shortlinkCode === "string"
+        ? String((attribution as any).shortlinkCode)
+        : undefined;
+
     const existing = await ctx.db
       .query("affiliateCreditEvents")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -425,6 +449,8 @@ export const recordCommissionFromPayment = mutation({
         externalId: externalEventId,
         referredUserId,
         referrerUserId,
+        utmContent,
+        shortlinkCode,
         amountCents: grossAmountCents,
         currency,
         occurredAt,
@@ -459,6 +485,8 @@ export const recordCommissionFromPayment = mutation({
       source,
       referrerUserId,
       referredUserId,
+      utmContent,
+      shortlinkCode,
       createdAt: occurredAt,
     });
 

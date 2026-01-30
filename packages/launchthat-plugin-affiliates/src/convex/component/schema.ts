@@ -58,6 +58,8 @@ export default defineSchema({
     referralCode: v.string(),
     referrerUserId: v.string(),
     referredUserId: v.string(),
+    utmContent: v.optional(v.string()),
+    shortlinkCode: v.optional(v.string()),
     attributedAt: v.number(),
     expiresAt: v.number(),
     activatedAt: v.optional(v.number()),
@@ -70,6 +72,8 @@ export default defineSchema({
   })
     .index("by_referredUserId", ["referredUserId"])
     .index("by_referrerUserId_and_attributedAt", ["referrerUserId", "attributedAt"])
+    .index("by_referrerUserId_and_utmContent_and_attributedAt", ["referrerUserId", "utmContent", "attributedAt"])
+    .index("by_referrerUserId_and_shortlinkCode_and_attributedAt", ["referrerUserId", "shortlinkCode", "attributedAt"])
     .index("by_referralCode", ["referralCode"]),
 
   affiliateActivations: defineTable({
@@ -83,6 +87,8 @@ export default defineSchema({
     externalId: v.string(),
     referredUserId: v.string(),
     referrerUserId: v.string(),
+    utmContent: v.optional(v.string()),
+    shortlinkCode: v.optional(v.string()),
     amountCents: v.number(),
     currency: v.string(),
     occurredAt: v.number(),
@@ -90,6 +96,8 @@ export default defineSchema({
     .index("by_externalId_and_kind", ["externalId", "kind"])
     .index("by_occurredAt", ["occurredAt"])
     .index("by_referrerUserId_and_occurredAt", ["referrerUserId", "occurredAt"])
+    .index("by_referrerUserId_and_utmContent_and_occurredAt", ["referrerUserId", "utmContent", "occurredAt"])
+    .index("by_referrerUserId_and_shortlinkCode_and_occurredAt", ["referrerUserId", "shortlinkCode", "occurredAt"])
     .index("by_referredUserId", ["referredUserId"]),
 
   affiliateCreditEvents: defineTable({
@@ -103,11 +111,15 @@ export default defineSchema({
     referrerUserId: v.optional(v.string()),
     referredUserId: v.optional(v.string()),
     conversionId: v.optional(v.string()),
+    utmContent: v.optional(v.string()),
+    shortlinkCode: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_userId_and_createdAt", ["userId", "createdAt"])
     .index("by_userId_and_reason", ["userId", "reason"])
     .index("by_userId_and_externalEventId", ["userId", "externalEventId"])
+    .index("by_userId_and_utmContent_and_createdAt", ["userId", "utmContent", "createdAt"])
+    .index("by_userId_and_shortlinkCode_and_createdAt", ["userId", "shortlinkCode", "createdAt"])
     .index("by_reason", ["reason"]),
 
   affiliateBenefits: defineTable({

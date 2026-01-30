@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@acme/ui/tabs";
 import { Textarea } from "@acme/ui/textarea";
 
 import { useTdrLpWidgetTheme } from "~/components/widgets/useTdrLpWidgetTheme";
+import { useGlobalPermissions } from "~/components/access/FeatureAccessGate";
 
 type WidgetType = "profileCard" | "equityCurve" | "journalMetrics" | "myTrades" | "openPositions";
 
@@ -54,6 +55,7 @@ const isProWidget = (t: WidgetType) => t === "openPositions" || t === "myTrades"
 
 export default function AdminSettingsWidgetsPage() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const { isAdmin } = useGlobalPermissions();
   const shouldQuery = isAuthenticated && !authLoading;
 
   const entitlements = useQuery(
@@ -62,7 +64,7 @@ export default function AdminSettingsWidgetsPage() {
   ) as Entitlements | undefined;
 
   const tier = entitlements?.tier ?? "free";
-  const isPro = tier === "pro";
+  const isPro = Boolean(isAdmin) || tier === "pro";
 
   const installations = useQuery(
     api.widgets.installations.listMyWidgetInstallations,

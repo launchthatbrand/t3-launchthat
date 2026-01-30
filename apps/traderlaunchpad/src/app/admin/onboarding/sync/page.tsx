@@ -12,6 +12,7 @@ import { cn } from "@acme/ui";
 
 import { api } from "@convex-config/_generated/api";
 import { useOnboardingStatus } from "~/lib/onboarding/getOnboardingStatus";
+import { useGlobalPermissions } from "~/components/access/FeatureAccessGate";
 
 const formatAge = (ms: number) => {
   const delta = Date.now() - ms;
@@ -28,6 +29,7 @@ export default function OnboardingSyncPage() {
   const status = useOnboardingStatus();
   const syncNow = useAction(api.traderlaunchpad.actions.syncMyTradeLockerNow);
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const { isAdmin } = useGlobalPermissions();
   const shouldQuery = isAuthenticated && !authLoading;
   const entitlements = useQuery(
     api.accessPolicy.getMyEntitlements,
@@ -38,7 +40,7 @@ export default function OnboardingSyncPage() {
         features: { journal: boolean };
       }
     | undefined;
-  const canUseJournal = Boolean(entitlements?.features?.journal);
+  const canUseJournal = Boolean(isAdmin) || Boolean(entitlements?.features?.journal);
   const connectionData = useQuery(
     api.traderlaunchpad.queries.getMyTradeLockerConnection,
     shouldQuery && canUseJournal ? {} : "skip",

@@ -39,8 +39,10 @@ export function ConvexUserEnsurer() {
       .then(() => {
         const visitorId = readCookie("lt_aff_vid") ?? undefined;
         const referralCode = readCookie("lt_aff_ref") ?? undefined;
-        if (!visitorId && !referralCode) return;
-        return attributeMySignup({ visitorId, referralCode });
+        const utmContent = readCookie("lt_aff_utm_content") ?? undefined;
+        const shortlinkCode = readCookie("lt_aff_sl") ?? undefined;
+        if (!visitorId && !referralCode && !utmContent && !shortlinkCode) return;
+        return attributeMySignup({ visitorId, referralCode, utmContent, shortlinkCode });
       })
       .catch((error) => {
         console.error("[ConvexUserEnsurer] Failed to ensure/attribute user:", error);

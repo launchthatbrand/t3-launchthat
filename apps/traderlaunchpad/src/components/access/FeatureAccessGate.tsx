@@ -27,6 +27,11 @@ export const useGlobalPermissions = () => {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const shouldQuery = isAuthenticated && !authLoading;
 
+  const viewerSettings = useQuery(
+    api.viewer.queries.getViewerSettings,
+    shouldQuery ? {} : "skip",
+  ) as { isSignedIn: boolean; isAdmin: boolean } | undefined;
+
   const entitlements = useQuery(
     api.accessPolicy.getMyEntitlements,
     shouldQuery ? {} : "skip",
@@ -50,9 +55,12 @@ export const useGlobalPermissions = () => {
       }
     : undefined;
 
-  const isLoading = authLoading || (shouldQuery && permissions === undefined);
+  const isLoading =
+    authLoading ||
+    (shouldQuery &&
+      (permissions === undefined || viewerSettings === undefined));
 
-  return { permissions, isLoading, isAuthenticated };
+  return { permissions, isLoading, isAuthenticated, isAdmin: Boolean(viewerSettings?.isAdmin) };
 };
 
 export const FeatureAccessGate = ({
@@ -66,10 +74,14 @@ export const FeatureAccessGate = ({
   description?: string;
   children: React.ReactNode;
 }) => {
-  const { permissions, isLoading, isAuthenticated } = useGlobalPermissions();
+  const { permissions, isLoading, isAuthenticated, isAdmin } = useGlobalPermissions();
 
   if (isLoading) {
     return <div className="text-muted-foreground text-sm">Loading…</div>;
+  }
+
+  if (isAdmin) {
+    return <>{children}</>;
   }
 
   const hasAccess =

@@ -35,7 +35,7 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 
 import { Button } from "@acme/ui/button";
 import { Checkbox } from "@acme/ui/checkbox";
-import { FeatureAccessAlert } from "~/components/access/FeatureAccessGate";
+import { FeatureAccessAlert, useGlobalPermissions } from "~/components/access/FeatureAccessGate";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import React from "react";
@@ -139,6 +139,7 @@ export default function AdminAnalyticsPage() {
   const activeAccount = useActiveAccount();
   const isLive = dataMode.effectiveMode === "live";
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const { isAdmin } = useGlobalPermissions();
   const shouldQuery = isAuthenticated && !authLoading;
 
   const entitlements = useQuery(
@@ -151,7 +152,7 @@ export default function AdminAnalyticsPage() {
     }
     | undefined;
 
-  const canAnalytics = Boolean(entitlements?.features?.analytics);
+  const canAnalytics = Boolean(isAdmin) || Boolean(entitlements?.features?.analytics);
   const shouldQueryAnalytics = shouldQuery && canAnalytics;
 
   const defaultTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -425,11 +426,11 @@ export default function AdminAnalyticsPage() {
 
   const result = isLive ? liveResult : demoResult;
 
-  if (shouldQuery && entitlements === undefined) {
+  if (shouldQuery && !isAdmin && entitlements === undefined) {
     return <div className="text-muted-foreground text-sm">Loading…</div>;
   }
 
-  if (shouldQuery && !canAnalytics) {
+  if (shouldQuery && !isAdmin && !canAnalytics) {
     return <FeatureAccessAlert description="You do not have access to Analytics." />;
   }
 

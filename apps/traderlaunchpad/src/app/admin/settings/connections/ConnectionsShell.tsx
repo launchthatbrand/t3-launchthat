@@ -10,6 +10,7 @@ import React from "react";
 import { api } from "@convex-config/_generated/api";
 import { cn } from "~/lib/utils";
 import { usePathname } from "next/navigation";
+import { useGlobalPermissions } from "~/components/access/FeatureAccessGate";
 
 type UnknownRecord = Record<string, unknown>;
 const isRecord = (value: unknown): value is UnknownRecord =>
@@ -36,6 +37,7 @@ export function ConnectionsShell(props: Props) {
       ? "/admin/connections"
       : "/admin/settings/connections";
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const { isAdmin } = useGlobalPermissions();
   const shouldQuery = isAuthenticated && !authLoading;
   const isPlatform = pathname.startsWith("/platform/connections");
   const entitlements = useQuery(
@@ -47,7 +49,8 @@ export function ConnectionsShell(props: Props) {
         features: { journal: boolean };
       }
     | undefined;
-  const canUseJournal = isPlatform ? true : Boolean(entitlements?.features?.journal);
+  const canUseJournal =
+    isPlatform ? true : Boolean(isAdmin) || Boolean(entitlements?.features?.journal);
   const dataRaw: unknown = useQuery(
     isPlatform
       ? api.platform.brokerConnections.getPlatformTradeLockerConnection

@@ -81,6 +81,7 @@ import type * as shortlinks_mutations from "../shortlinks/mutations.js";
 import type * as shortlinks_queries from "../shortlinks/queries.js";
 import type * as traderlaunchpad_actions from "../traderlaunchpad/actions.js";
 import type * as traderlaunchpad_affiliates from "../traderlaunchpad/affiliates.js";
+import type * as traderlaunchpad_autosync from "../traderlaunchpad/autosync.js";
 import type * as traderlaunchpad_debug from "../traderlaunchpad/debug.js";
 import type * as traderlaunchpad_lib_resolve from "../traderlaunchpad/lib/resolve.js";
 import type * as traderlaunchpad_mutations from "../traderlaunchpad/mutations.js";
@@ -183,6 +184,7 @@ declare const fullApi: ApiFromModules<{
   "shortlinks/queries": typeof shortlinks_queries;
   "traderlaunchpad/actions": typeof traderlaunchpad_actions;
   "traderlaunchpad/affiliates": typeof traderlaunchpad_affiliates;
+  "traderlaunchpad/autosync": typeof traderlaunchpad_autosync;
   "traderlaunchpad/debug": typeof traderlaunchpad_debug;
   "traderlaunchpad/lib/resolve": typeof traderlaunchpad_lib_resolve;
   "traderlaunchpad/mutations": typeof traderlaunchpad_mutations;
@@ -4801,6 +4803,8 @@ export declare const components: {
           reason: string;
           referredUserId?: string;
           referrerUserId?: string;
+          shortlinkCode?: string;
+          utmContent?: string;
         }>
       >;
       listAffiliateLogs: FunctionReference<
@@ -4862,6 +4866,8 @@ export declare const components: {
           attributedAt: number;
           firstPaidConversionAt?: number;
           referredUserId: string;
+          shortlinkCode?: string;
+          utmContent?: string;
         }>
       >;
       upsertProgramSettings: FunctionReference<
@@ -5106,7 +5112,9 @@ export declare const components: {
             expiresAt: number;
             firstPaidConversionAt?: number;
             referredUserId: string;
+            shortlinkCode?: string;
             status: string;
+            utmContent?: string;
           }>
         >;
       };
@@ -5161,6 +5169,8 @@ export declare const components: {
           nowMs?: number;
           referralCode?: string;
           referredUserId: string;
+          shortlinkCode?: string;
+          utmContent?: string;
           visitorId?: string;
         },
         null | {
@@ -5168,6 +5178,8 @@ export declare const components: {
           referralCode: string;
           referredUserId: string;
           referrerUserId: string;
+          shortlinkCode?: string;
+          utmContent?: string;
         }
       >;
       markActivated: FunctionReference<

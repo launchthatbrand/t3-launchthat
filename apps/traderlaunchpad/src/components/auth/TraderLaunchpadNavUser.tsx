@@ -382,28 +382,24 @@ function TraderLaunchpadNavUserTenant() {
           ) : null}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {isAdmin ? (
-          <>
-            <DropdownMenuItem
-              onClick={() => {
-                if (typeof window === "undefined") return;
-                window.location.assign("/admin/dashboard");
-              }}
-            >
-              <Settings className="h-4 w-4" />
-              Dashboard
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                if (typeof window === "undefined") return;
-                window.location.assign("/admin/settings");
-              }}
-            >
-              <User className="h-4 w-4" />
-              Account settings
-            </DropdownMenuItem>
-          </>
-        ) : null}
+        <DropdownMenuItem
+          onClick={() => {
+            if (typeof window === "undefined") return;
+            window.location.assign("/admin/dashboard");
+          }}
+        >
+          <Settings className="h-4 w-4" />
+          Dashboard
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => {
+            if (typeof window === "undefined") return;
+            window.location.assign("/admin/settings");
+          }}
+        >
+          <User className="h-4 w-4" />
+          Account settings
+        </DropdownMenuItem>
 
         {dataMode.isSignedIn && dataMode.isAdmin ? (
           <>

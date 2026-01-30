@@ -85,6 +85,8 @@ export const attributeSignup = mutation({
     referredUserId: v.string(),
     visitorId: v.optional(v.string()),
     referralCode: v.optional(v.string()),
+    utmContent: v.optional(v.string()),
+    shortlinkCode: v.optional(v.string()),
     attributionWindowDays: v.optional(v.number()),
     nowMs: v.optional(v.number()),
   },
@@ -95,6 +97,8 @@ export const attributeSignup = mutation({
       referredUserId: v.string(),
       referralCode: v.string(),
       expiresAt: v.number(),
+      utmContent: v.optional(v.string()),
+      shortlinkCode: v.optional(v.string()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -112,6 +116,12 @@ export const attributeSignup = mutation({
         referredUserId: String((existing as any).referredUserId),
         referralCode: String((existing as any).referralCode),
         expiresAt: Number((existing as any).expiresAt ?? 0),
+        utmContent:
+          typeof (existing as any).utmContent === "string" ? String((existing as any).utmContent) : undefined,
+        shortlinkCode:
+          typeof (existing as any).shortlinkCode === "string"
+            ? String((existing as any).shortlinkCode)
+            : undefined,
       };
     }
 
@@ -145,10 +155,15 @@ export const attributeSignup = mutation({
     if (!referrerUserId) return null;
     if (referrerUserId === referredUserId) return null;
 
+    const utmContent = typeof args.utmContent === "string" ? args.utmContent.trim() : "";
+    const shortlinkCode = typeof args.shortlinkCode === "string" ? args.shortlinkCode.trim() : "";
+
     await ctx.db.insert("affiliateAttributions", {
       referralCode,
       referrerUserId,
       referredUserId,
+      utmContent: utmContent || undefined,
+      shortlinkCode: shortlinkCode || undefined,
       attributedAt: now,
       expiresAt,
       status: "active",
@@ -166,7 +181,14 @@ export const attributeSignup = mutation({
       },
     });
 
-    return { referrerUserId, referredUserId, referralCode, expiresAt };
+    return {
+      referrerUserId,
+      referredUserId,
+      referralCode,
+      expiresAt,
+      utmContent: utmContent || undefined,
+      shortlinkCode: shortlinkCode || undefined,
+    };
   },
 });
 
