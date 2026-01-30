@@ -64,6 +64,10 @@ const navItems: NavItem[] = [
         className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
       />
     ),
+    subItems: [
+      { label: "Directory", href: "/platform/users" },
+      { label: "Roles", href: "/platform/users/roles" },
+    ],
   },
   {
     label: "Affiliates",

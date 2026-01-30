@@ -130,6 +130,20 @@ export const markAllNotificationsAsReadByClerkId = mutation({
   },
 });
 
+export const markAllNotificationsAsReadForViewer = mutation({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    const userId = await resolveViewerUserId(ctx);
+    if (!userId) return 0;
+    const count = await ctx.runMutation(
+      notificationsMutations.markAllNotificationsAsReadByUserId,
+      { userId },
+    );
+    return typeof count === "number" ? count : 0;
+  },
+});
+
 /**
  * Create an in-app notification for a user (identified by Clerk user id) and optionally
  * send a Web Push notification to that same Clerk user id.

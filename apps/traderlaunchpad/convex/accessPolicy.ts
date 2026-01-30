@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import { query, mutation } from "./_generated/server";
+import { internalQuery, query, mutation } from "./_generated/server";
 import { resolveViewerUserId } from "./traderlaunchpad/lib/resolve";
 
 type Tier = "free" | "standard" | "pro";
@@ -193,6 +193,43 @@ export const upsertMyVisibilitySettings = mutation({
     }
     await ctx.db.insert("userVisibilitySettings", payload as any);
     return null;
+  },
+});
+
+export const listEntitlementsByUserIds = internalQuery({
+  args: { userIds: v.array(v.string()) },
+  returns: v.array(
+    v.object({
+      userId: v.string(),
+      tier: tierValidator,
+      limits: v.union(v.any(), v.null()),
+      updatedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const userIds = Array.from(
+      new Set(args.userIds.map((id) => String(id ?? "").trim()).filter(Boolean)),
+    );
+    const out: Array<{
+      userId: string;
+      tier: Tier;
+      limits: unknown;
+      updatedAt: number;
+    }> = [];
+
+    for (const userId of userIds) {
+      const row = await ctx.db
+        .query("userEntitlements")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .first();
+      const tier = normalizeTier((row as any)?.tier);
+      const limits = (row as any)?.limits ?? null;
+      const updatedAt =
+        typeof (row as any)?.updatedAt === "number" ? Number((row as any).updatedAt) : 0;
+      out.push({ userId, tier, limits, updatedAt });
+    }
+
+    return out;
   },
 });
 

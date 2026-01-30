@@ -8,11 +8,34 @@ import { cn } from "~/lib/utils";
 export function OrganizationTabs(props: { organizationId: string }) {
   const pathname = usePathname();
   const base = `/admin/organization/${encodeURIComponent(props.organizationId)}`;
-  const tabs: Array<{ href: string; label: string }> = [
+  const guildRoutePrefix = `${base}/connections/discord/guilds/`;
+  const isGuildRoute = pathname.startsWith(guildRoutePrefix);
+  const guildId = isGuildRoute ? pathname.slice(guildRoutePrefix.length).split("/")[0] : "";
+  const tabs: { href: string; label: string }[] = [
     { href: base, label: "General" },
     { href: `${base}/members`, label: "Members" },
     { href: `${base}/connections`, label: "Connections" },
   ];
+
+  if (isGuildRoute) {
+    return (
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        <Link
+          href={`${base}/connections`}
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-2 transition-colors"
+        >
+          <span aria-hidden="true">←</span>
+          Back to Connections
+        </Link>
+        <span className="text-muted-foreground">/</span>
+        <span className="text-muted-foreground">Discord</span>
+        <span className="text-muted-foreground">/</span>
+        <span className="text-foreground font-medium truncate">
+          {guildId ? `Guild ${guildId}` : "Guild"}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-muted text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-lg p-[3px]">

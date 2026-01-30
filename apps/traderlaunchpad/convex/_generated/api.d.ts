@@ -36,6 +36,7 @@ import type * as onboarding_queries from "../onboarding/queries.js";
 import type * as platform_affiliates from "../platform/affiliates.js";
 import type * as platform_brokerConnections from "../platform/brokerConnections.js";
 import type * as platform_brokerConnectionsActions from "../platform/brokerConnectionsActions.js";
+import type * as platform_brokerSyncSettings from "../platform/brokerSyncSettings.js";
 import type * as platform_clickhouseCandles from "../platform/clickhouseCandles.js";
 import type * as platform_clickhouseData from "../platform/clickhouseData.js";
 import type * as platform_clickhouseDataInternalActions from "../platform/clickhouseDataInternalActions.js";
@@ -60,6 +61,7 @@ import type * as platform_priceDataSyncSchedulerInternal from "../platform/price
 import type * as platform_priceDataSyncStatus from "../platform/priceDataSyncStatus.js";
 import type * as platform_priceDataWorkflow from "../platform/priceDataWorkflow.js";
 import type * as platform_queries from "../platform/queries.js";
+import type * as platform_roles from "../platform/roles.js";
 import type * as platform_test_helpers from "../platform/test/helpers.js";
 import type * as platform_test_mutations from "../platform/test/mutations.js";
 import type * as platform_test_queries from "../platform/test/queries.js";
@@ -142,6 +144,7 @@ declare const fullApi: ApiFromModules<{
   "platform/affiliates": typeof platform_affiliates;
   "platform/brokerConnections": typeof platform_brokerConnections;
   "platform/brokerConnectionsActions": typeof platform_brokerConnectionsActions;
+  "platform/brokerSyncSettings": typeof platform_brokerSyncSettings;
   "platform/clickhouseCandles": typeof platform_clickhouseCandles;
   "platform/clickhouseData": typeof platform_clickhouseData;
   "platform/clickhouseDataInternalActions": typeof platform_clickhouseDataInternalActions;
@@ -166,6 +169,7 @@ declare const fullApi: ApiFromModules<{
   "platform/priceDataSyncStatus": typeof platform_priceDataSyncStatus;
   "platform/priceDataWorkflow": typeof platform_priceDataWorkflow;
   "platform/queries": typeof platform_queries;
+  "platform/roles": typeof platform_roles;
   "platform/test/helpers": typeof platform_test_helpers;
   "platform/test/mutations": typeof platform_test_mutations;
   "platform/test/queries": typeof platform_test_queries;

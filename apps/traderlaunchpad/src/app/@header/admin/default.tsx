@@ -18,10 +18,10 @@ export default function AdminHeaderDefault() {
         // image="/images/tl-logo-1.png"
         rightSlot={
           <div className="flex items-center gap-2">
-            <AddToHomeScreenHeaderButton
+            {/* <AddToHomeScreenHeaderButton
               appName="Trader Launchpad"
               buttonClassName="text-foreground hover:text-foreground"
-            />
+            /> */}
             {/* <ThemeToggleButton /> */}
             <AnimatedThemeToggler />
             <TraderLaunchpadNotificationsMenu />

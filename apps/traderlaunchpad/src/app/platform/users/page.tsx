@@ -78,16 +78,7 @@ export default function PlatformUsersPage() {
   );
 
   return (
-    <div className="animate-in fade-in space-y-8 duration-500">
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Users</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage platform users and roles.
-          </p>
-        </div>
-      </div>
-
+    <div className="space-y-6">
       <Card className="overflow-hidden">
         <CardHeader className="border-b p-4">
           <CardTitle className="text-base">Directory</CardTitle>

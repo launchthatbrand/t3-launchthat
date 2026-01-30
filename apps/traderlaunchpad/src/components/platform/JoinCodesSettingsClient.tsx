@@ -49,6 +49,14 @@ type JoinCodeRow = {
   createdAt: number;
 };
 
+type PlatformRoleRow = {
+  key: "user" | "staff" | "admin";
+  label: string;
+  description?: string;
+  isAdmin: boolean;
+  updatedAt: number;
+};
+
 export const JoinCodesSettingsClient = () => {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const shouldQuery = isAuthenticated && !authLoading;
@@ -71,6 +79,10 @@ export const JoinCodesSettingsClient = () => {
 
   const [label, setLabel] = React.useState("");
   const [role, setRole] = React.useState<"user" | "staff" | "admin">("user");
+  const platformRoles = useQuery(
+    api.platform.roles.listPlatformRoles,
+    shouldQuery ? {} : "skip",
+  ) as PlatformRoleRow[] | undefined;
   const [tier, setTier] = React.useState<"free" | "standard" | "pro">("free");
   const [limitsDraft, setLimitsDraft] = React.useState<{
     maxOrganizations: string;
@@ -93,6 +105,22 @@ export const JoinCodesSettingsClient = () => {
   const [expiresInDays, setExpiresInDays] = React.useState<string>("");
   const [saving, setSaving] = React.useState(false);
   const [lastCode, setLastCode] = React.useState("");
+
+  const roleOptions = React.useMemo<PlatformRoleRow[]>(
+    () =>
+      Array.isArray(platformRoles) && platformRoles.length
+        ? platformRoles
+        : [
+            { key: "user", label: "User", isAdmin: false, updatedAt: 0 },
+            { key: "staff", label: "Staff", isAdmin: false, updatedAt: 0 },
+            { key: "admin", label: "Admin", isAdmin: true, updatedAt: 0 },
+          ],
+    [platformRoles],
+  );
+
+  const roleLabelByKey = React.useMemo(() => {
+    return new Map(roleOptions.map((opt) => [opt.key, opt.label]));
+  }, [roleOptions]);
 
   const getJoinLink = React.useCallback((code: string) => {
     if (typeof window === "undefined") return "";
@@ -232,14 +260,14 @@ export const JoinCodesSettingsClient = () => {
             <div className="space-y-2">
               <Label>Role</Label>
               <div className="flex flex-wrap gap-2">
-                {(["user", "staff", "admin"] as const).map((value) => (
+                {roleOptions.map((option) => (
                   <Button
-                    key={value}
+                    key={option.key}
                     type="button"
-                    variant={role === value ? "default" : "outline"}
-                    onClick={() => setRole(value)}
+                    variant={role === option.key ? "default" : "outline"}
+                    onClick={() => setRole(option.key)}
                   >
-                    {value}
+                    {option.label}
                   </Button>
                 ))}
               </div>
@@ -391,7 +419,9 @@ export const JoinCodesSettingsClient = () => {
                     {typeof code.expiresAt === "number"
                       ? ` · Expires ${format(code.expiresAt, "MMM d, yyyy")}`
                       : ""}
-                  {code.role ? ` · Role ${code.role}` : ""}
+                  {code.role
+                    ? ` · Role ${roleLabelByKey.get(code.role as PlatformRoleRow["key"]) ?? code.role}`
+                    : ""}
                   {code.tier ? ` · Tier ${code.tier}` : ""}
                   </div>
                   {code.code ? (

@@ -4,16 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "~/lib/utils";
 
-const tabs: Array<{ href: string; label: string }> = [
-  { href: "/platform/settings/general", label: "General" },
-  { href: "/platform/settings/emails", label: "Email" },
-  { href: "/platform/settings/notifications", label: "Notifications" },
-  { href: "/platform/settings/sync", label: "Sync" },
-  { href: "/platform/settings/shortlinks", label: "Shortlinks" },
-  { href: "/platform/settings/affiliates", label: "Affiliates" },
+const tabs: { href: string; label: string }[] = [
+  { href: "/platform/users", label: "Users" },
+  { href: "/platform/users/roles", label: "Roles" },
 ];
 
-export const SettingsTabs = () => {
+export const UsersTabs = () => {
   const pathname = usePathname();
 
   return (
@@ -38,4 +34,3 @@ export const SettingsTabs = () => {
     </div>
   );
 };
-

@@ -349,5 +349,31 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_key", ["key"]),
 
+  /**
+   * Platform-managed broker sync cadence defaults by entitlement tier.
+   * Single-row pattern keyed by `key` (use "main").
+   */
+  platformBrokerSyncSettings: defineTable({
+    key: v.string(),
+    freeIntervalMs: v.number(),
+    standardIntervalMs: v.number(),
+    proIntervalMs: v.number(),
+    updatedAt: v.number(),
+    createdAt: v.number(),
+  }).index("by_key", ["key"]),
+
+  /**
+   * Platform-managed role definitions for user access + join codes.
+   * Single-row per role key (e.g. "user", "staff", "admin").
+   */
+  userRoles: defineTable({
+    key: v.string(),
+    label: v.string(),
+    description: v.optional(v.string()),
+    isAdmin: v.boolean(),
+    updatedAt: v.number(),
+    createdAt: v.number(),
+  }).index("by_key", ["key"]),
+
 });
 

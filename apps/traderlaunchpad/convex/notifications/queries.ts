@@ -55,6 +55,23 @@ const resolveUserIdByClerkId = async (ctx: any, clerkId: string): Promise<string
   return typeof id === "string" ? id : null;
 };
 
+const resolveViewerUserId = async (ctx: any): Promise<string | null> => {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) return null;
+
+  if (identity.tokenIdentifier) {
+    const byToken = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .first();
+    if (isRecord(byToken) && typeof byToken._id === "string") return byToken._id;
+  }
+
+  const clerkId = typeof identity.subject === "string" ? identity.subject : "";
+  if (!clerkId) return null;
+  return await resolveUserIdByClerkId(ctx, clerkId);
+};
+
 const requirePlatformAdmin = async (ctx: any) => {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new Error("Unauthorized");
@@ -127,6 +144,59 @@ export const getUnreadCountByClerkIdAcrossOrgs = query({
       { userId },
     );
     return typeof count === "number" ? count : 0;
+  },
+});
+
+export const paginateForViewer = query({
+  args: {
+    filters: v.optional(
+      v.object({
+        eventKey: v.optional(v.string()),
+        tabKey: v.optional(v.string()),
+      }),
+    ),
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: v.object({
+    page: v.array(v.any()),
+    isDone: v.boolean(),
+    continueCursor: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, args) => {
+    const userId = await resolveViewerUserId(ctx);
+    if (!userId) {
+      return { page: [], isDone: true, continueCursor: null };
+    }
+    const res = (await ctx.runQuery(
+      notificationsQueries.paginateByUserIdAcrossOrgs,
+      {
+        userId,
+        filters: args.filters,
+        paginationOpts: args.paginationOpts,
+      },
+    )) as any;
+    return {
+      page: Array.isArray(res?.page) ? res.page : [],
+      isDone: Boolean(res?.isDone),
+      continueCursor:
+        typeof res?.continueCursor === "string" || res?.continueCursor === null
+          ? res.continueCursor
+          : null,
+    };
+  },
+});
+
+export const getUnreadCountForViewer = query({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    const userId = await resolveViewerUserId(ctx);
+    if (!userId) return 0;
+    const res = await ctx.runQuery(
+      notificationsQueries.getUnreadCountByUserIdAcrossOrgs,
+      { userId },
+    );
+    return typeof res === "number" ? res : 0;
   },
 });
 

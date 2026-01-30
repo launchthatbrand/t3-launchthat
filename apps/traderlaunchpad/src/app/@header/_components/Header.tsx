@@ -7,6 +7,7 @@ import Link from "next/link";
 import { NavItems } from "~/components/ui/resizable-navbar";
 import React from "react";
 import { TraderLaunchpadNavUser } from "~/components/auth/TraderLaunchpadNavUser";
+import { TraderLaunchpadNotificationsMenu } from "~/components/notifications/TraderLaunchpadNotificationsMenu";
 
 export function Header() {
   const navItems = [
@@ -62,6 +63,7 @@ export function Header() {
             buttonClassName="text-foreground hover:text-foreground"
           />
           <AnimatedThemeToggler />
+          <TraderLaunchpadNotificationsMenu />
           {/* Portal parity: tenant hosts derive auth state from /api/me; auth host uses Clerk session */}
           <TraderLaunchpadNavUser />
         </div>

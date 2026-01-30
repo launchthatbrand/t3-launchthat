@@ -6,6 +6,7 @@ import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 
 import { env } from "../../src/env";
+import { internal } from "../_generated/api";
 
 // IMPORTANT: Avoid importing the typed Convex `components` here — it can trigger TS
 // "type instantiation is excessively deep". Pull via require() to keep it `any`.
@@ -22,6 +23,21 @@ type DueConnectionRow = {
 const toStringSafe = (v: unknown): string => (typeof v === "string" ? v : "");
 const toNumberSafe = (v: unknown): number =>
   typeof v === "number" && Number.isFinite(v) ? v : 0;
+
+type SyncSettings = {
+  freeIntervalMs: number;
+  standardIntervalMs: number;
+  proIntervalMs: number;
+};
+
+const clampIntervalMs = (value: number): number =>
+  Math.max(10_000, Math.min(10 * 60_000, Math.floor(value)));
+
+const resolveIntervalMsForTier = (tier: string, settings: SyncSettings): number => {
+  if (tier === "pro") return clampIntervalMs(settings.proIntervalMs);
+  if (tier === "standard") return clampIntervalMs(settings.standardIntervalMs);
+  return clampIntervalMs(settings.freeIntervalMs);
+};
 
 export const runDueTradeLockerAutosync = internalAction({
   args: {
@@ -43,12 +59,17 @@ export const runDueTradeLockerAutosync = internalAction({
   handler: async (ctx, args) => {
     const now = Date.now();
 
-    // MVP requirement: autosync every ~60 seconds.
-    const intervalMsRaw =
+    const settings = (await ctx.runQuery(
+      internal.platform.brokerSyncSettings.getBrokerSyncSettingsInternal,
+      {},
+    )) as SyncSettings;
+    const minIntervalMs = clampIntervalMs(
+      Math.min(settings.freeIntervalMs, settings.standardIntervalMs, settings.proIntervalMs),
+    );
+    const intervalMs =
       typeof args.intervalMs === "number" && Number.isFinite(args.intervalMs)
-        ? Math.floor(args.intervalMs)
-        : 60_000;
-    const intervalMs = Math.max(10_000, Math.min(10 * 60_000, intervalMsRaw));
+        ? clampIntervalMs(args.intervalMs)
+        : minIntervalMs;
 
     // "Active" tier prioritizes currently-active accounts (recent broker activity / open trades).
     const activeWindowMsRaw =
@@ -118,7 +139,21 @@ export const runDueTradeLockerAutosync = internalAction({
     }
     combined.sort((a, b) => a.lastSyncAt - b.lastSyncAt);
 
-    const toClaim = combined.map((c) => c.id);
+    const uniqueUserIds = Array.from(new Set(combined.map((c) => c.userId).filter(Boolean)));
+    const entitlements = (await ctx.runQuery(
+      internal.accessPolicy.listEntitlementsByUserIds,
+      { userIds: uniqueUserIds },
+    )) as Array<{ userId: string; tier: string }>;
+    const tierByUserId = new Map(entitlements.map((row) => [row.userId, row.tier]));
+
+    const dueCombined = combined.filter((c) => {
+      const tier = tierByUserId.get(c.userId) ?? "free";
+      const intervalForUser = resolveIntervalMsForTier(tier, settings);
+      const dueBefore = now - intervalForUser;
+      return c.lastSyncAt <= dueBefore;
+    });
+
+    const toClaim = dueCombined.map((c) => c.id);
     const checked = toClaim.length;
     if (toClaim.length === 0) {
       return { ok: true, checked: 0, claimed: 0, succeeded: 0, failed: 0, intervalMs };
@@ -136,7 +171,7 @@ export const runDueTradeLockerAutosync = internalAction({
     let succeeded = 0;
     let failed = 0;
 
-    for (const c of combined) {
+    for (const c of dueCombined) {
       if (!claimedSet.has(c.id)) continue;
       if (!c.orgId || !c.userId) {
         failed += 1;
