@@ -6214,6 +6214,33 @@ export declare const components: {
           userId: string;
         }
       >;
+      getProgramSettings: FunctionReference<
+        "query",
+        "internal",
+        { scopeId: string; scopeType: "site" | "org" | "app" },
+        {
+          directCommissionBps: number;
+          mlmEnabled: boolean;
+          scopeId: string;
+          scopeType: "site" | "org" | "app";
+          sponsorOverrideBps: number;
+          updatedAt: number;
+        }
+      >;
+      listAffiliateConversions: FunctionReference<
+        "query",
+        "internal",
+        { fromMs?: number; limit?: number },
+        Array<{
+          amountCents: number;
+          currency: string;
+          externalId: string;
+          kind: string;
+          occurredAt: number;
+          referredUserId: string;
+          referrerUserId: string;
+        }>
+      >;
       listAffiliateCreditEventsForUser: FunctionReference<
         "query",
         "internal",
@@ -6290,6 +6317,26 @@ export declare const components: {
           referredUserId: string;
         }>
       >;
+      upsertProgramSettings: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          directCommissionBps?: number;
+          mlmEnabled?: boolean;
+          scopeId: string;
+          scopeType: "site" | "org" | "app";
+          sponsorOverrideBps?: number;
+        },
+        {
+          directCommissionBps: number;
+          mlmEnabled: boolean;
+          ok: boolean;
+          scopeId: string;
+          scopeType: "site" | "org" | "app";
+          sponsorOverrideBps: number;
+          updatedAt: number;
+        }
+      >;
     };
     conversions: {
       recordPaidConversion: FunctionReference<
@@ -6333,13 +6380,39 @@ export declare const components: {
             ok: boolean;
           }
         >;
+        recordCommissionDistributionFromPayment: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            currency?: string;
+            externalEventId: string;
+            grossAmountCents: number;
+            occurredAt?: number;
+            paymentKind?: string;
+            referredUserId: string;
+            scopeId?: string;
+            scopeType?: "site" | "org" | "app";
+            source?: string;
+          },
+          {
+            created: boolean;
+            directCommissionCents: number;
+            grossAmountCents: number;
+            ok: boolean;
+            referrerUserId: string | null;
+            sponsorOverrideCents: number;
+            sponsorUserId: string | null;
+          }
+        >;
         recordCommissionFromPayment: FunctionReference<
           "mutation",
           "internal",
           {
             amountCents: number;
+            commissionRateBps?: number;
             currency?: string;
             externalEventId: string;
+            grossAmountCents: number;
             occurredAt?: number;
             paymentKind?: string;
             referredUserId: string;
@@ -6348,6 +6421,7 @@ export declare const components: {
           {
             amountCents: number;
             created: boolean;
+            grossAmountCents: number;
             ok: boolean;
             referrerUserId: string | null;
           }
@@ -6359,6 +6433,53 @@ export declare const components: {
           "internal",
           { currency?: string; userId: string },
           { balanceCents: number; currency: string; userId: string }
+        >;
+      };
+    };
+    network: {
+      mutations: {
+        setMySponsorByReferralCodeOptIn: FunctionReference<
+          "mutation",
+          "internal",
+          { nowMs?: number; referralCode: string; userId: string },
+          { created: boolean; ok: boolean; sponsorUserId: string | null }
+        >;
+        setSponsorForUserAdmin: FunctionReference<
+          "mutation",
+          "internal",
+          {
+            adminUserId?: string;
+            nowMs?: number;
+            sponsorUserId: string | null;
+            userId: string;
+          },
+          {
+            ok: boolean;
+            previousSponsorUserId: string | null;
+            sponsorUserId: string | null;
+            userId: string;
+          }
+        >;
+      };
+      queries: {
+        getSponsorLinkForUser: FunctionReference<
+          "query",
+          "internal",
+          { userId: string },
+          null | {
+            createdAt: number;
+            createdSource: string;
+            sponsorUserId: string;
+            updatedAt?: number;
+            updatedBy?: string;
+            userId: string;
+          }
+        >;
+        listDirectDownlineForSponsor: FunctionReference<
+          "query",
+          "internal",
+          { limit?: number; sponsorUserId: string },
+          Array<{ createdAt: number; createdSource: string; userId: string }>
         >;
       };
     };
@@ -6781,14 +6902,25 @@ export declare const components: {
           "action",
           "internal",
           {
+            businessType?: "individual" | "company";
             email?: string;
+            fullName?: string;
             metadata?: any;
+            productDescription?: string;
             refreshUrl: string;
             returnUrl: string;
             stripeSecretKey: string;
+            supportEmail?: string;
             userId: string;
+            websiteUrl?: string;
           },
           { connectAccountId: string; ok: boolean; url: string }
+        >;
+        disconnectStripePayoutAccountForUser: FunctionReference<
+          "action",
+          "internal",
+          { deleteRemote?: boolean; stripeSecretKey: string; userId: string },
+          { deletedLocal: boolean; deletedRemote: boolean; ok: boolean }
         >;
         getUpcomingSubscriptionDueCentsForUser: FunctionReference<
           "action",
@@ -6800,6 +6932,8 @@ export declare const components: {
           "action",
           "internal",
           {
+            affiliateScopeId?: string;
+            affiliateScopeType?: "site" | "org" | "app";
             rawBody: string;
             signature: string;
             stripeSecretKey: string;
@@ -6828,6 +6962,12 @@ export declare const components: {
         >;
       };
       mutations: {
+        deletePayoutAccount: FunctionReference<
+          "mutation",
+          "internal",
+          { provider?: string; userId: string },
+          { connectAccountId?: string; deleted: boolean; ok: boolean }
+        >;
         setPayoutPreference: FunctionReference<
           "mutation",
           "internal",
@@ -6858,19 +6998,21 @@ export declare const components: {
           "internal",
           {
             amountCents: number;
-            commissionRateBps?: number;
             currency?: string;
             externalEventId: string;
             kind: string;
             occurredAt?: number;
             referredUserId: string;
+            scopeId?: string;
+            scopeType?: "site" | "org" | "app";
             source: string;
           },
           {
-            commissionCents: number;
             created: boolean;
+            directCommissionCents: number;
             ok: boolean;
             referrerUserId: string | null;
+            sponsorOverrideCents: number;
           }
         >;
       };

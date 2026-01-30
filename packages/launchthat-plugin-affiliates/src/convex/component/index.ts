@@ -8,5 +8,7 @@ export * as rewards from "./rewards/actions";
 export * as rewardsQueries from "./rewards/queries";
 export * as credit from "./credit/actions";
 export * as creditQueries from "./credit/queries";
+export * as networkMutations from "./network/mutations";
+export * as networkQueries from "./network/queries";
 export * as admin from "./admin";
 

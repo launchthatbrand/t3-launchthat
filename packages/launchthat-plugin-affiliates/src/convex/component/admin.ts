@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 
 const profileValidator = v.object({
   userId: v.string(),
@@ -276,6 +276,119 @@ export const listAffiliateCreditEventsForUser = query({
       referredUserId: typeof row.referredUserId === "string" ? row.referredUserId : undefined,
       conversionId: typeof row.conversionId === "string" ? row.conversionId : undefined,
     }));
+  },
+});
+
+const clampBps = (raw: unknown, fallback: number): number => {
+  const n = typeof raw === "number" ? Math.round(raw) : Number(raw);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.min(10000, Math.round(n)));
+};
+
+export const getProgramSettings = query({
+  args: {
+    scopeType: v.union(v.literal("site"), v.literal("org"), v.literal("app")),
+    scopeId: v.string(),
+  },
+  returns: v.object({
+    scopeType: v.union(v.literal("site"), v.literal("org"), v.literal("app")),
+    scopeId: v.string(),
+    mlmEnabled: v.boolean(),
+    directCommissionBps: v.number(),
+    sponsorOverrideBps: v.number(),
+    updatedAt: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const scopeType = args.scopeType;
+    const scopeId = String(args.scopeId ?? "").trim() || "default";
+
+    const row = await ctx.db
+      .query("affiliateProgramSettings")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .withIndex("by_scope", (q: any) => q.eq("scopeType", scopeType).eq("scopeId", scopeId))
+      .first();
+
+    // Defaults: direct 20%, sponsor override 5%, enabled.
+    const mlmEnabled = row ? (row as any).mlmEnabled !== false : true;
+    const directCommissionBps = clampBps(row ? (row as any).directCommissionBps : undefined, 2000);
+    const sponsorOverrideBps = clampBps(row ? (row as any).sponsorOverrideBps : undefined, 500);
+    const updatedAt = row && typeof (row as any).updatedAt === "number" ? Number((row as any).updatedAt) : 0;
+
+    return { scopeType, scopeId, mlmEnabled, directCommissionBps, sponsorOverrideBps, updatedAt };
+  },
+});
+
+export const upsertProgramSettings = mutation({
+  args: {
+    scopeType: v.union(v.literal("site"), v.literal("org"), v.literal("app")),
+    scopeId: v.string(),
+    mlmEnabled: v.optional(v.boolean()),
+    directCommissionBps: v.optional(v.number()),
+    sponsorOverrideBps: v.optional(v.number()),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    scopeType: v.union(v.literal("site"), v.literal("org"), v.literal("app")),
+    scopeId: v.string(),
+    mlmEnabled: v.boolean(),
+    directCommissionBps: v.number(),
+    sponsorOverrideBps: v.number(),
+    updatedAt: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const scopeType = args.scopeType;
+    const scopeId = String(args.scopeId ?? "").trim() || "default";
+    const now = Date.now();
+
+    const existing = await ctx.db
+      .query("affiliateProgramSettings")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .withIndex("by_scope", (q: any) => q.eq("scopeType", scopeType).eq("scopeId", scopeId))
+      .first();
+
+    const nextMlmEnabled =
+      typeof args.mlmEnabled === "boolean" ? args.mlmEnabled : existing ? (existing as any).mlmEnabled !== false : true;
+    const nextDirectCommissionBps = clampBps(
+      typeof args.directCommissionBps === "number" ? args.directCommissionBps : existing ? (existing as any).directCommissionBps : undefined,
+      2000,
+    );
+    const nextSponsorOverrideBps = clampBps(
+      typeof args.sponsorOverrideBps === "number" ? args.sponsorOverrideBps : existing ? (existing as any).sponsorOverrideBps : undefined,
+      500,
+    );
+
+    if (existing) {
+      await ctx.db.patch((existing as any)._id, {
+        mlmEnabled: nextMlmEnabled,
+        directCommissionBps: nextDirectCommissionBps,
+        sponsorOverrideBps: nextSponsorOverrideBps,
+        updatedAt: now,
+      });
+    } else {
+      // Required non-MLM settings: initialize with safe defaults.
+      await ctx.db.insert("affiliateProgramSettings", {
+        scopeType,
+        scopeId,
+        attributionWindowDays: 30,
+        activationMilestones: [],
+        paidConversionDiscountRules: [],
+        mlmEnabled: nextMlmEnabled,
+        directCommissionBps: nextDirectCommissionBps,
+        sponsorOverrideBps: nextSponsorOverrideBps,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    return {
+      ok: true,
+      scopeType,
+      scopeId,
+      mlmEnabled: nextMlmEnabled,
+      directCommissionBps: nextDirectCommissionBps,
+      sponsorOverrideBps: nextSponsorOverrideBps,
+      updatedAt: now,
+    };
   },
 });
 

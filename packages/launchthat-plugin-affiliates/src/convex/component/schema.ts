@@ -14,6 +14,17 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_referralCode", ["referralCode"]),
 
+  affiliateSponsorLinks: defineTable({
+    userId: v.string(), // downline user
+    sponsorUserId: v.string(), // upline affiliate
+    createdAt: v.number(),
+    createdSource: v.string(), // e.g. "opt_in_link", "admin_change"
+    updatedAt: v.optional(v.number()),
+    updatedBy: v.optional(v.string()), // e.g. admin clerkId
+  })
+    .index("by_userId", ["userId"])
+    .index("by_sponsorUserId_and_createdAt", ["sponsorUserId", "createdAt"]),
+
   affiliateLogs: defineTable({
     ts: v.number(),
     kind: v.string(),
@@ -118,6 +129,9 @@ export default defineSchema({
     attributionWindowDays: v.number(),
     activationMilestones: v.any(),
     paidConversionDiscountRules: v.any(),
+    mlmEnabled: v.optional(v.boolean()),
+    directCommissionBps: v.optional(v.number()),
+    sponsorOverrideBps: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_scope", ["scopeType", "scopeId"]),

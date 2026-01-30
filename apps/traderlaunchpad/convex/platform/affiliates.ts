@@ -194,6 +194,18 @@ export const getAffiliateAdminView = query({
   args: { userId: v.string() },
   returns: v.object({
     userId: v.string(),
+    sponsorLink: v.union(
+      v.null(),
+      v.object({
+        userId: v.string(),
+        sponsorUserId: v.string(),
+        createdAt: v.number(),
+        createdSource: v.string(),
+        updatedAt: v.optional(v.number()),
+        updatedBy: v.optional(v.string()),
+      }),
+    ),
+    directDownlineCount: v.number(),
     profile: v.union(
       v.null(),
       v.object({
@@ -281,6 +293,37 @@ export const getAffiliateAdminView = query({
     await requirePlatformAdmin(ctx);
     const userId = String(args.userId ?? "").trim();
     if (!userId) throw new Error("Missing userId");
+
+    const sponsorLinkUnknown = await ctx.runQuery(
+      componentsUntyped.launchthat_affiliates.network.queries.getSponsorLinkForUser,
+      { userId },
+    );
+    const sponsorLink =
+      sponsorLinkUnknown && typeof sponsorLinkUnknown === "object"
+        ? {
+            userId: String((sponsorLinkUnknown as any).userId ?? ""),
+            sponsorUserId: String((sponsorLinkUnknown as any).sponsorUserId ?? ""),
+            createdAt:
+              typeof (sponsorLinkUnknown as any).createdAt === "number"
+                ? Number((sponsorLinkUnknown as any).createdAt)
+                : 0,
+            createdSource: String((sponsorLinkUnknown as any).createdSource ?? ""),
+            updatedAt:
+              typeof (sponsorLinkUnknown as any).updatedAt === "number"
+                ? Number((sponsorLinkUnknown as any).updatedAt)
+                : undefined,
+            updatedBy:
+              typeof (sponsorLinkUnknown as any).updatedBy === "string"
+                ? String((sponsorLinkUnknown as any).updatedBy)
+                : undefined,
+          }
+        : null;
+
+    const downlineUnknown = await ctx.runQuery(
+      componentsUntyped.launchthat_affiliates.network.queries.listDirectDownlineForSponsor,
+      { sponsorUserId: userId, limit: 5000 },
+    );
+    const directDownlineCount = Array.isArray(downlineUnknown) ? downlineUnknown.length : 0;
 
     const profileUnknown = await ctx.runQuery(
       componentsUntyped.launchthat_affiliates.admin.getAffiliateProfileByUserId,
@@ -385,6 +428,8 @@ export const getAffiliateAdminView = query({
 
     return {
       userId,
+      sponsorLink,
+      directDownlineCount,
       profile,
       stats,
       benefits,
@@ -394,6 +439,55 @@ export const getAffiliateAdminView = query({
       payoutAccount,
       payoutPreference,
     };
+  },
+});
+
+export const setAffiliateSponsor = mutation({
+  args: {
+    userId: v.string(),
+    sponsorReferralCode: v.optional(v.string()),
+    sponsorUserId: v.optional(v.string()),
+    clear: v.optional(v.boolean()),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    userId: v.string(),
+    sponsorUserId: v.union(v.string(), v.null()),
+    previousSponsorUserId: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, args) => {
+    const viewer: any = await requirePlatformAdmin(ctx);
+    const userId = String(args.userId ?? "").trim();
+    if (!userId) throw new Error("Missing userId");
+
+    const clear = args.clear === true;
+    let sponsorUserId: string | null = null;
+    if (!clear) {
+      const fromUserId = typeof args.sponsorUserId === "string" ? args.sponsorUserId.trim() : "";
+      if (fromUserId) sponsorUserId = fromUserId;
+
+      const fromCode =
+        typeof args.sponsorReferralCode === "string" ? args.sponsorReferralCode.trim().toLowerCase() : "";
+      if (!sponsorUserId && fromCode) {
+        const profileUnknown = await ctx.runQuery(
+          componentsUntyped.launchthat_affiliates.profiles.getAffiliateProfileByReferralCode,
+          { referralCode: fromCode },
+        );
+        if (profileUnknown && typeof profileUnknown === "object") {
+          sponsorUserId = String((profileUnknown as any).userId ?? "").trim() || null;
+        }
+      }
+    }
+
+    const resUnknown = await ctx.runMutation(
+      componentsUntyped.launchthat_affiliates.network.mutations.setSponsorForUserAdmin,
+      {
+        userId,
+        sponsorUserId,
+        adminUserId: typeof viewer?.clerkId === "string" ? viewer.clerkId : "dev",
+      },
+    );
+    return resUnknown as any;
   },
 });
 
@@ -414,6 +508,58 @@ export const setAffiliateStatus = mutation({
       {
         userId: String(args.userId ?? ""),
         status: args.status,
+      },
+    );
+    return resUnknown as any;
+  },
+});
+
+const AFFILIATE_SCOPE = { scopeType: "app" as const, scopeId: "traderlaunchpad" as const };
+
+export const getMlmSettings = query({
+  args: {},
+  returns: v.object({
+    scopeType: v.union(v.literal("site"), v.literal("org"), v.literal("app")),
+    scopeId: v.string(),
+    mlmEnabled: v.boolean(),
+    directCommissionBps: v.number(),
+    sponsorOverrideBps: v.number(),
+    updatedAt: v.number(),
+  }),
+  handler: async (ctx) => {
+    await requirePlatformAdmin(ctx);
+    const resUnknown = await ctx.runQuery(
+      componentsUntyped.launchthat_affiliates.admin.getProgramSettings,
+      AFFILIATE_SCOPE,
+    );
+    return resUnknown as any;
+  },
+});
+
+export const setMlmSettings = mutation({
+  args: {
+    mlmEnabled: v.boolean(),
+    directCommissionBps: v.number(),
+    sponsorOverrideBps: v.number(),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    scopeType: v.union(v.literal("site"), v.literal("org"), v.literal("app")),
+    scopeId: v.string(),
+    mlmEnabled: v.boolean(),
+    directCommissionBps: v.number(),
+    sponsorOverrideBps: v.number(),
+    updatedAt: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    await requirePlatformAdmin(ctx);
+    const resUnknown = await ctx.runMutation(
+      componentsUntyped.launchthat_affiliates.admin.upsertProgramSettings,
+      {
+        ...AFFILIATE_SCOPE,
+        mlmEnabled: args.mlmEnabled,
+        directCommissionBps: args.directCommissionBps,
+        sponsorOverrideBps: args.sponsorOverrideBps,
       },
     );
     return resUnknown as any;

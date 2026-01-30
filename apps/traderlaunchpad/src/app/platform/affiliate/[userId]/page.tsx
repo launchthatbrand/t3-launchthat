@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { ColumnDefinition } from "@acme/ui/entity-list/types";
 import { EntityList } from "@acme/ui/entity-list/EntityList";
 import { Input } from "@acme/ui/input";
+import { Label } from "@acme/ui/label";
 
 interface PlatformUserRow {
   clerkId: string;
@@ -73,6 +74,15 @@ interface AffiliateLog {
 
 interface AffiliateAdminView {
   userId: string;
+  sponsorLink: {
+    userId: string;
+    sponsorUserId: string;
+    createdAt: number;
+    createdSource: string;
+    updatedAt?: number;
+    updatedBy?: string;
+  } | null;
+  directDownlineCount: number;
   profile: AffiliateProfile | null;
   stats: AffiliateStats;
   benefits: AffiliateBenefit[];
@@ -116,6 +126,8 @@ export default function PlatformAffiliateDetailPage() {
   }) as AffiliateAdminView | undefined;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
   const setStatus = useMutation((api as any).platform.affiliates.setAffiliateStatus);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+  const setSponsor = useMutation((api as any).platform.affiliates.setAffiliateSponsor);
 
   const users = useQuery(api.coreTenant.platformUsers.listUsers, { limit: 500 }) as
     | PlatformUserRow[]
@@ -128,6 +140,10 @@ export default function PlatformAffiliateDetailPage() {
 
   const profile = view?.profile ?? null;
   const displayName = (user?.name ?? user?.email ?? userId) || "—";
+  const sponsorLink = view?.sponsorLink ?? null;
+
+  const [sponsorReferralCode, setSponsorReferralCode] = React.useState<string>("");
+  const [sponsorUserIdInput, setSponsorUserIdInput] = React.useState<string>("");
 
   const [recruitFilter, setRecruitFilter] = React.useState<string>("all");
   const [recruitSearch, setRecruitSearch] = React.useState<string>("");
@@ -308,6 +324,78 @@ export default function PlatformAffiliateDetailPage() {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Network</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-lg border bg-card p-3">
+              <div className="text-muted-foreground text-xs">Sponsor</div>
+              <div className="mt-1 text-sm font-semibold">
+                {sponsorLink?.sponsorUserId ? sponsorLink.sponsorUserId : "—"}
+              </div>
+              <div className="text-muted-foreground mt-1 text-xs">
+                {sponsorLink?.createdAt ? new Date(sponsorLink.createdAt).toLocaleString() : ""}
+              </div>
+            </div>
+            <div className="rounded-lg border bg-card p-3">
+              <div className="text-muted-foreground text-xs">Direct downline</div>
+              <div className="mt-1 text-sm font-semibold">
+                {typeof view?.directDownlineCount === "number" ? view.directDownlineCount : 0}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 rounded-lg border bg-card p-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label>Sponsor referral code</Label>
+              <Input
+                value={sponsorReferralCode}
+                onChange={(e) => setSponsorReferralCode(e.target.value)}
+                placeholder="e.g. ab12cd34…"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Or sponsor userId</Label>
+              <Input
+                value={sponsorUserIdInput}
+                onChange={(e) => setSponsorUserIdInput(e.target.value)}
+                placeholder="clerkId…"
+              />
+            </div>
+            <div className="flex items-end justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSponsor({ userId, clear: true }).catch((err: unknown) => {
+                    console.error("[PlatformAffiliateDetailPage] clear sponsor failed", err);
+                  });
+                  setSponsorReferralCode("");
+                  setSponsorUserIdInput("");
+                }}
+              >
+                Clear sponsor
+              </Button>
+              <Button
+                onClick={() => {
+                  setSponsor({
+                    userId,
+                    sponsorReferralCode: sponsorReferralCode.trim() || undefined,
+                    sponsorUserId: sponsorUserIdInput.trim() || undefined,
+                    clear: false,
+                  }).catch((err: unknown) => {
+                    console.error("[PlatformAffiliateDetailPage] set sponsor failed", err);
+                  });
+                }}
+              >
+                Set sponsor
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

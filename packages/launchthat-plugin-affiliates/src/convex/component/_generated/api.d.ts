@@ -14,6 +14,8 @@ import type * as credit_actions from "../credit/actions.js";
 import type * as credit_queries from "../credit/queries.js";
 import type * as index from "../index.js";
 import type * as logs from "../logs.js";
+import type * as network_mutations from "../network/mutations.js";
+import type * as network_queries from "../network/queries.js";
 import type * as profiles from "../profiles.js";
 import type * as referrals_queries from "../referrals/queries.js";
 import type * as rewards_actions from "../rewards/actions.js";
@@ -41,6 +43,8 @@ declare const fullApi: ApiFromModules<{
   "credit/queries": typeof credit_queries;
   index: typeof index;
   logs: typeof logs;
+  "network/mutations": typeof network_mutations;
+  "network/queries": typeof network_queries;
   profiles: typeof profiles;
   "referrals/queries": typeof referrals_queries;
   "rewards/actions": typeof rewards_actions;
@@ -61,6 +65,19 @@ export type Mounts = {
         status: "active" | "disabled";
         updatedAt: number;
         userId: string;
+      }
+    >;
+    getProgramSettings: FunctionReference<
+      "query",
+      "public",
+      { scopeId: string; scopeType: "site" | "org" | "app" },
+      {
+        directCommissionBps: number;
+        mlmEnabled: boolean;
+        scopeId: string;
+        scopeType: "site" | "org" | "app";
+        sponsorOverrideBps: number;
+        updatedAt: number;
       }
     >;
     listAffiliateConversions: FunctionReference<
@@ -153,6 +170,26 @@ export type Mounts = {
         referredUserId: string;
       }>
     >;
+    upsertProgramSettings: FunctionReference<
+      "mutation",
+      "public",
+      {
+        directCommissionBps?: number;
+        mlmEnabled?: boolean;
+        scopeId: string;
+        scopeType: "site" | "org" | "app";
+        sponsorOverrideBps?: number;
+      },
+      {
+        directCommissionBps: number;
+        mlmEnabled: boolean;
+        ok: boolean;
+        scopeId: string;
+        scopeType: "site" | "org" | "app";
+        sponsorOverrideBps: number;
+        updatedAt: number;
+      }
+    >;
   };
   conversions: {
     recordPaidConversion: FunctionReference<
@@ -196,6 +233,30 @@ export type Mounts = {
           ok: boolean;
         }
       >;
+      recordCommissionDistributionFromPayment: FunctionReference<
+        "mutation",
+        "public",
+        {
+          currency?: string;
+          externalEventId: string;
+          grossAmountCents: number;
+          occurredAt?: number;
+          paymentKind?: string;
+          referredUserId: string;
+          scopeId?: string;
+          scopeType?: "site" | "org" | "app";
+          source?: string;
+        },
+        {
+          created: boolean;
+          directCommissionCents: number;
+          grossAmountCents: number;
+          ok: boolean;
+          referrerUserId: string | null;
+          sponsorOverrideCents: number;
+          sponsorUserId: string | null;
+        }
+      >;
       recordCommissionFromPayment: FunctionReference<
         "mutation",
         "public",
@@ -225,6 +286,53 @@ export type Mounts = {
         "public",
         { currency?: string; userId: string },
         { balanceCents: number; currency: string; userId: string }
+      >;
+    };
+  };
+  network: {
+    mutations: {
+      setMySponsorByReferralCodeOptIn: FunctionReference<
+        "mutation",
+        "public",
+        { nowMs?: number; referralCode: string; userId: string },
+        { created: boolean; ok: boolean; sponsorUserId: string | null }
+      >;
+      setSponsorForUserAdmin: FunctionReference<
+        "mutation",
+        "public",
+        {
+          adminUserId?: string;
+          nowMs?: number;
+          sponsorUserId: string | null;
+          userId: string;
+        },
+        {
+          ok: boolean;
+          previousSponsorUserId: string | null;
+          sponsorUserId: string | null;
+          userId: string;
+        }
+      >;
+    };
+    queries: {
+      getSponsorLinkForUser: FunctionReference<
+        "query",
+        "public",
+        { userId: string },
+        null | {
+          createdAt: number;
+          createdSource: string;
+          sponsorUserId: string;
+          updatedAt?: number;
+          updatedBy?: string;
+          userId: string;
+        }
+      >;
+      listDirectDownlineForSponsor: FunctionReference<
+        "query",
+        "public",
+        { limit?: number; sponsorUserId: string },
+        Array<{ createdAt: number; createdSource: string; userId: string }>
       >;
     };
   };

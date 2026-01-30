@@ -24,14 +24,15 @@ export const recordCommissionablePayment = mutation({
     amountCents: v.number(), // gross amount paid in cents
     currency: v.optional(v.string()),
     occurredAt: v.optional(v.number()),
-    // For future: allow custom commission rates per program/plan
-    commissionRateBps: v.optional(v.number()),
+    scopeType: v.optional(v.union(v.literal("site"), v.literal("org"), v.literal("app"))),
+    scopeId: v.optional(v.string()),
   },
   returns: v.object({
     ok: v.boolean(),
     created: v.boolean(),
     referrerUserId: v.union(v.string(), v.null()),
-    commissionCents: v.number(),
+    directCommissionCents: v.number(),
+    sponsorOverrideCents: v.number(),
   }),
   handler: async (ctx: any, args: any) => {
     const source = String(args.source ?? "").trim();
@@ -46,27 +47,18 @@ export const recordCommissionablePayment = mutation({
     const currency = normalizeCurrency(args.currency);
     const occurredAt = typeof args.occurredAt === "number" ? Number(args.occurredAt) : Date.now();
 
-    // MVP: default 20% commission
-    const commissionRateBpsRaw =
-      typeof args.commissionRateBps === "number" ? Math.round(args.commissionRateBps) : 2000;
-    const commissionRateBps = Math.max(0, Math.min(10000, commissionRateBpsRaw));
-    const commissionCents = Math.max(0, Math.round((amountCents * commissionRateBps) / 10000));
-    if (commissionCents <= 0) {
-      return { ok: true, created: false, referrerUserId: null, commissionCents: 0 };
-    }
-
     const res: any = await ctx.runMutation(
-      componentsUntyped.launchthat_affiliates.credit.actions.recordCommissionFromPayment,
+      componentsUntyped.launchthat_affiliates.credit.actions.recordCommissionDistributionFromPayment,
       {
         referredUserId,
         externalEventId,
         grossAmountCents: amountCents,
-        amountCents: commissionCents,
-        commissionRateBps,
         currency,
         occurredAt,
         source,
         paymentKind: kind,
+        scopeType: args.scopeType,
+        scopeId: args.scopeId,
       },
     );
 
@@ -74,7 +66,10 @@ export const recordCommissionablePayment = mutation({
       ok: true,
       created: Boolean(res?.created),
       referrerUserId: typeof res?.referrerUserId === "string" ? res.referrerUserId : null,
-      commissionCents,
+      directCommissionCents:
+        typeof res?.directCommissionCents === "number" ? Math.max(0, Math.round(res.directCommissionCents)) : 0,
+      sponsorOverrideCents:
+        typeof res?.sponsorOverrideCents === "number" ? Math.max(0, Math.round(res.sponsorOverrideCents)) : 0,
     };
   },
 });

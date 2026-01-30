@@ -164,6 +164,50 @@ export const becomeAffiliate = mutation({
   },
 });
 
+export const getMySponsorLink = query({
+  args: {},
+  returns: v.union(
+    v.null(),
+    v.object({
+      userId: v.string(),
+      sponsorUserId: v.string(),
+      createdAt: v.number(),
+      createdSource: v.string(),
+      updatedAt: v.optional(v.number()),
+      updatedBy: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx) => {
+    const userId = await readUserKey(ctx);
+    if (!userId) return null;
+    const res: any = await ctx.runQuery(
+      componentsUntyped.launchthat_affiliates.network.queries.getSponsorLinkForUser,
+      { userId },
+    );
+    return res ?? null;
+  },
+});
+
+export const joinMySponsorNetwork = mutation({
+  args: { referralCode: v.string() },
+  returns: v.object({
+    ok: v.boolean(),
+    created: v.boolean(),
+    sponsorUserId: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, args) => {
+    const userId = await readUserKey(ctx);
+    if (!userId) throw new Error("Unauthorized");
+    const referralCode = String(args.referralCode ?? "").trim();
+    if (!referralCode) throw new Error("Missing referralCode");
+    const res: any = await ctx.runMutation(
+      componentsUntyped.launchthat_affiliates.network.mutations.setMySponsorByReferralCodeOptIn,
+      { userId, referralCode },
+    );
+    return res;
+  },
+});
+
 export const listMyRecruits = query({
   args: {
     limit: v.optional(v.number()),

@@ -309,6 +309,8 @@ export const processStripeWebhook = action({
     stripeWebhookSecret: v.string(),
     signature: v.string(),
     rawBody: v.string(),
+    affiliateScopeType: v.optional(v.union(v.literal("site"), v.literal("org"), v.literal("app"))),
+    affiliateScopeId: v.optional(v.string()),
   },
   returns: v.object({ ok: v.boolean(), handled: v.boolean() }),
   handler: async (ctx: any, args: any) => {
@@ -346,6 +348,8 @@ export const processStripeWebhook = action({
           amountCents,
           currency,
           occurredAt,
+          scopeType: args.affiliateScopeType,
+          scopeId: args.affiliateScopeId,
         });
       }
     }

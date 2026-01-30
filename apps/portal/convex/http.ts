@@ -348,6 +348,8 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         stripeWebhookSecret: webhookSecret,
         signature,
         rawBody,
+        affiliateScopeType: "app",
+        affiliateScopeId: "portal",
       },
     );
 

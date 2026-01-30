@@ -29,6 +29,317 @@ const getBalanceCents = async (ctx: any, userId: string): Promise<number> => {
   return balance;
 };
 
+const clampBps = (raw: unknown, fallback: number): number => {
+  const n = typeof raw === "number" ? Math.round(raw) : Number(raw);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.min(10000, Math.round(n)));
+};
+
+const getCommissionSettings = async (
+  ctx: any,
+  scopeTypeRaw: unknown,
+  scopeIdRaw: unknown,
+): Promise<{
+  mlmEnabled: boolean;
+  directCommissionBps: number;
+  sponsorOverrideBps: number;
+}> => {
+  const scopeType =
+    scopeTypeRaw === "site" || scopeTypeRaw === "org" || scopeTypeRaw === "app"
+      ? scopeTypeRaw
+      : ("app" as const);
+  const scopeId = typeof scopeIdRaw === "string" ? scopeIdRaw.trim() : "";
+  const normalizedScopeId = scopeId || "default";
+
+  const row = await ctx.db
+    .query("affiliateProgramSettings")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .withIndex("by_scope", (q: any) => q.eq("scopeType", scopeType).eq("scopeId", normalizedScopeId))
+    .first();
+
+  // Defaults: direct 20%, sponsor override 5%, MLM enabled.
+  const mlmEnabled = row ? (row as any).mlmEnabled !== false : true;
+  const directCommissionBps = clampBps(row ? (row as any).directCommissionBps : undefined, 2000);
+  const sponsorOverrideBps = clampBps(row ? (row as any).sponsorOverrideBps : undefined, 500);
+  return { mlmEnabled, directCommissionBps, sponsorOverrideBps };
+};
+
+const assertActiveAffiliateProfile = async (ctx: any, userId: string): Promise<boolean> => {
+  const row = await ctx.db
+    .query("affiliateProfiles")
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .withIndex("by_userId", (q: any) => q.eq("userId", userId))
+    .first();
+  if (!row) return false;
+  return (row as any).status !== "disabled";
+};
+
+export const recordCommissionDistributionFromPayment = mutation({
+  args: {
+    referredUserId: v.string(),
+    externalEventId: v.string(),
+    grossAmountCents: v.number(),
+    currency: v.optional(v.string()),
+    occurredAt: v.optional(v.number()),
+    source: v.optional(v.string()),
+    paymentKind: v.optional(v.string()),
+    scopeType: v.optional(v.union(v.literal("site"), v.literal("org"), v.literal("app"))),
+    scopeId: v.optional(v.string()),
+  },
+  returns: v.object({
+    ok: v.boolean(),
+    created: v.boolean(),
+    referrerUserId: v.union(v.string(), v.null()),
+    sponsorUserId: v.union(v.string(), v.null()),
+    grossAmountCents: v.number(),
+    directCommissionCents: v.number(),
+    sponsorOverrideCents: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const referredUserId = String(args.referredUserId ?? "").trim();
+    const externalEventIdRaw = String(args.externalEventId ?? "").trim();
+    if (!referredUserId) throw new Error("Missing referredUserId");
+    if (!externalEventIdRaw) throw new Error("Missing externalEventId");
+
+    const source = typeof args.source === "string" ? args.source.trim() : "stripe";
+    const currency = normalizeCurrency(args.currency);
+    const grossAmountCents = clampCents(args.grossAmountCents);
+    if (grossAmountCents <= 0) {
+      return {
+        ok: true,
+        created: false,
+        referrerUserId: null,
+        sponsorUserId: null,
+        grossAmountCents: 0,
+        directCommissionCents: 0,
+        sponsorOverrideCents: 0,
+      };
+    }
+    const occurredAt = typeof args.occurredAt === "number" ? Number(args.occurredAt) : Date.now();
+
+    const { mlmEnabled, directCommissionBps, sponsorOverrideBps } = await getCommissionSettings(
+      ctx as any,
+      args.scopeType,
+      args.scopeId,
+    );
+
+    const directCommissionCents = Math.max(
+      0,
+      Math.round((grossAmountCents * directCommissionBps) / 10000),
+    );
+
+    // Resolve direct affiliate (referrer) from attribution.
+    const attribution = await ctx.db
+      .query("affiliateAttributions")
+      .withIndex("by_referredUserId", (q) => q.eq("referredUserId", referredUserId))
+      .first();
+    if (!attribution) {
+      return {
+        ok: true,
+        created: false,
+        referrerUserId: null,
+        sponsorUserId: null,
+        grossAmountCents,
+        directCommissionCents: 0,
+        sponsorOverrideCents: 0,
+      };
+    }
+
+    const expiresAt =
+      typeof (attribution as any).expiresAt === "number" ? Number((attribution as any).expiresAt) : 0;
+    if (expiresAt > 0 && occurredAt > expiresAt) {
+      return {
+        ok: true,
+        created: false,
+        referrerUserId: null,
+        sponsorUserId: null,
+        grossAmountCents,
+        directCommissionCents: 0,
+        sponsorOverrideCents: 0,
+      };
+    }
+
+    const referrerUserId = String((attribution as any).referrerUserId ?? "").trim();
+    if (!referrerUserId || referrerUserId === referredUserId) {
+      return {
+        ok: true,
+        created: false,
+        referrerUserId: null,
+        sponsorUserId: null,
+        grossAmountCents,
+        directCommissionCents: 0,
+        sponsorOverrideCents: 0,
+      };
+    }
+
+    // Record conversion (gross revenue) once.
+    const externalId = `${source}:${externalEventIdRaw}`;
+    const conversionKind =
+      typeof args.paymentKind === "string" && args.paymentKind.includes("subscription")
+        ? ("paid_subscription" as const)
+        : ("paid_order" as const);
+    const existingConversion = await ctx.db
+      .query("affiliateConversions")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .withIndex("by_externalId_and_kind", (q: any) => q.eq("externalId", externalId).eq("kind", conversionKind))
+      .first();
+    if (!existingConversion) {
+      await ctx.db.insert("affiliateConversions", {
+        kind: conversionKind,
+        externalId,
+        referredUserId,
+        referrerUserId,
+        amountCents: grossAmountCents,
+        currency,
+        occurredAt,
+      });
+
+      await insertAffiliateLog(ctx as any, {
+        ts: occurredAt,
+        kind: "conversion_recorded",
+        ownerUserId: referrerUserId,
+        message: `Conversion recorded (${typeof args.paymentKind === "string" ? args.paymentKind : "payment"})`,
+        referredUserId,
+        externalId: externalEventIdRaw,
+        amountCents: grossAmountCents,
+        currency,
+        data: {
+          source,
+          externalEventId: externalEventIdRaw,
+          paymentKind: args.paymentKind,
+          directCommissionBps,
+          sponsorOverrideBps,
+          mlmEnabled,
+        },
+      });
+    }
+
+    // Direct commission credit (idempotent per user+externalEventId).
+    const directExternalEventId = `${source}:${externalEventIdRaw}:direct`;
+    const existingDirect = await ctx.db
+      .query("affiliateCreditEvents")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .withIndex("by_userId_and_externalEventId", (q: any) =>
+        q.eq("userId", referrerUserId).eq("externalEventId", directExternalEventId),
+      )
+      .first();
+
+    let created = false;
+    if (!existingDirect && directCommissionCents > 0) {
+      await ctx.db.insert("affiliateCreditEvents", {
+        userId: referrerUserId,
+        kind: "commission_direct",
+        amountCents: directCommissionCents,
+        currency,
+        reason: `commission:direct:${source}:${externalEventIdRaw}`,
+        externalEventId: directExternalEventId,
+        source,
+        referrerUserId,
+        referredUserId,
+        createdAt: occurredAt,
+      });
+      created = true;
+
+      await insertAffiliateLog(ctx as any, {
+        ts: occurredAt,
+        kind: "commission_recorded",
+        ownerUserId: referrerUserId,
+        message: `Commission credited (direct ${directCommissionBps} bps)`,
+        referredUserId,
+        externalId: externalEventIdRaw,
+        amountCents: directCommissionCents,
+        currency,
+        data: {
+          source,
+          externalEventId: externalEventIdRaw,
+          paymentKind: args.paymentKind,
+          grossAmountCents,
+          commissionRole: "direct",
+          commissionBps: directCommissionBps,
+        },
+      });
+    }
+
+    // Sponsor override (one level up).
+    let sponsorUserId: string | null = null;
+    let sponsorOverrideCents = 0;
+    if (mlmEnabled && sponsorOverrideBps > 0) {
+      const link = await ctx.db
+        .query("affiliateSponsorLinks")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .withIndex("by_userId", (q: any) => q.eq("userId", referrerUserId))
+        .first();
+      const rawSponsorUserId =
+        link && typeof (link as any).sponsorUserId === "string" ? String((link as any).sponsorUserId).trim() : "";
+      if (rawSponsorUserId && rawSponsorUserId !== referrerUserId) {
+        const sponsorOk = await assertActiveAffiliateProfile(ctx as any, rawSponsorUserId);
+        if (sponsorOk) {
+          sponsorUserId = rawSponsorUserId;
+          sponsorOverrideCents = Math.max(
+            0,
+            Math.round((grossAmountCents * sponsorOverrideBps) / 10000),
+          );
+          if (sponsorOverrideCents > 0) {
+            const sponsorExternalEventId = `${source}:${externalEventIdRaw}:sponsor_override`;
+            const existingSponsor = await ctx.db
+              .query("affiliateCreditEvents")
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .withIndex("by_userId_and_externalEventId", (q: any) =>
+                q.eq("userId", sponsorUserId).eq("externalEventId", sponsorExternalEventId),
+              )
+              .first();
+            if (!existingSponsor) {
+              await ctx.db.insert("affiliateCreditEvents", {
+                userId: sponsorUserId,
+                kind: "commission_sponsor_override",
+                amountCents: sponsorOverrideCents,
+                currency,
+                reason: `commission:sponsor_override:${source}:${externalEventIdRaw}`,
+                externalEventId: sponsorExternalEventId,
+                source,
+                referrerUserId, // the direct affiliate (child)
+                referredUserId, // the buyer
+                createdAt: occurredAt,
+              });
+              created = true;
+
+              await insertAffiliateLog(ctx as any, {
+                ts: occurredAt,
+                kind: "commission_recorded",
+                ownerUserId: sponsorUserId,
+                message: `Commission credited (sponsor override ${sponsorOverrideBps} bps)`,
+                referredUserId,
+                externalId: externalEventIdRaw,
+                amountCents: sponsorOverrideCents,
+                currency,
+                data: {
+                  source,
+                  externalEventId: externalEventIdRaw,
+                  paymentKind: args.paymentKind,
+                  grossAmountCents,
+                  commissionRole: "sponsor_override",
+                  commissionBps: sponsorOverrideBps,
+                  childAffiliateUserId: referrerUserId,
+                },
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      ok: true,
+      created,
+      referrerUserId,
+      sponsorUserId,
+      grossAmountCents,
+      directCommissionCents,
+      sponsorOverrideCents,
+    };
+  },
+});
+
 export const recordCommissionFromPayment = mutation({
   args: {
     referredUserId: v.string(),

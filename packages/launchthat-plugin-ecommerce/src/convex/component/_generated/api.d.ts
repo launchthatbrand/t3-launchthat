@@ -357,6 +357,8 @@ export type Mounts = {
         "action",
         "public",
         {
+          affiliateScopeId?: string;
+          affiliateScopeType?: "site" | "org" | "app";
           rawBody: string;
           signature: string;
           stripeSecretKey: string;
@@ -421,19 +423,21 @@ export type Mounts = {
         "public",
         {
           amountCents: number;
-          commissionRateBps?: number;
           currency?: string;
           externalEventId: string;
           kind: string;
           occurredAt?: number;
           referredUserId: string;
+          scopeId?: string;
+          scopeType?: "site" | "org" | "app";
           source: string;
         },
         {
-          commissionCents: number;
           created: boolean;
+          directCommissionCents: number;
           ok: boolean;
           referrerUserId: string | null;
+          sponsorOverrideCents: number;
         }
       >;
     };
