@@ -27,6 +27,7 @@ export type DiscordUiApi = {
     unlinkMyDiscordLink: any;
     upsertRoutingRuleSet: any;
     replaceRoutingRules: any;
+    setOrgEnabled?: any;
     // Automations
     createAutomation?: any;
     updateAutomation?: any;

@@ -214,12 +214,13 @@ export const renderTradeIdeaMessage = query({
   handler: async (ctx, args) => {
     const scope = args.scope ?? "org";
     const organizationId = typeof args.organizationId === "string" ? args.organizationId : undefined;
-    const template = await resolveTemplateContent(ctx, {
+    const template =
+      (await resolveTemplateContent(ctx, {
       scope,
       organizationId,
       guildId: args.guildId ?? undefined,
       templateId: args.templateId,
-    });
+      })) ?? defaultTradeIdeaTemplate;
 
     const avg =
       typeof args.avgEntryPrice === "number"

@@ -246,6 +246,7 @@ export const resolveChannelsForEvent = query({
         ? "mentors"
         : "members";
     const legacy = await resolveTradeFeedChannelLegacy(ctx, {
+      scope,
       organizationId: args.organizationId,
       guildId: args.guildId,
       channelKind: legacyKind,

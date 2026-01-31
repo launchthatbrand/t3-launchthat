@@ -25,7 +25,7 @@ export function DiscordOverviewPage({
     api.queries.getOrgConfig,
     organizationId ? { organizationId } : {},
   );
-  const setOrgDiscordEnabled = useMutation(api.mutations.setOrgDiscordEnabled);
+  const setOrgDiscordEnabled = useMutation(api.mutations.setOrgEnabled);
   const guildConnections = useQuery(
     api.queries.listGuildConnectionsForOrg,
     organizationId ? { organizationId } : {},
