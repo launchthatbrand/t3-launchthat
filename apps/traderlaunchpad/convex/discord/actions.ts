@@ -728,7 +728,7 @@ export const startBotInstall = action({
       {
         returnTo: args.returnTo,
         rootDomain,
-        fallbackAuthHost: "auth.launchthat.app",
+        fallbackAuthHost: "auth.traderlaunchpad.com",
         callbackPath: "/auth/discord/install/callback",
       },
     );
@@ -804,14 +804,14 @@ export const startUserLink = action({
     const redirect = await ctx.runQuery(discordOauthHelperQueries.computeAuthRedirectUri, {
       returnTo: args.returnTo,
       rootDomain,
-      fallbackAuthHost: "auth.launchthat.app",
+      fallbackAuthHost: "auth.traderlaunchpad.com",
       callbackPath: "/auth/discord/link/callback",
     });
 
     const orgConfig = organizationId
       ? await ctx.runQuery(discordOrgConfigQueries.getOrgConfig, {
-          scope: "org",
-          organizationId,
+        scope: "org",
+        organizationId,
       })
       : null;
 
@@ -932,7 +932,7 @@ export const completeUserLink = action({
     const redirect = await ctx.runQuery(discordOauthHelperQueries.computeAuthRedirectUri, {
       returnTo: String(consumed.returnTo ?? ""),
       rootDomain: process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "",
-      fallbackAuthHost: "auth.launchthat.app",
+      fallbackAuthHost: "auth.traderlaunchpad.com",
       callbackPath,
     });
 

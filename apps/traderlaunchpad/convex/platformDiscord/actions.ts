@@ -12,14 +12,14 @@
   no-restricted-properties
 */
 
-import { exchangeDiscordCode } from "launchthat-plugin-discord/runtime/oauth";
-import { discordJson } from "launchthat-plugin-discord/runtime/discordApi";
 import { addGuildMember, fetchDiscordProfile } from "launchthat-plugin-discord/runtime";
-import { resolveViewerUserId } from "../traderlaunchpad/lib/resolve";
 
 import { action } from "../_generated/server";
 import { components } from "../_generated/api";
+import { discordJson } from "launchthat-plugin-discord/runtime/discordApi";
+import { exchangeDiscordCode } from "launchthat-plugin-discord/runtime/oauth";
 import { resolveDiscordCredentials } from "launchthat-plugin-discord/runtime/credentials";
+import { resolveViewerUserId } from "../traderlaunchpad/lib/resolve";
 import { v } from "convex/values";
 
 const discordOauthMutations = components.launchthat_discord.oauth.mutations as any;
@@ -74,12 +74,12 @@ const getPlatformCredentials = async (ctx: any) => {
     { scope: "platform" },
   )) as
     | {
-        enabled: boolean;
-        botMode: "global" | "custom";
-        customClientId?: string;
-        customClientSecretEncrypted?: string;
-        customBotTokenEncrypted?: string;
-      }
+      enabled: boolean;
+      botMode: "global" | "custom";
+      customClientId?: string;
+      customClientSecretEncrypted?: string;
+      customBotTokenEncrypted?: string;
+    }
     | null;
 
   const secretsKey = process.env.DISCORD_SECRETS_KEY ?? "";
@@ -335,12 +335,12 @@ export const runAutomationDryRun = action({
     const values: Record<string, string> =
       providerKey === "traderlaunchpad.hourlyTradeSummary"
         ? {
-            symbol: "BTCUSD",
-            openPositions: "0",
-            usersAllowed: "0",
-            sentiment: "MIXED",
-            now: `<t:${Math.floor(Date.now() / 1000)}:f>`,
-          }
+          symbol: "BTCUSD",
+          openPositions: "0",
+          usersAllowed: "0",
+          sentiment: "MIXED",
+          now: `<t:${Math.floor(Date.now() / 1000)}:f>`,
+        }
         : { now: `<t:${Math.floor(Date.now() / 1000)}:f>` };
 
     return await buildTemplatePreview(ctx, {
@@ -425,7 +425,7 @@ export const startBotInstall = action({
       {
         returnTo: args.returnTo,
         rootDomain,
-        fallbackAuthHost: "auth.launchthat.app",
+        fallbackAuthHost: "auth.traderlaunchpad.com",
         callbackPath: "/auth/discord/install/callback",
       },
     );
@@ -492,7 +492,7 @@ export const startUserLink = action({
     const redirect = await ctx.runQuery(discordOauthHelperQueries.computeAuthRedirectUri, {
       returnTo: args.returnTo,
       rootDomain,
-      fallbackAuthHost: "auth.launchthat.app",
+      fallbackAuthHost: "auth.traderlaunchpad.com",
       callbackPath: "/auth/discord/link/callback",
     });
 
@@ -565,7 +565,7 @@ export const completeUserLink = action({
     const redirect = await ctx.runQuery(discordOauthHelperQueries.computeAuthRedirectUri, {
       returnTo: String(consumed.returnTo ?? ""),
       rootDomain: process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "",
-      fallbackAuthHost: "auth.launchthat.app",
+      fallbackAuthHost: "auth.traderlaunchpad.com",
       callbackPath,
     });
 

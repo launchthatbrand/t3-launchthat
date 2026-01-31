@@ -121,10 +121,10 @@ export const getMyDiscordStreamingOrgs = query({
       const guildSettings =
         guildId && discordEnabled
           ? await ctx.runQuery(discordGuildSettingsQueries.getGuildSettings, {
-              scope: "org",
-              organizationId,
-              guildId,
-            })
+            scope: "org",
+            organizationId,
+            guildId,
+          })
           : null;
       const inviteUrl =
         typeof guildSettings?.inviteUrl === "string" && guildSettings.inviteUrl.trim()
@@ -221,16 +221,16 @@ export const getMyDiscordUserLink = query({
     const guildId = guildIdRaw ? guildIdRaw : null;
     const profile = link
       ? {
-          username:
-            typeof link.discordUsername === "string" ? link.discordUsername : null,
-          discriminator:
-            typeof link.discordDiscriminator === "string"
-              ? link.discordDiscriminator
-              : null,
-          globalName:
-            typeof link.discordGlobalName === "string" ? link.discordGlobalName : null,
-          avatar: typeof link.discordAvatar === "string" ? link.discordAvatar : null,
-        }
+        username:
+          typeof link.discordUsername === "string" ? link.discordUsername : null,
+        discriminator:
+          typeof link.discordDiscriminator === "string"
+            ? link.discordDiscriminator
+            : null,
+        globalName:
+          typeof link.discordGlobalName === "string" ? link.discordGlobalName : null,
+        avatar: typeof link.discordAvatar === "string" ? link.discordAvatar : null,
+      }
       : null;
     return { linkedDiscordUserId, linkedAt, inviteUrl, guildId, profile };
   },
@@ -468,7 +468,7 @@ export const computeDiscordAuthRedirect = query({
       {
         returnTo: args.returnTo,
         rootDomain,
-        fallbackAuthHost: "auth.launchthat.app",
+        fallbackAuthHost: "auth.traderlaunchpad.com",
         callbackPath: args.callbackPath,
       },
     );
