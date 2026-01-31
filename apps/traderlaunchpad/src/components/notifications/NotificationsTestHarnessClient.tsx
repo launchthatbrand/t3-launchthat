@@ -4,7 +4,6 @@ import * as React from "react";
 
 import { useMutation } from "convex/react";
 import { useConvexAuth, useQuery } from "convex/react";
-import { useSession } from "@clerk/nextjs";
 
 import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
@@ -26,7 +25,6 @@ import {
   type TraderLaunchpadNotificationEventDefinition,
   type TraderLaunchpadNotificationSinkId,
 } from "~/lib/notifications/notificationCatalog";
-import { useHostContext } from "~/context/HostContext";
 
 type HarnessResult = {
   inAppInserted: boolean;
@@ -41,50 +39,68 @@ type UnknownRecord = Record<string, unknown>;
 const isRecord = (v: unknown): v is UnknownRecord =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-export function NotificationsTestHarnessClient() {
-  const host = useHostContext();
-  // Tenant/custom hosts don't run Clerk; avoid calling Clerk hooks outside <ClerkProvider>.
-  if (!host.isAuthHost) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Send test notification</CardTitle>
-        </CardHeader>
-        <CardContent className="text-muted-foreground text-sm">
-          This page is only available on the main domain ({host.authHost}).
-        </CardContent>
-      </Card>
-    );
-  }
+interface TenantSessionUser {
+  organizationId?: string | null;
+}
 
+interface TenantMeResponse {
+  user: TenantSessionUser | null;
+}
+
+export function NotificationsTestHarnessClient() {
   return <NotificationsTestHarnessClientInner />;
 }
 
 function NotificationsTestHarnessClientInner() {
-  const { session } = useSession();
-  const clerkId = session?.user?.id ?? null;
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  const shouldQuery = Boolean(clerkId) && isAuthenticated && !authLoading;
 
   const sendTest = useMutation(api.notifications.test.sendTestNotificationToUser);
   const ensureUser = useMutation(api.coreTenant.mutations.createOrGetUser as any);
 
   React.useEffect(() => {
-    if (!clerkId) return;
+    if (!isAuthenticated || authLoading) return;
     void ensureUser({});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clerkId]);
+  }, [isAuthenticated, authLoading]);
 
-  const user = useQuery(
-    api.coreTenant.queries.getUserByClerkId,
-    shouldQuery && clerkId ? { clerkId } : "skip",
-  ) as unknown;
+  const [me, setMe] = React.useState<TenantMeResponse | null>(null);
+  const [isMeLoading, setIsMeLoading] = React.useState(true);
+  const inFlightRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!isAuthenticated || authLoading) return;
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
+    void (async () => {
+      try {
+        const res = await fetch("/api/me", {
+          method: "GET",
+          headers: { "content-type": "application/json", "cache-control": "no-store" },
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          setMe({ user: null });
+          return;
+        }
+        const json: unknown = await res.json();
+        if (json && typeof json === "object" && "user" in json) {
+          setMe(json as TenantMeResponse);
+        } else {
+          setMe({ user: null });
+        }
+      } catch {
+        setMe({ user: null });
+      } finally {
+        setIsMeLoading(false);
+        inFlightRef.current = false;
+      }
+    })();
+  }, [isAuthenticated, authLoading]);
 
   const orgId = React.useMemo(() => {
-    if (!isRecord(user)) return null;
-    const org = user.organizationId;
+    const org = me?.user?.organizationId;
     return typeof org === "string" ? org : null;
-  }, [user]);
+  }, [me]);
 
   const emailSettings = useQuery(
     api.email.queries.getEmailSettings,

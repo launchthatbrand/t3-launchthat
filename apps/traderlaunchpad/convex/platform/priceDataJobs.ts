@@ -9,13 +9,10 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { mutation, query } from "../_generated/server";
 import { workflow } from "../workflow";
+import { requirePlatformAdmin } from "../traderlaunchpad/lib/resolve";
 
 const workflowAny = workflow as any;
 const internalAny = internal as any;
-
-const requirePlatformAdmin = async (ctx: any) => {
-  await ctx.runQuery(internalAny.platform.testsAuth.assertPlatformAdmin, {});
-};
 
 export const listJobs = query({
   args: {

@@ -2,14 +2,13 @@
 
 import * as React from "react";
 
-import { useQueries, useQuery } from "convex/react";
+import { useConvexAuth, useQueries, useQuery } from "convex/react";
 
 import type { CoreTenantOrganizationsUiApi } from "launchthat-plugin-core-tenant/frontend";
 import { OrganizationTeamSwitcher } from "launchthat-plugin-core-tenant/frontend";
 import type { TeamSwitcherOrganization } from "@acme/ui/general/team-switcher";
 import { api } from "@convex-config/_generated/api";
 import { env } from "~/env";
-import { useAuth } from "@clerk/nextjs";
 import { useHostContext } from "~/context/HostContext";
 import { usePathname } from "next/navigation";
 import { useTenant } from "~/context/TenantContext";
@@ -32,7 +31,12 @@ export function OrgSubdomainSwitcher(props: { className?: string }) {
   const pathname = usePathname();
   const tenant = useTenant();
 
-  const { userId } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const viewer = useQuery(
+    api.viewer.queries.getViewerProfile,
+    isAuthenticated && !authLoading ? {} : "skip",
+  );
+  const userId = viewer ? String((viewer as { userId: string }).userId) : "";
 
   // Load orgs so we can build a domain lookup map.
   const memberships = useQuery(

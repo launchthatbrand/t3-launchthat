@@ -19,7 +19,6 @@ import { env } from "~/env";
 import { useSearchParams } from "next/navigation";
 import type { TenantSummary } from "~/lib/tenant-fetcher";
 import { isAuthHostForHost } from "~/lib/host";
-import { isPlatformHost } from "~/lib/host-mode";
 import { HostProvider } from "~/context/HostContext";
 import { TenantProvider } from "~/context/TenantContext";
 import { useConvexAuth } from "convex/react";
@@ -48,9 +47,7 @@ interface ProvidersProps {
 
 export function Providers({ children, tenant, host }: ProvidersProps) {
   const rootDomain = String(env.NEXT_PUBLIC_ROOT_DOMAIN ?? "traderlaunchpad.com");
-  const shouldUseClerk =
-    isAuthHostForHost(host, rootDomain) ||
-    isPlatformHost({ hostOrHostname: host, rootDomain });
+  const shouldUseClerk = isAuthHostForHost(host, rootDomain);
 
   return (
     shouldUseClerk ? (
@@ -77,6 +74,7 @@ export function Providers({ children, tenant, host }: ProvidersProps) {
       <TenantProvider value={tenant}>
         <HostProvider host={host}>
           <TenantConvexProvider convexUrl={convexUrl} nodeEnv={env.NODE_ENV}>
+            {process.env.NODE_ENV !== "production" ? <DevClerkGuard /> : null}
             <AffiliateSponsorOptInDialog />
             <DiscordJoinDialog />
             <JoinCodeProvider>
@@ -92,6 +90,19 @@ export function Providers({ children, tenant, host }: ProvidersProps) {
       </TenantProvider>
     )
   );
+}
+
+function DevClerkGuard() {
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    if ((window as { Clerk?: unknown }).Clerk) {
+      console.warn(
+        "Clerk loaded on a non-auth host. UI components should not depend on Clerk here.",
+      );
+    }
+  }, []);
+
+  return null;
 }
 
 function TraderLaunchpadOnboardingGate({

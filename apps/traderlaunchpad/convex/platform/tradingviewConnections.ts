@@ -4,6 +4,7 @@ import {
   mutation,
   query,
 } from "../_generated/server";
+import { requirePlatformAdmin } from "../traderlaunchpad/lib/resolve";
 
 /* eslint-disable
   @typescript-eslint/no-explicit-any,
@@ -15,28 +16,6 @@ import {
 const componentsUntyped: any = require("../_generated/api").components;
 
 const traderlaunchpadPlatform = componentsUntyped.launchthat_traderlaunchpad.connections.platform;
-
-const requirePlatformAdmin = async (ctx: any) => {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Unauthorized");
-
-  let viewer =
-    (await ctx.db
-      .query("users")
-      .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .first()) ?? null;
-
-  if (!viewer && typeof identity.subject === "string" && identity.subject.trim()) {
-    viewer = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", identity.subject))
-      .first();
-  }
-
-  if (!viewer) throw new Error("Unauthorized");
-  if (!viewer.isAdmin) throw new Error("Forbidden");
-  return viewer;
-};
 
 const tradingViewAccountStatusValidator = v.union(
   v.literal("active"),

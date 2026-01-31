@@ -7,12 +7,9 @@
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import { mutation, query } from "../_generated/server";
+import { requirePlatformAdmin } from "../traderlaunchpad/lib/resolve";
 
 const platformConnections = components.launchthat_traderlaunchpad.connections.platform as any;
-
-const requirePlatformAdmin = async (ctx: any) => {
-  await ctx.runQuery(internal.platform.testsAuth.assertPlatformAdmin, {});
-};
 
 const computeTradeLockerSourceKey = (args: {
   environment: "demo" | "live";

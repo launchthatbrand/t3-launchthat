@@ -7,10 +7,7 @@
 import { internal } from "../_generated/api";
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-
-const requirePlatformAdmin = async (ctx: any) => {
-  await ctx.runQuery(internal.platform.testsAuth.assertPlatformAdmin, {});
-};
+import { requirePlatformAdmin } from "../traderlaunchpad/lib/resolve";
 
 export const listSupportedSymbols = query({
   args: { limitPerSource: v.optional(v.number()) },

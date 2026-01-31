@@ -8,12 +8,9 @@ import { mutation, query } from "../_generated/server";
 
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
+import { requirePlatformAdmin } from "../traderlaunchpad/lib/resolve";
 
 const SETTINGS_KEY = "main";
-
-const requirePlatformAdmin = async (ctx: any) => {
-  await ctx.runQuery(internal.platform.testsAuth.assertPlatformAdmin, {});
-};
 
 const defaultAssetAliasMap: Record<string, string> = {
   BTC: "BTCUSD",

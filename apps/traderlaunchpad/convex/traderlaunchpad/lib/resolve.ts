@@ -1,7 +1,7 @@
 import type { ActionCtx, MutationCtx, QueryCtx } from "../types";
 
 import { ConvexError } from "convex/values";
-import { api } from "../../_generated/api";
+import { api, internal } from "../../_generated/api";
 
 export const resolveOrganizationId = (): string => {
   // eslint-disable-next-line turbo/no-undeclared-env-vars, no-restricted-properties -- set in Convex dashboard for this deployment
@@ -72,6 +72,20 @@ export const resolveViewerUserId = async (
   throw new ConvexError("Unauthorized: user record not initialized.");
 };
 
+export const resolveUserIdByClerkId = async (
+  ctx: QueryCtx | MutationCtx,
+  clerkId: string,
+): Promise<string | null> => {
+  const normalized = typeof clerkId === "string" ? clerkId.trim() : "";
+  if (!normalized) return null;
+  type UserRow = { _id: string } & Record<string, unknown>;
+  const user = (await ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q) => q.eq("clerkId", normalized))
+    .first()) as UserRow | null;
+  return user?._id ? String(user._id) : null;
+};
+
 /**
  * Resolve whether the current viewer is an app/platform admin.
  *
@@ -116,6 +130,24 @@ export const resolveViewerIsAdmin = async (
   }
 
   return Boolean(user?.isAdmin);
+};
+
+export const requirePlatformAdmin = async (
+  ctx: QueryCtx | MutationCtx | ActionCtx,
+): Promise<void> => {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    if (process.env.NODE_ENV !== "production") return;
+    throw new ConvexError("Unauthorized");
+  }
+  if (!("db" in ctx)) {
+    await ctx.runQuery(internal.platform.testsAuth.assertPlatformAdmin, {});
+    return;
+  }
+  const isAdmin = await resolveViewerIsAdmin(ctx);
+  if (!isAdmin) {
+    throw new ConvexError("Forbidden");
+  }
 };
 
 

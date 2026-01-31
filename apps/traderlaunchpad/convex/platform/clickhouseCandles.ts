@@ -10,11 +10,8 @@
 import { v } from "convex/values";
 import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
+import { requirePlatformAdmin } from "../traderlaunchpad/lib/resolve";
 import { clickhouseSelect } from "../lib/clickhouseHttp";
-
-const requirePlatformAdmin = async (ctx: any) => {
-  await ctx.runQuery(internal.platform.testsAuth.assertPlatformAdmin, {});
-};
 
 /**
  * Read candles directly from ClickHouse for chart rendering.

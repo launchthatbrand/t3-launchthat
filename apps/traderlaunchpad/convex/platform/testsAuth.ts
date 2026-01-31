@@ -7,6 +7,7 @@
 
 import { v } from "convex/values";
 import { internalQuery } from "../_generated/server";
+import { resolveViewerIsAdmin } from "../traderlaunchpad/lib/resolve";
 
 /**
  * Actions can't access `ctx.db`, so platform tests actions call this internal query
@@ -28,23 +29,8 @@ export const assertPlatformAdmin = internalQuery({
       throw new Error("Unauthorized");
     }
 
-    let viewer: any =
-      (await ctx.db
-        .query("users")
-        .withIndex("by_token", (q: any) =>
-          q.eq("tokenIdentifier", identity.tokenIdentifier),
-        )
-        .first()) ?? null;
-
-    if (!viewer && typeof identity.subject === "string" && identity.subject.trim()) {
-      viewer = await ctx.db
-        .query("users")
-        .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", identity.subject))
-        .first();
-    }
-
-    if (!viewer) throw new Error("Unauthorized");
-    if (!viewer.isAdmin) throw new Error("Forbidden");
+    const isAdmin = await resolveViewerIsAdmin(ctx);
+    if (!isAdmin) throw new Error("Forbidden");
     return null;
   },
 });

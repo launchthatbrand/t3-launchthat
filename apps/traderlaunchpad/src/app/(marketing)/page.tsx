@@ -41,8 +41,8 @@ import React from "react";
 import { SpinningSphere } from "~/components/landing/SpinningSphere";
 import { StrategyBuilderAnimation } from "../../components/landing/StrategyBuilderAnimation";
 import { ThemeAwareSafariPreview } from "../../components/landing/ThemeAwareSafariPreview";
-import { auth } from "@clerk/nextjs/server";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
+import { TENANT_SESSION_COOKIE_NAME } from "launchthat-plugin-core-tenant/next/tenant-session";
 
 const PlusIcon = ({ className }: { className?: string }) => (
   <svg
@@ -58,9 +58,9 @@ const PlusIcon = ({ className }: { className?: string }) => (
 );
 
 export default async function HomePage() {
-  const { userId } = await auth();
-  const primaryCtaHref = userId ? "/admin/dashboard" : "/sign-in";
-  const primaryCtaLabel = userId ? "Dashboard" : "Get Started";
+  const hasTenantSession = Boolean(cookies().get(TENANT_SESSION_COOKIE_NAME)?.value);
+  const primaryCtaHref = hasTenantSession ? "/admin/dashboard" : "/sign-in";
+  const primaryCtaLabel = hasTenantSession ? "Dashboard" : "Get Started";
 
   const headerList = await headers();
   const userAgent = headerList.get("user-agent") ?? "";

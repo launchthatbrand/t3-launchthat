@@ -8,6 +8,7 @@
 */
 
 import { mutation, query } from "../_generated/server";
+import { requirePlatformAdmin, resolveViewerUserId } from "../traderlaunchpad/lib/resolve";
 
 import { components } from "../_generated/api";
 import { v } from "convex/values";
@@ -16,28 +17,6 @@ const crmQueries = components.launchthat_crm.queries as any;
 const crmContactsQueries = components.launchthat_crm.contacts.queries as any;
 const crmContactsMutations = components.launchthat_crm.contacts.mutations as any;
 const crmMarketingTagsQueries = components.launchthat_crm.marketingTags.queries as any;
-
-const requirePlatformAdmin = async (ctx: any) => {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Unauthorized");
-
-  let viewer =
-    (await ctx.db
-      .query("users")
-      .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .first()) ?? null;
-
-  if (!viewer && typeof identity.subject === "string" && identity.subject.trim()) {
-    viewer = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", identity.subject))
-      .first();
-  }
-
-  if (!viewer) throw new Error("Unauthorized");
-  if (!viewer.isAdmin) throw new Error("Forbidden");
-  return viewer;
-};
 
 const contactValidator = v.object({
   _id: v.string(),
@@ -308,7 +287,8 @@ export const importMissingContacts = mutation({
   },
   returns: v.object({ imported: v.number() }),
   handler: async (ctx, args) => {
-    const viewer = await requirePlatformAdmin(ctx);
+    await requirePlatformAdmin(ctx);
+    const viewerUserId = await resolveViewerUserId(ctx);
     const limitRaw = typeof args.limit === "number" ? args.limit : 5000;
     const limit = Math.max(100, Math.min(20000, Math.floor(limitRaw)));
 
@@ -340,7 +320,7 @@ export const importMissingContacts = mutation({
         slug,
         status: "active",
         userId,
-        authorId: String(viewer._id),
+        authorId: viewerUserId,
         meta: {
           "contact.firstName": name.split(" ")[0] ?? "",
           "contact.lastName": name.split(" ").slice(1).join(" "),

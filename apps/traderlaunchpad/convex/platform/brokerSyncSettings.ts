@@ -6,9 +6,9 @@
   @typescript-eslint/no-unsafe-return
 */
 
-import { internal } from "../_generated/api";
 import { internalQuery, mutation, query } from "../_generated/server";
 import { v } from "convex/values";
+import { requirePlatformAdmin } from "../traderlaunchpad/lib/resolve";
 
 const SETTINGS_KEY = "main";
 const MIN_INTERVAL_MS = 60_000;
@@ -23,10 +23,6 @@ const defaultSettings = () => ({
   proIntervalMs: 60_000,
   updatedAt: 0,
 });
-
-const requirePlatformAdmin = async (ctx: any) => {
-  await ctx.runQuery(internal.platform.testsAuth.assertPlatformAdmin, {});
-};
 
 export const getBrokerSyncSettings = query({
   args: {},

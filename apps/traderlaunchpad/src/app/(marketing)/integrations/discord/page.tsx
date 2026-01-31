@@ -20,8 +20,8 @@ import Link from "next/link";
 import React from "react";
 import { ShootingStars } from "@acme/ui/shooting-stars";
 import { WarpBackground } from "@acme/ui/warp-background";
-import { auth } from "@clerk/nextjs/server";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { TENANT_SESSION_COOKIE_NAME } from "launchthat-plugin-core-tenant/next/tenant-session";
 
 const cx = (...classes: (string | undefined | false)[]) =>
   classes.filter(Boolean).join(" ");
@@ -135,9 +135,9 @@ function DiscordEmbedMock() {
 }
 
 export default async function DiscordMarketingPage() {
-  const { userId } = await auth();
-  const primaryCtaHref = userId ? "/admin/integrations/discord" : "/sign-in";
-  const primaryCtaLabel = userId ? "Open Discord settings" : "Connect Broker";
+  const hasTenantSession = Boolean(cookies().get(TENANT_SESSION_COOKIE_NAME)?.value);
+  const primaryCtaHref = hasTenantSession ? "/admin/integrations/discord" : "/sign-in";
+  const primaryCtaLabel = hasTenantSession ? "Open Discord settings" : "Connect Broker";
 
 
   const headerList = await headers();

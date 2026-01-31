@@ -4,6 +4,11 @@ import { v } from "convex/values";
 
 import { components } from "../_generated/api";
 import { query } from "../_generated/server";
+import {
+  requirePlatformAdmin,
+  resolveUserIdByClerkId,
+  resolveViewerUserId,
+} from "../traderlaunchpad/lib/resolve";
 
 interface NotificationsQueries {
   paginateByUserIdAcrossOrgs: FunctionReference<
@@ -45,53 +50,6 @@ type UnknownRecord = Record<string, unknown>;
 const isRecord = (v: unknown): v is UnknownRecord =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-const resolveUserIdByClerkId = async (ctx: any, clerkId: string): Promise<string | null> => {
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", clerkId))
-    .first();
-  if (!isRecord(user)) return null;
-  const id = user._id;
-  return typeof id === "string" ? id : null;
-};
-
-const resolveViewerUserId = async (ctx: any): Promise<string | null> => {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) return null;
-
-  if (identity.tokenIdentifier) {
-    const byToken = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .first();
-    if (isRecord(byToken) && typeof byToken._id === "string") return byToken._id;
-  }
-
-  const clerkId = typeof identity.subject === "string" ? identity.subject : "";
-  if (!clerkId) return null;
-  return await resolveUserIdByClerkId(ctx, clerkId);
-};
-
-const requirePlatformAdmin = async (ctx: any) => {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Unauthorized");
-
-  let viewer =
-    (await ctx.db
-      .query("users")
-      .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .first()) ?? null;
-
-  if (!viewer && typeof identity.subject === "string" && identity.subject.trim()) {
-    viewer = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", identity.subject))
-      .first();
-  }
-
-  if (!viewer) throw new Error("Unauthorized");
-  if (!viewer.isAdmin) throw new Error("Forbidden");
-};
 
 export const paginateByClerkIdAcrossOrgs = query({
   args: {

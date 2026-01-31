@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
+import { TENANT_SESSION_COOKIE_NAME } from "launchthat-plugin-core-tenant/next/tenant-session";
 import { ArrowRight, BadgeDollarSign, BarChart3, Link2, Sparkles, Users, Wallet } from "lucide-react";
 
 import { Card, ShineBorder } from "@acme/ui";
@@ -10,9 +11,9 @@ const formatUsd = (cents: number): string => {
 };
 
 export default async function AffiliatesMarketingPage() {
-  const { userId } = await auth();
-  const primaryCtaHref = userId ? "/admin/affiliates/share" : "/sign-in";
-  const primaryCtaLabel = userId ? "Open Share Kit" : "Get Started";
+  const hasTenantSession = Boolean(cookies().get(TENANT_SESSION_COOKIE_NAME)?.value);
+  const primaryCtaHref = hasTenantSession ? "/admin/affiliates/share" : "/sign-in";
+  const primaryCtaLabel = hasTenantSession ? "Open Share Kit" : "Get Started";
 
   // Example numbers used in the copy (marketing page, not binding logic).
   const proPriceCents = 4999;

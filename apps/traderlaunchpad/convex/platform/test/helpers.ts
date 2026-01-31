@@ -26,6 +26,8 @@ import {
 import type { TextOp } from "launchthat-plugin-canvas";
 import { env } from "../../../src/env";
 import { resolveOrgBotToken } from "launchthat-plugin-discord/runtime/credentials";
+import { requirePlatformAdmin } from "../../traderlaunchpad/lib/resolve";
+export { requirePlatformAdmin };
 
 // Avoid typed imports here (can cause TS deep instantiation errors).
 const components: any = require("../../_generated/api").components;
@@ -36,10 +38,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_SNAPSHOT_LOOKBACK_DAYS = 3;
 const isFiniteNumber = (n: unknown): n is number =>
   typeof n === "number" && Number.isFinite(n);
-
-export const requirePlatformAdmin = async (ctx: any) => {
-  await ctx.runQuery(internal.platform.testsAuth.assertPlatformAdmin, {});
-};
 
 const normalizeSymbol = (s: string): string => s.trim().toUpperCase();
 

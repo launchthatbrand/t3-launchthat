@@ -8,13 +8,10 @@ import { api, internal } from "../_generated/api";
 
 import { action } from "../_generated/server";
 import { v } from "convex/values";
+import { requirePlatformAdmin } from "../traderlaunchpad/lib/resolve";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const componentsUntyped: any = require("../_generated/api").components;
-
-const requirePlatformAdmin = async (ctx: any) => {
-  await ctx.runQuery(internal.platform.testsAuth.assertPlatformAdmin, {});
-};
 
 export const listSources = action({
   args: { limit: v.optional(v.number()) },

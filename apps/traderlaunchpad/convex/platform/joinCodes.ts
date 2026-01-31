@@ -10,31 +10,10 @@ import { v } from "convex/values";
 
 import { components } from "../_generated/api";
 import { mutation, query } from "../_generated/server";
+import { requirePlatformAdmin, resolveViewerUserId } from "../traderlaunchpad/lib/resolve";
 
 const joinCodesQueries = components.launchthat_joincodes.queries as any;
 const joinCodesMutations = components.launchthat_joincodes.mutations as any;
-
-const requirePlatformAdmin = async (ctx: any) => {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Unauthorized");
-
-  let viewer =
-    (await ctx.db
-      .query("users")
-      .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .first()) ?? null;
-
-  if (!viewer && typeof identity.subject === "string" && identity.subject.trim()) {
-    viewer = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", identity.subject))
-      .first();
-  }
-
-  if (!viewer) throw new Error("Unauthorized");
-  if (!viewer.isAdmin) throw new Error("Forbidden");
-  return viewer;
-};
 
 export const listPlatformJoinCodes = query({
   args: {},
@@ -140,7 +119,8 @@ export const createPlatformJoinCode = mutation({
     joinCodeId: v.string(),
   }),
   handler: async (ctx, args) => {
-    const viewer = await requirePlatformAdmin(ctx);
+    await requirePlatformAdmin(ctx);
+    const viewerUserId = await resolveViewerUserId(ctx);
     return await ctx.runMutation(joinCodesMutations.createJoinCode, {
       scope: "platform",
       label: args.label,
@@ -150,7 +130,7 @@ export const createPlatformJoinCode = mutation({
       grants: args.grants,
       maxUses: args.maxUses,
       expiresAt: args.expiresAt,
-      createdByUserId: String(viewer._id),
+      createdByUserId: viewerUserId,
     });
   },
 });

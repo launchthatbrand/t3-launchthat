@@ -10,30 +10,9 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 import { components } from "../_generated/api";
+import { requirePlatformAdmin } from "../traderlaunchpad/lib/resolve";
 
 const platform = components.launchthat_traderlaunchpad.connections.platform as any;
-
-const requirePlatformAdmin = async (ctx: any) => {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Unauthorized");
-
-  let viewer: any =
-    (await ctx.db
-      .query("users")
-      .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .first()) ?? null;
-
-  if (!viewer && typeof identity.subject === "string" && identity.subject.trim()) {
-    viewer = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", identity.subject))
-      .first();
-  }
-
-  if (!viewer) throw new Error("Unauthorized");
-  if (!viewer.isAdmin) throw new Error("Forbidden");
-  return viewer;
-};
 
 const toUserStyleConnection = (row: any): any => {
   const secrets = row?.secrets && typeof row.secrets === "object" ? row.secrets : {};

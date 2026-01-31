@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import { mutation } from "../_generated/server";
 import type { MutationCtx } from "../_generated/server";
+import { resolveUserIdByClerkId, resolveViewerUserId } from "../traderlaunchpad/lib/resolve";
 
 interface NotificationsMutations {
   markNotificationAsRead: FunctionReference<
@@ -54,37 +55,6 @@ const notificationsMutations = (() => {
   return (componentsAny.launchthat_notifications?.mutations ??
     {}) as NotificationsMutations;
 })();
-
-const resolveUserIdByClerkId = async (
-  ctx: MutationCtx,
-  clerkId: string,
-): Promise<string | null> => {
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId))
-    .first();
-
-  return user ? String(user._id) : null;
-};
-
-const resolveViewerUserId = async (ctx: MutationCtx): Promise<string | null> => {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) return null;
-
-  // Prefer tokenIdentifier (works for both Clerk and tenant-session Convex auth).
-  if (identity.tokenIdentifier) {
-    const byToken = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .first();
-    if (byToken) return String(byToken._id);
-  }
-
-  // Fallback: subject as Clerk user id.
-  const clerkId = typeof identity.subject === "string" ? identity.subject : "";
-  if (!clerkId) return null;
-  return await resolveUserIdByClerkId(ctx, clerkId);
-};
 
 export const markNotificationAsRead = mutation({
   args: { notificationId: v.string() },

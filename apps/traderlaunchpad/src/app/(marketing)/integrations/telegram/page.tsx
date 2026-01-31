@@ -17,7 +17,8 @@ import Link from "next/link";
 import React from "react";
 import { ShootingStars } from "@acme/ui/shooting-stars";
 import { WarpBackground } from "@acme/ui/warp-background";
-import { auth } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
+import { TENANT_SESSION_COOKIE_NAME } from "launchthat-plugin-core-tenant/next/tenant-session";
 
 const cx = (...classes: (string | undefined | false)[]) =>
   classes.filter(Boolean).join(" ");
@@ -149,10 +150,10 @@ function TelegramEmbedMock() {
 }
 
 export default async function TelegramMarketingPage() {
-  const { userId } = await auth();
-  const primaryCtaHref = userId ? "/admin/integrations/telegram" : "/sign-in";
-  const primaryCtaLabel = userId ? "Connect Telegram" : "Get started";
-  const connectBrokerHref = userId ? "/admin/settings/connections" : "/sign-in";
+  const hasTenantSession = Boolean(cookies().get(TENANT_SESSION_COOKIE_NAME)?.value);
+  const primaryCtaHref = hasTenantSession ? "/admin/integrations/telegram" : "/sign-in";
+  const primaryCtaLabel = hasTenantSession ? "Connect Telegram" : "Get started";
+  const connectBrokerHref = hasTenantSession ? "/admin/settings/connections" : "/sign-in";
 
   return (
     <div>

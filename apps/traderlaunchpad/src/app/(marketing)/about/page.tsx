@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
+import { TENANT_SESSION_COOKIE_NAME } from "launchthat-plugin-core-tenant/next/tenant-session";
 import {
   ArrowRight,
   Bot,
@@ -15,9 +16,9 @@ import {
 import { Card, ShineBorder } from "@acme/ui";
 
 export default async function AboutPage() {
-  const { userId } = await auth();
-  const primaryCtaHref = userId ? "/admin/dashboard" : "/sign-in";
-  const primaryCtaLabel = userId ? "Go to Dashboard" : "Join the Community";
+  const hasTenantSession = Boolean(cookies().get(TENANT_SESSION_COOKIE_NAME)?.value);
+  const primaryCtaHref = hasTenantSession ? "/admin/dashboard" : "/sign-in";
+  const primaryCtaLabel = hasTenantSession ? "Go to Dashboard" : "Join the Community";
 
   return (
     <div className="text-foreground relative min-h-screen selection:bg-orange-500/30">
@@ -103,7 +104,7 @@ export default async function AboutPage() {
         {/* Platform Preview (Visual Proof) */}
         <section className="relative container mx-auto mt-16 max-w-6xl px-4 md:mt-24">
           <div className="relative mx-auto aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-sm md:rounded-2xl">
-            <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/10 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-tr from-orange-500/10 via-transparent to-transparent" />
             
             {/* Placeholder for actual screenshot - stylized glassmorphism layout */}
             <div className="flex h-full flex-col p-4 md:p-8">

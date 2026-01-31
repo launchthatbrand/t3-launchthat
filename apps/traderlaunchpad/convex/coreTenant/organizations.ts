@@ -4,6 +4,7 @@ import { ConvexError } from "convex/values";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { components } from "../_generated/api";
 import { v } from "convex/values";
+import { resolveViewerIsAdmin } from "../traderlaunchpad/lib/resolve";
 
 interface ComponentOrganization {
   _id: string;
@@ -243,27 +244,9 @@ export const myOrganizations = query({
 const requirePlatformAdmin = async (ctx: QueryCtx | MutationCtx) => {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new ConvexError("Unauthorized");
-
-  // Prefer tokenIdentifier (convex auth) when available.
-  let viewer =
-    (await ctx.db
-      .query("users")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return
-      .withIndex("by_token", (q: any) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .first()) ?? null;
-
-  if (!viewer && typeof identity.subject === "string" && identity.subject.trim()) {
-    viewer = await ctx.db
-      .query("users")
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return
-      .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", identity.subject))
-      .first();
-  }
-
-  if (!viewer) throw new ConvexError("Unauthorized");
-  if (!viewer.isAdmin) throw new ConvexError("Forbidden: admin access required.");
-
-  return { viewer, identity };
+  const isAdmin = await resolveViewerIsAdmin(ctx);
+  if (!isAdmin) throw new ConvexError("Forbidden: admin access required.");
+  return { identity };
 };
 
 export const listAllOrganizations = query({

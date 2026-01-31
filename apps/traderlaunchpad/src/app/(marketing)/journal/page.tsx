@@ -10,13 +10,13 @@ import {
 import { Card, ShineBorder } from "@acme/ui";
 
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
+import { TENANT_SESSION_COOKIE_NAME } from "launchthat-plugin-core-tenant/next/tenant-session";
 
 export default async function JournalMarketingPage() {
-  const { userId } = await auth();
-
-  const primaryCtaHref = userId ? "/admin/journal" : "/sign-in";
-  const primaryCtaLabel = userId ? "Open Journal" : "Get Started";
+  const hasTenantSession = Boolean(cookies().get(TENANT_SESSION_COOKIE_NAME)?.value);
+  const primaryCtaHref = hasTenantSession ? "/admin/journal" : "/sign-in";
+  const primaryCtaLabel = hasTenantSession ? "Open Journal" : "Get Started";
 
   return (
     <div className="text-foreground relative min-h-screen selection:bg-orange-500/30">

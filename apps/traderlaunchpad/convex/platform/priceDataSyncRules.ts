@@ -7,10 +7,7 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { mutation, query } from "../_generated/server";
-
-const requirePlatformAdmin = async (ctx: any) => {
-  await ctx.runQuery(internal.platform.testsAuth.assertPlatformAdmin, {});
-};
+import { requirePlatformAdmin } from "../traderlaunchpad/lib/resolve";
 
 const clampCadenceSeconds = (raw: number): number => {
   if (!Number.isFinite(raw)) return 60;

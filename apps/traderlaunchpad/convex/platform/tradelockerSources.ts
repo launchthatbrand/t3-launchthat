@@ -13,16 +13,12 @@ import { v } from "convex/values";
 import { action } from "../_generated/server";
 import { env } from "../../src/env";
 import { internal } from "../_generated/api";
+import { requirePlatformAdmin } from "../traderlaunchpad/lib/resolve";
 
 // Avoid typed api imports here (can cause TS deep instantiation errors in node actions).
 const componentsUntyped: any = require("../_generated/api").components;
 const platformConnections = componentsUntyped.launchthat_traderlaunchpad.connections.platform;
 const pricedataTradeLocker = componentsUntyped.launchthat_pricedata.tradelocker.actions;
-
-const requirePlatformAdmin = async (ctx: any) => {
-  // Dev bypass lives in platform/testsAuth.ts; prod still requires identity+isAdmin.
-  await ctx.runQuery(internal.platform.testsAuth.assertPlatformAdmin, {});
-};
 
 const baseUrlForEnv = (envName: "demo" | "live"): string =>
   `https://${envName}.tradelocker.com/backend-api`;

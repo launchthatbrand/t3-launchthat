@@ -24,7 +24,8 @@ import Link from "next/link";
 import React from "react";
 import { ShootingStars } from "@acme/ui/shooting-stars";
 import { WarpBackground } from "@acme/ui/warp-background";
-import { auth } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
+import { TENANT_SESSION_COOKIE_NAME } from "launchthat-plugin-core-tenant/next/tenant-session";
 
 const cx = (...classes: (string | undefined | false)[]) =>
   classes.filter(Boolean).join(" ");
@@ -210,10 +211,10 @@ function SignalPipelineMock() {
 }
 
 export default async function SignalsMarketingPage() {
-  const { userId } = await auth();
-  const primaryCtaHref = userId ? "/admin/dashboard" : "/sign-in";
-  const primaryCtaLabel = userId ? "Open dashboard" : "Get started";
-  const connectBrokerHref = userId ? "/admin/settings/connections" : "/sign-in";
+  const hasTenantSession = Boolean(cookies().get(TENANT_SESSION_COOKIE_NAME)?.value);
+  const primaryCtaHref = hasTenantSession ? "/admin/dashboard" : "/sign-in";
+  const primaryCtaLabel = hasTenantSession ? "Open dashboard" : "Get started";
+  const connectBrokerHref = hasTenantSession ? "/admin/settings/connections" : "/sign-in";
   const discordHref = "/integrations/discord";
   const telegramHref = "/integrations/telegram";
 
