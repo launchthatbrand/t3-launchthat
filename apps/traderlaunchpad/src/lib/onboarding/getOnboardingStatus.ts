@@ -32,10 +32,12 @@ export const useOnboardingStatus = (): OnboardingStatus => {
   ) as
     | {
         isSignedIn: boolean;
-        features: { journal: boolean };
+        features: { journal: boolean; strategies: boolean };
       }
     | undefined;
   const canUseJournal = Boolean(entitlements?.features?.journal);
+  const canUseStrategies = Boolean(entitlements?.features?.strategies);
+  const shouldQueryTradeIdeas = shouldQuery && canUseStrategies;
 
   // Gate queries until Convex auth is ready. This prevents transient "Unauthorized"
   // errors on first load when Clerk/Convex auth is still hydrating.
@@ -45,7 +47,7 @@ export const useOnboardingStatus = (): OnboardingStatus => {
   );
   const closedIdeas = useQuery(
     api.traderlaunchpad.queries.listMyTradeIdeasByStatus,
-    shouldQuery
+    shouldQueryTradeIdeas
       ? {
           status: "closed",
           paginationOpts: { numItems: 1, cursor: null },
@@ -54,16 +56,16 @@ export const useOnboardingStatus = (): OnboardingStatus => {
   ) as { page?: unknown[] } | undefined;
   const nextToReview = useQuery(
     api.traderlaunchpad.queries.listMyNextTradeIdeasToReview,
-    shouldQuery ? { limit: 3 } : "skip",
+    shouldQueryTradeIdeas ? { limit: 3 } : "skip",
   ) as unknown[] | undefined;
 
   return useMemo(() => {
     const isLoading =
       authLoading ||
       !isAuthenticated ||
-      connectionData === undefined ||
-      closedIdeas === undefined ||
-      nextToReview === undefined;
+      entitlements === undefined ||
+      (shouldQuery && canUseJournal && connectionData === undefined) ||
+      (shouldQueryTradeIdeas && (closedIdeas === undefined || nextToReview === undefined));
 
     const connection: UnknownRecord | null =
       isRecord(connectionData) && isRecord(connectionData.connection)
@@ -126,6 +128,16 @@ export const useOnboardingStatus = (): OnboardingStatus => {
       nextStepHref,
       isComplete: completedSteps >= totalSteps,
     };
-  }, [authLoading, closedIdeas, connectionData, isAuthenticated, nextToReview]);
+  }, [
+    authLoading,
+    canUseJournal,
+    closedIdeas,
+    connectionData,
+    entitlements,
+    isAuthenticated,
+    nextToReview,
+    shouldQuery,
+    shouldQueryTradeIdeas,
+  ]);
 };
 

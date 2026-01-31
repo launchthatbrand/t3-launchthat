@@ -10,6 +10,11 @@ import { Button } from "@acme/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@acme/ui/card";
 
 import { api } from "@convex-config/_generated/api";
+import {
+  FeatureAccessAlert,
+  isFeatureEnabled,
+  useGlobalPermissions,
+} from "~/components/access/FeatureAccessGate";
 import { useOnboardingStatus } from "~/lib/onboarding/getOnboardingStatus";
 
 type NextToReviewRow = {
@@ -35,13 +40,24 @@ const formatAge = (ms: number) => {
 export default function OnboardingFirstReviewPage() {
   const status = useOnboardingStatus();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  const shouldQuery = isAuthenticated && !authLoading;
+  const { permissions, isLoading: permsLoading, isAdmin } = useGlobalPermissions();
+  const canAccess =
+    Boolean(isAdmin) || Boolean(permissions && isFeatureEnabled(permissions, "strategies"));
+  const shouldQuery = isAuthenticated && !authLoading && canAccess;
   // Only query once auth is ready (prevents transient Unauthorized on load).
   const nextToReview = useQuery(
     api.traderlaunchpad.queries.listMyNextTradeIdeasToReview,
     shouldQuery ? { limit: 3 } : "skip",
   ) as NextToReviewRow[] | undefined;
   const first = Array.isArray(nextToReview) ? nextToReview[0] : undefined;
+
+  if (!permsLoading && !canAccess) {
+    return (
+      <div className="container py-6">
+        <FeatureAccessAlert description="You do not have access to TradeIdeas." />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

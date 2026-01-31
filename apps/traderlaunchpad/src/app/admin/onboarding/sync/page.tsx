@@ -12,7 +12,10 @@ import { cn } from "@acme/ui";
 
 import { api } from "@convex-config/_generated/api";
 import { useOnboardingStatus } from "~/lib/onboarding/getOnboardingStatus";
-import { useGlobalPermissions } from "~/components/access/FeatureAccessGate";
+import {
+  FeatureAccessAlert,
+  useGlobalPermissions,
+} from "~/components/access/FeatureAccessGate";
 
 const formatAge = (ms: number) => {
   const delta = Date.now() - ms;
@@ -45,6 +48,14 @@ export default function OnboardingSyncPage() {
     api.traderlaunchpad.queries.getMyTradeLockerConnection,
     shouldQuery && canUseJournal ? {} : "skip",
   );
+
+  if (!authLoading && !canUseJournal) {
+    return (
+      <div className="container py-6">
+        <FeatureAccessAlert description="You do not have access to Journal features." />
+      </div>
+    );
+  }
 
   const [isSyncing, setIsSyncing] = React.useState(false);
   const [lastResult, setLastResult] = React.useState<unknown>(null);
