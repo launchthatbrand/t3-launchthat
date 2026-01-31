@@ -27,6 +27,10 @@ const tabs: NotificationTabDefinition[] = [
 
 export function TraderLaunchpadNotificationsMenu() {
   const { isAuthenticated } = useConvexAuth();
+  const hasAuthenticatedRef = React.useRef(false);
+  if (isAuthenticated) {
+    hasAuthenticatedRef.current = true;
+  }
 
   const ensureUser = useMutation(api.coreTenant.mutations.createOrGetUser);
 
@@ -39,6 +43,14 @@ export function TraderLaunchpadNotificationsMenu() {
     api.notifications.queries.getUnreadCountForViewer,
     isAuthenticated ? {} : "skip",
   );
+  const [stableUnreadCount, setStableUnreadCount] = React.useState<number | null>(
+    null,
+  );
+  React.useEffect(() => {
+    if (typeof unreadCount === "number") {
+      setStableUnreadCount(unreadCount);
+    }
+  }, [unreadCount]);
 
   const adapter: NotificationsAdapter = React.useMemo(
     () => ({
@@ -84,8 +96,10 @@ export function TraderLaunchpadNotificationsMenu() {
   );
 
   const [open, setOpen] = React.useState(false);
-
-  if (!isAuthenticated) return null;
+  const resolvedUnreadCount =
+    stableUnreadCount ?? (typeof unreadCount === "number" ? unreadCount : 0);
+  const showBadge = resolvedUnreadCount > 0;
+  const canRender = isAuthenticated || hasAuthenticatedRef.current;
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -94,27 +108,34 @@ export function TraderLaunchpadNotificationsMenu() {
           type="button"
           variant="ghost"
           className="relative h-9 w-9 rounded-xl text-foreground/80 hover:bg-background/10 hover:text-foreground"
-          aria-label={`Notifications${(unreadCount ?? 0) > 0 ? ` (${unreadCount} unread)` : ""}`}
+          aria-label={`Notifications${showBadge ? ` (${resolvedUnreadCount} unread)` : ""}`}
+          disabled={!canRender}
         >
           <Bell className="h-5 w-5" />
-          {(unreadCount ?? 0) > 0 && (
-            <span className="bg-destructive absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-xs text-white animate-[tlp-unread-badge-pulse_3s_ease-in-out_infinite]">
-              {(unreadCount ?? 0) > 99 ? "99+" : unreadCount}
-            </span>
-          )}
+          <span
+            className={`bg-destructive absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-xs text-white transition-opacity ${
+              showBadge ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            {resolvedUnreadCount > 99 ? "99+" : resolvedUnreadCount}
+          </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
         className="w-[420px] border-white/10 bg-black/70 p-3 text-white backdrop-blur-md"
       >
-        <NotificationsDropdown
-          adapter={adapter}
-          clerkId={null}
-          orgId={null}
-          onClose={() => setOpen(false)}
-          variant="dropdown"
-        />
+        {canRender ? (
+          <NotificationsDropdown
+            adapter={adapter}
+            clerkId={null}
+            orgId={null}
+            onClose={() => setOpen(false)}
+            variant="dropdown"
+          />
+        ) : (
+          <div className="text-muted-foreground text-sm">Loading notifications…</div>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

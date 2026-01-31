@@ -19,6 +19,13 @@ const productStatusValidator = v.union(
   v.literal("draft"),
   v.literal("archived"),
 );
+const metaValueValidator = v.union(
+  v.string(),
+  v.number(),
+  v.boolean(),
+  v.null(),
+);
+const metaRecordValidator = v.record(v.string(), metaValueValidator);
 
 const slugify = (value: string): string =>
   value
@@ -73,6 +80,82 @@ export const listProducts = query({
   },
 });
 
+export const getOrderById = query({
+  args: {
+    id: v.string(),
+    organizationId: v.optional(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    await requirePlatformAdmin(ctx);
+    const post = await ctx.runQuery(
+      components.launchthat_ecommerce.posts.queries.getPostById,
+      {
+        id: args.id,
+        organizationId: args.organizationId,
+      },
+    );
+    if (!post || post.postTypeSlug !== "orders") return null;
+    return post;
+  },
+});
+
+export const getProductById = query({
+  args: {
+    id: v.string(),
+    organizationId: v.optional(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    await requirePlatformAdmin(ctx);
+    const post = await ctx.runQuery(
+      components.launchthat_ecommerce.posts.queries.getPostById,
+      {
+        id: args.id,
+        organizationId: args.organizationId,
+      },
+    );
+    if (!post || post.postTypeSlug !== "products") return null;
+    return post;
+  },
+});
+
+export const getOrderMeta = query({
+  args: {
+    postId: v.string(),
+    organizationId: v.optional(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    await requirePlatformAdmin(ctx);
+    return await ctx.runQuery(
+      components.launchthat_ecommerce.posts.queries.getPostMeta,
+      {
+        postId: args.postId,
+        organizationId: args.organizationId,
+      },
+    );
+  },
+});
+
+export const getProductMeta = query({
+  args: {
+    postId: v.string(),
+    organizationId: v.optional(v.string()),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    await requirePlatformAdmin(ctx);
+    return await ctx.runQuery(
+      components.launchthat_ecommerce.posts.queries.getPostMeta,
+      {
+        postId: args.postId,
+        organizationId: args.organizationId,
+      },
+    );
+  },
+});
+
 export const listDiscountCodes = query({
   args: { organizationId: v.optional(v.string()) },
   returns: v.any(),
@@ -90,6 +173,7 @@ export const createOrder = mutation({
     organizationId: v.optional(v.string()),
     title: v.string(),
     status: orderStatusValidator,
+    meta: v.optional(metaRecordValidator),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
@@ -107,6 +191,7 @@ export const createOrder = mutation({
         organizationId: args.organizationId,
         createdAt: now,
         updatedAt: now,
+        meta: args.meta,
       },
     );
   },
@@ -117,6 +202,7 @@ export const createProduct = mutation({
     organizationId: v.optional(v.string()),
     title: v.string(),
     status: productStatusValidator,
+    meta: v.optional(metaRecordValidator),
   },
   returns: v.any(),
   handler: async (ctx, args) => {
@@ -134,6 +220,55 @@ export const createProduct = mutation({
         organizationId: args.organizationId,
         createdAt: now,
         updatedAt: now,
+        meta: args.meta,
+      },
+    );
+  },
+});
+
+export const updateOrder = mutation({
+  args: {
+    id: v.string(),
+    organizationId: v.optional(v.string()),
+    title: v.optional(v.string()),
+    status: v.optional(orderStatusValidator),
+    meta: v.optional(metaRecordValidator),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    await requirePlatformAdmin(ctx);
+    return await ctx.runMutation(
+      components.launchthat_ecommerce.posts.mutations.updatePost,
+      {
+        id: args.id,
+        organizationId: args.organizationId,
+        title: args.title,
+        status: args.status,
+        meta: args.meta,
+      },
+    );
+  },
+});
+
+export const updateProduct = mutation({
+  args: {
+    id: v.string(),
+    organizationId: v.optional(v.string()),
+    title: v.optional(v.string()),
+    status: v.optional(productStatusValidator),
+    meta: v.optional(metaRecordValidator),
+  },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    await requirePlatformAdmin(ctx);
+    return await ctx.runMutation(
+      components.launchthat_ecommerce.posts.mutations.updatePost,
+      {
+        id: args.id,
+        organizationId: args.organizationId,
+        title: args.title,
+        status: args.status,
+        meta: args.meta,
       },
     );
   },

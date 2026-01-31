@@ -413,6 +413,10 @@
           transparent 50% 100%);
     }
   }
+
+  [data-slot="dialog-content"] {
+    max-width: 70vw;
+  }
 }
 
 ::view-transition-old(root),
