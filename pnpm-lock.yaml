@@ -3242,6 +3242,9 @@ importers:
       launchthat-plugin-core:
         specifier: workspace:*
         version: link:../launchthat-plugin-core
+      stripe:
+        specifier: ^18.1.1
+        version: 18.1.1(@types/node@22.19.1)
     devDependencies:
       '@acme/eslint-config':
         specifier: workspace:*
@@ -46910,6 +46913,12 @@ snapshots:
       qs: 6.14.0
     optionalDependencies:
       '@types/node': 22.13.11
+
+  stripe@18.1.1(@types/node@22.19.1):
+    dependencies:
+      qs: 6.14.0
+    optionalDependencies:
+      '@types/node': 22.19.1
 
   strnum@1.1.2: {}
 
