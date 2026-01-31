@@ -11,7 +11,8 @@ const formatUsd = (cents: number): string => {
 };
 
 export default async function AffiliatesMarketingPage() {
-  const hasTenantSession = Boolean(cookies().get(TENANT_SESSION_COOKIE_NAME)?.value);
+  const cookieStore = await cookies();
+  const hasTenantSession = Boolean(cookieStore.get(TENANT_SESSION_COOKIE_NAME)?.value);
   const primaryCtaHref = hasTenantSession ? "/admin/affiliates/share" : "/sign-in";
   const primaryCtaLabel = hasTenantSession ? "Open Share Kit" : "Get Started";
 

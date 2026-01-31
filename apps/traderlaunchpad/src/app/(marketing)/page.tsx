@@ -58,7 +58,8 @@ const PlusIcon = ({ className }: { className?: string }) => (
 );
 
 export default async function HomePage() {
-  const hasTenantSession = Boolean(cookies().get(TENANT_SESSION_COOKIE_NAME)?.value);
+  const cookieStore = await cookies();
+  const hasTenantSession = Boolean(cookieStore.get(TENANT_SESSION_COOKIE_NAME)?.value);
   const primaryCtaHref = hasTenantSession ? "/admin/dashboard" : "/sign-in";
   const primaryCtaLabel = hasTenantSession ? "Dashboard" : "Get Started";
 

@@ -211,7 +211,8 @@ function SignalPipelineMock() {
 }
 
 export default async function SignalsMarketingPage() {
-  const hasTenantSession = Boolean(cookies().get(TENANT_SESSION_COOKIE_NAME)?.value);
+  const cookieStore = await cookies();
+  const hasTenantSession = Boolean(cookieStore.get(TENANT_SESSION_COOKIE_NAME)?.value);
   const primaryCtaHref = hasTenantSession ? "/admin/dashboard" : "/sign-in";
   const primaryCtaLabel = hasTenantSession ? "Open dashboard" : "Get started";
   const connectBrokerHref = hasTenantSession ? "/admin/settings/connections" : "/sign-in";

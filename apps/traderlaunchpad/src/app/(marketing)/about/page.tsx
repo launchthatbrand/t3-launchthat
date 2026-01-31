@@ -16,7 +16,8 @@ import {
 import { Card, ShineBorder } from "@acme/ui";
 
 export default async function AboutPage() {
-  const hasTenantSession = Boolean(cookies().get(TENANT_SESSION_COOKIE_NAME)?.value);
+  const cookieStore = await cookies();
+  const hasTenantSession = Boolean(cookieStore.get(TENANT_SESSION_COOKIE_NAME)?.value);
   const primaryCtaHref = hasTenantSession ? "/admin/dashboard" : "/sign-in";
   const primaryCtaLabel = hasTenantSession ? "Go to Dashboard" : "Join the Community";
 

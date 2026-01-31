@@ -135,7 +135,8 @@ function DiscordEmbedMock() {
 }
 
 export default async function DiscordMarketingPage() {
-  const hasTenantSession = Boolean(cookies().get(TENANT_SESSION_COOKIE_NAME)?.value);
+  const cookieStore = await cookies();
+  const hasTenantSession = Boolean(cookieStore.get(TENANT_SESSION_COOKIE_NAME)?.value);
   const primaryCtaHref = hasTenantSession ? "/admin/integrations/discord" : "/sign-in";
   const primaryCtaLabel = hasTenantSession ? "Open Discord settings" : "Connect Broker";
 

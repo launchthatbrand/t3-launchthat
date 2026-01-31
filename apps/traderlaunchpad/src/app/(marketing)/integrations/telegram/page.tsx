@@ -150,7 +150,8 @@ function TelegramEmbedMock() {
 }
 
 export default async function TelegramMarketingPage() {
-  const hasTenantSession = Boolean(cookies().get(TENANT_SESSION_COOKIE_NAME)?.value);
+  const cookieStore = await cookies();
+  const hasTenantSession = Boolean(cookieStore.get(TENANT_SESSION_COOKIE_NAME)?.value);
   const primaryCtaHref = hasTenantSession ? "/admin/integrations/telegram" : "/sign-in";
   const primaryCtaLabel = hasTenantSession ? "Connect Telegram" : "Get started";
   const connectBrokerHref = hasTenantSession ? "/admin/settings/connections" : "/sign-in";

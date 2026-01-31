@@ -14,7 +14,8 @@ import { cookies } from "next/headers";
 import { TENANT_SESSION_COOKIE_NAME } from "launchthat-plugin-core-tenant/next/tenant-session";
 
 export default async function JournalMarketingPage() {
-  const hasTenantSession = Boolean(cookies().get(TENANT_SESSION_COOKIE_NAME)?.value);
+  const cookieStore = await cookies();
+  const hasTenantSession = Boolean(cookieStore.get(TENANT_SESSION_COOKIE_NAME)?.value);
   const primaryCtaHref = hasTenantSession ? "/admin/journal" : "/sign-in";
   const primaryCtaLabel = hasTenantSession ? "Open Journal" : "Get Started";
 
