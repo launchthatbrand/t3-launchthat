@@ -121,26 +121,35 @@ export const paginateForViewer = query({
     continueCursor: v.union(v.string(), v.null()),
   }),
   handler: async (ctx, args) => {
-    const userId = await resolveViewerUserId(ctx);
-    if (!userId) {
-      return { page: [], isDone: true, continueCursor: null };
+    try {
+      const userId = await resolveViewerUserId(ctx);
+      if (!userId) {
+        return { page: [], isDone: true, continueCursor: null };
+      }
+      const res = (await ctx.runQuery(
+        notificationsQueries.paginateByUserIdAcrossOrgs,
+        {
+          userId,
+          filters: args.filters,
+          paginationOpts: args.paginationOpts,
+        },
+      )) as any;
+      return {
+        page: Array.isArray(res?.page) ? res.page : [],
+        isDone: Boolean(res?.isDone),
+        continueCursor:
+          typeof res?.continueCursor === "string" ||
+          res?.continueCursor === null
+            ? res.continueCursor
+            : null,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (message.includes("Unauthorized")) {
+        return { page: [], isDone: true, continueCursor: null };
+      }
+      throw error;
     }
-    const res = (await ctx.runQuery(
-      notificationsQueries.paginateByUserIdAcrossOrgs,
-      {
-        userId,
-        filters: args.filters,
-        paginationOpts: args.paginationOpts,
-      },
-    )) as any;
-    return {
-      page: Array.isArray(res?.page) ? res.page : [],
-      isDone: Boolean(res?.isDone),
-      continueCursor:
-        typeof res?.continueCursor === "string" || res?.continueCursor === null
-          ? res.continueCursor
-          : null,
-    };
   },
 });
 
@@ -148,13 +157,21 @@ export const getUnreadCountForViewer = query({
   args: {},
   returns: v.number(),
   handler: async (ctx) => {
-    const userId = await resolveViewerUserId(ctx);
-    if (!userId) return 0;
-    const res = await ctx.runQuery(
-      notificationsQueries.getUnreadCountByUserIdAcrossOrgs,
-      { userId },
-    );
-    return typeof res === "number" ? res : 0;
+    try {
+      const userId = await resolveViewerUserId(ctx);
+      if (!userId) return 0;
+      const res = await ctx.runQuery(
+        notificationsQueries.getUnreadCountByUserIdAcrossOrgs,
+        { userId },
+      );
+      return typeof res === "number" ? res : 0;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (message.includes("Unauthorized")) {
+        return 0;
+      }
+      throw error;
+    }
   },
 });
 

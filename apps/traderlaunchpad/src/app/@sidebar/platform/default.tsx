@@ -202,6 +202,10 @@ export default function AdminSidebarDefault() {
               item.href === "/admin/dashboard"
                 ? pathname === "/admin/dashboard" || pathname === "/admin"
                 : pathname.startsWith(item.href);
+            const isExpanded =
+              Boolean(item.subItems?.length) &&
+              item.href !== "/platform" &&
+              pathname.startsWith(item.href);
 
             return (
               <SidebarMenuItem key={item.href}>
@@ -224,7 +228,7 @@ export default function AdminSidebarDefault() {
                     </span>
                   </Link>
                 </SidebarMenuButton>
-                {item.subItems && item.subItems.length > 0 ? (
+                {isExpanded ? (
                   <div className="ml-4 mt-2 space-y-1 text-sm text-muted-foreground group-data-[collapsible=icon]:hidden">
                     {item.subItems.map((subItem) => {
                       const subActive = pathname.startsWith(subItem.href);
