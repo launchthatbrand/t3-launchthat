@@ -8,6 +8,7 @@ import {
   IconBuilding,
   IconBulb,
   IconChartBar,
+  IconCreditCard,
   IconDatabase,
   IconLink,
   IconNotebook,
@@ -78,6 +79,22 @@ const navItems: NavItem[] = [
         className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
       />
     ),
+  },
+  {
+    label: "Billing",
+    href: "/platform/billing",
+    icon: (
+      <IconCreditCard
+        stroke={1}
+        className={`${NAV_ICON_CLASS} ${NAV_ICON_SIZE_CLASS}`}
+      />
+    ),
+    subItems: [
+      { label: "Overview", href: "/platform/billing" },
+      { label: "Orders", href: "/platform/billing/orders" },
+      { label: "Products", href: "/platform/billing/products" },
+      { label: "Coupons", href: "/platform/billing/coupons" },
+    ],
   },
   {
     label: "Organizations",

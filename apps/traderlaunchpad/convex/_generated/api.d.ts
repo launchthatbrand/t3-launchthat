@@ -41,6 +41,7 @@ import type * as platform_clickhouseCandles from "../platform/clickhouseCandles.
 import type * as platform_clickhouseData from "../platform/clickhouseData.js";
 import type * as platform_clickhouseDataInternalActions from "../platform/clickhouseDataInternalActions.js";
 import type * as platform_crm from "../platform/crm.js";
+import type * as platform_ecommerce from "../platform/ecommerce.js";
 import type * as platform_joinCodes from "../platform/joinCodes.js";
 import type * as platform_newsAdmin from "../platform/newsAdmin.js";
 import type * as platform_newsLogs from "../platform/newsLogs.js";
@@ -149,6 +150,7 @@ declare const fullApi: ApiFromModules<{
   "platform/clickhouseData": typeof platform_clickhouseData;
   "platform/clickhouseDataInternalActions": typeof platform_clickhouseDataInternalActions;
   "platform/crm": typeof platform_crm;
+  "platform/ecommerce": typeof platform_ecommerce;
   "platform/joinCodes": typeof platform_joinCodes;
   "platform/newsAdmin": typeof platform_newsAdmin;
   "platform/newsLogs": typeof platform_newsLogs;

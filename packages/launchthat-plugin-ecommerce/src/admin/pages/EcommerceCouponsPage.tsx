@@ -11,10 +11,7 @@ import { Button } from "@acme/ui/button";
 import { Input } from "@acme/ui/input";
 import { Label } from "@acme/ui/label";
 import { Switch } from "@acme/ui/switch";
-import { api } from "@portal/convexspec";
 import { toast } from "@acme/ui/toast";
-
-const apiAny = api as any;
 
 type CouponKind = "percent" | "fixed";
 
@@ -23,37 +20,39 @@ const normalizeCouponCode = (value: string): string =>
 
 export function EcommerceCouponsPage(props: {
   organizationId?: string | null;
+  listDiscountCodes: unknown;
+  createDiscountCode: unknown;
+  updateDiscountCode: unknown;
+  deleteDiscountCode: unknown;
 }) {
   const organizationId =
     typeof props.organizationId === "string" ? props.organizationId : undefined;
+  const listDiscountCodes = props.listDiscountCodes as any;
+  const createDiscountCode = props.createDiscountCode as any;
+  const updateDiscountCode = props.updateDiscountCode as any;
+  const deleteDiscountCode = props.deleteDiscountCode as any;
 
   const coupons = useQuery(
-    apiAny.plugins.commerce.discounts.queries.listDiscountCodes,
+    listDiscountCodes,
     {
       organizationId,
     },
   ) as
     | Array<{
-        _id: string;
-        code: string;
-        kind: CouponKind;
-        amount: number;
-        active: boolean;
-        organizationId: string | null;
-        createdAt?: number;
-        updatedAt?: number;
-      }>
+      _id: string;
+      code: string;
+      kind: CouponKind;
+      amount: number;
+      active: boolean;
+      organizationId: string | null;
+      createdAt?: number;
+      updatedAt?: number;
+    }>
     | undefined;
 
-  const createCoupon = useMutation(
-    apiAny.plugins.commerce.discounts.mutations.createDiscountCode,
-  ) as (args: any) => Promise<string>;
-  const updateCoupon = useMutation(
-    apiAny.plugins.commerce.discounts.mutations.updateDiscountCode,
-  ) as (args: any) => Promise<null>;
-  const deleteCoupon = useMutation(
-    apiAny.plugins.commerce.discounts.mutations.deleteDiscountCode,
-  ) as (args: any) => Promise<null>;
+  const createCoupon = useMutation(createDiscountCode) as (args: any) => Promise<string>;
+  const updateCoupon = useMutation(updateDiscountCode) as (args: any) => Promise<null>;
+  const deleteCoupon = useMutation(deleteDiscountCode) as (args: any) => Promise<null>;
 
   const [draftCode, setDraftCode] = useState("");
   const [draftKind, setDraftKind] = useState<CouponKind>("percent");
@@ -107,7 +106,7 @@ export function EcommerceCouponsPage(props: {
   };
 
   return (
-    <div className="space-y-6 container">
+    <div>
       <Card>
         <CardHeader>
           <CardTitle>Coupons</CardTitle>

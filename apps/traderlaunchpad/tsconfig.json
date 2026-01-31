@@ -68,6 +68,12 @@
       "launchthat-plugin-affiliates/*": [
         "../../packages/launchthat-plugin-affiliates/src/*"
       ],
+      "launchthat-plugin-ecommerce": [
+        "../../packages/launchthat-plugin-ecommerce/src/index.ts"
+      ],
+      "launchthat-plugin-ecommerce/*": [
+        "../../packages/launchthat-plugin-ecommerce/src/*"
+      ],
     },
     "plugins": [
       {
